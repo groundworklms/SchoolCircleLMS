@@ -63,7 +63,7 @@ training platform (SchoolCircleLMS). Do the work; report status; stop before any
 1. Ensure Git, Node 18+, and Claude Code are installed (install what's missing, Windows).
 2. Clone and read the spec:
    git clone https://github.com/groundworklms/SchoolCircleLMS   (if that 404s, use
-   https://github.com/jeranaias/grounded-training-demo and read its docs/ folder).
+   https://github.com/groundworklms/SchoolCircleLMS and read its docs/ folder).
    Read docs/gameday/RANGE-CARD.md, docs/gameday/COLD-BORE.md, then docs/03-data-model.md,
    docs/02-architecture.md, docs/05-arsenal-contracts.md.
 3. Install deps, migrate the Prisma schema, seed ONE TC 3-22.9 course + one instructor + one
@@ -85,10 +85,10 @@ Windows laptop; we're building the frontend of a Marine Corps training platform.
 1. Check for Node and Git (`node --version`, `git --version`). If either is missing, walk me
    through installing it one click at a time.
 2. Clone the project and open the design guide:
-   git clone https://github.com/jeranaias/grounded-training-demo
+   git clone https://github.com/groundworklms/SchoolCircleLMS
    Read docs/01-design-system.md and summarize it for me in plain English — that file is how
    everything should look.
-3. Open the live target in a browser: https://jeranaias.github.io/grounded-training-demo/app.html
+3. Open the live target in a browser: https://schoolcircle.tannerwhite.net/prototype
    and describe what I'm looking at.
 4. Give me ONE small, safe first task — a single component or screen from the design system — and
    build it with me, one piece at a time. Don't push to GitHub without walking me through it first.
@@ -98,8 +98,8 @@ Windows laptop; we're building the frontend of a Marine Corps training platform.
 
 ```
 I'm Thompson, QA and product voice — I test this like a Marine would use it. No coding.
-1. Open the live showcase in a browser: https://jeranaias.github.io/grounded-training-demo (the
-   landing) and .../app.html (the full instructor + student app).
+1. Open the live showcase in a browser: https://schoolcircle.tannerwhite.net (the
+   landing) and /prototype (the full instructor + student app).
 2. Read docs/gameday/RANGE-CARD.md (the 5-minute demo) and docs/06-learner-loop.md +
    docs/07-instructor-loop.md so you know what "correct" looks like; then list things to try to
    break, as a student AND as an instructor.
