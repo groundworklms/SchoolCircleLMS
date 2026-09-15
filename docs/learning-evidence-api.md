@@ -1,14 +1,28 @@
 # Learning evidence API
 
-This document is the frontend contract for the six Arsenal evidence surfaces. The route factory is
-`createEvidenceRouter({ requireUser, requireInstructor, store, model })` in
-`artifacts/api-server/src/routes/learning-evidence.js`. The application owns mounting it below
-`/api`; this module does not change the existing `/api/plan` route or the shared router index.
+This document is the frontend contract for the six Arsenal evidence surfaces. The
+serving route factory is `createEvidenceRouter({ requireUser, requireInstructor,
+store, model })` in the native `lib/server` lane; the framework-free
+`createEvidenceHandlers({ store, model })` in `lib/learning/evidence.js` remains
+the contract seam used by the merged adapter tests. The application mounts the
+native registry below `/api`; this module does not change the existing
+`/api/plan` route or shared router index.
 
-All IDs in request bodies and query strings are **course IDs only**. Learner IDs come from the
-authenticated `req.user` set by `requireUser`; clients cannot select another learner. Instructor
-routes also receive `requireInstructor` and never return raw cohort attempts, profile responses, or
-learner IDs.
+All IDs in request bodies and query strings are **course IDs only**. Learner IDs
+come from the verified identity resolved by the Firebase/Replit auth boundary;
+clients cannot select another learner. Instructor routes check the Prisma role
+and never return raw cohort attempts, profile responses, or learner IDs.
+Cohort membership is resolved at the persistence boundary from `User.role =
+LEARNER`; a non-empty `LearningRecord.ownerId` is not sufficient. Instructor
+owners, blank owners, and unknown user IDs cannot contribute mastery, pre/post,
+or Waypoint cohort populations.
+The five-learner threshold is also applied independently to contributors:
+overall gain and each objective require five distinct learner IDs with paired
+pre/post evidence, and each mastery competency requires five distinct learner
+IDs. Union membership alone never authorizes a sparse statistic; suppressed
+gain/mastery results use `status: "insufficient_evidence"` and omit rows.
+Waypoint keeps the cohort shell when five profiles exist, but returns `null`
+for each dimension or modality cell answered by fewer than five profiles.
 
 ## Common response and error rules
 
@@ -117,6 +131,9 @@ The server loads persisted critiques from `store.getAarInput`, runs Hotwash's ra
 saves it through `store.saveAar`. A deterministic memo is always returned. If the route factory was
 given an explicit `model`, Hotwash may return a model narrative; otherwise `source` is `heuristic`
 and `modelAvailable` is `false`.
+Multiple persisted critique submissions are combined oldest-first so every
+iteration remains inspectable. Database timestamp ties use the record id as a
+deterministic secondary order only; it does not claim to recover chronology.
 
 Response `201`:
 
@@ -131,6 +148,11 @@ Response `201`:
   "memo": "AFTER-ACTION REVIEW...",
   "source": "heuristic",
   "modelAvailable": false,
+  "input": {
+    "critiques": [],
+    "iterations": [],
+    "provenance": { "critiqueSetId": "record_123" }
+  },
   "persisted": true
 }
 ```
@@ -239,7 +261,11 @@ record. The route never passes a client-provided `learnerId`.
 ```js
 store.getStudyPlan({ learnerId, courseId })
 store.getStudyPlanInput({ learnerId, courseId }) // { syllabus, asOf?, availability?, status? }
-store.saveStudyPlan({ learnerId, courseId, input, plan, selectedBlocks, ics, reminders })
+store.saveStudyPlan({
+  learnerId, courseId,
+  input: { syllabus, asOf, availability, status? },
+  plan, selectedBlocks, ics, reminders
+})
 
 store.listLearnerAttempts({ learnerId, courseId? })       // explicit Sextant pre/post records only
 store.listLearnerMasteryReports({ learnerId, courseId? }) // Whetstone report-shaped records
@@ -247,8 +273,13 @@ store.listCohortAttempts({ instructorId, courseId? })     // { attempts, distinc
 store.listCohortMasteryReports({ instructorId, courseId? }) // { sessions, distinctLearnerCount } OR array
 
 store.getAar({ instructorId, courseId })
-store.getAarInput({ instructorId, courseId }) // { critiques, courseTitle? }
-store.saveAar({ instructorId, courseId, report, memo, source, modelAvailable })
+store.getAarInput({ instructorId, courseId })
+  // { critiques, iterations, courseTitle?, provenance: { critiqueSetIds, submissions } }
+store.saveAar({
+  instructorId, courseId, report, memo, source, modelAvailable,
+  input: { critiques, iterations, courseTitle?, provenance? },
+  inputIterations, critiques, provenance?
+})
 
 store.getLearnerProfile({ learnerId })
 store.saveLearnerProfile({ learnerId, responses, profile, recommendations })

@@ -1,37 +1,49 @@
 import { Router } from 'express';
 import { db } from '../lib/db.js';
+import { currentIdentity, requireAnyRole } from '../lib/auth.js';
 
-// Read model for learner-facing screens. Only human-ratified items reach a student;
-// the APPROVED filter lives in the Prisma query rather than in the UI.
+// Read model for learner-facing screens. Identity and role checks happen in
+// this route after the app's verified auth boundary, rather than in a direct
+// handler that could accidentally expose the raw model.
 const router = Router();
-const itemProjection = {
+const learnerItemProjection = {
   id: true,
   kind: true,
   stem: true,
   options: true,
-  answer: true,
-  rationale: true,
   citation: true,
   support: true,
   status: true,
 };
 
-const sectionInclude = {
-  orderBy: { order: 'asc' },
-  include: {
-    items: {
-      where: { status: 'APPROVED' },
-      orderBy: { createdAt: 'asc' },
-      select: itemProjection,
-    },
-  },
+const instructorItemProjection = {
+  ...learnerItemProjection,
+  answer: true,
+  rationale: true,
 };
 
-router.get('/courses', async (_req, res) => {
+const authenticated = requireAnyRole('LEARNER', 'INSTRUCTOR');
+
+function sectionInclude(identity) {
+  const instructor = identity.role === 'INSTRUCTOR';
+  return {
+    orderBy: { order: 'asc' },
+    include: {
+      items: {
+        where: instructor ? {} : { status: 'APPROVED' },
+        orderBy: { createdAt: 'asc' },
+        select: instructor ? instructorItemProjection : learnerItemProjection,
+      },
+    },
+  };
+}
+
+router.get('/courses', ...authenticated, async (req, res) => {
   try {
+    const identity = currentIdentity(req);
     const courses = await db.course.findMany({
       orderBy: { createdAt: 'asc' },
-      include: { sections: sectionInclude },
+      include: { sections: sectionInclude(identity) },
     });
     res.json({ courses });
   } catch (error) {
@@ -40,11 +52,12 @@ router.get('/courses', async (_req, res) => {
   }
 });
 
-router.get('/courses/:id', async (req, res) => {
+router.get('/courses/:id', ...authenticated, async (req, res) => {
   try {
+    const identity = currentIdentity(req);
     const course = await db.course.findUnique({
       where: { id: req.params.id },
-      include: { sections: sectionInclude },
+      include: { sections: sectionInclude(identity) },
     });
     if (!course) {
       res.status(404).json({ error: 'course not found' });

@@ -171,19 +171,12 @@ export function createLearningEvidenceStore() {
       ) {
         return [];
       }
-      const memberIds = new Set();
-      const sourceRows = await listLearningRecords({ type: 'MASTERY_SESSION' });
-      for (const row of sourceRows) {
-        const payload = payloadOf(row);
-        if (payload.courseId === courseId) memberIds.add(row.ownerId);
-      }
       const rows = await listLearningRecords({ type: 'MASTERY_ATTEMPT' });
       return rows
         .map((row) => ({ learnerId: row.ownerId, ...payloadOf(row) }))
         .filter(
           (value) =>
             value.courseId === courseId &&
-            (!memberIds.size || memberIds.has(value.learnerId)) &&
             (value.phase === 'pre' || value.phase === 'post') &&
             typeof value.correct === 'boolean',
         );
@@ -285,8 +278,8 @@ export function createLearningEvidenceStore() {
       // explicit projection decide what can be exported.
       return { ...course, id: row.id, approved: true };
     },
-    async recordExport({ learnerId, ...result }) {
-      return save(learnerId, 'SCORM_EXPORT', result);
+    async recordExport({ instructorId, ...result }) {
+      return save(instructorId, 'SCORM_EXPORT', result);
     },
 
     async getFidelityEvaluation({ instructorId, courseId }) {

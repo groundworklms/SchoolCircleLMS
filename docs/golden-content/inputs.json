@@ -1,0 +1,73 @@
+{
+  "packageId": "schoolcircle-synthetic-golden-v1",
+  "status": "PENDING",
+  "source": {
+    "title": "SYNTHETIC REHEARSAL ONLY — fictional training device",
+    "sourceId": "synthetic-safety-latch-v1",
+    "pages": [
+      {
+        "page": 1,
+        "text": "This fictional training device has a safety latch and a green indicator. Before operation, inspect the safety latch and confirm the indicator is green. The safety latch inspection confirms that the latch is secured before operation. The green indicator confirms that the fictional training device is ready for operation. A common error is starting operation without inspecting the safety latch. Correct this error by inspecting the safety latch and checking the green indicator before operation. Record the safety check in the training log so the completed inspection can be reviewed. The coaching cue is: inspect the safety latch, confirm the green indicator, and record the safety check."
+      }
+    ]
+  },
+  "courseDraft": {
+    "title": "SYNTHETIC REHEARSAL ONLY — safety check and review",
+    "objectives": [
+      "Explain the safety latch inspection before operation",
+      "Plan the fictional device safety check using only the supplied inspection, indicator and recording steps"
+    ],
+    "diagrams": false
+  },
+  "rubricTask": {
+    "code": "SYNTHETIC-LATCH-01",
+    "title": "Fictional device safety check",
+    "condition": "Before operation of the fictional training device",
+    "standard": "Before operation, inspect the safety latch and confirm the indicator is green. Record the safety check in the training log.",
+    "performanceSteps": [
+      "Inspect the safety latch",
+      "Confirm the indicator is green",
+      "Record the safety check in the training log"
+    ]
+  },
+  "bankedDraft": {
+    "status": "PENDING",
+    "kind": "REVIEW_REFERENCE_NOT_API_IMPORT",
+    "citation": "synthetic-safety-latch-v1 p.1",
+    "lesson": "Before operation, inspect the safety latch and confirm the indicator is green. Record the safety check in the training log.",
+    "scenario": {
+      "situation": "An invented learner is preparing to operate the fictional training device and has not inspected its safety latch.",
+      "task": "Plan the checks and recordkeeping described by the supplied source before operation.",
+      "coaching": "Inspect the safety latch, confirm the green indicator, and record the safety check.",
+      "boundary": "Planning workflow stand-in only; no MCPP phases, tactical decisions, timing limits or operational procedures are asserted."
+    },
+    "rubricReviewReference": [
+      {
+        "criterion": "Source-supported inspection",
+        "observableEvidence": "The response states that the safety latch is inspected before operation."
+      },
+      {
+        "criterion": "Source-supported readiness check",
+        "observableEvidence": "The response confirms that the indicator is green."
+      },
+      {
+        "criterion": "Source-supported recordkeeping",
+        "observableEvidence": "The response records the safety check in the training log."
+      }
+    ],
+    "unresolvedRubricDecision": "Source supplies steps but no distinction between satisfactory and proficient, weights, time limits or passing score. These must be flagged for review, not invented.",
+    "masteryObjective": "Explain the safety latch inspection before operation",
+    "masteryBoundary": "Synthetic practice only. No real PME ELO, institutional mastery threshold or educational efficacy claim."
+  },
+  "masteryStart": {
+    "objectives": "Explain the safety latch inspection before operation",
+    "maxTurns": 2
+  },
+  "useCaseCoverage": [
+    {"useCase": 1, "input": "rubricTask", "status": "SYNTHETIC_PENDING"},
+    {"useCase": 13, "input": "courseDraft", "status": "SYNTHETIC_PENDING"},
+    {"useCase": 16, "input": "bankedDraft.scenario", "status": "SYNTHETIC_PLANNING_STAND_IN_NOT_MCPP"},
+    {"useCase": 12, "input": "cases.json", "status": "SYNTHETIC_PENDING"},
+    {"useCase": 9, "input": "masteryStart", "status": "SYNTHETIC_STAND_IN_REAL_ELOS_UNAVAILABLE"}
+  ]
+}

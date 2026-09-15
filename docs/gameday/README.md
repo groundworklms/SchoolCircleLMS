@@ -1,44 +1,66 @@
 # Gameday kit
 
-Everything a team member (or their Claude Code instance) needs to arrive ready. Clone the repo,
-read these three, then jump to your lane's deep docs in [`../`](../README.md).
+This kit is supporting planning material for the current Next.js app. Read the
+dated [`EVIDENCE-MATRIX.md`](EVIDENCE-MATRIX.md) and current
+[`RANGE-CARD.md`](RANGE-CARD.md) first; both are current authority as of
+**2026-09-15**. Narrative plans must not turn historical results into
+acceptance claims.
 
-> **Routes, as of 15 Sep.** The app serves `/` (the planning board) and `/prototype`
-> (Student and Instructor views). Several docs in this kit still say `/learn`, which is
-> the product name the spec uses and the route we are renaming to. Until that lands,
-> **open `http://localhost:3111/prototype`**, not `/learn`. Tracking: #14, fixed as part of #8.
+## Current routes
 
-| File | What it is |
+| Route | Surface |
 |---|---|
-| [RANGE-CARD.md](RANGE-CARD.md) | The operator's brief — pitch, numbers, architecture, the four integration sequences, runbook, the 5-minute demo, contingencies, submission. |
-| [COLD-BORE.md](COLD-BORE.md) | The battle plan — scheme, the five use cases, the arsenal (12 repos), assembly, the **Build Kit** (design/data/grounding/env/consume), Orin access, the honest scorecard. |
-| [TEAM-PLAN.md](TEAM-PLAN.md) | Who owns what — the four lanes, the QA→triage→build→review loop, per-member tasks, and McDonald's ramp. |
-| [BOOT.md](BOOT.md) | Copy-paste boot prompts — one per teammate — that provision a **fresh** machine and bring each lane up. No installs, keys, or USB needed beforehand. Start here on gameday. |
-| [SCORING-CARD.md](SCORING-CARD.md) | The nine published judging criteria and where each is already answered. Read before the demo, not after. |
-| [DATA-HANDLING.md](DATA-HANDLING.md) | What may and may not enter a public repo. Read before your first commit. |
+| `/` | Landing page and sign-in entry |
+| `/learn` | Authenticated learner surface |
+| `/teach` | Authenticated instructor surface |
+| `/plan` | Planning-board reader |
+| `/prototype` | Historical prototype; not the current learning surface |
 
-## Set up your Claude Code instance (5 minutes)
+The app is one Next.js 15 process. The root Replit command uses **pnpm**, binds
+to `0.0.0.0`, and defaults `$PORT` to `3000`. The current data path is Prisma
+over PostgreSQL. There is no SQLite connection-string swap, Docker instruction,
+second service, or repository `ops/` script in this baseline.
 
-1. Install Node 18+, Git, and Claude Code. `git clone` this repo.
-2. `npm install` — then `npm run dev` and open `http://localhost:3111/prototype`.
-3. Tell your instance to read the docs for **your lane** (from [TEAM-PLAN.md](TEAM-PLAN.md)):
-- **Morgan / White (backend, grounding):** `../02-architecture` · `../03-data-model` · `../04-grounding-and-anchor` · `../05-arsenal-contracts` · `../08-build-guide` — Morgan also owns content/SME: add `../07-instructor-loop`
-- **McDonald (frontend):** `../01-design-system` (primary) · `../06-learner-loop` · `../07-instructor-loop`
-- **Thompson (QA):** the deployed site + the QA widget; `../06-learner-loop` + `../07-instructor-loop` for intended behavior
-4. You're armed. The whole spec travels with the repo — no external docs, no artifact access needed.
+```bash
+pnpm install
+pnpm run db:generate
+pnpm run dev
+```
 
-## Working agreement
+The repository's bounded checks include `pnpm run typecheck`,
+`pnpm run test:next`, `pnpm run test:api`, and `pnpm test`. Their scope and
+limits are recorded in [`EVIDENCE-MATRIX.md`](EVIDENCE-MATRIX.md).
 
-- **Branch and PR.** Never commit to `main`. `main` requires a pull request and a passing
-  `build` check; org owners can bypass in an emergency, nobody else can.
-- **Claim a screen before you start on it.** Each prototype screen is its own file, so two
-  people on different screens will not conflict. The shared files (`page.js`, `data.js`,
-  `shared.js`, `prototype.css`) are where collisions happen — keep edits there small and push
-  them promptly.
-- **The board is the truth.** [Hackathon Sprint 15-18 Sep](https://github.com/orgs/groundworklms/projects/1).
-  Move your card to In Progress when you pick it up. Issues land in Todo automatically and
-  close to Done automatically; the middle is on you.
+## Files
 
-## The one rule that never bends
-Grounded, verified, offline, human-led. Every claim cites the manual or the system refuses;
-nothing `PENDING` reaches a learner. That guarantee is the product — protect it in every lane.
+| File | Purpose |
+|---|---|
+| [`EVIDENCE-MATRIX.md`](EVIDENCE-MATRIX.md) | Dated current evidence and explicit limits |
+| [`RANGE-CARD.md`](RANGE-CARD.md) | Current operator brief and presentation boundaries |
+| [`COLD-BORE.md`](COLD-BORE.md) | Five-use-case objective and labeled historical record |
+| [`WINPLAN.md`](WINPLAN.md) | Evidence-led planning; cannot override the matrix |
+| [`TEAM-PLAN.md`](TEAM-PLAN.md) | Current lanes and evidence hand-offs |
+| [`BOOT.md`](BOOT.md) | Historical boot prompts; use the current root commands above |
+| [`SCORING-CARD.md`](SCORING-CARD.md) | Judging criteria and planning references |
+| [`DATA-HANDLING.md`](DATA-HANDLING.md) | Data-handling guidance |
+| [`../README.md`](../README.md) | Deep design and architecture documentation index |
+
+## Lane reading
+
+- **Morgan / White:** [`../02-architecture.md`](../02-architecture.md),
+  [`../03-data-model.md`](../03-data-model.md),
+  [`../04-grounding-and-anchor.md`](../04-grounding-and-anchor.md),
+  [`../05-arsenal-contracts.md`](../05-arsenal-contracts.md),
+  [`../08-build-guide.md`](../08-build-guide.md), and
+  [`../07-instructor-loop.md`](../07-instructor-loop.md).
+- **McDonald:** [`../01-design-system.md`](../01-design-system.md),
+  [`../06-learner-loop.md`](../06-learner-loop.md), and
+  [`../07-instructor-loop.md`](../07-instructor-loop.md).
+- **Thompson:** [`TEAM-PLAN.md`](TEAM-PLAN.md),
+  [`RANGE-CARD.md`](RANGE-CARD.md), and the learner/instructor loop docs above.
+
+Keep five-use-case objectives, historical Orin/corpus/test metrics, and current
+route evidence separate. Hosted/cloud, browser, offline-inference, production,
+and consuming-LMS acceptance are not implied by this kit unless added to the
+dated evidence matrix. Thompson retains the #9 run-of-show; the use-case #9
+label is separate from any issue number.

@@ -6,10 +6,8 @@ description: A task runner may lack the provisioning callback documented by the 
 Check actual provisioning availability before promising immediate no-key hosted
 model access inside an assigned task runner.
 
-**Why:** The OpenAI integration skill documented a setup callback that was absent
-from both the parent and delegated execution contexts, while no managed model
-credentials were provisioned. Documentation of a capability did not mean that
-this task runner could enable it.
+**Why:** Provisioning capabilities depend on execution context. Provider catalog
+support does not establish whether the current runner can enable that provider.
 
 **How to apply:** Check the current skill, available integration inventory, and
 credential existence using secure tooling. Treat a missing setup operation as an

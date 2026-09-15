@@ -1,4 +1,5 @@
 #!/bin/bash
-set -e
-pnpm install --frozen-lockfile
-pnpm --filter db push
+set -euo pipefail
+CI=true pnpm install --frozen-lockfile
+# Generate code only. Schema changes require a separately approved migration.
+pnpm run db:generate

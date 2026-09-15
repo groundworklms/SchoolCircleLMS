@@ -1,27 +1,22 @@
 kind = "web"
 previewPath = "/"
 title = "SchoolCircle"
-description = "The imported SchoolCircle learning platform and hackathon planning board, preserving instructor and student experiences."
+description = "SchoolCircle on its original Next.js framework, with the twelve-repository integration."
 version = "1.0.0"
 id = "artifacts/schoolcircle"
 router = "path"
 
 [[services]]
 name = "web"
-paths = [ "/" ]
+paths = ["/"]
 localPort = 24405
 
 [services.development]
-run = "pnpm --filter @workspace/schoolcircle run dev"
+run = "pnpm -w run dev"
 
 [services.production]
-build = [ "pnpm", "--filter", "@workspace/schoolcircle", "run", "build" ]
-serve = "static"
-publicDir = "artifacts/schoolcircle/dist/public"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+build = ["pnpm", "-w", "run", "build"]
+run = ["pnpm", "-w", "run", "start"]
 
 [services.env]
 PORT = "24405"

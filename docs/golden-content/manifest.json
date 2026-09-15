@@ -1,0 +1,90 @@
+{
+  "packageId": "schoolcircle-synthetic-golden-v1",
+  "status": "PENDING",
+  "scope": "Synthetic contract rehearsal only; not doctrine, MCPP instruction, PME credit, or SME-reviewed courseware.",
+  "humanReview": {
+    "owner": "Content/SME owner assigned to https://github.com/groundworklms/SchoolCircleLMS/issues/7",
+    "status": "PENDING",
+    "reviewedAt": null,
+    "decisionEvidence": null,
+    "releaseDecision": "NOT_APPROVED_FOR_INSTRUCTION"
+  },
+  "approvedPublications": [],
+  "sources": [
+    {
+      "id": "synthetic-safety-latch-v1",
+      "kind": "SYNTHETIC",
+      "title": "Fictional training device rehearsal",
+      "edition": "Repository fixture version 1",
+      "origin": "scripts/prove-learning-loop-live.mjs SOURCE_TEXT",
+      "releaseBasis": "Reuses invented sample text already tracked in this public repository; contains no doctrine or learner records.",
+      "releasability": "SYNTHETIC_REPOSITORY_FIXTURE",
+      "printedPage": null,
+      "fixturePage": 1,
+      "citationTarget": "synthetic-safety-latch-v1 p.1",
+      "humanReview": "PENDING"
+    }
+  ],
+  "publicationCandidates": [
+    {
+      "id": "NAVMC 3500.44E",
+      "editionClaim": "E; publication date unverified",
+      "purpose": "Use case 1",
+      "printedPages": null,
+      "distributionEvidence": null,
+      "status": "UNAVAILABLE_PENDING_OWNER_VALIDATION"
+    },
+    {
+      "id": "MCWP 5-10",
+      "editionClaim": "Called current in Cold Bore; edition/date unverified",
+      "purpose": "Use case 16",
+      "printedPages": null,
+      "distributionEvidence": null,
+      "status": "UNAVAILABLE_PENDING_OWNER_VALIDATION"
+    },
+    {
+      "id": "TC 3-22.9",
+      "editionClaim": "Unverified; seed/prototype citations are not source-validation evidence",
+      "purpose": "Use cases 13 and 12",
+      "printedPages": null,
+      "distributionEvidence": null,
+      "status": "UNAVAILABLE_PENDING_OWNER_VALIDATION"
+    },
+    {
+      "id": "MCDP 1",
+      "editionClaim": "20 June 1997, as claimed by docs/04-grounding-and-anchor.md",
+      "purpose": "Use case 12",
+      "printedPages": ["5"],
+      "candidateLocator": "Chapter 1, Friction, paragraph 3; documentary locator only, not verified against publication",
+      "distributionEvidence": null,
+      "status": "UNAVAILABLE_PENDING_OWNER_VALIDATION"
+    },
+    {
+      "id": "EWSDEP 8670 ELOs",
+      "editionClaim": null,
+      "purpose": "Use case 9",
+      "printedPages": null,
+      "distributionEvidence": null,
+      "status": "UNAVAILABLE_GATED",
+      "restriction": "No access, text, derived eval cases, or invented ELOs included."
+    }
+  ],
+  "inventory": [
+    {
+      "path": "docs/gameday/COLD-BORE.md",
+      "finding": "Claims a banked 36-item course; payload not found in tracked workspace or filename/history search. Ask owner for location and release evidence before reuse."
+    },
+    {
+      "path": "prisma/seed.js",
+      "finding": "Small TC 3-22.9 seed is not the claimed golden bank. Existing APPROVED flags are not evidence of human review. Not imported or changed."
+    },
+    {
+      "path": "app/prototype/data.js",
+      "finding": "Demo course and synthetic analytics are not validated instructional or outcome evidence. Not reused as doctrine."
+    },
+    {
+      "path": "tests/core-learning-loop.test.mjs",
+      "finding": "Existing synthetic fixture provides lesson, rubric and scenario contract examples; model-controlled tests are not SME review."
+    }
+  ]
+}

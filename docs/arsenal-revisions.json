@@ -9,7 +9,7 @@
     "refResolution": "git -C .cache/arsenal/<repo> rev-parse HEAD",
     "sourcePolicy": "Resolved shallow main commit and checked-out source are authoritative for this audit; package metadata is preserved as evidence.",
     "schoolCircleIntegrationDefinition": "adapter-wired means current SchoolCircle/API source has an adapter or import and route for the repo; a clone or installed dependency alone is not integration.",
-    "currentSourceStatus": "replit/port was rebased onto origin/main at fd925c7 with no pushes. All eleven JavaScript dependencies remain pinned in artifacts/api-server/package.json at the reviewed SHAs. Core and evidence adapters, routes, and principal learner/instructor UI surfaces are present; UI paths are source-inspected only, Firebase landing/login porting and its verification auth bridge are in progress, and final UI contract corrections remain in progress.",
+    "currentSourceStatus": "The root Next.js application retains the reviewed integrations. Core and evidence adapters are in lib/server, learning UI surfaces are in app/_learning, and the doctrine widget is app/_components/AskWidget.js.",
     "sourceVerification": {
       "rebase": "replit/port rebased onto origin/main at fd925c7",
       "pushes": "none",
@@ -18,13 +18,13 @@
       "tunnelRisk": "Temporary Cloudflare tunnel may disappear or rotate and is not durable production service discovery."
     },
     "dependencyInstall": {
-      "manifest": "artifacts/api-server/package.json",
+      "manifest": "package.json",
       "lockfile": "pnpm-lock.yaml",
       "pinnedToReviewedShas": true,
       "installedAtCallBoundary": true,
       "sourceEvidence": [
-        "artifacts/api-server/src/lib/arsenal-core.js",
-        "artifacts/api-server/src/lib/arsenal-evidence.js"
+        "lib/server/arsenal-core.js",
+        "lib/server/arsenal-evidence.js"
       ]
     },
     "runtimeVerification": {
@@ -114,18 +114,18 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired-direct-anchor-live-proxy-pending",
-        "adapter": "artifacts/api-server/src/lib/doctrine.js",
-        "route": "artifacts/api-server/src/routes/doctrine.js",
-        "ui": "artifacts/schoolcircle/src/components/AskWidget.jsx",
+        "adapter": "lib/server/doctrine.js",
+        "route": "lib/server/routes/doctrine.js",
+        "ui": "app/_components/AskWidget.js",
         "directLiveEvidence": "Temporary tunnel https://calculations-probability-dozens-recommended.trycloudflare.com: /api/health 200 ok=true with generator/embeddings/reranker true; /api/corpus 200 with 13 publications and 4230 chunks; /api/ask grounded MCDP 1 friction with 3 citations and refused an unrelated Microsoft stock-price question with low_retrieval_score.",
         "notes": "HTTP adapter posts to Anchor /api/ask, maps the response, preserves abstention, and reports an explicit unavailable state when DOCTRINE_BASE_URL is absent. DOCTRINE_BASE_URL and DOCTRINE_TIMEOUT_MS are configured from merged apphosting settings, but the SchoolCircle adapter proxy has not been restarted/retested. The Cloudflare tunnel is temporary and not durable production service discovery."
       },
       "evidence": [
         ".cache/arsenal/anchor/src/api/main.py",
         ".cache/arsenal/anchor/src/generation/pipeline.py",
-        "artifacts/api-server/src/lib/doctrine.js",
-        "artifacts/api-server/src/routes/doctrine.js",
-        "artifacts/schoolcircle/src/components/AskWidget.jsx"
+        "lib/server/doctrine.js",
+        "lib/server/routes/doctrine.js",
+        "app/_components/AskWidget.js"
       ]
     },
     {
@@ -185,13 +185,13 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired",
-        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#ingestSource",
+        "adapter": "lib/server/arsenal-core.js#ingestSource",
         "routes": [
           "POST /api/learning/sources",
           "POST /api/learning/sources/pdf"
         ],
-        "ui": "artifacts/schoolcircle/src/pages/teach.tsx#SourcesView",
-        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "ui": "app/_learning/teach.tsx#SourcesView",
+        "testEvidence": "tests/learning-core.test.mjs",
         "runtime": "24-test adapter/route suite passed with selected PostgreSQL persistence coverage; no instructor-authenticated live PDF flow is claimed",
         "notes": "Quarry is loaded at the call boundary; page text, chunks, and citation pages are persisted in SOURCE records."
       },
@@ -251,14 +251,14 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired",
-        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#draftCourse",
+        "adapter": "lib/server/arsenal-core.js#draftCourse",
         "routes": [
           "POST /api/learning/courses/draft",
           "GET /api/learning/courses",
           "POST /api/learning/courses/:id/approve"
         ],
-        "ui": "artifacts/schoolcircle/src/pages/teach.tsx#CoursesView",
-        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "ui": "app/_learning/teach.tsx#CoursesView",
+        "testEvidence": "tests/learning-core.test.mjs",
         "runtime": "24-test adapter suite passed with injected-model coverage; production draft still requires MODEL_BASE_URL, MODEL_ID, auth, and persistence",
         "notes": "Calls Coursewright fromDocuments through the SchoolCircle model seam and persists draft/refusal data as PENDING until instructor approval."
       },
@@ -322,10 +322,10 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired",
-        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#tutorAnswer",
+        "adapter": "lib/server/arsenal-core.js#tutorAnswer",
         "route": "POST /api/learning/tutor",
         "ui": "No dedicated Sourcerer UI; the global Ask widget remains the separate Anchor /api/doctrine surface.",
-        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "testEvidence": "tests/learning-core.test.mjs",
         "runtime": "24-test adapter suite passed with injected-chat coverage and persistence/route tests; approved persisted passages, auth, persistence, and model are required for production",
         "notes": "Sourcerer is called with approved passages and strict cite-or-refuse verification; refusals and citations are recorded as TUTOR_TURN."
       },
@@ -390,14 +390,14 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired",
-        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#generateRubric",
+        "adapter": "lib/server/arsenal-core.js#generateRubric",
         "routes": [
           "POST /api/learning/rubrics/generate",
           "GET /api/learning/rubrics/:id",
           "POST /api/learning/rubrics/:id/approve"
         ],
         "ui": "No dedicated rubric UI is currently present.",
-        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "testEvidence": "tests/learning-core.test.mjs",
         "runtime": "validator/traceability tests use injected callbacks; production requires MODEL_BASE_URL, MODEL_ID plus RUBRICON_ENDPOINT, RUBRICON_MODEL, RUBRICON_API_KEY",
         "notes": "The adapter preserves Rubricon validation/traceability and stores generated rubrics as PENDING for human approval. Rubricon is not configured or live-verified."
       },
@@ -456,13 +456,13 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired",
-        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#startMasterySession,answerMasterySession,restoreMasterySession",
+        "adapter": "lib/server/arsenal-core.js#startMasterySession,answerMasterySession,restoreMasterySession",
         "routes": [
           "POST /api/learning/mastery/sessions",
           "POST /api/learning/mastery/sessions/:id/turn"
         ],
-        "ui": "artifacts/schoolcircle/src/pages/learn.tsx#MasteryWidget",
-        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "ui": "app/_learning/learn.tsx#MasteryWidget",
+        "testEvidence": "tests/learning-core.test.mjs",
         "runtime": "24-test adapter suite passed with injected-model progression coverage; production requires MODEL_BASE_URL, MODEL_ID plus WHETSTONE_ENDPOINT, WHETSTONE_MODEL, WHETSTONE_API_KEY, auth, and persistence",
         "notes": "Session state/transcript and terminal complete/stalled reports are serialized to MASTERY_SESSION and MASTERY_ATTEMPT. Whetstone is not configured or live-verified."
       },
@@ -522,13 +522,13 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired",
-        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildAnalytics",
+        "adapter": "lib/server/arsenal-evidence.js#buildAnalytics",
         "routes": [
           "GET /api/learning/analytics",
           "GET /api/learning/analytics/cohort"
         ],
-        "ui": "artifacts/schoolcircle/src/pages/learner-features.tsx#LearnerProgress",
-        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "ui": "app/_learning/learner-features.tsx#LearnerProgress",
+        "testEvidence": "tests/learning-evidence.test.mjs",
         "runtime": "24-test evidence suite passed with deterministic analytics and selected PostgreSQL persistence/route coverage; no instructor-authenticated live aggregate is claimed",
         "notes": "Explicit pre/post attempts and validated mastery reports feed Sextant; cohort scope preserves five-learner suppression and never returns learner IDs."
       },
@@ -595,14 +595,14 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired-instructor-only",
-        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#evaluateFidelity",
+        "adapter": "lib/server/arsenal-evidence.js#evaluateFidelity",
         "routes": [
           "POST /api/learning/fidelity/cases",
           "GET /api/learning/fidelity",
           "POST /api/learning/fidelity"
         ],
-        "ui": "artifacts/schoolcircle/src/pages/instructor-features.tsx#InstructorFidelity",
-        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "ui": "app/_learning/instructor-features.tsx#InstructorFidelity",
+        "testEvidence": "tests/learning-evidence.test.mjs",
         "runtime": "24-test evidence suite passed with injected agent/judge coverage; no default Understudy model fallback is permitted and no live model result is claimed",
         "notes": "Independent instructor benchmark over approved doctrine. Missing injected model returns explicit unavailable; ordinary learner tutor requests never invoke Understudy."
       },
@@ -657,10 +657,10 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired-instructor-only",
-        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildApprovedScorm",
+        "adapter": "lib/server/arsenal-evidence.js#buildApprovedScorm",
         "route": "GET /api/learning/export?courseId=&version=1.2|2004",
-        "ui": "artifacts/schoolcircle/src/pages/teach.tsx#CourseCard",
-        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "ui": "app/_learning/teach.tsx#CourseCard",
+        "testEvidence": "tests/learning-evidence.test.mjs",
         "runtime": "24-test evidence suite passed with deterministic package/validation and route authorization coverage; requires instructor auth and an approved persisted course for route use, and no LMS/player proof is claimed",
         "notes": "Only approved course items enter Cartridge; generated ZIPs are validated before download and export records are persisted. Export is instructor-only."
       },
@@ -720,14 +720,14 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired-separate-from-planning-board",
-        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildStudyPlan",
+        "adapter": "lib/server/arsenal-evidence.js#buildStudyPlan",
         "routes": [
           "GET /api/learning/study-plan",
           "POST /api/learning/study-plan",
           "GET /api/learning/study-plan?courseId=&format=ics|reminders"
         ],
-        "ui": "artifacts/schoolcircle/src/pages/learner-features.tsx#LearnerStudyPlan",
-        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "ui": "app/_learning/learner-features.tsx#LearnerStudyPlan",
+        "testEvidence": "tests/learning-evidence.test.mjs",
         "runtime": "24-test evidence suite passed with deterministic injected-store and route coverage; approved persisted syllabus, auth, and database are required for route use",
         "notes": "Cadence plans and ICS/reminders are persisted through the learning-evidence routes. Existing /api/plan remains the planning board and is not replaced."
       },
@@ -787,14 +787,14 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired",
-        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildAar",
+        "adapter": "lib/server/arsenal-evidence.js#buildAar",
         "routes": [
           "POST /api/learning/aar/critiques",
           "GET /api/learning/aar",
           "POST /api/learning/aar"
         ],
-        "ui": "artifacts/schoolcircle/src/pages/instructor-features.tsx#InstructorAAR",
-        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "ui": "app/_learning/instructor-features.tsx#InstructorAAR",
+        "testEvidence": "tests/learning-evidence.test.mjs",
         "runtime": "24-test evidence suite passed with deterministic Hotwash/injected narrative and persistence/route coverage; critiques must be persisted and no live model or instructor-authenticated AAR is claimed",
         "notes": "Hotwash's deterministic memo is always available; narrative output receives only the explicitly injected SchoolCircle model seam."
       },
@@ -854,14 +854,14 @@
       ],
       "schoolCircleIntegration": {
         "status": "adapter-wired",
-        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildProfile,buildCohortProfile",
+        "adapter": "lib/server/arsenal-evidence.js#buildProfile,buildCohortProfile",
         "routes": [
           "GET /api/learning/profile",
           "POST /api/learning/profile",
           "GET /api/learning/profile/cohort"
         ],
-        "ui": "artifacts/schoolcircle/src/pages/learner-features.tsx#LearnerProfile",
-        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "ui": "app/_learning/learner-features.tsx#LearnerProfile",
+        "testEvidence": "tests/learning-evidence.test.mjs",
         "runtime": "24-test evidence suite passed with deterministic profile and persistence/route coverage; auth and persisted records are required for an authenticated live profile flow",
         "notes": "Learner-owned survey and suppressed cohort aggregation are wired without exposing raw responses or learner IDs; outputs remain delivery preferences, not diagnoses."
       },

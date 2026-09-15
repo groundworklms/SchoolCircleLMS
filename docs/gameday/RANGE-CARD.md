@@ -1,246 +1,158 @@
 # Operation Cold Bore — Range Card
 
-> The gameday operator's brief — pitch, live-demo runbook, contingencies, architecture, the platoon wired piece-by-piece into the app, metrics, and submission package.
+**Operator handoff proposed to Thompson · 2026-09-15 · Unclassified / releasable**
 
-**Tags:** Gameday Brief · Companion to Operation Cold Bore · Unclassified · Releasable
+Thompson retains GitHub #9 QA/run-of-show ownership. This supports #14 without
+reassigning issues. The [evidence matrix](EVIDENCE-MATRIX.md) is the authority for
+dates, environments, classes, historical numbers and limits. No new live AI,
+hardware, browser or LMS runs were performed for this documentation update.
 
-## Operation Cold Bore — Range Card
+## Pitch — evidence-safe version
 
-The shooter's reference for making the shot — the pitch, the live-demo runbook, the contingencies, the architecture, the platoon wired piece-by-piece into the app, the numbers, and the submission package. One card, so the demo runs cold and the story lands.
+SchoolCircle aims to connect source-grounded authoring, instructor review and
+learner practice across five use cases: **#1 rubrics, #13 instructional design,
+#16 MCPP, #12 tutoring and #9 mastery evaluation**.
 
-## PITCH — Ninety seconds, said out loud
+On **2026-09-15**, the **development Next.js app**, using **live cloud API calls
+and PostgreSQL**, completed a bounded loop on fictional training material:
+draft and approve a course/rubric, answer with citations or refuse an unsupported
+question, and reload persisted mastery turns. This was an API demonstration,
+not the complete browser journey or an educational-efficacy study.
 
-**The problem.** AI can generate training fast — but it hallucinates, and a wrong "fact" in doctrine is a training failure that follows a Marine to the fight. And the schoolhouse or the field often has no reliable network.
+Earlier reports describe Anchor on offline hardware. We keep that evidence
+separate from today's cloud-provider loop. Human review, browser sign-in, the
+disconnected Next delivery loop and acceptance by a target LMS each need their
+own evidence. Cite-or-refuse is a design goal, not a guarantee that AI cannot err.
 
-**What we built.** One grounded platform — SchoolCircle on the surface, Anchor grounding it on a Jetson Orin — that generates cited courses, tutors from the source, and assesses Marines to mastery on real doctrine, **offline**.
+## Current map — source-inspected 2026-09-15, not browser acceptance
 
-**Why it wins.** It isn't another chatbot. It's **grounded** (every claim cites the manual, or it refuses), **verified** (HHEM on-device, and grounding / rubrics / fidelity are all proven not asserted), **offline** (runs on a $500 board with the network pulled), and **human-led** (nothing unreviewed reaches a student). And it's **open** — standalone Apache-2.0 products any command can adopt.
+| Surface | Entry point / contract | Evidence boundary |
+|---|---|---|
+| Landing / login | `/`, `/login` | Published custom-domain routing has not been verified by this task |
+| Learning / teaching | `/learn`, `/teach` | Current Next learning surfaces; use separate verified roles, not a prototype role toggle |
+| Legacy / planning board | `/prototype`, `/plan` | Retained routes, not substitutes for proving `/learn` and `/teach` |
+| Source / authoring | `/api/learning/sources`, `/sources/pdf`, `/sources/:id/approve`; `/api/learning/courses/draft`, `/courses/:id/approve` | Authenticated instructor, approved sources, explicit model configuration; draft then review, not automatic ratification |
+| Rubrics | `/api/learning/rubrics/generate`, `/rubrics/:id/approve` | Approved source and instructor/model gates |
+| Course tutor | `/api/learning/tutor` | Approved persisted sources + model seam; not the direct Anchor widget |
+| Remote doctrine | `/api/doctrine` → Anchor `/api/ask` | Separate service path; unavailable/tunnel failure is not proof of local FTS fallback |
+| Mastery | `/api/learning/mastery/sessions`, `/sessions/:id/turn` | Persisted sessions/reports; completion is not necessarily mastery |
+| Improve / plan | `/api/learning/analytics`, `/study-plan`, `/aar`, `/profile`, `/fidelity` | Prefix abbreviated after first route: all under `/api/learning`; `/api/plan` is the original planning board, not Cadence |
+| Export | `/api/learning/export?courseId=<id>&version=1.2` (or `2004`) | Instructor + approved course; ZIP is not LMS acceptance |
 
-**The ask.** Adopt at the schoolhouse, edge-first, open-source. The pieces are already public, tested, and green.
-
-## NUMBERS — By the numbers
-
-Measured live on the actual stack. The soft ones (cost) are honest estimates, flagged as such.
-
-| Metric | What it is |
-| --- | --- |
-| **~5s** | grounded, cited answer (edge, HHEM-verified) |
-| **~4.5s** | T&R standard → a full BARS rubric |
-| **5/5** | out-of-doctrine questions correctly refused (100%) |
-| **4,230** | grounded chunks on the edge · 13 pubs |
-| **146** | real NAVMC 3500.44E tasks, BARS-ready |
-| **12 · 700+** | open-source repos · passing tests (hardened) |
-| **~$0.10** | est. per generated course · **$0** at delivery (offline) |
-| **8 / 17** | use cases backed by a real product |
-
-## ARCHITECTURE — How it's wired
-
-Authoring reaches a strong cloud model (unclassified prep only). Delivery is fully on the edge — Anchor grounds every answer, offline. Cite-or-refuse sits on the retrieval path.
-
-```mermaid
-flowchart TB
-  PDF["Doctrine PDFs"] -->|Quarry: extract + chunk| CORPUS[("Corpus")]
-  CORPUS --> ANCHOR
-  POI["POI / T&R standard"] --> GEN["Coursewright · Rubricon<br/>(authoring)"]
-  GEN -->|grounded by| ANCHOR["Anchor<br/>retrieval · cite-or-refuse · HHEM"]
-  GEN -.->|strong model, prep only| OR["OpenRouter (cloud)"]
-  GEN --> REVIEW["SchoolCircle<br/>instructor review · roles"]
-  REVIEW --> LEARN["Learners<br/>Sourcerer · Whetstone"]
-  LEARN -->|cited or refused, offline| ANCHOR
-  LEARN --> SEXTANT["Sextant<br/>gain · gaps · evidence"]
-  REVIEW --> CART["Cartridge → SCORM → MarineNet"]
-  classDef edge fill:#0a9c8d22,stroke:#0a9c8d,color:#0a9c8d;
-  classDef cloud fill:#b0640a18,stroke:#b0640a,color:#b0640a,stroke-dasharray:4 3;
-  classDef host fill:#4f6fe018,stroke:#4f6fe0,color:#4f6fe0;
-  class ANCHOR,CORPUS edge;
-  class OR cloud;
-  class REVIEW,LEARN host;
-```
-
-## PLATOON — Piece by piece — how each soldier plugs in
-
-Not arrows and vibes: the real call chain for each flow, exactly as it's wired into SchoolCircle. Every message below is an actual route, `lib` function, or repo call in the app — with the point where it hits Anchor and the Postgres table it writes. Read each diagram top to bottom.
-
-### ① AUTHOR — Studio generates a cited course
-
-Quarry cracks the POI into objectives and tasks; a strong model drafts each lesson; **Anchor grounds every claim or the claim is dropped**; Coursewright assembles it; nothing leaves `PENDING` until the instructor approves it.
+Paths abbreviated within a row share that row's `/api/learning` prefix.
+The old `/api/generate/course`, `/api/ask`, `/api/mastery/start` and
+`/api/scorm/:courseId` diagrams are not operator instructions for this app.
+The twelve pinned companion dependencies are catalogued in
+[arsenal verification](../arsenal-verification.md); Anchor is HTTP, not a package
+every companion necessarily calls. Understudy is an instructor evidence path,
+not a guaranteed per-answer gate or a tutor fallback.
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  actor INS as Instructor · Studio
-  participant API as POST /api/generate/course
-  participant CG as lib/course-gen
-  participant Q as Quarry
-  participant OR as OpenRouter · Gemini
-  participant AN as Anchor · /api/ask
-  participant CW as Coursewright
-  participant DB as Postgres
-  INS->>API: POST { poi }
-  API->>DB: genJob.create status=RUNNING
-  API->>CG: generateCourse(poi, emit)
-  CG->>Q: parsePOI · chunkText · extractTasks
-  Q-->>CG: objectives + T&R tasks
-  loop per objective
-    CG->>OR: generateJSON(prompt) draft
-    OR-->>CG: draft lesson + items
-    CG->>AN: ask(query) — in doctrine?
-    AN-->>CG: text, citations, abstained
-    Note over CG,AN: abstained → drop the claim, mark not covered
-    CG->>CW: buildCourse(objectives, cited passages)
-    CG->>DB: jobEvent.create · Course/Section/Item status=PENDING
-  end
-  INS->>API: POST /api/items/:id/action approve|reject|revise
-  API->>DB: item.update status=APPROVED
+flowchart LR
+  SRC["Approved sources in PostgreSQL"] --> API["Next /api/learning"]
+  API --> MODEL["Explicit cloud model for development authoring/tutor/mastery"]
+  API --> REVIEW["Instructor review /teach"]
+  REVIEW --> LEARN["Approved content /learn"]
+  LEARN --> DB["Persisted attempts and sessions"]
+  API --> ZIP["Cartridge ZIP — consuming LMS gate remains"]
+  WIDGET["Separate /api/doctrine"] --> ANCHOR["Remote Anchor — tunnel dependent"]
 ```
 
-Rubrics run the same shape on their own route: `POST /api/rubric/generate` → **Rubricon** `generateRubric(task)` → `Rubric.create`; a standard too vague to anchor is **flagged for the SME**, not guessed.
+## Preflight — Replit development only
 
-### ② DELIVER · ASK — The tutor answers from the source — or refuses
-
-Runs on the edge. The refusal branch is the whole point: when Anchor abstains, the tutor says so instead of inventing. If the Orin link ever drops, Postgres FTS answers — still with citations.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor STU as Student · Ask
-  participant API as POST /api/ask
-  participant TU as lib/tutor.askDoctrine
-  participant AN as Anchor · /api/ask · edge
-  participant US as Understudy
-  participant FTS as Postgres FTS
-  STU->>API: POST { q }
-  API->>TU: askDoctrine(q)
-  TU->>AN: fetch DOCTRINE_BASE_URL/api/ask { q }
-  AN->>AN: BM25 + dense + rerank → HHEM verify
-  AN-->>TU: text, citations, abstained, abstain_reason, top_rerank_score
-  alt abstained = true
-    TU-->>STU: honest refusal — not in the source
-  else grounded
-    TU->>US: fidelity check (checkGrounding)
-    TU-->>STU: answer, citations, score, source=anchor
-  end
-  Note over TU,FTS: Anchor down → Postgres FTS over Chunk, source=fts, still cited
-```
-
-### ③ DELIVER · MASTERY — Discuss to a recorded mastery score
-
-Whetstone derives a rubric from the objective, opens with a question, then scores each turn and coaches the gap — every attempt written to Postgres for the analytics flow to read.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  actor STU as Student · Mastery
-  participant S1 as POST /api/mastery/start
-  participant WS as Whetstone
-  participant T1 as POST /api/mastery/turn
-  participant DB as Postgres
-  STU->>S1: POST { objective }
-  S1->>WS: deriveMasteryRubric([objective], source)
-  S1->>WS: firstQuestion(criteria, source)
-  WS-->>STU: first question
-  STU->>T1: POST { answer }
-  T1->>WS: scoreTurn(state, answer)
-  WS-->>T1: verdict, coaching, score
-  T1->>DB: attempt.create · mastery.upsert
-```
-
-### ④ IMPROVE — Analytics, the course AAR, and the next study plan
-
-The loop that makes it sharper each cycle. Sextant reads the attempts into class gaps; Hotwash grades the course across iterations; Cadence turns a syllabus + calendar into a plan the learner's calendar can import.
-
-```mermaid
-sequenceDiagram
-  autonumber
-  participant DB as Postgres · Attempt/Mastery
-  actor INS as Instructor · Insight
-  participant SX as Sextant
-  participant HW as Hotwash
-  actor STU as Student
-  participant CAD as Cadence
-  INS->>DB: open Insight → read attempts
-  DB->>SX: learningGain · classGaps · masteryRollup
-  SX-->>INS: gaps worst-first + competency evidence
-  INS->>HW: hotwash({ critiques + iteration trends })
-  HW-->>INS: ranked findings, short vs long-term, AAR memo
-  STU->>CAD: POST /api/plan { syllabus, availability }
-  CAD->>DB: Schedule.create
-  CAD-->>STU: 3 COAs + study-plan.ics (toICS)
-```
-
-### The full integration map
-
-Every soldier, its entry point in the app, the exact call, how it's grounded, and what it persists. Routes and functions are the real ones in the codebase.
-
-| Soldier | Entry point | Exact call | Grounding | Persists / reads |
-| --- | --- | --- | --- | --- |
-| **Anchor** `ship` | `DOCTRINE_BASE_URL/api/ask` | the call every soldier makes to ground | BM25 + dense + rerank + HHEM | Chunk corpus (on the edge) |
-| **Quarry** `ship` | `POST /api/ingest/corpus` · `/api/pdf-text` | `pdfText` · `parsePOI` · `chunkText` · `extractTasks` | — | `Chunk.createMany` {source, ord, text} |
-| **Coursewright** `ship` | `POST /api/generate/course` (SSE) | `generateCourse(poi, emit)` → `buildCourse` | `ask()` → Anchor; abstain drops the claim | GenJob · JobEvent · Course · Section · Item (PENDING) |
-| **Rubricon** `ship` | `POST /api/rubric/generate` · `/rubric/:id/review` | `generateRubric(task)` | flag-ambiguous → abstain | `Rubric.create` |
-| **Sourcerer** `ship` | `POST /api/ask` | `tutor.askDoctrine(q)` | Anchor cite-or-refuse | reads Chunk (FTS fallback) |
-| **Understudy** `ship` | behind `/api/ask` | `checkGrounding` · `fidelityReport` | gates the answer before it ships | — |
-| **Whetstone** `ship` | `POST /api/mastery/start` · `/turn` | `deriveMasteryRubric` · `firstQuestion` · `scoreTurn` | grounded in the objective's source | `Attempt.create` · `Mastery.upsert` |
-| **Sextant** `ship` | `/prototype` · lib `classGaps()` | `learningGain` · `classGaps` · `masteryRollup` | — | reads Attempt / Mastery |
-| **Cartridge** `ship` | `GET /api/scorm/:courseId` | `buildScormZip(course)` | — | reads Course / Section / Item |
-| **Cadence** `ship` | `POST /api/plan` (+ Schedule model) | `plan()` · `toICS()` | — | `Schedule.create` |
-| **Hotwash** `ship` | `POST /api/aar` (planned) | `hotwash()` · `narrativeAAR()` | — | reads Attempt + critiques |
-| **Waypoint** `ship` | `/prototype` (planned) | `profile()` · `classProfile()` | — | learner responses → faculty view |
-
-The `verification throughline`: Rubricon proves **grounding**, Sourcerer proves **faithfulness**, Whetstone proves **mastery**, Sextant proves **learning gain**, Understudy proves **doctrinal fidelity**. Five soldiers, five things proven not asserted.
-
-## RUNBOOK — Preflight — before you stand up
-
-Run this cold once, then again right before you present. Everything green = safe to shoot.
+Use the existing **artifacts/schoolcircle: web** workflow; it starts the root
+Next app with `pnpm -w run dev`. Do not start a second API or web server.
+For a cold dependency setup, from the root:
 
 ```bash
-docker start schoolcircle-dev          # local Postgres
-bash ops/tunnel.sh                     # workstation :8000 → Anchor on the Orin (KEEP OPEN)
-npm run dev                            # the app on :3111
-bash ops/orin-check.sh                 # link · services · health · corpus · key — all green
-# then in the app: open /prototype, ask "what is trigger control?" → confirm source = anchor
+pnpm install --frozen-lockfile
+pnpm run db:generate       # Prisma client only; does not change the database
 ```
 
-⚠ The Anchor tunnel is **not** persistent — if the tutor ever shows `source = fts`, re-run `ops/tunnel.sh`. (If it drops mid-demo, the FTS fallback still answers *with citations* — degrade, don't crash.)
+The root `pnpm run dev` command binds `0.0.0.0` at `$PORT` (default 3000).
+Open the managed preview, then `/login`, `/teach` or `/learn`; do not hardcode
+`:3111`. Use the current lockfile and installed Node toolchain. Do not use npm,
+install unpinned GitHub packages, run Docker, reset/seed the database or migrate
+PostgreSQL as part of rehearsal. Missing prerequisites go to the baseline owner.
+Configuration belongs in secure workspace settings, never slides or this card.
+A stored API key alone does not select/enable a provider.
 
-## SHOW — The five-minute shot
+1. Record the exact environment and revision, and load the latest proof reports.
+2. Confirm the existing server and database are healthy. Availability at
+   `/api/learning/status` is a configuration check, not a successful workflow.
+3. Confirm actual instructor and learner sign-in and role restrictions in the
+   intended browser. API test sessions do not satisfy this gate.
+4. Open the approved, SME-reviewed banked course and citations; reload as a
+   learner. Record which course is banked and when/reviewer it was approved.
+   If it is not ready, do not call historical fixtures “reviewed golden content.”
+5. If live generation is enabled, use only authorized non-sensitive material.
+   Confirm failure is shown explicitly; never silently substitute generated data.
+6. If showing Anchor, verify this session's response source and citation. A
+   historical tunnel URL or health report does not establish today's availability.
+7. Prepare an evidence-only version of every blocked beat. Do not claim a
+   published update at `schoolcircle.tannerwhite.net` from workspace results.
 
-1. **The problem.** *(0:45)* Say the 90-second pitch above. Land on: "not another hallucinating chatbot."
-2. **Generate.** *(1:00)* **Studio** → paste the POI → generate a grounded course live, or reveal the banked golden course. Every lesson cited, all pending review.
-3. **Trust it — the mic drop.** *(1:00)* **Ask** → type `What is trigger control?` → cited answer, HHEM badge. Then `What's the max range of a Javelin?` → **it refuses.** Let that land.
-4. **Rubric from a raw standard.** *(1:00)* **Rubrics** → pick *Defend a Position* → BARS anchors, traceable. Then a vague standard → **flagged for the SME**, not guessed.
-5. **Prove it teaches.** *(0:45)* Flip the role switch to **Learner** → **Mastery** → give a weak answer (coached), then a strong one (mastered, score recorded).
-6. **Where it runs.** *(0:30)* Pull the network — the tutor still answers, offline. Then **Export SCORM** → "drops into MarineNet."
+### Edge rig — separate, gated environment
 
-## CONTINGENCY — If it breaks, do this
+Historical instructions referenced `nps-hackathon/ops/tunnel.sh`,
+`ops/orin-check.sh`, `ops/OFFLINE.md`, workstation Docker Postgres and a USB-linked
+Orin. Those scripts are **not present in this checkout** and must not be run as
+Replit setup. The hardware owner must supply the actual rig runbook, local
+dependencies and network-isolation evidence. Do not disconnect the cloud preview
+and describe its failure as an offline demonstration.
 
-- **tunnel drops** → **Tutor shows source = fts.** It still cites — keep going, or re-run `ops/tunnel.sh` between beats.
-- **no venue network** → **That's the demo.** Delivery is offline by design; authoring was pre-done. Show the banked course + the live refusal.
-- **generation slow/fails** → **Reveal the banked golden + MCPP courses.** Live generation is a bonus, never a dependency.
-- **cloud/OpenRouter blocked** → **Skip live generation.** Everything downstream (tutor, mastery, viewing, SCORM) runs without it.
-- **docker / db down** → `docker start schoolcircle-dev`, wait for `pg_isready`, refresh.
+PostgreSQL → SQLite requires a separately designed and tested provider/schema,
+migration, query and deployment conversion, including JSON/enum support,
+concurrency and persistence behavior. Changing `DATABASE_URL` alone cannot make
+this PostgreSQL Prisma client an offline SQLite application. No conversion is
+authorized here.
 
-## SUBMIT — Submission package
+## Proposed five-minute script
 
-The fields the use-case pages ask for, mapped to what we have.
+**Thompson chooses driver and second speaker; two people speak.** These timings
+are allocations, not measured performance. Read a gate before doing its action.
 
-| Field | Status | What it is |
-| --- | --- | --- |
-| **Working prototype** | Ready | SchoolCircle at `/prototype` — generate · tutor · rubric · mastery · SCORM · roles |
-| **Demo link** | Live | [schoolcircle.tannerwhite.net](https://schoolcircle.tannerwhite.net) (+ the interactive system at `/prototype`) |
-| **Repository** | Public | the Apache-2.0 platoon under `github.com/groundworklms` |
-| **Architecture diagram** | Above | edge / host / cloud, plus the piece-by-piece integration sequences |
-| **Tools used** | Listed | Next.js · Prisma · Postgres · Jetson Orin · llama.cpp · bge · HHEM · OpenRouter (Gemini) · Apache-2.0 |
-| **Presentation** | This + pitch | this Range Card + the 90-second pitch; build slides only if the venue requires a deck |
-| **Transition vision** | Below | schoolhouse adoption · edge-first · open-source |
+| Time | Beat / say and do | Gate or evidence-only alternative |
+|---|---|---|
+| 0:00–0:40 | Problem and five-use-case objective; identify today's environment | Say “development API evidence” if browser acceptance is unavailable |
+| 0:40–1:40 | Instructor opens `/teach`; show draft→review→approved content (#13/#16) | Prefer current reviewed banked course. Optional live generation must not delay the beat; historical MCPP content is labeled historical |
+| 1:40–2:40 | Second speaker: supported tutor question, citation passage, then unsupported question (#12) | Use the current approved corpus and identify course tutor versus Anchor. Refusal depends on corpus, not a memorized Javelin question. Show HHEM only if actually returned on this path |
+| 2:40–3:30 | Show source-linked rubric and approval (#1); discuss ambiguity review | Browser + SME evidence required for a live claim; otherwise show the dated API proof, not an invented vague-standard result |
+| 3:30–4:20 | Learner `/learn`: practice, reload, show recorded progress (#9) | Verified sign-in and persistence required. Say “recorded practice,” not “proved learning gain”; do not promise strong answer→mastered |
+| 4:20–5:00 | Second speaker: delivery boundaries and export | Show ZIP as packaging only. Network-pull beat only with current disconnected hardware proof; MarineNet claim only with target-LMS report. Otherwise name these gates explicitly |
 
-## TRANSITION — Where it goes after the win
+## Contingencies — stop or switch honestly
 
-- **Adopt at the schoolhouse, edge-first.** The grounding engine runs on a ~$500 Jetson at the schoolhouse or in the field — no cloud, no waiting on an ATO to *deliver* training. Delivery costs $0 and works with the plug pulled.
-- **Open-source, adopt a piece or the platform.** Standalone Apache-2.0 products. A program that only needs rubrics takes Rubricon; one that needs the whole loop takes them all. No lock-in, no license.
-- **MarineNet is the front door, not a rebuild.** LTI 1.3 launches the live enclave-hosted app with grade passback; SCORM export ships a static bundle from the same codebase. Auth sits behind one swappable seam (→ CAC / SSO).
-- **Grows with the corpus.** Swap the doctrine, regenerate — the platform is topic-agnostic. Proven on rifle marksmanship *and* the Marine Corps Planning Process; a MCCES or any MOS corpus is a drop-in.
+| Failure | Operator action / required disclosure |
+|---|---|
+| Generation slow, error or provider unavailable | Stop waiting within the beat; show the reviewed banked course and label it pre-generated. Preserve the visible failure; no fabricated successful generation |
+| Banked course absent, unreviewed or inaccessible | Use the dated report as evidence-only; block a live learner-content claim |
+| Anchor tunnel lost | Show unavailable state and skip remote doctrine. A separately proven course-tutor path may be shown under its own label; never call it Anchor or assume FTS/HHEM fallback |
+| Venue network/cloud unavailable | Cloud preview, auth, database and model may all depend on connectivity. Only switch to a separately verified local rig; otherwise use banked offline presentation evidence, not a claimed live offline app |
+| Sign-in/role or database failure | Stop the affected live flow; no client role spoof, bypass, destructive reset or Docker fix in Replit. Notify the owning lane and use the report |
+| Export/player fails | Retain the error; state packaging versus runtime status separately; do not claim MarineNet acceptance |
+| Unverified claim challenged | Name environment/date/class and source in the matrix. If absent, say “not verified”; do not extrapolate latency, cost, safety, mastery or deployment readiness |
 
----
+## Submission checklist — evidence required, not “ready” by default
 
-*OPERATION COLD BORE · RANGE CARD · unclassified / releasable · one grounded platform · an open-source platoon*
+- [ ] Thompson approves the final run-of-show and speaker handoffs.
+- [ ] Attach revision, demo date and environment to every headline claim.
+- [ ] Verify intended demo URL and both roles' browser sign-in. Current local
+      changes and historical showcase links do not prove published behavior.
+- [ ] Attach reviewed golden-course provenance, releasability and learner reload
+      evidence. API approval in a test is not human SME review.
+- [ ] Link bounded [live API proof](../learning-loop-proof.md), fixture/database
+      counts and browser report separately; do not sum historical tests.
+- [ ] Attach disconnected hardware report before an offline claim.
+- [ ] Attach named consuming-player launch/score/completion/resume report before
+      a runtime claim; attach separate target MarineNet evidence before acceptance.
+- [ ] Confirm repository/revision/license inventory and architecture against the
+      actual submission. No publishing or repository push performed here.
+- [ ] List open gates for sign-in, hardware, LMS, planning/reporting, access-control
+      and provider/fidelity scope. Do not advertise CAC/LTI grade passback as done.
+- [ ] Keep historical timing, corpus, cost and refusal figures attributed exactly
+      as in the matrix; no new measurements or generalized safety claims.
+
+Reports from the existing golden-course, baseline, browser, offline, SCORM and
+planning/reporting workstreams should update the corresponding beats through
+Thompson. Until then, this is a proposed, evidence-gated script, not acceptance.
