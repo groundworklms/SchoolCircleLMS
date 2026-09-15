@@ -3,6 +3,66 @@
 // The `mastery` numbers are invented demo data over real annex names.
 
 export const POIS = {
+  // Prototype outline restored from the original TC course, not a parsed MCCES POI.
+  "TC32209": {
+    "courseId": "TC32209",
+    "courseTitle": "Rifle Marksmanship — TC 3-22.9",
+    "version": "1.0.0",
+    "status": "ACTIVE",
+    "school": "03xx — Infantry",
+    "sourcePages": 296,
+    "sourceDoc": "TC 3-22.9 Rifle Marksmanship.pdf",
+    "totalLessons": 10,
+    "totalHours": 64.0,
+    "totalObjectives": 24,
+    "annexes": [
+      {
+        "letter": "A",
+        "title": "Ch 5 · Functional Elements",
+        "hours": 12.0,
+        "lessons": [
+          { "id": "RM.05.01", "title": "Functional Elements of the Shot", "hours": 6.0, "kind": "lesson" },
+          { "id": "RM.05.02", "title": "Weapon Handling & Safety", "hours": 6.0, "kind": "lesson" }
+        ]
+      },
+      {
+        "letter": "B",
+        "title": "Ch 6 · Stability & Natural Point of Aim",
+        "hours": 14.0,
+        "lessons": [
+          { "id": "RM.06.01", "title": "Building a Stable Firing Position", "hours": 8.0, "kind": "lesson" },
+          { "id": "RM.06.02", "title": "Natural Point of Aim", "hours": 6.0, "kind": "lesson" }
+        ]
+      },
+      {
+        "letter": "C",
+        "title": "Ch 7 · Aiming — Sight Alignment & Picture",
+        "hours": 12.0,
+        "lessons": [
+          { "id": "RM.07.01", "title": "Sight Alignment & Sight Picture", "hours": 6.0, "kind": "lesson" },
+          { "id": "RM.07.02", "title": "The Shot Process", "hours": 6.0, "kind": "lesson" }
+        ]
+      },
+      {
+        "letter": "D",
+        "title": "Ch 8 · Trigger Control & Follow-Through",
+        "hours": 14.0,
+        "lessons": [
+          { "id": "RM.08.01", "title": "Trigger Control", "hours": 8.0, "kind": "lesson" },
+          { "id": "RM.08.02", "title": "Follow-Through & Calling the Shot", "hours": 6.0, "kind": "lesson" }
+        ]
+      },
+      {
+        "letter": "Z",
+        "title": "Course Administration",
+        "hours": 12.0,
+        "lessons": [
+          { "id": "RM.Z.01", "title": "Range Safety Brief", "hours": 6.0, "kind": "lesson" },
+          { "id": "RM.Z.02", "title": "Qualification", "hours": 6.0, "kind": "exam" }
+        ]
+      }
+    ]
+  },
   "M092721": {
     "courseId": "M092721",
     "courseTitle": "Basic Electronics Course",
