@@ -60,6 +60,20 @@ against self-hosted compute, never a cloud API.
 **Edge build:** switch the Prisma `datasource` to `sqlite` and set
 `DATABASE_URL="file:./schoolcircle.db"` — same schema, same seed, offline on a Jetson.
 
+## The learning loop (`/learn`, `/teach`, `/api/learning`)
+
+The eleven arsenal packages (Quarry, Coursewright, Rubricon, Sourcerer, Whetstone, Sextant,
+Cadence, Hotwash, Waypoint, Cartridge, Understudy) are pinned by commit in `package.json` and wired
+behind `/api/learning/*` — sources → cited course drafts → rubrics, tutor, mastery sessions, study
+plans, analytics, AARs, SCORM export and fidelity benchmarks, every artifact persisted as a
+`LearningRecord` and every approval a human click. Contracts: [`docs/learning-api.md`](docs/learning-api.md)
+and [`docs/learning-evidence-api.md`](docs/learning-evidence-api.md).
+
+Those routes need a verified identity (the Firebase sign-in, verified server-side with the public
+project id — no service account) and answer `401` until Firebase is configured; the rest of the app
+is unaffected. `npm test` runs the adapter and evidence contract tests against the real packages;
+set `RUN_DB_TESTS=1` with a `DATABASE_URL` to include the Postgres round-trip tests.
+
 ## The one rule that never bends
 
 Grounded, verified, offline, human-led. Every claim cites the source or the system refuses;

@@ -34,3 +34,7 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Arsenal adapter + evidence contract tests (no database; RUN_DB_TESTS is unset).
+      - name: Test
+        run: npm test

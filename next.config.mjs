@@ -12,8 +12,25 @@ function gitSha() {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // pdfjs-dist loads its worker from disk at runtime; bundling breaks that.
-  serverExternalPackages: ['pdfjs-dist'],
+  // pdfjs-dist loads its worker from disk at runtime; bundling breaks that. The
+  // arsenal packages are plain ESM loaded by name at the call boundary
+  // (lib/arsenal-core.js) and firebase-admin verifies ID tokens server-side --
+  // all are left to Node's resolver rather than bundled.
+  serverExternalPackages: [
+    'pdfjs-dist',
+    'firebase-admin',
+    'cadence',
+    'cartridge',
+    'coursewright',
+    'hotwash',
+    'quarry',
+    'rubricon',
+    'sextant',
+    'sourcerer',
+    'understudy',
+    'waypoint',
+    'whetstone',
+  ],
   env: {
     NEXT_PUBLIC_GIT_SHA: process.env.NEXT_PUBLIC_GIT_SHA || gitSha(),
   },
