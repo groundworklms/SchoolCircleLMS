@@ -1078,6 +1078,90 @@ button.gb-cell:hover,button.gb-cell:focus-visible{background:var(--acc-50);outli
 .gb-card .card-head{align-items:center}
 @media(max-width:900px){.asg-q{width:100%;order:9}}
 @media(max-width:760px){.disp-cols{grid-template-columns:1fr}.gb-wrap{max-height:70vh}.qh>.cwho b{font-size:1.15rem}.spill.modes .i{display:none}table.gb .gb-stu{min-width:9.5rem;max-width:9.5rem}}
+
+/* ===== Test Bank: mega search + question generation ===== */
+.mega{position:relative;height:3.35rem;margin:0 0 1.2rem;z-index:36}
+.mega-box{position:absolute;top:0;left:0;right:0;background:var(--p-surface);border-radius:1.7rem;box-shadow:0 0 0 .5px rgba(0,0,0,.1),0 2px 10px rgba(35,10,18,.05);transition:border-radius var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+.mega.open .mega-box{border-radius:18px;box-shadow:0 0 0 1.5px var(--p-accent),0 26px 60px rgba(35,10,18,.16)}
+.mega-bar{display:flex;align-items:center;gap:.5rem;min-height:3.35rem;padding:.35rem 1rem .35rem 1.15rem;cursor:text;flex-wrap:wrap}
+.mega-bar>.i{width:1.15rem;height:1.15rem}
+.mega-chips{display:contents}
+.mega-bar input{flex:1;min-width:9rem;height:2.4rem;border:none;outline:none;background:none;font:inherit;font-size:1.02rem;color:var(--p-text)}
+.mega-bar input::-webkit-search-cancel-button{display:none;-webkit-appearance:none}
+.mega-hint{font-size:.78rem;color:var(--p-faint);white-space:nowrap}
+.mchip{display:inline-flex;align-items:center;gap:.3rem;height:1.8rem;padding:0 .25rem 0 .65rem;border-radius:980px;background:var(--p-accent-tint);color:var(--p-accent);font-size:.8rem;font-weight:600;white-space:nowrap;animation:pop var(--dur) var(--ease) both}
+.mchip small{color:var(--p-dim);font-weight:500;font-size:.74rem}
+.mchip button{width:1.3rem;height:1.3rem;border:none;border-radius:50%;background:none;color:inherit;display:grid;place-items:center;cursor:pointer}
+.mchip button .i{width:.7rem;height:.7rem}
+.mchip button:hover{background:rgba(179,18,46,.14)}
+.mega-panel{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;border-top:.5px solid var(--p-border);height:min(29rem,calc(100vh - 13rem));animation:megain var(--dur-modal) var(--ease-io) both}
+@keyframes megain{from{opacity:0;clip-path:inset(0 0 100% 0)}to{opacity:1;clip-path:inset(0 0 0 0)}}
+.mega-res{overflow-y:auto;padding:.35rem .45rem .6rem;min-height:0}
+.mg-h{font-size:.74rem;font-weight:600;color:var(--p-faint);padding:.65rem .6rem .25rem}
+.mg-row{display:flex;align-items:center;gap:.65rem;width:100%;border:none;background:none;font:inherit;color:inherit;text-align:left;padding:.5rem .6rem;border-radius:10px;cursor:pointer;transition:background-color 150ms var(--ease)}
+.mg-row.sel{background:var(--p-accent-tint)}
+.mg-row>.cwho{flex:1}
+.mg-row .mod-letter{width:1.9rem;height:1.9rem}
+.mg-row .kico{width:1.9rem;height:1.9rem}
+.mg-q{white-space:nowrap}
+.mg-row mark,.mega-prev mark{background:rgba(179,18,46,.15);color:inherit;border-radius:3px;padding:0 .1em}
+.mega-prev{min-height:0;overflow-y:auto;border-left:.5px solid var(--p-border);padding:1rem 1.2rem;background:#fcfbfc}
+.mega-f{grid-column:1/-1;display:flex;gap:1.1rem;flex-wrap:wrap;align-items:center;padding:.55rem 1.1rem;border-top:.5px solid var(--p-border);font-size:.74rem;color:var(--p-faint)}
+.mega-f kbd{font-family:var(--sans);font-size:.7rem;font-weight:600;min-width:1.35rem;display:inline-grid;place-items:center;padding:.05rem .35rem;margin-right:.2rem;border-radius:5px;background:var(--p-surface);box-shadow:0 1.5px 0 rgba(0,0,0,.1),0 0 0 .5px rgba(0,0,0,.14);color:var(--p-dim)}
+.mega-tok{margin-left:auto}
+.mega-f code,.pv-empty code{font-size:.72rem}
+.pv-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:.4rem;padding:1.4rem;color:var(--p-dim)}
+.pv-empty>.i{width:1.6rem;height:1.6rem;color:var(--p-faint)}
+.pv-empty p{margin:0;max-width:22rem}
+.pv-h{display:flex;align-items:center;gap:.7rem;margin-bottom:.8rem}
+.pv-h>.cwho{flex:1}.pv-h>.cwho b{font-size:1.02rem;white-space:normal}
+.pv-annexes{display:flex;flex-direction:column}
+.pv-annex{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto auto;gap:.55rem;align-items:center;padding:.45rem 0;border-bottom:.5px solid var(--p-border)}
+.pv-annex:last-child{border-bottom:none}
+.pv-annex .mod-letter{width:1.7rem;height:1.7rem;font-size:.8em}
+.pv-annex .cwho{gap:.3rem}.pv-annex .cwho b{font-size:.84rem;font-weight:600}
+.pv-bar{display:block;height:.35rem;border-radius:980px;background:rgba(0,0,0,.06);overflow:hidden}
+.pv-bar i{display:block;height:100%;background:var(--p-accent);border-radius:inherit;transition:width .6s var(--ease)}
+.pv-items{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.4rem}
+.pv-item{display:flex;align-items:center;gap:.55rem;font-size:.84rem}
+.pv-item .kico{width:1.6rem;height:1.6rem;border-radius:7px}.pv-item .kico .i{width:.8rem;height:.8rem}
+.pv-q{margin:.1rem 0 .55rem;font-size:.95rem;font-weight:600;line-height:1.4}
+.pv-cta{margin-top:.9rem}
+/* selected course strip + annex header */
+.tb-strip{padding:1rem 1.3rem 1.1rem}
+.tb-strip .rg-h .btn{flex:none}
+.tb-annex-h{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin:.3rem 0 .8rem}
+.tb-annex-h>.cwho{flex:1;min-width:12rem}
+.tb-annex-h>.cwho b{font-size:1.08rem;white-space:normal}
+.tb-empty{display:flex;flex-direction:column;align-items:center;gap:.45rem;padding:2rem 1.4rem;text-align:center}
+.tb-empty p{margin:0 0 .4rem;max-width:26rem}
+/* generation dialog */
+.dialog-card.wide{width:min(41rem,100%)}
+#dialog textarea#genPrompt{min-height:4.6rem;font-family:var(--sans);font-size:.9rem;resize:vertical}
+.gen-sugg{margin:-.2rem 0 0}
+.gen-row{display:flex;gap:1.6rem;flex-wrap:wrap;align-items:flex-end}
+.stepper{display:inline-flex;align-items:center;gap:.5rem;padding:3px;border-radius:980px;background:rgba(0,0,0,.05);width:max-content}
+.stepper b{min-width:1.8rem;text-align:center;font-size:1rem;color:var(--p-text)}
+.stepper .iconbtn{border-radius:50%;background:var(--p-surface)}
+.gen-types{display:flex;gap:.4rem;flex-wrap:wrap}
+.gtype{display:inline-flex;align-items:center;gap:.35rem;height:2.05rem;padding:0 .85rem 0 .6rem;border:none;border-radius:980px;background:var(--p-surface);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.18);font:inherit;font-size:.82rem;font-weight:600;color:var(--p-dim);cursor:pointer;transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease),box-shadow var(--dur) var(--ease),transform var(--dur-press) var(--ease)}
+.gtype .i{width:.85rem;height:.85rem;opacity:0;margin-right:-.2rem;transition:opacity var(--dur) var(--ease)}
+.gtype.on{background:var(--p-accent-tint);color:var(--p-accent);box-shadow:inset 0 0 0 1px rgba(179,18,46,.35)}
+.gtype.on .i{opacity:1;margin-right:0}
+.gtype:active{transform:scale(.96)}
+.gen-src{display:flex;flex-wrap:wrap;gap:.35rem}
+.gen-src .doc{margin:0;font-weight:500;color:var(--p-text)}
+.gen-steps{margin:.2rem 0 .8rem}
+.gen-out{display:flex;flex-direction:column;gap:.45rem;max-height:17rem;overflow-y:auto}
+.gen-card{padding:.6rem .8rem;border-radius:10px;background:var(--p-bg);display:flex;flex-direction:column;gap:.2rem;animation:bloom var(--dur) var(--ease) both}
+.gen-card b{font-size:.88rem;font-weight:600;line-height:1.35}
+.gen-card .cite{align-self:flex-start}
+@media(max-width:760px){
+  .mega-panel{grid-template-columns:minmax(0,1fr);height:min(26rem,calc(100vh - 12rem))}
+  .mega-prev,.mega-tok,.mega-hint{display:none}
+  .mega-f{gap:.7rem}
+  .tb-strip .rg-h{flex-wrap:wrap}
+}
 </style>
 </head>
 <body>
@@ -1492,6 +1576,7 @@ function togglePop(id, ev) {
 function closePops() { document.querySelectorAll('.pop').forEach(p => p.hidden = true); document.querySelectorAll('[aria-controls^="pop"]').forEach(t => t.setAttribute('aria-expanded', 'false')); }
 document.addEventListener('click', e => { if (!e.target.closest('.pop') && !e.target.closest('[aria-controls^="pop"]')) closePops(); if (!e.target.closest('.search')) hideSearch(); });
 function openDialog(title, body, foot = '') {
+  document.querySelector('#dialog .dialog-card').className = 'dialog-card';   // drop per-dialog size classes
   document.getElementById('dTitle').textContent = title;
   document.getElementById('dBody').innerHTML = body; document.getElementById('dFoot').innerHTML = foot;
   document.getElementById('dialog').hidden = false; closePops();
@@ -3277,6 +3362,309 @@ function exportGradebook() {
   notify({ tone: 'success', title: 'Gradebook exported', meta: `${c.short} · CSV`, desc: `${a.download} · ${gridRows(c).length} students × ${cols.length} items`, duration: 4000 });
 }
 AFTER.assign = () => { cbBind(); if (asg.mode === 'grid') gridFocusCol(); };
+
+/* ============ Test Bank: mega search (two-pane) + per-annex question generation ============
+   Loaded after instructor.js; redefines the Test Bank render and refresh helpers. */
+const tb = { q: '', chips: [], open: false, sel: 0, hits: [], recent: [] };
+const GEN_TYPES = ['Multiple choice', 'Short answer', 'Scenario', 'Checklist item'];
+const gen = { cid: null, annex: 'all', count: 5, types: new Set(['Multiple choice', 'Short answer', 'Scenario']), level: 'apply', prompt: '' };
+let genBatch = 0;
+const CHIP_KEY = { course: 'Course', annex: 'Annex', type: 'Type', status: '' };
+
+V.testbank = () => {
+  tb.open = false;   // a fresh render always starts with the search panel closed
+  revSelection();
+  return `<div class="pagehead"><h1>Test Bank</h1><p>Every AI-drafted quiz and exam question, by course and annex. Nothing enters the bank until you approve it. Search for what you need, or generate new questions for any annex.</p></div>
+  ${megaHtml()}
+  <div id="tbStrip">${tbStrip()}</div>
+  <div id="revList">${revList()}</div>
+  <div class="panel"><h3>Publish &amp; export</h3><p class="note" style="margin-bottom:.7rem">Once ratified, questions publish to the course and export as a SCORM package that drops into MarineNet / Moodle and reports completion + score. Powered by <b>Cartridge</b>.</p>
+    <div class="btnrow"><button class="btn press" onclick="toast('Published approved items to ${curCourse().students} students')">Publish to class</button><button class="btn ghost press" onclick="toast('SCORM 1.2 package built: schoolcircle-${curCourse().id}.zip')">${ic('download')} Export SCORM (Cartridge)</button></div></div>`;
+};
+function revPick(cid, l) {
+  state.rev.course = cid; state.rev.annex = l;
+  tb.recent = [cid + '|' + l, ...tb.recent.filter(k => k !== cid + '|' + l)].slice(0, 4);
+  swap('tbStrip', tbStrip()); swap('revList', revList());
+}
+function refreshReview() {
+  const y = window.scrollY;
+  const s = document.getElementById('tbStrip'); if (s) s.innerHTML = tbStrip();
+  const l = document.getElementById('revList'); if (l) { l.innerHTML = revList(); l.querySelectorAll('.item').forEach(el => el.style.animation = 'none'); }
+  if (tb.open) renderMega();
+  const hint = document.getElementById('megaHint'); if (hint) hint.textContent = megaHintText();
+  renderNav(); window.scrollTo(0, y);
+}
+
+/* ---------- selected course strip + annex question list ---------- */
+function tbStrip() {
+  const r = revSelection(), c = courseById(r.course), n = pendingIn(c.id);
+  return `<section class="panel tb-strip"><div class="rg-h">${courseTile(c)}<span class="cwho"><b>${esc(c.name)}</b><small>${esc(c.code)} · ${esc(c.section)}</small></span>${tag(n ? 'w' : 'g', n ? `${n} pending` : 'All reviewed')}
+      <button class="btn sm ghost press" onclick="openGenerate('${c.id}','all')">${ic('plus')} Generate for all annexes</button></div>
+    <div class="micro">${c.annexes.map(a => { const k = pendingIn(c.id, a.l), on = r.annex === a.l; return `<button class="mb press ${k ? 'has' : ''} ${on ? 'on' : ''}" aria-pressed="${on}" title="Annex ${a.l}: ${esc(a.title)} · ${k} pending" onclick="revPick('${c.id}','${a.l}')">Annex ${a.l}<span class="ct">${k}</span></button>`; }).join('')}</div></section>`;
+}
+function revList() {
+  const r = state.rev, c = courseById(r.course), a = c.annexes.find(x => x.l === r.annex);
+  const qs = REVQ.map((q, i) => ({ q, i })).filter(({ q }) => q.course === c.id && q.annex === a.l);
+  const done = qs.filter(({ q }) => q.done).length, fresh = qs.filter(({ q }) => q.new && !q.done).length;
+  const gbtn = cls => `<button class="btn ${cls} press" onclick="openGenerate('${c.id}','${a.l}')">${ic('plus')} Generate questions</button>`;
+  return `<div class="tb-annex-h"><span class="mod-letter">${a.l}</span><div class="cwho"><b>Annex ${a.l}: ${esc(a.title)}</b><small>${esc(c.short)} · ${qs.length - done} pending · ${done} reviewed${fresh ? ` · ${fresh} new` : ''}</small></div>${gbtn('')}</div>
+  ${qs.length ? `<div class="panel" style="padding:1rem 1.3rem"><div class="prog">${bar(done / qs.length * 100, 'var(--p-good)')}<span>${done} of ${qs.length} reviewed</span></div></div>` + qs.map(({ q, i }) => revItem(q, i)).join('')
+    : `<div class="panel tb-empty"><b>No questions for Annex ${a.l} yet</b><p class="note">Generate a first set from this annex's sources. New questions land here as pending until you approve them.</p>${gbtn('')}</div>`}`;
+}
+function revItem(q, i) {
+  const it = findItem(q.item).it;
+  return `<div class="item" id="rq${i}"><div class="item-top"><span class="item-kind">${esc(q.kind)} · ${esc(it.title)}</span>${q.new ? tag('b', 'New') : ''}<span class="statepill ${q.done || 'pending'}">${q.done ? (q.done === 'approved' ? 'Approved' : 'Rejected') : 'Pending'}</span></div>
+    <h4 id="rqq${i}">${esc(q.q)}</h4><div class="qa"><b>Answer &amp; rationale</b><span id="rqa${i}">${esc(q.a)}</span></div>
+    <div class="item-top"><span class="cite">${esc(q.cite)}</span></div>
+    <div class="btnrow">${q.done ? `<span class="note">${q.done === 'approved' ? 'Ratified, cleared to ship.' : 'Rejected, will not reach a student.'}</span><button class="linkbtn" style="font-size:.85em" onclick="undoQ(${i})">Undo</button>`
+      : `<button class="btn sm press" onclick="ratifyQ(${i},'approved')">${ic('check')} Approve</button><button class="btn sm ghost press" onclick="editQ(${i})">Edit</button><button class="btn sm ghost press" onclick="ratifyQ(${i},'rejected')">Reject</button>`}</div></div>`;
+}
+
+/* ---------- mega search ---------- */
+const megaHintText = () => `${REVQ.filter(q => !q.done).length} pending across ${COURSES.filter(c => pendingIn(c.id)).length} courses`;
+function megaHtml() {
+  return `<div class="mega" id="mega"><div class="mega-box">
+    <div class="mega-bar" onmousedown="megaBarDown(event)">${ic('search', 'dim')}<span class="mega-chips" id="megaChips">${chipsHtml()}</span>
+      <input id="megaIn" type="search" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="megaPanel" aria-label="Search the Test Bank" placeholder="${tb.chips.length ? 'Refine…' : 'Search courses, annexes and questions'}" value="${esc(tb.q)}" oninput="megaInput(this.value)" onfocus="megaOpen()" onkeydown="megaKey(event)">
+      <span class="mega-hint" id="megaHint">${megaHintText()}</span></div>
+    <div class="mega-panel" id="megaPanel" hidden></div></div></div>`;
+}
+const chipsHtml = () => tb.chips.map((c, i) => `<span class="mchip">${CHIP_KEY[c.k] ? `<small>${CHIP_KEY[c.k]}</small>` : ''}${esc(c.label)}<button type="button" aria-label="Remove ${esc(c.label)} filter" onmousedown="event.preventDefault();event.stopPropagation()" onclick="megaRemoveChip(${i})">${ic('x')}</button></span>`).join('');
+function megaBarDown(e) { if (e.target.id !== 'megaIn') { e.preventDefault(); document.getElementById('megaIn').focus(); megaOpen(); } }
+function megaOpen() {
+  if (tb.open) return; tb.open = true;
+  document.getElementById('mega').classList.add('open'); document.getElementById('megaPanel').hidden = false;
+  document.getElementById('megaIn').setAttribute('aria-expanded', 'true'); renderMega();
+}
+function megaClose() {
+  if (!tb.open) return; tb.open = false;
+  const m = document.getElementById('mega'); if (!m) return;
+  m.classList.remove('open'); document.getElementById('megaPanel').hidden = true; document.getElementById('megaIn').setAttribute('aria-expanded', 'false');
+}
+document.addEventListener('mousedown', e => { if (tb.open && !e.target.closest('#mega')) megaClose(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && tb.open) megaClose(); });
+function syncChips() {
+  document.getElementById('megaChips').innerHTML = chipsHtml();
+  document.getElementById('megaIn').placeholder = tb.chips.length ? 'Refine…' : 'Search courses, annexes and questions';
+}
+function addChip(k, v, label) {
+  if (k === 'course') tb.chips = tb.chips.filter(c => c.k !== 'course' && c.k !== 'annex');
+  tb.chips = tb.chips.filter(c => c.k !== k); tb.chips.push({ k, v, label });
+  tb.q = ''; tb.sel = 0; document.getElementById('megaIn').value = ''; syncChips(); renderMega();
+}
+function megaRemoveChip(i) { tb.chips.splice(i, 1); tb.sel = 0; syncChips(); megaOpen(); renderMega(); document.getElementById('megaIn').focus(); }
+function megaInput(v) {
+  const tok = v.match(/^(course|annex|type):(\S+)\s$/i), pend = /^pending\s$/i.test(v);
+  if (tok) {
+    const [, k, raw] = tok, w = raw.toLowerCase();
+    if (k.toLowerCase() === 'course') { const c = COURSES.find(x => [x.id, x.short, x.code, x.name].some(t => t.toLowerCase().replace(/\s+/g, '').startsWith(w))); if (c) return addChip('course', c.id, c.short); }
+    if (k.toLowerCase() === 'annex' && /^[a-g]$/.test(w)) return addChip('annex', w.toUpperCase(), w.toUpperCase());
+    if (k.toLowerCase() === 'type') { const t = GEN_TYPES.find(x => x.toLowerCase().startsWith(w)); if (t) return addChip('type', t, t); }
+  }
+  if (pend) return addChip('status', 'pending', 'Pending only');
+  tb.q = v; tb.sel = 0; megaOpen(); renderMega();
+}
+function megaHits() {
+  const words = tb.q.trim().toLowerCase().split(/\s+/).filter(Boolean), has = t => words.every(w => t.toLowerCase().includes(w));
+  const chip = k => (tb.chips.find(c => c.k === k) || {}).v, cC = chip('course'), cA = chip('annex'), cT = chip('type'), cP = !!chip('status');
+  if (!words.length && !tb.chips.length) {
+    const needs = COURSES.filter(c => pendingIn(c.id)).sort((x, y) => pendingIn(y.id) - pendingIn(x.id)).slice(0, 4).map(c => ({ t: 'course', c }));
+    const recent = tb.recent.map(k => { const [cid, l] = k.split('|'), c = courseById(cid); return { t: 'annex', c, a: c.annexes.find(a => a.l === l) }; });
+    const busiest = COURSES.flatMap(c => c.annexes.map(a => ({ t: 'annex', c, a }))).filter(x => pendingIn(x.c.id, x.a.l)).sort((x, y) => pendingIn(y.c.id, y.a.l) - pendingIn(x.c.id, x.a.l)).slice(0, 3);
+    return [{ h: 'Needs review', rows: needs }, { h: recent.length ? 'Recently opened' : 'Annexes with the most pending', rows: recent.length ? recent : busiest }];
+  }
+  const courses = cC ? [] : COURSES.filter(c => (!cP || pendingIn(c.id)) && has(`${c.name} ${c.short} ${c.code} ${c.section}`)).slice(0, 5).map(c => ({ t: 'course', c }));
+  const annexes = COURSES.flatMap(c => c.annexes.map(a => ({ t: 'annex', c, a })))
+    .filter(({ c, a }) => (!cC || c.id === cC) && (!cA || a.l === cA) && (!cP || pendingIn(c.id, a.l)) && has(`annex ${a.l} ${a.title} ${c.short} ${c.code}`)).slice(0, cC && !words.length ? 8 : 6);
+  const qs = REVQ.map((q, i) => ({ t: 'q', q, i })).filter(({ q }) => (!cC || q.course === cC) && (!cA || q.annex === cA) && (!cT || q.kind === cT) && (!cP || !q.done) && has(`${q.q} ${q.a} ${q.kind} ${q.cite}`))
+    .sort((x, y) => !!x.q.done - !!y.q.done).slice(0, 6);
+  return [{ h: 'Courses', rows: cT ? [] : courses }, { h: 'Annexes', rows: cT ? [] : annexes }, { h: 'Questions', rows: qs }];
+}
+function megaHl(t) {
+  const words = tb.q.trim().split(/\s+/).filter(Boolean); if (!words.length) return esc(t);
+  const re = new RegExp('(' + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'ig');
+  return String(t).split(re).map((p, i) => i % 2 ? `<mark>${esc(p)}</mark>` : esc(p)).join('');
+}
+const ctBadge = n => `<span class="cb-ct ${n ? '' : 'zero'}">${n}</span>`;
+function megaRow(r, i) {
+  const common = `class="mg-row ${i === tb.sel ? 'sel' : ''}" role="option" aria-selected="${i === tb.sel}" data-i="${i}" onmousedown="event.preventDefault()" onclick="megaPick(${i})" onmousemove="megaHover(${i})"`;
+  if (r.t === 'course') return `<button ${common}>${courseTile(r.c)}<span class="cwho"><b>${megaHl(r.c.name)}</b><small>${megaHl(r.c.code)} · ${r.c.annexes.length} annexes</small></span>${ctBadge(pendingIn(r.c.id))}</button>`;
+  if (r.t === 'annex') return `<button ${common}><span class="mod-letter">${r.a.l}</span><span class="cwho"><b>${megaHl(`Annex ${r.a.l}: ${r.a.title}`)}</b><small>${megaHl(r.c.short)} · ${r.a.items.length} graded items</small></span>${ctBadge(pendingIn(r.c.id, r.a.l))}</button>`;
+  const c = courseById(r.q.course);
+  return `<button ${common}><span class="kico ${r.q.done ? 'assignment' : 'quiz'}">${ic('review')}</span><span class="cwho"><b class="mg-q">${megaHl(r.q.q)}</b><small>${esc(r.q.kind)} · ${esc(c.short)} · Annex ${r.q.annex} · ${r.q.done ? (r.q.done === 'approved' ? 'approved' : 'rejected') : 'pending'}</small></span>${r.q.new && !r.q.done ? tag('b', 'New') : ''}</button>`;
+}
+function megaPreview(r) {
+  if (!r) return `<div class="pv-empty">${ic('search')}<b>Search the Test Bank</b><p class="note">${megaHintText()}. Type a course, an annex or words from a question, or add filters like <code>course:mcpp</code> and <code>pending</code>.</p></div>`;
+  if (r.t === 'course') {
+    const c = r.c, n = pendingIn(c.id), firstPending = c.annexes.find(a => pendingIn(c.id, a.l)), maxP = Math.max(1, ...c.annexes.map(a => pendingIn(c.id, a.l)));
+    return `<div class="pv-h">${courseTile(c)}<div class="cwho"><b>${esc(c.name)}</b><small>${esc(c.code)} · ${esc(c.section)}</small></div></div>
+      <div class="pv-annexes">${c.annexes.map(a => { const k = pendingIn(c.id, a.l); return `<div class="pv-annex"><span class="mod-letter">${a.l}</span><span class="cwho"><b>${esc(a.title)}</b><span class="pv-bar"><i style="width:${k / maxP * 100}%"></i></span></span><span class="cb-ct ${k ? '' : 'zero'}">${k}</span><button class="iconbtn sm press" title="Open Annex ${a.l}" aria-label="Open Annex ${a.l}" onclick="megaOpenAnnex('${c.id}','${a.l}')">${ic('arrow')}</button><button class="iconbtn sm press" title="Generate questions for Annex ${a.l}" aria-label="Generate questions for Annex ${a.l}" onclick="openGenerate('${c.id}','${a.l}')">${ic('plus')}</button></div>`; }).join('')}</div>
+      <div class="btnrow pv-cta">${n ? `<button class="btn sm press" onclick="megaOpenAnnex('${c.id}','${firstPending.l}')">Review ${n} pending ${ic('arrow')}</button>` : `<button class="btn sm press" onclick="megaOpenAnnex('${c.id}','A')">Open course</button>`}<button class="btn sm ghost press" onclick="openGenerate('${c.id}','all')">${ic('plus')} Generate for all annexes</button></div>`;
+  }
+  if (r.t === 'annex') {
+    const { c, a } = r, qs = REVQ.filter(q => q.course === c.id && q.annex === a.l), p = qs.filter(q => !q.done).length, ap = qs.filter(q => q.done === 'approved').length;
+    return `<div class="pv-h"><span class="mod-letter">${a.l}</span><div class="cwho"><b>Annex ${a.l}: ${esc(a.title)}</b><small>${esc(c.short)} · ${fmtDate(a.start)} – ${fmtDate(a.end)}</small></div></div>
+      <div class="stats3"><div><small>Pending</small><b>${p}</b></div><div><small>Approved</small><b>${ap}</b></div><div><small>Graded items</small><b>${a.items.length}</b></div></div>
+      <div class="pv-items">${a.items.map(it => `<div class="pv-item">${kico(it.type)}<span>${esc(it.title)}</span></div>`).join('')}</div>
+      <div class="btnrow pv-cta"><button class="btn sm press" onclick="megaOpenAnnex('${c.id}','${a.l}')">Open annex ${ic('arrow')}</button><button class="btn sm ghost press" onclick="openGenerate('${c.id}','${a.l}')">${ic('plus')} Generate questions</button></div>`;
+  }
+  const q = r.q, c = courseById(q.course), it = findItem(q.item).it;
+  return `<div class="pv-h"><span class="kico quiz">${ic('review')}</span><div class="cwho"><b>${esc(q.kind)}</b><small>${esc(c.short)} · Annex ${q.annex} · ${esc(it.title)}</small></div><span class="statepill ${q.done || 'pending'}">${q.done ? (q.done === 'approved' ? 'Approved' : 'Rejected') : 'Pending'}</span></div>
+    <p class="pv-q">${megaHl(q.q)}</p><div class="qa"><b>Answer &amp; rationale</b>${esc(q.a)}</div><div style="margin:.55rem 0"><span class="cite">${esc(q.cite)}</span></div>
+    <div class="btnrow pv-cta">${q.done ? `<button class="btn sm ghost press" onclick="megaRatify(${r.i},null)">Undo ${q.done === 'approved' ? 'approval' : 'rejection'}</button>` : `<button class="btn sm press" onclick="megaRatify(${r.i},'approved')">${ic('check')} Approve</button><button class="btn sm ghost press" onclick="megaRatify(${r.i},'rejected')">Reject</button>`}<button class="btn sm ghost press" onclick="megaOpenQuestion(${r.i})">Open in annex</button></div>`;
+}
+function renderMega() {
+  const P = document.getElementById('megaPanel'); if (!P) return;
+  const groups = megaHits().filter(g => g.rows.length);
+  tb.hits = groups.flatMap(g => g.rows); tb.sel = Math.min(tb.sel, Math.max(0, tb.hits.length - 1));
+  let i = -1;
+  const left = groups.map(g => `<div class="mg-h">${g.h}</div>${g.rows.map(r => megaRow(r, ++i)).join('')}`).join('')
+    || `<div class="pv-empty"><b>No matches</b><p class="note">Try a course code like “3-22.9”, an annex letter, or words from a question.</p></div>`;
+  P.innerHTML = `<div class="mega-res" id="megaRes" role="listbox" aria-label="Results">${left}</div><div class="mega-prev" id="megaPrev" aria-live="polite">${megaPreview(tb.hits[tb.sel])}</div>
+    <div class="mega-f"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Tab</kbd> add as filter</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span><span class="mega-tok">Filters: <code>course:</code> <code>annex:</code> <code>type:</code> <code>pending</code></span></div>`;
+  const s = P.querySelector('.mg-row.sel'); if (s) s.scrollIntoView({ block: 'nearest' });
+}
+function megaHover(i) {
+  if (tb.sel === i) return; tb.sel = i;
+  document.querySelectorAll('#megaRes .mg-row').forEach(r => { const on = +r.dataset.i === i; r.classList.toggle('sel', on); r.setAttribute('aria-selected', on); });
+  document.getElementById('megaPrev').innerHTML = megaPreview(tb.hits[i]);
+}
+function megaKey(e) {
+  const n = tb.hits.length;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (!n) return; megaOpen(); megaHover((tb.sel + (e.key === 'ArrowDown' ? 1 : n - 1)) % n); document.querySelector('#megaRes .mg-row.sel')?.scrollIntoView({ block: 'nearest' }); }
+  else if (e.key === 'Enter') { e.preventDefault(); if (n) megaPick(tb.sel); }
+  else if (e.key === 'Tab' && !e.shiftKey && n) { const r = tb.hits[tb.sel]; if (r.t === 'course' || r.t === 'annex') { e.preventDefault(); if (r.t === 'course') addChip('course', r.c.id, r.c.short); else { addChip('course', r.c.id, r.c.short); addChip('annex', r.a.l, r.a.l); } } }
+  else if (e.key === 'Backspace' && !e.target.value && tb.chips.length) { tb.chips.pop(); syncChips(); renderMega(); }
+  else if (e.key === 'Escape') { megaClose(); e.target.blur(); }
+}
+function megaOpenAnnex(cid, l) { megaClose(); document.getElementById('megaIn')?.blur(); revPick(cid, l); }
+function megaPick(i) {
+  const r = tb.hits[i]; if (!r) return;
+  if (r.t === 'course') return megaOpenAnnex(r.c.id, (r.c.annexes.find(a => pendingIn(r.c.id, a.l)) || r.c.annexes[0]).l);
+  if (r.t === 'annex') return megaOpenAnnex(r.c.id, r.a.l);
+  megaOpenQuestion(r.i);
+}
+function megaOpenQuestion(i) {
+  const q = REVQ[i]; megaOpenAnnex(q.course, q.annex);
+  setTimeout(() => { const el = document.getElementById('rq' + i); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('flash'); } }, 120);
+}
+function megaRatify(i, action) {
+  if (action) REVQ[i].done = action; else delete REVQ[i].done;
+  refreshReview(); document.getElementById('megaIn')?.focus();
+  toast(action === 'approved' ? 'Approved' : action === 'rejected' ? 'Rejected' : 'Undone');
+}
+
+/* ---------- generate questions for an annex (or every annex) ---------- */
+const genSuggestions = c => [`Focus on the weakest topic: ${[...c.topics].sort((x, y) => x[1] - y[1])[0][0].toLowerCase()}`, 'More scenario questions built on common errors', 'Harder, analyze-level questions', 'Cover every graded item in the annex'];
+function openGenerate(cid, l) {
+  megaClose();
+  const c = courseById(cid);
+  Object.assign(gen, { cid, annex: l && (l === 'all' || c.annexes.some(a => a.l === l)) ? l : 'all', prompt: '' });
+  renderGenDialog();
+}
+const genAnnexes = () => { const c = courseById(gen.cid); return gen.annex === 'all' ? c.annexes : c.annexes.filter(a => a.l === gen.annex); };
+const genTotal = () => genAnnexes().length * gen.count;
+function genSources(c, annexes) {
+  const mats = MATERIALS.filter(m => m.course === c.id && annexes.some(a => a.l === m.annex)).map(m => m.loc);
+  const docs = annexes.flatMap(a => a.items.flatMap(it => it.docs)).filter(d => /Ch |MCWP|MCRP|TC |NAVMC|guidelines|Glossary/.test(d));
+  return [...new Set([...mats, ...docs])].slice(0, 8);
+}
+const genFoot = () => `<span class="note" style="margin-right:auto">${genTotal()} question${genTotal() === 1 ? '' : 's'} · added to the Test Bank as pending</span><button class="btn ghost press" onclick="closeDialog()">Cancel</button><button class="btn press" onclick="runGenerate()" ${gen.types.size ? '' : 'disabled'}>${ic('plus')} Generate ${genTotal()}</button>`;
+function renderGenDialog() {
+  const c = courseById(gen.cid), annexes = genAnnexes(), srcs = genSources(c, annexes);
+  openDialog(`Generate questions · ${c.short}`, `
+    <label class="fl">Annex<select class="sel" onchange="gen.annex=this.value;renderGenDialog()">${c.annexes.map(a => `<option value="${a.l}" ${gen.annex === a.l ? 'selected' : ''}>Annex ${a.l}: ${esc(a.title)} · ${pendingIn(c.id, a.l)} pending</option>`).join('')}<option value="all" ${gen.annex === 'all' ? 'selected' : ''}>All ${c.annexes.length} annexes</option></select></label>
+    <label class="fl">What should the questions focus on? <span class="muted" style="font-weight:400">Optional</span>
+      <textarea id="genPrompt" placeholder="e.g. Scenario questions on the most common errors, written for junior Marines" oninput="gen.prompt=this.value">${esc(gen.prompt)}</textarea></label>
+    <div class="chips gen-sugg">${genSuggestions(c).map((s, i) => `<span class="chip" role="button" tabindex="0" onclick="genSuggest(${i})">${esc(s)}</span>`).join('')}</div>
+    <div class="gen-row">
+      <div class="fl">Questions ${gen.annex === 'all' ? 'per annex' : ''}<div class="stepper"><button class="iconbtn sm press" onclick="genCount(-1)" aria-label="Fewer questions">${ic('x').replace('M18 6 6 18M6 6l12 12', 'M5 12h14')}</button><b class="tnum" id="genN" aria-live="polite">${gen.count}</b><button class="iconbtn sm press" onclick="genCount(1)" aria-label="More questions">${ic('plus')}</button></div></div>
+      <div class="fl">Thinking level ${pillHtml([['recall', 'Recall'], ['apply', 'Apply'], ['analyze', 'Analyze']], gen.level, 'setGenLevel', 'sm')}</div>
+    </div>
+    <div class="fl">Question types<div class="gen-types">${GEN_TYPES.map(t => `<button class="gtype ${gen.types.has(t) ? 'on' : ''}" aria-pressed="${gen.types.has(t)}" onclick="genType(this,'${t}')">${ic('check')}${t}</button>`).join('')}</div></div>
+    <div class="fl">Grounded in <span class="muted" style="font-weight:400">every question cites one of these sources</span><div class="gen-src">${srcs.map(s => `<span class="doc">${ic('file')}<span>${esc(s)}</span></span>`).join('') || '<span class="note">The annex corpus</span>'}</div></div>`, genFoot());
+  document.querySelector('.dialog-card').classList.add('wide');
+  placePills(false);
+}
+function genCount(d) { gen.count = Math.max(1, Math.min(20, gen.count + d)); document.getElementById('genN').textContent = gen.count; document.getElementById('dFoot').innerHTML = genFoot(); }
+function setGenLevel(btn, v) { slide(btn); gen.level = v; }
+function genType(btn, t) { gen.types.has(t) ? gen.types.delete(t) : gen.types.add(t); btn.classList.toggle('on', gen.types.has(t)); btn.setAttribute('aria-pressed', gen.types.has(t)); document.getElementById('dFoot').innerHTML = genFoot(); }
+function genSuggest(i) {
+  const c = courseById(gen.cid); gen.prompt = genSuggestions(c)[i];
+  if (i === 1) gen.types.add('Scenario');
+  if (i === 2) gen.level = 'analyze';
+  renderGenDialog();
+}
+function draftQuestions(c, a, n, types, level, prompt, batch) {
+  const mats = MATERIALS.filter(m => m.course === c.id && m.annex === a.l);
+  const crits = [...new Set(a.items.flatMap(it => it.crit))].filter(cr => !/^(Terminology|Application|Judgment|Knowledge|Knowledge items|Scenario items|Written responses?|Diagram items|Delivery|Practical execution)$/.test(cr));
+  const lower = s => s[0].toLowerCase() + s.slice(1), clip = s => s.length > 70 ? s.slice(0, 70) + '…' : s;
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    const align = a.items.filter(x => x.type !== 'quiz'), pool = align.length ? align : a.items;   // tie questions to assignments/exams first
+    const i = k + batch * 3, kind = types[k % types.length], it = pool[i % pool.length];
+    const m = mats.length ? mats[i % mats.length] : null, concept = crits.length ? crits[i % crits.length] : a.title;
+    const sentences = m ? m.text.split(/(?<=\.)\s+/) : [];
+    const fact = m ? sentences[i % sentences.length] : `${concept} is part of the standard for ${it.title.toLowerCase()} in ${c.code}.`;
+    const cite = m ? m.loc.replace(/ · /g, ', ') : `${c.code}, Annex ${a.l}`;
+    let q, ans;
+    if (kind === 'Multiple choice') {
+      q = level === 'recall' ? `Which statement about ${lower(m ? m.title : a.title)} is correct?` : level === 'apply' ? `A Marine is preparing “${it.title}”. Which action best shows “${concept}”?` : `Two Marines disagree about ${lower(concept)}. Which reasoning does the source support, and why is the other wrong?`;
+      ans = `Correct option: ${fact} Distractors come from common errors described in the source.`;
+    } else if (kind === 'Short answer') {
+      q = `${level === 'recall' ? 'Define' : level === 'apply' ? 'Explain how to apply' : 'Analyze why'} ${lower(concept)}${level === 'analyze' ? ' matters' : ''} in ${lower(a.title)}.`;
+      ans = `A complete answer says: ${fact} Full credit requires citing the source.`;
+    } else if (kind === 'Scenario') {
+      q = `While working on “${it.title}”, a Marine falls short on “${concept}”. What do you tell them, and why?`;
+      ans = `Coach from the source: ${fact}${level === 'analyze' ? ' Have them identify the cause before correcting it.' : ''}`;
+    } else {
+      q = `Evaluator checks “${concept}” during “${it.title}”.`;
+      ans = `Observable standard: ${fact}`;
+    }
+    if (prompt.trim()) ans += ` Written to your focus: “${clip(prompt.trim())}”.`;
+    out.push({ course: c.id, annex: a.l, item: it.id, kind, q, a: ans, cite, new: true, batch });
+  }
+  return out;
+}
+function runGenerate() {
+  if (!gen.types.size) return;
+  const c = courseById(gen.cid), annexes = genAnnexes(), batch = ++genBatch;
+  const drafted = annexes.flatMap(a => draftQuestions(c, a, gen.count, GEN_TYPES.filter(t => gen.types.has(t)), gen.level, gen.prompt, batch));
+  const dropped = drafted.length > 3 ? 1 : 0, kept = drafted.slice(0, drafted.length - dropped);
+  document.getElementById('dTitle').textContent = `Generating ${drafted.length} questions · ${c.short}`;
+  document.getElementById('dBody').innerHTML = `<ul class="steps gen-steps" id="genSteps">${['Anchor: retrieve cited passages', 'Coursewright: draft questions', 'HHEM: verify every claim against the source', 'Test Bank: add as pending'].map(s => `<li class="step"><span class="stepdot"></span>${s}</li>`).join('')}</ul>
+    ${gen.prompt.trim() ? `<div class="qa"><b>Your focus</b>${esc(gen.prompt.trim())}</div>` : ''}<div class="gen-out" id="genOut" aria-live="polite"></div>`;
+  document.getElementById('dFoot').innerHTML = `<span class="note" style="margin-right:auto" id="genNote">Grounding every question in ${annexes.length === 1 ? `Annex ${annexes[0].l}` : `${annexes.length} annexes`}…</span><button class="btn ghost press" onclick="closeDialog()">Run in background</button>`;
+  const steps = [...document.querySelectorAll('#genSteps .step')], out = document.getElementById('genOut');
+  const setStep = k => steps.forEach((s, j) => { s.classList.toggle('done', j < k); s.classList.toggle('run', j === k); });
+  setStep(0);
+  setTimeout(() => {
+    setStep(1);
+    kept.slice(0, 6).forEach((q, j) => setTimeout(() => { if (!document.getElementById('genOut')) return; out.insertAdjacentHTML('beforeend', `<div class="gen-card"><span class="item-kind">${esc(q.kind)} · Annex ${q.annex}</span><b>${esc(q.q)}</b><span class="cite">${esc(q.cite)}</span></div>`); out.scrollTop = out.scrollHeight; }, 180 * j));
+    setTimeout(() => {
+      setStep(2);
+      setTimeout(() => {
+        setStep(3);
+        REVQ.push(...kept);
+        setTimeout(() => {
+          setStep(4);
+          if (state.view === 'testbank') { if (annexes.length === 1) { state.rev.course = c.id; state.rev.annex = annexes[0].l; } refreshReview(); } else renderNav();
+          const note = document.getElementById('genNote');
+          if (note) {
+            note.textContent = `${kept.length} added as pending${dropped ? ` · ${dropped} dropped: the source didn't support it` : ''}`;
+            if (kept.length > 6) out.insertAdjacentHTML('beforeend', `<div class="note" style="text-align:center">+ ${kept.length - 6} more in the Test Bank</div>`);
+            document.getElementById('dFoot').innerHTML = `<span class="note" style="margin-right:auto">${note.textContent}</span><button class="btn ghost press" onclick="renderGenDialog()">Generate more</button><button class="btn press" onclick="closeDialog();genReview('${c.id}','${annexes[0].l}')">Review in Test Bank ${ic('arrow')}</button>`;
+          }
+          notify({ tone: 'success', title: `${kept.length} new questions`, meta: `${c.short} · ${annexes.length === 1 ? `Annex ${annexes[0].l}` : `${annexes.length} annexes`}`, desc: `Pending your review${dropped ? `. ${dropped} dropped by the faithfulness check.` : '.'}`, burst: true, duration: 5200, actions: [{ label: 'Review', primary: true, run: () => { closeDialog(); genReview(c.id, annexes[0].l); } }] });
+        }, 420);
+      }, 650);
+    }, 180 * Math.min(6, kept.length) + 500);
+  }, 650);
+}
+function genReview(cid, l) {
+  if (state.view !== 'testbank') { state.rev.course = cid; state.rev.annex = l; setView('testbank'); } else revPick(cid, l);
+  setTimeout(() => { const first = [...document.querySelectorAll('#revList .item')].find(el => el.querySelector('.tag.b')); if (first) { first.scrollIntoView({ block: 'center', behavior: 'smooth' }); first.classList.add('flash'); } }, 150);
+}
 
 
 /* ---- QA issue widget ---- */
