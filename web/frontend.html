@@ -1162,6 +1162,271 @@ button.gb-cell:hover,button.gb-cell:focus-visible{background:var(--acc-50);outli
   .mega-f{gap:.7rem}
   .tb-strip .rg-h{flex-wrap:wrap}
 }
+
+/* ===== Course Builder ===== */
+/* stepper (Micro-Animations segmented stepper) */
+.cb-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:.6rem;margin:0 0 1.35rem}
+.cb-step{display:flex;flex-direction:column;align-items:stretch;gap:.55rem;border:none;background:none;font:inherit;color:inherit;text-align:left;padding:0;cursor:pointer;min-width:0}
+.cb-step:disabled{cursor:default}
+.cb-seg{position:relative;height:.42rem;border-radius:980px;background:rgba(0,0,0,.08)}
+.cb-seg i{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:inherit;background:var(--p-accent);transition:width var(--dur-tab) var(--ease-io)}
+.cb-step.done .cb-seg i{width:100%}
+.cb-step.cur .cb-seg i{width:55%}
+.cb-seg .i{position:absolute;right:-3px;top:50%;transform:translateY(-50%);width:1.2rem;height:1.2rem;padding:3px;border-radius:50%;background:var(--p-accent);color:#fff;stroke-width:3}
+.cb-step:not(.done) .cb-seg .i{background:var(--p-surface);color:var(--p-faint);box-shadow:0 0 0 .5px var(--p-border),0 1px 3px rgba(0,0,0,.08)}
+.cb-sl{min-width:0}
+.cb-sl b{display:block;font-size:.84rem;font-weight:600;color:var(--p-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color var(--dur) var(--ease)}
+.cb-sl small{display:block;font-size:.74rem;color:var(--p-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cb-step.cur .cb-sl b{color:var(--p-text)}
+.cb-step:not(:disabled):hover .cb-sl b{color:var(--p-accent)}
+
+/* pinned action bar */
+.cb-bar{position:sticky;bottom:0;z-index:30;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin:1.4rem -2.4rem -3.5rem;padding:.7rem 2.4rem calc(.75rem + env(safe-area-inset-bottom,0px));background:rgba(251,250,251,.9);-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);border-top:.5px solid var(--p-border)}
+.cb-meter{display:flex;align-items:center;gap:.7rem;min-width:0}
+.ring.sm{width:3rem;height:3rem;flex:none}
+.ring.sm>div{width:2.4rem;height:2.4rem}
+.ring.sm b{font-size:.7rem;letter-spacing:0}
+.cb-issues{display:inline-flex;align-items:center;gap:.4rem;height:2.25rem;padding:0 .85rem;border:none;border-radius:980px;background:var(--p-critical-tint);color:var(--p-critical);font:inherit;font-size:.82rem;font-weight:600;cursor:pointer}
+.cb-issues .i,.cb-ok .i{width:.95rem;height:.95rem}
+.cb-ok{display:inline-flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--p-good);font-weight:600}
+.btn.locked{background:var(--p-surface-2);color:var(--p-faint);box-shadow:inset 0 0 0 .5px var(--p-border)}
+.btn.locked:hover{filter:none;transform:none}
+.shake{animation:shake 420ms var(--ease)}
+@keyframes shake{20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+body:has(.cb-bar) .fab.issue{bottom:5.8rem}
+
+/* shared form bits */
+.cb-grid{display:grid;grid-template-columns:minmax(0,1fr) 20rem;gap:1.2rem;align-items:start}
+.cb-grid>*,.cb-edit>*{min-width:0}
+.cb-sec{padding:1.2rem 1.35rem 1.3rem}
+.cb-sec h3{margin:0 0 .95rem;font-size:.95rem;font-weight:600;color:var(--p-text)}
+.cb-sec-h{display:flex;align-items:center;gap:.7rem;justify-content:space-between;flex-wrap:wrap}
+.cb-sec .cb-sec-h{margin-bottom:.8rem}
+.cb-sec-h h3,.cb-sec-h h4{margin:0}
+.cb-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem 1rem}
+.cb-form.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cb-field{display:flex;flex-direction:column;gap:.38rem;min-width:0}
+.cb-lab{display:flex;align-items:center;gap:.1rem;font-size:.78rem;font-weight:600;color:var(--p-dim)}
+.cb-field .ti,.cb-row .ti,.cb-ref .ti,.askbar .ti{font-family:var(--sans);font-size:.92rem;height:2.5rem;min-height:0;resize:none}
+.ti.ta{height:auto!important;min-height:5.2rem!important;resize:vertical!important;line-height:1.5;padding:.65rem .9rem}
+.ti.ta.sm{min-height:3.3rem!important}
+.ti.ans{background:var(--p-bg)}
+.cb-field .sel{height:2.5rem}
+.stepper small{font-size:.74rem;color:var(--p-faint);padding:0 .55rem 0 .1rem;white-space:nowrap}
+.rvdot{width:.52rem;height:.52rem;border-radius:50%;flex:none;display:inline-block;margin-left:.4rem;vertical-align:.06em;box-shadow:inset 0 0 0 1.5px #b9b6bd;transition:background-color var(--dur) var(--ease)}
+.rvdot.ok{background:var(--p-good);box-shadow:none}
+.rvdot.changed{background:var(--p-warning);box-shadow:none}
+.rvdot.flag{background:var(--p-critical);box-shadow:none}
+.cb-row{display:flex;align-items:center;gap:.55rem;padding:.28rem 0}
+.cb-row .ti{flex:1;min-width:0}
+.cb-num{width:1.4rem;text-align:right;font-size:.78rem;font-weight:600;color:var(--p-faint);flex:none}
+.cb-add{display:inline-flex;align-items:center;gap:.35rem;margin-top:.55rem;font-size:.86rem}
+.cb-add .i{width:.9rem;height:.9rem}
+.cb-ref{display:grid;grid-template-columns:auto minmax(0,1fr) 7.5rem auto auto auto;gap:.55rem;align-items:center;padding:.5rem 0;border-top:.5px solid var(--p-border)}
+.cb-ref:first-of-type{border-top:none}
+.cb-ref.superseded .ti{box-shadow:0 0 0 1px rgba(194,65,12,.3)}
+.cb-issue{display:flex;align-items:flex-start;gap:.5rem;padding:.55rem .7rem;border-radius:10px;font-size:.84rem;line-height:1.4;margin-top:.4rem}
+.cb-issue.block{background:var(--p-critical-tint);color:#8a2a09}
+.cb-issue.warn{background:var(--p-warn-tint);color:#734a0d}
+.cb-issue>.i{width:1rem;height:1rem;flex:none;margin-top:.1em}
+.cb-issue>span{flex:1}
+.attest{display:flex;align-items:flex-start;gap:.6rem;padding:.6rem .75rem;border-radius:10px;background:var(--p-bg);font-size:.88rem;font-weight:500;color:var(--p-text);cursor:pointer;margin-top:.35rem;transition:background-color var(--dur) var(--ease)}
+.attest input{width:1.05rem;height:1.05rem;margin:.12rem 0 0;accent-color:var(--p-accent);flex:none}
+.attest:has(input:checked){background:var(--p-good-tint)}
+
+/* 1 · parameters */
+.cb-side{position:sticky;top:calc(var(--tb-h,3.95rem) + 1rem)}
+.cb-summary{padding:1.2rem 1.3rem}
+.cb-sum-t{margin:.2rem 0 .1rem;font-size:1.15rem;letter-spacing:-.01em;line-height:1.25}
+.cb-summary .stats3{margin:.8rem 0}
+.cb-dates{display:flex;align-items:center;gap:.45rem;font-size:.86rem;color:var(--p-dim)}
+.cb-dates .i{color:var(--p-faint)}
+.cb-sum-row{display:flex;justify-content:space-between;align-items:center;padding:.55rem 0;border-top:.5px solid var(--p-border);font-size:.86rem}
+.pv-timeline{display:flex;gap:3px;height:1.65rem;margin:.75rem 0 .8rem;border-radius:8px;overflow:hidden}
+.pv-timeline span{display:grid;place-items:center;font-size:.68rem;font-weight:700;color:#fff;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 .35rem}
+
+/* 2 · generate */
+.cb-gen{padding:1.6rem 1.7rem}
+.cb-gen h2{margin:.2rem 0 .25rem;font-size:1.55rem;letter-spacing:-.02em}
+.cb-gen .steps{margin:1.2rem 0 1.1rem}
+.cb-gen-out{display:grid;grid-template-columns:repeat(auto-fill,minmax(16rem,1fr));gap:.6rem}
+
+/* 3 · editor */
+.cb-toolbar{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+.cb-back{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.6rem .6rem .6rem .85rem;border-radius:12px;background:var(--p-info-tint);color:var(--p-info);font-size:.86rem;margin-bottom:1rem}
+.cb-back span{flex:1;min-width:12rem}
+.cb-edit{display:grid;grid-template-columns:19.5rem minmax(0,1fr);gap:1.2rem;align-items:start}
+.cb-outline{position:sticky;top:calc(var(--tb-h,3.95rem) + 1rem);max-height:calc(100vh - var(--tb-h,3.95rem) - 7.5rem);overflow-y:auto;background:var(--p-surface);border-radius:var(--p-radius);box-shadow:var(--p-shadow);padding:.5rem .5rem .7rem}
+.ol-course{display:flex;align-items:center;gap:.6rem;width:100%;border:none;background:var(--p-bg);border-radius:12px;padding:.6rem .7rem;font:inherit;color:inherit;text-align:left;cursor:pointer;margin-bottom:.35rem}
+.ol-course>.cwho{flex:1}.ol-course>.i{color:var(--p-dim)}
+.ol-annex{padding:.2rem 0;border-top:.5px solid var(--p-border)}
+.ol-row{display:flex;align-items:center;gap:.6rem;width:100%;border:none;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:10px;padding:.48rem .55rem;transition:background-color var(--dur) var(--ease)}
+.ol-row:hover{background:rgba(0,0,0,.03)}
+.ol-row.sel{background:var(--p-accent-tint)}
+.ol-row>.cwho{flex:1}
+.ol-a .mod-letter{width:1.8rem;height:1.8rem}
+.ol-i{padding-left:1.45rem}
+.ol-i .kico{width:1.55rem;height:1.55rem;border-radius:7px}.ol-i .kico .i{width:.78rem;height:.78rem}
+.ol-annex+.cb-add{margin:.5rem .55rem 0}
+.mini-ring{--p:0;width:1.1rem;height:1.1rem;border-radius:50%;flex:none;background:conic-gradient(var(--p-good) calc(var(--p) * 1%),rgba(0,0,0,.1) 0);-webkit-mask:radial-gradient(circle,transparent 48%,#000 50%);mask:radial-gradient(circle,transparent 48%,#000 50%)}
+.mini-ring.flag{background:var(--p-critical)}
+.mini-ring.full{background:var(--p-good)}
+.nd-h{display:flex;align-items:center;gap:.8rem;margin:.1rem 0 .95rem}
+.nd-h>.cwho{flex:1}.nd-h>.cwho b{font-size:1.35rem;letter-spacing:-.02em;white-space:normal;line-height:1.2}
+.nd-h>.cwho small .linkbtn{font-size:inherit;font-weight:500}
+.nd-h>.mod-letter{width:2.4rem;height:2.4rem;font-size:1.05rem}
+.nd-h>.kico{width:2.4rem;height:2.4rem;border-radius:11px}
+.nd-actions{display:flex;gap:.3rem;flex:none}
+.nd-card{padding:1.1rem 1.25rem 1.2rem;display:flex;flex-direction:column;gap:.85rem}
+.nd-card h4{margin:0;font-size:.92rem;font-weight:600;display:flex;align-items:center;gap:.4rem}
+.nd-card h4 .i{width:1rem;height:1rem;color:var(--p-accent)}
+.nd-card>.cb-add{margin-top:0;align-self:flex-start}
+.nd-item{display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-top:.5px solid var(--p-border)}
+.nd-item:first-of-type{border-top:none}
+.nd-item>.cwho{flex:1}
+.gtype small{font-weight:500;color:var(--p-faint);margin-left:.3rem;font-size:.74rem}
+.gtype.old{box-shadow:inset 0 0 0 1px rgba(194,65,12,.4)}
+.gtype.old.on{background:var(--p-critical-tint);color:var(--p-critical)}
+.cb-q{display:flex;flex-direction:column;gap:.45rem;padding:.75rem 0 .2rem;border-top:.5px dashed var(--p-border)}
+.nd-card>.cb-q:nth-of-type(1){border-top:none;padding-top:0}
+.cb-q-h{display:flex;align-items:center;gap:.5rem}
+.sel.sm{height:2rem;width:auto;font-size:.8rem}
+.ai-card{background:linear-gradient(180deg,var(--acc-50),var(--p-surface) 65%);box-shadow:0 0 0 .5px rgba(179,18,46,.18),var(--p-shadow)}
+.diff{display:flex;flex-direction:column;gap:.55rem}
+.diff-h{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap}
+.diff-h small{color:var(--p-dim)}
+.diff-h .note{margin-left:auto}
+.diff-row{display:grid;grid-template-columns:9rem minmax(0,1fr);gap:.9rem;padding:.6rem 0;border-top:.5px solid var(--p-border)}
+.diff-l{font-size:.8rem;font-weight:600;color:var(--p-dim)}
+.diff-b{display:flex;flex-direction:column;gap:.35rem;font-size:.86rem;line-height:1.45;white-space:pre-wrap}
+.diff-b del{background:rgba(194,65,12,.07);color:#8a2a09;border-radius:7px;padding:.35rem .55rem;text-decoration:line-through;text-decoration-color:rgba(194,65,12,.4)}
+.diff-b ins{background:rgba(30,122,60,.09);color:#155d2d;border-radius:7px;padding:.35rem .55rem;text-decoration:none}
+
+/* whole-course preview */
+.pv-course{padding:1.45rem 1.55rem}
+.pv-course h2{margin:.3rem 0 .15rem;font-size:1.65rem;letter-spacing:-.02em;line-height:1.2}
+.pv-bento{margin:1.05rem 0 .3rem;box-shadow:0 0 0 .5px var(--p-border)}
+.pv-bento .tileval,.sub-bento .tileval{font-size:1.5em}
+.pv-bento .tileval small{font-size:.5em;color:var(--p-faint);font-weight:600;letter-spacing:0}
+.pv-dates{font-size:.98rem!important;margin-top:.5rem;letter-spacing:0!important}
+.pv-refs{display:flex;flex-wrap:wrap;gap:.35rem}
+.pv-refs .doc{margin:0}
+.pv-refs .doc.superseded{background:var(--p-critical-tint);color:var(--p-critical)}
+.pv-sec{padding:1.2rem 1.35rem .4rem}
+.pv-ah{display:flex;align-items:center;gap:.7rem}
+.pv-ah>.cwho{flex:1}.pv-ah>.cwho b{font-size:1.1rem;white-space:normal}
+.pv-obj{margin:.65rem 0 .5rem;font-size:.92rem;color:var(--p-dim);line-height:1.55}
+.pv-it{padding:.95rem 0;border-top:.5px solid var(--p-border)}
+.pv-ih{display:flex;align-items:center;gap:.65rem}
+.pv-ih>.cwho{flex:1}.pv-ih>.cwho b{white-space:normal}
+.pv-it p{margin:.55rem 0 .7rem;font-size:.9rem;line-height:1.55}
+.pv-cols{display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:.86rem;margin-bottom:.4rem}
+.pv-cols ul{margin:.25rem 0 0;padding-left:1.1rem}.pv-cols li{margin:.18rem 0}
+.pv-qs{margin:.3rem 0 0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.5rem;font-size:.86rem}
+.pv-qs .note{display:block;margin-top:.1rem}
+
+/* 4 · line-by-line review */
+.rv-hero{display:flex;align-items:center;gap:1.7rem;padding:1.4rem 1.6rem;margin-bottom:1rem}
+.rv-hero .ring{flex:none}
+.rv-hero h2{margin:.2rem 0 .55rem;font-size:1.4rem;letter-spacing:-.02em}
+.rv-rules{margin:0;padding-left:1.1rem;font-size:.86rem;color:var(--p-dim);display:grid;grid-template-columns:1fr 1fr;gap:.25rem 1.6rem}
+.rv-keys kbd{font-family:var(--sans);font-size:.7rem;font-weight:600;min-width:1.35rem;display:inline-grid;place-items:center;padding:.05rem .35rem;margin:0 .15rem 0 .5rem;border-radius:5px;background:var(--p-surface);box-shadow:0 1.5px 0 rgba(0,0,0,.1),0 0 0 .5px rgba(0,0,0,.14);color:var(--p-dim)}
+.rv-keys kbd+kbd{margin-left:.1rem}
+.rv-sec{font-size:.8rem;font-weight:600;color:var(--p-faint);margin:1.15rem 0 .45rem .3rem}
+.rv-line{display:grid;grid-template-columns:2.4rem minmax(0,1fr) auto;gap:.85rem;align-items:start;padding:.8rem 1rem;margin-bottom:.4rem;border-radius:14px;background:var(--p-surface);box-shadow:var(--p-shadow);cursor:pointer;transition:box-shadow var(--dur) var(--ease),opacity var(--dur) var(--ease);scroll-margin:calc(var(--tb-h,3.95rem) + 2rem) 0 7rem}
+.rv-line:hover:not(.focus){box-shadow:var(--p-shadow-lift)}
+.rv-line.focus{box-shadow:0 0 0 1.5px var(--p-accent),var(--p-shadow-lift);cursor:default}
+.rv-line.ok:not(.focus){opacity:.7}
+.rv-n{font-family:var(--mono);font-size:.76rem;color:var(--p-faint);text-align:right;padding-top:.12rem}
+.rv-line.focus .rv-n{color:var(--p-accent);font-weight:600}
+.rv-label{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;font-size:.78rem;font-weight:600;color:var(--p-dim)}
+.rv-value{margin-top:.25rem;font-size:.95rem;line-height:1.55;white-space:pre-wrap;color:var(--p-text)}
+.rv-line.focus .rv-value{font-size:1.02rem}
+.rv-note{margin-top:.45rem;display:flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--p-critical);font-weight:500}
+.rv-note .i{width:.85rem;height:.85rem}
+.rv-flag{display:flex;gap:.4rem;margin-top:.65rem;flex-wrap:wrap}
+.rv-flag .ti{flex:1;min-width:12rem;font-family:var(--sans);height:2.3rem;min-height:0;resize:none}
+.rv-act{display:flex;align-items:center;gap:.3rem}
+.rv-sign{position:relative;overflow:hidden}
+.rv-line:not(.focus) .rv-sign{background:var(--p-surface-2);color:var(--p-dim)}
+.rv-fill{position:absolute;inset:0;background:rgba(255,255,255,.4);transform-origin:right;transform:scaleX(0);pointer-events:none}
+.rv-line.focus .rv-fill{animation:dwell var(--dwell,900ms) linear both}
+@keyframes dwell{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+.rv-empty{display:flex;flex-direction:column;align-items:center;gap:.4rem;padding:2.4rem 1.4rem;text-align:center}
+.rv-empty p{margin:0 0 .4rem}
+
+/* 5 · submit + done */
+.sub-warn{display:flex;gap:.6rem;align-items:flex-start;padding:.75rem .9rem;border-radius:12px;background:var(--p-warn-tint);color:#654009;font-size:.86rem;line-height:1.45}
+.sub-warn .i{width:1.05rem;height:1.05rem;flex:none;margin-top:.12em}
+.sub-bento{margin:0;box-shadow:0 0 0 .5px var(--p-border)}
+.sub-list{margin:0;font-size:.86rem;color:var(--p-dim)}
+#subCode{font-family:var(--mono);letter-spacing:.06em;height:2.6rem;min-height:0;resize:none}
+.btn.hold{position:relative;overflow:hidden;min-width:15rem;justify-content:center;touch-action:none;user-select:none}
+.btn.hold:disabled{background:var(--p-surface-2);color:var(--p-faint);opacity:1}
+.hold-fill{position:absolute;inset:0;background:rgba(0,0,0,.24);transform:scaleX(0);transform-origin:left}
+.btn.hold.holding .hold-fill{animation:holdfill var(--hold,2000ms) linear forwards}
+.btn.hold.holding{transform:scale(.98)}
+@keyframes holdfill{to{transform:scaleX(1)}}
+.hold-l{position:relative;display:inline-flex;align-items:center;gap:.45rem}
+.cb-done{display:flex;flex-direction:column;align-items:center;text-align:center;gap:.5rem;padding:2.4rem 1.6rem}
+.cb-done h2{margin:.1rem 0 0;font-size:1.65rem;letter-spacing:-.02em}
+.cb-done .sub-bento{width:min(42rem,100%);margin:.9rem 0}
+
+@media(max-width:1100px){.cb-grid,.cb-edit{grid-template-columns:minmax(0,1fr)}.cb-side,.cb-outline{position:static;max-height:none}.cb-form.four{grid-template-columns:repeat(2,minmax(0,1fr))}.rv-rules{grid-template-columns:1fr}}
+@media(max-width:900px){.cb-bar{margin-left:-1.1rem;margin-right:-1.1rem;padding-left:1.1rem;padding-right:1.1rem}}
+@media(max-width:760px){
+  .cb-steps{gap:.3rem}.cb-sl small{display:none}.cb-sl b{font-size:.66rem}
+  .cb-form,.cb-form.four{grid-template-columns:minmax(0,1fr)}
+  .cb-ref{grid-template-columns:auto minmax(0,1fr) auto}.cb-ref .ti.ed{grid-column:2}
+  .rv-line{grid-template-columns:1.8rem minmax(0,1fr)}.rv-act{grid-column:1/-1;justify-content:flex-end}
+  .rv-hero{flex-direction:column;align-items:flex-start;gap:1rem}.rv-keys{display:none}
+  .diff-row,.pv-cols{grid-template-columns:minmax(0,1fr)}
+  .cb-meter .cwho small{display:none}.cb-bar .btn{flex:1;justify-content:center}
+}
+
+/* keep notifications clear of the pinned builder bar */
+body:has(.cb-bar) .ntf-stack{bottom:5.9rem}
+@media(max-width:520px){body:has(.cb-bar) .ntf-stack{bottom:7.2rem}}
+
+/* references: library + upload */
+.cb-ref{display:flex;flex-wrap:wrap;align-items:center}
+.cb-ref>.ti:not(.ed),.cb-ref>.cb-ref-t{flex:1 1 12rem;min-width:0}
+.cb-ref>.ti.ed,.cb-ref>.cb-ref-ed{flex:0 0 7.5rem}
+.cb-ref-t b{white-space:normal;font-size:.9rem}
+.cb-ref-ed{font-size:.86rem;color:var(--p-dim)}
+.cb-refadd{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:.8rem}
+.cb-refadd .linkbtn{display:inline-flex;align-items:center;gap:.3rem;font-size:.86rem;margin-left:.3rem}
+.cb-refadd .linkbtn .i{width:.85rem;height:.85rem}
+.ref-res{max-height:min(24rem,48vh)}
+.ref-row{display:flex;align-items:flex-start;gap:.65rem;padding:.6rem .6rem;border-radius:11px;cursor:pointer;transition:background-color 150ms var(--ease)}
+.ref-row:hover{background:rgba(0,0,0,.03)}
+.ref-row.on{background:var(--p-accent-tint)}
+.ref-row.added{cursor:default}
+.ref-row.added>.cwho{opacity:.7}
+.ref-row input{margin-top:.55rem;width:1.05rem;height:1.05rem;accent-color:var(--p-accent);flex:none}
+.ref-row>.cwho{flex:1}
+.ref-row>.cwho b{white-space:normal}
+.ref-row mark{background:rgba(179,18,46,.15);color:inherit;border-radius:3px;padding:0 .1em}
+.ref-sum{display:block;font-size:.8rem;color:var(--p-dim);margin-top:.15rem;line-height:1.4;white-space:normal}
+.ref-old{display:flex;flex-direction:column;align-items:flex-end;gap:.25rem;text-align:right;flex:none}
+.ref-old .linkbtn{font-size:.78rem;white-space:nowrap}
+.drop-zone{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;min-height:9.5rem;padding:1.2rem;border-radius:16px;border:1.5px dashed rgba(0,0,0,.18);background:var(--p-bg);text-align:center;cursor:pointer;transition:border-color var(--dur) var(--ease),background-color var(--dur) var(--ease),transform var(--dur-press) var(--ease)}
+.drop-zone:hover,.drop-zone:focus-visible{border-color:var(--p-accent);outline:none}
+.drop-zone.over{border-color:var(--p-accent);background:var(--acc-50);transform:scale(1.01)}
+.drop-zone.has{flex-direction:row;min-height:0;justify-content:flex-start;text-align:left;border:none;box-shadow:0 0 0 .5px var(--p-border);background:var(--p-surface);cursor:default;padding:.8rem .9rem;gap:.75rem}
+.drop-zone.has>.cwho{flex:1}
+.dz-ico{width:3rem;height:3rem;border-radius:13px;display:grid;place-items:center;background:var(--p-accent-tint);color:var(--p-accent);margin-bottom:.25rem}
+.dz-ico .i{width:1.35rem;height:1.35rem}
+.up-prog{display:flex;flex-direction:column;gap:.4rem}
+.up-bar{height:.4rem;border-radius:99px;background:rgba(0,0,0,.07);overflow:hidden}
+.up-bar>i{display:block;height:100%;border-radius:inherit;background:var(--p-accent);transition:width 120ms linear}
+.up-done{display:flex;align-items:center;gap:.85rem;padding:.95rem 1rem;border-radius:14px;background:var(--p-good-tint)}
+.up-done>.cwho{flex:1}.up-done>.cwho b{white-space:normal}
+.up-done .qdone{width:2.4rem;height:2.4rem;border-radius:10px}
+.switch:disabled{opacity:.5;cursor:default}
+@media(max-width:760px){.cb-ref>.ti.ed,.cb-ref>.cb-ref-ed{flex:1 1 6rem}.ref-row{flex-wrap:wrap}.ref-old{align-items:flex-start;text-align:left}}
+.cb-ref-ed-m{display:none}
+@media(max-width:760px){#dFoot .dfoot-hint{display:none}.cb-ref>.cb-ref-ed{display:none}.cb-ref-ed-m{display:inline}}
 </style>
 </head>
 <body>
@@ -3574,7 +3839,7 @@ function renderGenDialog() {
   const c = courseById(gen.cid), annexes = genAnnexes(), srcs = genSources(c, annexes);
   openDialog(`Generate questions · ${c.short}`, `
     <label class="fl">Annex<select class="sel" onchange="gen.annex=this.value;renderGenDialog()">${c.annexes.map(a => `<option value="${a.l}" ${gen.annex === a.l ? 'selected' : ''}>Annex ${a.l}: ${esc(a.title)} · ${pendingIn(c.id, a.l)} pending</option>`).join('')}<option value="all" ${gen.annex === 'all' ? 'selected' : ''}>All ${c.annexes.length} annexes</option></select></label>
-    <label class="fl">What should the questions focus on? <span class="muted" style="font-weight:400">Optional</span>
+    <label class="fl"><span>What should the questions focus on? <span class="muted" style="font-weight:400">Optional</span></span>
       <textarea id="genPrompt" placeholder="e.g. Scenario questions on the most common errors, written for junior Marines" oninput="gen.prompt=this.value">${esc(gen.prompt)}</textarea></label>
     <div class="chips gen-sugg">${genSuggestions(c).map((s, i) => `<span class="chip" role="button" tabindex="0" onclick="genSuggest(${i})">${esc(s)}</span>`).join('')}</div>
     <div class="gen-row">
@@ -3582,7 +3847,7 @@ function renderGenDialog() {
       <div class="fl">Thinking level ${pillHtml([['recall', 'Recall'], ['apply', 'Apply'], ['analyze', 'Analyze']], gen.level, 'setGenLevel', 'sm')}</div>
     </div>
     <div class="fl">Question types<div class="gen-types">${GEN_TYPES.map(t => `<button class="gtype ${gen.types.has(t) ? 'on' : ''}" aria-pressed="${gen.types.has(t)}" onclick="genType(this,'${t}')">${ic('check')}${t}</button>`).join('')}</div></div>
-    <div class="fl">Grounded in <span class="muted" style="font-weight:400">every question cites one of these sources</span><div class="gen-src">${srcs.map(s => `<span class="doc">${ic('file')}<span>${esc(s)}</span></span>`).join('') || '<span class="note">The annex corpus</span>'}</div></div>`, genFoot());
+    <div class="fl"><span>Grounded in <span class="muted" style="font-weight:400">· every question cites one of these sources</span></span><div class="gen-src">${srcs.map(s => `<span class="doc">${ic('file')}<span>${esc(s)}</span></span>`).join('') || '<span class="note">The annex corpus</span>'}</div></div>`, genFoot());
   document.querySelector('.dialog-card').classList.add('wide');
   placePills(false);
 }
@@ -3664,6 +3929,987 @@ function runGenerate() {
 function genReview(cid, l) {
   if (state.view !== 'testbank') { state.rev.course = cid; state.rev.annex = l; setView('testbank'); } else revPick(cid, l);
   setTimeout(() => { const first = [...document.querySelectorAll('#revList .item')].find(el => el.querySelector('.tag.b')); if (first) { first.scrollIntoView({ block: 'center', behavior: 'smooth' }); first.classList.add('flash'); } }, 150);
+}
+
+/* ============ Course Builder: draft model, review lines, validation, AI-assist proposals ============ */
+const cb = { stage: 'params', view: 'edit', sel: null, params: null, draft: null, review: {}, ai: null, hist: [], lastSnap: 0, focus: 0, filter: 'todo', dwell: 0, fromReview: null, done: null };
+let cbSeq = 0;
+const cbId = p => `${p}${++cbSeq}`;
+const cbT = text => ({ id: cbId('t'), text });
+const cbL = i => 'ABCDEFG'[i];
+const cbLower = s => s ? s[0].toLowerCase() + s.slice(1) : s;
+
+function cbReset() {
+  cb.params = {
+    name: 'Marksmanship Coach Course', short: 'Coach Course', code: 'MCC-2701', section: '0933 · Coach · Class 27-01',
+    audience: 'Cpl–Sgt, rifle-qualified Expert', delivery: 'Resident', weeks: 6, hours: 180, start: 21, students: 16,
+    refs: [
+      { id: 'r1', title: 'TC 3-22.9 Rifle and Carbine', ed: '2016', status: 'superseded', update: '2024, Change 1', libId: 'lib-tc322-16', source: 'library' },
+      { id: 'r2', title: 'MCRP 3-01A Rifle Marksmanship', ed: '2012', status: 'current', libId: 'lib-mcrp301a', source: 'library' },
+      { id: 'r3', title: 'MCO 3574.2 Marine Corps Marksmanship Program', ed: '2019', status: 'current', libId: 'lib-mco3574', source: 'library' },
+      { id: 'r4', title: 'NAVMC 3500.63 Marksmanship Training and Readiness Manual', ed: '2021', status: 'current', libId: 'lib-navmc350063', source: 'library' },
+    ],
+    objectives: ['Explain sight alignment, sight picture, and their relationship.', 'Describe trigger control and follow-through.', 'Explain natural point of aim and how to correct it.', 'Identify stable firing positions and their application.', 'Coach a shooter through a live-fire string using the fundamentals.'].map(cbT),
+  };
+  Object.assign(cb, { stage: 'params', view: 'edit', sel: null, draft: null, review: {}, ai: null, hist: [], lastSnap: 0, focus: 0, filter: 'todo', fromReview: null, done: null });
+}
+
+/* what the generator drafts from the objectives (mock output of Quarry → Anchor → Coursewright → HHEM) */
+const CB_BLUEPRINT = [
+  { title: 'Fundamentals and shot diagnosis', obj: [0, 1], items: [
+    { type: 'assignment', title: 'Shot-group diagnosis worksheet', pts: 50, desc: 'Diagnose six 25m shot groups. For each, name the fundamental that caused the shift and the correction you would coach.', crit: ['Identifies the fundamental behind each shift', 'Prescribes a correction for each group', 'Cites the reference for every correction'], refs: ['r1'] },
+    { type: 'quiz', title: 'Quiz A: Fundamentals', pts: 25, desc: '10 items, closed book, 20 minutes.', crit: ['Terminology', 'Diagnosis', 'Application'], refs: ['r1', 'r2'], questions: [
+      ['Multiple choice', "Where should the shooter's eye focus when establishing sight picture?", 'On the front sight post. A crisp post with a slightly blurred target is correct.'],
+      ['Short answer', 'Describe follow-through and why it matters.', 'Holding the trigger to the rear through recoil until the sear resets, so the sights stay on target as the round leaves the muzzle.'],
+      ['Scenario', "A shooter's groups drift low-left. What do you check first?", 'Trigger control: jerking or anticipating recoil. Watch the squeeze, then run a ball-and-dummy drill.']] }] },
+  { title: 'Positions and natural point of aim', obj: [2, 3], items: [
+    { type: 'assignment', title: 'Position correction brief', pts: 50, desc: "Brief how you would correct a shooter's natural point of aim in prone, kneeling and sitting.", crit: ['Diagnoses the NPA error', 'Prescribes a body shift, not muscle', 'Explains bone support for each position'], refs: ['r2'] },
+    { type: 'quiz', title: 'Quiz B: Positions and NPA', pts: 25, desc: '10 items, including 2 photo diagnoses.', crit: ['Terminology', 'Position selection', 'Error diagnosis'], refs: ['r1', 'r2'], questions: [
+      ['Multiple choice', 'Which position gives the most stability?', 'Prone: the most ground contact and bone support.'],
+      ['Short answer', 'How do you correct a natural point of aim that settles left of the target?', 'Shift the body, pivoting on the non-firing elbow, until the sights settle on target. Never muscle the weapon.'],
+      ['Scenario', 'A shooter in kneeling wobbles on every shot. What is your first cue?', 'Check bone support: the non-firing elbow should sit just past the knee, not on the kneecap.']] }] },
+  { title: 'Coaching on the line', obj: [4], items: [
+    { type: 'assignment', title: 'Coaching log: live-fire strings', pts: 75, desc: 'Coach two shooters through three strings each. Log the error you saw, the cue you gave, and the result.', crit: ['Identifies the error from observation', 'Gives a single, specific coaching cue', 'Records the result and the next step'], refs: ['r3', 'r4'] },
+    { type: 'exam', title: 'Final practical evaluation', pts: 100, desc: 'Coach an unknown shooter on the range, graded by two evaluators.', crit: ['Safety and range procedures', 'Diagnosis accuracy', 'Coaching effectiveness'], refs: ['r3', 'r4'], questions: [
+      ['Checklist item', 'Evaluator checks: the coach confirms the lane is clear and the weapon is on safe before giving any cue.', 'Safety is evaluated first; any violation ends the evaluation.'],
+      ['Scenario', "Your shooter's groups tighten but sit high. What do you do?", 'Confirm sight picture and cheek weld first; if both are consistent, adjust the zero using the holds in the reference.'],
+      ['Short answer', 'Name the three qualities of a good coaching cue.', 'Single, specific, and actionable on the very next shot.']] }] },
+];
+function cbGenerateDraft() {
+  const p = cb.params, n = CB_BLUEPRINT.length, bw = Math.max(1, Math.floor(p.weeks / n)), bh = Math.floor(p.hours / n);
+  let ws = 1;
+  cb.draft = { annexes: CB_BLUEPRINT.map((b, i) => {
+    const last = i === n - 1, weeks = last ? Math.max(1, p.weeks - bw * (n - 1)) : bw, we = ws + weeks - 1;
+    const objective = b.obj.map(k => p.objectives[k]?.text).filter(Boolean).join(' ') || p.objectives[0]?.text || b.title;
+    const annex = { id: cbId('an'), title: b.title, weeks, hours: last ? p.hours - bh * (n - 1) : bh, objective,
+      items: b.items.map(t => ({ id: cbId('it'), type: t.type, title: t.title, pts: t.pts, dueWeek: we, desc: t.desc, crit: t.crit.map(cbT), refs: [...t.refs],
+        questions: (t.questions || []).map(([kind, q, a]) => ({ id: cbId('q'), kind, q, a })) })) };
+    ws = we + 1;
+    return annex;
+  }) };
+  cb.review = {}; cb.ai = null; cb.hist = []; cb.focus = 0;
+  cb.sel = cb.draft.annexes[0].id;
+}
+
+/* ---------- lookups ---------- */
+const cbRef = id => cb.params.refs.find(r => r.id === id);
+const cbRefLabel = r => r ? `${r.title} (${r.ed})` : 'Removed reference';
+function cbFind(id) {
+  for (const a of cb.draft?.annexes || []) {
+    if (a.id === id) return { kind: 'annex', a };
+    const it = a.items.find(x => x.id === id); if (it) return { kind: 'item', a, it };
+  }
+  return null;
+}
+function cbRanges() {
+  const out = {}; let ws = 1;
+  (cb.draft?.annexes || []).forEach(a => { out[a.id] = [ws, ws + a.weeks - 1]; ws += a.weeks; });
+  return out;
+}
+
+/* ---------- every reviewable line; a sign-off is tied to the exact text it approved ---------- */
+function cbLines() {
+  const p = cb.params, L = [], add = (id, sec, label, value, jump) => L.push({ id, sec, label, value: String(value), jump });
+  const S0 = 'Course settings';
+  add('p.name', S0, 'Course name', `${p.name} (short name: ${p.short})`, { stage: 'params', field: 'name' });
+  add('p.code', S0, 'Code and class', `${p.code} · ${p.section}`, { stage: 'params', field: 'code' });
+  add('p.audience', S0, 'Audience and delivery', `${p.audience} · ${p.delivery}`, { stage: 'params', field: 'audience' });
+  add('p.length', S0, 'Length and hours of instruction', `${p.weeks} weeks · ${p.hours} hours (${Math.round(p.hours / p.weeks)} per week)`, { stage: 'params', field: 'weeks' });
+  add('p.start', S0, 'Start date and class size', `Starts ${fmtDate(p.start)} · ${p.students} students`, { stage: 'params', field: 'start' });
+  p.refs.forEach((r, i) => add('ref.' + r.id, 'References', `Reference ${i + 1}`, `${r.title} · ${r.ed} edition · ${r.status}${r.source === 'uploaded' ? ' · uploaded' : r.source === 'library' ? '' : ' · entered manually'}`, { stage: 'params', field: 'ref-' + r.id }));
+  p.objectives.forEach((o, i) => add('obj.' + o.id, 'Program of instruction', `Objective ${i + 1}`, o.text, { stage: 'params', field: 'obj-' + o.id }));
+  if (!cb.draft) return L;
+  const R = cbRanges();
+  cb.draft.annexes.forEach((a, ai) => {
+    const S = `Annex ${cbL(ai)}: ${a.title}`;
+    add(`an.${a.id}.title`, S, 'Annex title', a.title, { node: a.id, field: 'title' });
+    add(`an.${a.id}.span`, S, 'Length and hours', `${a.weeks} week${a.weeks === 1 ? '' : 's'} (weeks ${R[a.id][0]}–${R[a.id][1]}) · ${a.hours} hours`, { node: a.id, field: 'weeks' });
+    add(`an.${a.id}.obj`, S, 'Objective', a.objective, { node: a.id, field: 'objective' });
+    a.items.forEach(it => {
+      const T = it.title || 'Untitled';
+      add(`it.${it.id}.title`, S, `${CB_TYPES[it.type]} title`, it.title, { node: it.id, field: 'title' });
+      add(`it.${it.id}.meta`, S, `${T} · type, points, due`, `${CB_TYPES[it.type]} · ${it.pts} points · due week ${it.dueWeek}`, { node: it.id, field: 'pts' });
+      add(`it.${it.id}.desc`, S, `${T} · instructions`, it.desc, { node: it.id, field: 'desc' });
+      it.crit.forEach((c, k) => add(`it.${it.id}.crit.${c.id}`, S, `${T} · criterion ${k + 1}`, c.text, { node: it.id, field: 'crit-' + c.id }));
+      add(`it.${it.id}.refs`, S, `${T} · references`, it.refs.map(id => cbRefLabel(cbRef(id))).join('; ') || 'None', { node: it.id, field: 'refs' });
+      (it.questions || []).forEach((q, k) => add(`q.${q.id}`, S, `${T} · question ${k + 1} · ${q.kind}`, `Q: ${q.q}\nA: ${q.a}`, { node: it.id, field: 'q-' + q.id }));
+    });
+  });
+  return L;
+}
+const CB_TYPES = { assignment: 'Assignment', quiz: 'Quiz', exam: 'Exam' };
+function cbStatus(l) { const r = cb.review[l.id]; return !r ? 'todo' : r.sig !== l.value ? 'changed' : r.st; }
+function cbProgress() {
+  const c = { total: 0, ok: 0, flag: 0, changed: 0, todo: 0 };
+  cbLines().forEach(l => { c.total++; c[cbStatus(l)]++; });
+  c.left = c.total - c.ok; return c;
+}
+/* line counts for an outline node (annex or item) */
+function cbNodeProgress(id) {
+  const ls = cbLines().filter(l => l.jump && l.jump.node && (l.jump.node === id || cbFind(l.jump.node)?.a?.id === id));
+  return { total: ls.length, ok: ls.filter(l => cbStatus(l) === 'ok').length, flag: ls.filter(l => cbStatus(l) === 'flag').length };
+}
+
+/* ---------- blocking checks ---------- */
+function cbIssues() {
+  const p = cb.params, out = [], block = (text, jump) => out.push({ sev: 'block', text, jump }), warn = (text, jump) => out.push({ sev: 'warn', text, jump });
+  if (!p.name.trim() || !p.code.trim()) block('The course needs a name and a code', { stage: 'params', field: 'name' });
+  if (!p.objectives.length) block('Add at least one objective', { stage: 'params' });
+  p.refs.filter(r => r.status === 'superseded').forEach(r => block(`${r.title} (${r.ed}) is superseded${r.update ? `: ${r.update} is current` : ''}`, { stage: 'params', field: 'ref-' + r.id }));
+  if (p.hours / p.weeks > 40) warn(`${Math.round(p.hours / p.weeks)} hours per week is more than a 40-hour training week`, { stage: 'params', field: 'hours' });
+  if (!cb.draft) return out;
+  const A = cb.draft.annexes, R = cbRanges(), wk = A.reduce((s, a) => s + a.weeks, 0), hr = A.reduce((s, a) => s + a.hours, 0);
+  if (wk !== p.weeks) block(`Annexes cover ${wk} weeks, but the course is ${p.weeks} weeks`, { node: A[0]?.id, field: 'weeks' });
+  if (hr !== p.hours) block(`Annex hours add up to ${hr}, but the course has ${p.hours} hours of instruction`, { node: A[0]?.id, field: 'hours' });
+  A.forEach((a, ai) => {
+    if (!a.title.trim()) block(`Annex ${cbL(ai)} needs a title`, { node: a.id, field: 'title' });
+    if (!a.items.length) block(`Annex ${cbL(ai)} has no assignments, quizzes or exams`, { node: a.id });
+    a.items.forEach(it => {
+      const name = it.title.trim() ? `“${it.title}”` : `An untitled item in Annex ${cbL(ai)}`;
+      if (!it.title.trim()) block(`${name} needs a title`, { node: it.id, field: 'title' });
+      if (!it.desc.trim()) block(`${name} has no instructions`, { node: it.id, field: 'desc' });
+      if (it.dueWeek < R[a.id][0] || it.dueWeek > R[a.id][1]) block(`${name} is due in week ${it.dueWeek}, outside Annex ${cbL(ai)} (weeks ${R[a.id][0]}–${R[a.id][1]})`, { node: it.id, field: 'pts' });
+      if (!it.crit.length) block(`${name} has no grading criteria`, { node: it.id });
+      if (!it.refs.length) block(`${name} doesn't cite a reference`, { node: it.id, field: 'refs' });
+      if (it.refs.some(id => !cbRef(id))) block(`${name} cites a reference you removed`, { node: it.id, field: 'refs' });
+      if (it.type !== 'assignment' && !it.questions.length) block(`${CB_TYPES[it.type]} ${name} has no questions`, { node: it.id });
+    });
+  });
+  if (cb.ai) block('An AI-assisted edit is waiting for you to accept or reject it', { node: cb.ai.id });
+  return out;
+}
+const cbBlocks = () => cbIssues().filter(i => i.sev === 'block');
+const cbReady = () => !!cb.draft && cbProgress().left === 0 && !cbBlocks().length;
+
+/* ---------- undo ---------- */
+function cbSnap(force) {
+  const now = Date.now(); if (!force && now - cb.lastSnap < 1500) return;
+  cb.lastSnap = now; cb.hist.push(JSON.stringify({ params: cb.params, draft: cb.draft }));
+  if (cb.hist.length > 40) cb.hist.shift();
+}
+function cbUndoState() { const s = cb.hist.pop(); if (!s) return false; const o = JSON.parse(s); cb.params = o.params; cb.draft = o.draft; cb.ai = null; cb.lastSnap = 0; return true; }
+
+/* ---------- AI-assisted edits: always a proposal the instructor accepts or rejects ---------- */
+const CB_AI = {
+  item: [['rigor', 'More rigorous'], ['tighten', 'Tighten the wording'], ['scenario', 'Add a scenario'], ['cite', 'Cite current references'], ['question', 'Draft another question']],
+  annex: [['objective', 'Sharpen the objective'], ['order', 'Order items by due week'], ['rebalance', 'Split hours evenly']],
+  course: [['refcheck', 'Update superseded references'], ['fit', 'Fit annexes to the course length and hours']],
+};
+function cbPromptAction(scope, prompt) {
+  const t = prompt.toLowerCase();
+  if (scope === 'item') return /harder|rigor|challeng|difficult/.test(t) ? 'rigor' : /short|tight|concise|simpl/.test(t) ? 'tighten' : /scenario|practical|realistic/.test(t) ? 'scenario' : /cite|reference|source|doctrine/.test(t) ? 'cite' : /question/.test(t) ? 'question' : 'custom';
+  if (scope === 'annex') return /objective|outcome/.test(t) ? 'objective' : /order|sequence/.test(t) ? 'order' : /hour|balance/.test(t) ? 'rebalance' : 'custom';
+  return /reference|update|supersed/.test(t) ? 'refcheck' : 'fit';
+}
+function cbPropose(scope, id, action, prompt = '') {
+  const p = cb.params, changes = [], f = cbFind(id), it = f && f.it, a = f && f.a;
+  const put = (target, key, label, before, after) => { if (JSON.stringify(before) !== JSON.stringify(after)) changes.push({ target, key, label, before: JSON.parse(JSON.stringify(before)), after }); };
+  const first = s => s.split(/(?<=\.)\s+/)[0], end = s => s.replace(/\s*$/, ''), asked = prompt.trim() ? ` ${prompt.trim()[0].toUpperCase()}${prompt.trim().slice(1).replace(/\.?$/, '.')}` : '';
+  if (scope === 'item') {
+    if (action === 'rigor') {
+      put(id, 'desc', 'Instructions', it.desc, /Justify each decision/.test(it.desc) ? it.desc : `${end(it.desc)} Justify each decision in writing, citing the reference.`);
+      put(id, 'crit', 'Grading criteria', it.crit, it.crit.some(c => /Justifies/.test(c.text)) ? it.crit : [...it.crit, cbT('Justifies each decision with a citation')]);
+      put(id, 'pts', 'Points', it.pts, Math.round(it.pts * 1.2 / 5) * 5);
+    }
+    if (action === 'tighten') put(id, 'desc', 'Instructions', it.desc, first(it.desc).length > 24 ? first(it.desc) : it.desc);
+    if (action === 'scenario') {
+      put(id, 'desc', 'Instructions', it.desc, /timed scenario/.test(it.desc) ? it.desc : `${end(it.desc)} Complete it against the timed scenario on lane 3, with one induced malfunction.`);
+      put(id, 'crit', 'Grading criteria', it.crit, it.crit.some(c => /time pressure/.test(c.text)) ? it.crit : [...it.crit, cbT('Applies the fundamentals under time pressure')]);
+    }
+    if (action === 'cite') {
+      const cur = p.refs.filter(r => r.status === 'current').map(r => r.id);
+      put(id, 'refs', 'References', it.refs, [...new Set([...it.refs.filter(r => cur.includes(r)), ...(cur.length ? [cur[0]] : [])])]);
+    }
+    if (action === 'question' && it.type !== 'assignment') put(id, 'questions', 'Questions', it.questions, [...it.questions, { id: cbId('q'), kind: 'Scenario', q: `During ${cbLower(a.title)}, a shooter repeats the same error after your first cue. What do you change?`, a: 'Change the cue, not the volume: give one different, specific cue tied to the error you saw, then confirm it on the next shot.' }]);
+    if (action === 'custom') put(id, 'desc', 'Instructions', it.desc, `${end(it.desc)}${asked}`);
+  }
+  if (scope === 'annex') {
+    if (action === 'objective') put(id, 'objective', 'Objective', a.objective, `By the end of this annex, each Marine can ${cbLower(first(a.objective).replace(/\.$/, ''))} to the T&R standard without assistance.`);
+    if (action === 'order') { const rank = { assignment: 0, quiz: 1, exam: 2 }; put(id, 'items', 'Item order', a.items, [...a.items].sort((x, y) => x.dueWeek - y.dueWeek || rank[x.type] - rank[y.type])); }
+    if (action === 'rebalance') { const A = cb.draft.annexes, bh = Math.floor(p.hours / A.length); A.forEach((x, i) => put(x.id, 'hours', `Annex ${cbL(i)} hours`, x.hours, i === A.length - 1 ? p.hours - bh * (A.length - 1) : bh)); }
+    if (action === 'custom') put(id, 'objective', 'Objective', a.objective, `${end(a.objective)}${asked}`);
+  }
+  if (scope === 'course') {
+    if (action === 'refcheck') p.refs.filter(r => r.status === 'superseded').forEach(r => { put('ref:' + r.id, 'ed', `${r.title} edition`, r.ed, r.update || String(new Date().getFullYear())); put('ref:' + r.id, 'status', `${r.title} status`, r.status, 'current'); });
+    if (action === 'fit' && cb.draft) {
+      const A = cb.draft.annexes, bw = Math.max(1, Math.floor(p.weeks / A.length)), bh = Math.floor(p.hours / A.length);
+      let ws = 1;
+      A.forEach((x, i) => {
+        const last = i === A.length - 1, w = last ? Math.max(1, p.weeks - bw * (A.length - 1)) : bw, we = ws + w - 1;
+        put(x.id, 'weeks', `Annex ${cbL(i)} weeks`, x.weeks, w);
+        put(x.id, 'hours', `Annex ${cbL(i)} hours`, x.hours, last ? p.hours - bh * (A.length - 1) : bh);
+        x.items.forEach(y => { const d = Math.min(we, Math.max(ws, y.dueWeek)); put(y.id, 'dueWeek', `“${y.title}” due week`, y.dueWeek, d); });
+        ws = we + 1;
+      });
+    }
+  }
+  const labels = Object.fromEntries([...CB_AI.item, ...CB_AI.annex, ...CB_AI.course]);
+  return { scope, id, action, prompt: prompt.trim(), label: action === 'custom' ? 'Your request' : labels[action], changes };
+}
+function cbApply(prop) {
+  cbSnap(true);
+  prop.changes.forEach(c => {
+    if (c.target.startsWith('ref:')) { const r = cbRef(c.target.slice(4)); if (r) r[c.key] = c.after; return; }
+    const f = cbFind(c.target); if (f) (f.it || f.a)[c.key] = JSON.parse(JSON.stringify(c.after));
+  });
+}
+function cbFmt(key, v) {
+  if (key === 'crit') return v.map(t => `• ${t.text}`).join('\n');
+  if (key === 'refs') return v.map(id => cbRefLabel(cbRef(id))).join('\n') || 'None';
+  if (key === 'questions') return v.map((q, i) => `${i + 1}. ${q.q}`).join('\n');
+  if (key === 'items') return v.map(x => x.title).join('\n');
+  return String(v);
+}
+cbReset();
+
+/* ============ Course Builder UI: stepper, parameters, generation, editor, AI edits, preview ============
+   Replaces the original Studio view (V.build). Review + submit live in builder-review.js. */
+IC.lock = '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>';
+IC.undo = '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>';
+IC.up = '<path d="m18 15-6-6-6 6"/>';
+IC.down = '<path d="m6 9 6 6 6-6"/>';
+IC.minus = '<path d="M5 12h14"/>';
+IC.trash = '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>';
+IC.flag = '<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>';
+IC.eye = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+IC.edit = '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>';
+const CB_STEPS = [['params', 'Parameters'], ['gen', 'Generate'], ['edit', 'Edit & preview'], ['review', 'Line-by-line review'], ['submit', 'Submit']];
+
+V.build = () => {
+  if (cb.done) return cbDoneView();
+  return `<div class="pagehead"><h1>Course Builder</h1><p>Set the parameters, generate a draft, then edit every annex, assignment and quiz by hand or with AI. Nothing reaches the Test Bank until every line has your sign-off.</p></div>
+  ${cbStepper()}
+  <div id="cbStage">${cbStageHtml()}</div>
+  <div class="cb-bar" id="cbBar">${cbBarHtml()}</div>`;
+};
+const cbStageHtml = () => cb.stage === 'params' ? cbParamsView() : cb.stage === 'gen' ? cbGenView() : cb.stage === 'review' ? cbReviewView() : cbEditView();
+function cbGo(stage) {
+  cb.stage = stage;
+  const st = document.getElementById('cbStage'); if (!st) { setView('build'); return; }
+  document.getElementById('cbStepper').outerHTML = cbStepper();
+  swap('cbStage', cbStageHtml()); document.getElementById('cbBar').innerHTML = cbBarHtml();
+  window.scrollTo(0, 0);
+  if (stage === 'review') cbReviewAfter();
+}
+function cbRerender() {
+  const y = window.scrollY, st = document.getElementById('cbStage'); if (!st) return;
+  document.getElementById('cbStepper').outerHTML = cbStepper();
+  st.innerHTML = cbStageHtml(); document.getElementById('cbBar').innerHTML = cbBarHtml();
+  placePills(false); window.scrollTo(0, y);
+  if (cb.stage === 'review') cbReviewAfter(true);
+}
+/* cheap refresh while typing: marks, outline, side summary, stepper, bar */
+function cbTouched() {
+  const L = cbLines(), st = Object.fromEntries(L.map(l => [l.id, cbStatus(l)]));
+  document.querySelectorAll('.rvdot[data-line]').forEach(d => { const s = st[d.dataset.line]; if (s) { d.className = `rvdot ${s}`; d.title = CB_MARK[s]; } });
+  const ol = document.getElementById('cbOutline'); if (ol) ol.innerHTML = cbOutlineHtml();
+  const side = document.getElementById('cbSide'); if (side) side.innerHTML = cbSideHtml();
+  const sp = document.getElementById('cbStepper'); if (sp) sp.outerHTML = cbStepper();
+  const bar = document.getElementById('cbBar'); if (bar) bar.innerHTML = cbBarHtml();
+}
+const CB_MARK = { ok: 'Signed off', todo: 'Not reviewed yet', changed: 'Changed since you signed it off', flag: 'Flagged in review' };
+function cbMk(lineId) {
+  if (!cb.draft) return '';
+  const l = cbLines().find(x => x.id === lineId); if (!l) return '';
+  const s = cbStatus(l); return `<i class="rvdot ${s}" data-line="${lineId}" title="${CB_MARK[s]}"></i>`;
+}
+function cbRing(np) {
+  const p = np.total ? np.ok / np.total : 0;
+  return `<span class="mini-ring ${np.flag ? 'flag' : p === 1 ? 'full' : ''}" style="--p:${Math.round(p * 100)}" title="${np.ok} of ${np.total} lines signed off${np.flag ? `, ${np.flag} flagged` : ''}" aria-label="${np.ok} of ${np.total} signed off"></span>`;
+}
+const cbNum = (minus, val, plus, unit = '') => `<div class="stepper"><button type="button" class="iconbtn sm press" onclick="${minus}" aria-label="Less">${ic('minus')}</button><b class="tnum">${val}</b><button type="button" class="iconbtn sm press" onclick="${plus}" aria-label="More">${ic('plus')}</button>${unit ? `<small>${unit}</small>` : ''}</div>`;
+function cbFocusField(f) {
+  setTimeout(() => {
+    const el = document.querySelector(`[data-f="${f}"]`); if (!el) return;
+    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const i = el.matches('input,textarea,select') ? el : el.querySelector('input,textarea,select'); if (i) i.focus({ preventScroll: true });
+    el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  }, 90);
+}
+function cbJump(j, fromReviewLine) {
+  closeDialog();
+  cb.fromReview = fromReviewLine || null;
+  if (j.stage === 'params') cbGo('params');
+  else { cb.sel = j.node; cb.view = 'edit'; cbGo('edit'); }
+  if (j.field) cbFocusField(j.field);
+}
+
+/* ---------- stepper + action bar ---------- */
+function cbStepper() {
+  const pr = cb.draft ? cbProgress() : null, idx = CB_STEPS.findIndex(s => s[0] === cb.stage), ready = cbReady();
+  const done = { params: !!cb.draft, gen: !!cb.draft, edit: !!cb.draft && !!cb.visitedReview, review: ready, submit: !!cb.done };
+  const sub = { params: `${cb.params.weeks} weeks · ${cb.params.hours} hours`, gen: cb.draft ? 'Draft ready' : 'Not started', edit: cb.draft ? `${cb.draft.annexes.length} annexes` : 'Needs a draft', review: pr ? `${pr.ok} of ${pr.total} lines` : 'Needs a draft', submit: ready ? 'Ready' : 'Locked' };
+  return `<nav class="cb-steps" id="cbStepper" aria-label="Course builder steps">${CB_STEPS.map(([k, l], i) => {
+    const can = k === 'params' || k === 'submit' || (k !== 'gen' && !!cb.draft);
+    return `<button class="cb-step ${i === idx ? 'cur' : done[k] ? 'done' : ''}" ${can ? `onclick="cbStepClick('${k}')"` : 'disabled'} ${i === idx ? 'aria-current="step"' : ''}>
+      <span class="cb-seg"><i></i>${done[k] && i !== idx ? ic('check') : k === 'submit' && !ready ? ic('lock') : ''}</span><span class="cb-sl"><b>${i + 1}. ${l}</b><small>${sub[k]}</small></span></button>`;
+  }).join('')}</nav>`;
+}
+function cbStepClick(k) {
+  if (k === 'submit') return cbTrySubmit();
+  if (k === 'review') cb.visitedReview = true;
+  cb.fromReview = null; cbGo(k);
+}
+function cbBarHtml() {
+  const pr = cb.draft ? cbProgress() : null, blocks = cbBlocks(), ready = cbReady();
+  const meter = pr ? `<div class="cb-meter"><span class="ring sm" style="--p:${Math.round(pr.ok / pr.total * 100)};--c:${pr.left ? 'var(--p-accent)' : 'var(--p-good)'}"><div><b class="tnum">${Math.round(pr.ok / pr.total * 100)}%</b></div></span>
+      <span class="cwho"><b class="tnum">${pr.ok} of ${pr.total} lines signed off</b><small>${pr.todo} to review${pr.changed ? ` · ${pr.changed} changed since sign-off` : ''}${pr.flag ? ` · ${pr.flag} flagged` : ''}</small></span></div>`
+    : `<div class="cb-meter"><span class="cwho"><b>No draft yet</b><small>Set the parameters, then generate a draft</small></span></div>`;
+  const issues = blocks.length ? `<button class="cb-issues press" onclick="cbShowIssues()">${ic('alert')}${blocks.length} blocking</button>` : cb.draft ? `<span class="cb-ok">${ic('check')}No blocking issues</span>` : '';
+  const submit = `<button class="btn press ${ready ? '' : 'locked'}" aria-disabled="${!ready}" onclick="cbTrySubmit()">${ic(ready ? 'send' : 'lock')} Submit to Test Bank</button>`;
+  const action = {
+    params: `${cb.draft ? `<button class="btn ghost press" onclick="cbGo('edit')">Back to the editor</button>` : ''}<button class="btn press" onclick="cbStartGen()">${cb.draft ? 'Regenerate draft' : 'Generate draft'} ${ic('arrow')}</button>`,
+    gen: `<button class="btn press" disabled>Generating…</button>`,
+    edit: `<button class="btn press" onclick="cbStepClick('review')">Review line by line ${ic('arrow')}</button>`,
+    review: submit,
+  }[cb.stage];
+  return `${meter}<span style="flex:1"></span>${issues}${action}`;
+}
+function cbShowIssues() {
+  const all = cbIssues();
+  openDialog('Before you can submit', all.length ? `<p class="note">Blocking issues must be fixed before the course can go to the Test Bank.</p>
+    ${all.map((x, i) => `<div class="cb-issue ${x.sev}">${ic(x.sev === 'block' ? 'alert' : 'info')}<span>${esc(x.text)}</span>${x.jump ? `<button class="btn sm ghost press" onclick="cbJump(cbIssues()[${i}].jump)">Fix</button>` : ''}</div>`).join('')}` : '<p class="note">Nothing is blocking. Finish signing off every line to unlock submit.</p>',
+    `<button class="btn press" onclick="closeDialog()">Done</button>`);
+}
+
+/* ---------- 1 · parameters ---------- */
+const CB_FIELD_LINE = { name: 'p.name', short: 'p.name', code: 'p.code', section: 'p.code', audience: 'p.audience', weeks: 'p.length', hours: 'p.length', start: 'p.start', students: 'p.start' };
+function cbParamsView() {
+  const p = cb.params, fld = (f, label, input) => `<label class="cb-field" data-f="${f}"><span class="cb-lab">${label}${CB_FIELD_LINE[f] ? cbMk(CB_FIELD_LINE[f]) : ''}</span>${input}</label>`;
+  const inp = (k, aria) => `<input class="ti" value="${esc(p[k])}" aria-label="${aria}" oninput="cbParam('${k}',this.value)">`;
+  return `<div class="cb-grid"><div class="cb-main">
+    <section class="panel cb-sec"><h3>Course</h3><div class="cb-form">
+      ${fld('name', 'Course name', inp('name', 'Course name'))}${fld('short', 'Short name', inp('short', 'Short name'))}
+      ${fld('code', 'Course code', inp('code', 'Course code'))}${fld('section', 'Class or section', inp('section', 'Class or section'))}
+      ${fld('audience', 'Audience', inp('audience', 'Audience'))}
+      <div class="cb-field" data-f="delivery"><span class="cb-lab">Delivery${cbMk('p.audience')}</span>${pillHtml([['Resident', 'Resident'], ['Hybrid', 'Hybrid'], ['Distance', 'Distance']], p.delivery, 'cbDelivery', 'sm')}</div>
+    </div></section>
+    <section class="panel cb-sec"><h3>Length and schedule</h3><div class="cb-form four">
+      <div class="cb-field" data-f="weeks"><span class="cb-lab">Course length${cbMk('p.length')}</span>${cbNum(`cbParamStep('weeks',-1)`, p.weeks, `cbParamStep('weeks',1)`, 'weeks')}</div>
+      <div class="cb-field" data-f="hours"><span class="cb-lab">Hours of instruction${cbMk('p.length')}</span>${cbNum(`cbParamStep('hours',-10)`, p.hours, `cbParamStep('hours',10)`, 'hours')}</div>
+      <label class="cb-field" data-f="start"><span class="cb-lab">Start date${cbMk('p.start')}</span><select class="sel" onchange="cbParam('start',+this.value,true)">${[7, 14, 21, 28, 42, 56, 84].map(d => `<option value="${d}" ${p.start === d ? 'selected' : ''}>${fmtDate(d)} · in ${d / 7} week${d === 7 ? '' : 's'}</option>`).join('')}</select></label>
+      <div class="cb-field" data-f="students"><span class="cb-lab">Class size${cbMk('p.start')}</span>${cbNum(`cbParamStep('students',-1)`, p.students, `cbParamStep('students',1)`, 'students')}</div>
+    </div></section>
+    <section class="panel cb-sec"><div class="cb-sec-h"><h3>References</h3><button class="btn sm ghost press" onclick="cbCourseAI('refcheck')">${ic('bolt')} Check for updates</button></div>
+      ${p.refs.length ? p.refs.map(cbRefRow).join('') : '<p class="note">No references yet. Search the library or upload your own.</p>'}
+      <div class="cb-refadd"><button class="btn sm press" onclick="openRefLibrary()">${ic('search')} Search the library</button><button class="btn sm ghost press" onclick="openRefUpload()">${ic('upload')} Upload your own</button><button class="linkbtn" onclick="cbRefAdd()">${ic('plus')} Enter one manually</button></div></section>
+    <section class="panel cb-sec"><h3>Program of instruction objectives</h3>
+      ${p.objectives.map((o, i) => `<div class="cb-row" data-f="obj-${o.id}"><span class="cb-num tnum">${i + 1}</span><input class="ti" value="${esc(o.text)}" aria-label="Objective ${i + 1}" oninput="cbObjSet('${o.id}',this.value)">${cbMk('obj.' + o.id)}<button class="iconbtn sm press" onclick="cbObjDel('${o.id}')" aria-label="Remove objective">${ic('trash')}</button></div>`).join('')}
+      <button class="linkbtn cb-add" onclick="cbObjAdd()">${ic('plus')} Add an objective</button></section>
+  </div><aside class="cb-side" id="cbSide">${cbSideHtml()}</aside></div>`;
+}
+function cbSideHtml() {
+  const p = cb.params, end = p.start + p.weeks * 7 - 3, perWk = p.hours / p.weeks, old = p.refs.filter(r => r.status === 'superseded').length;
+  const pIssues = cbIssues().filter(x => x.jump && x.jump.stage === 'params');
+  return `<section class="panel cb-summary"><div class="lead-k">Summary</div><h3 class="cb-sum-t">${esc(p.name || 'Untitled course')}</h3><p class="note">${esc(p.code)} · ${esc(p.section)}</p>
+    <div class="stats3"><div><small>Weeks</small><b>${p.weeks}</b></div><div><small>Hours</small><b>${p.hours}</b></div><div><small>Per week</small><b style="color:${perWk > 40 ? 'var(--p-critical)' : 'inherit'}">${Math.round(perWk)}</b></div></div>
+    <div class="cb-dates">${ic('cal')}<span>${fmtDate(p.start)} – ${fmtDate(end)}</span></div>
+    ${cb.draft ? `<div class="pv-timeline">${cb.draft.annexes.map((a, i) => `<span class="band-${cbL(i)}" style="flex:${a.weeks}" title="Annex ${cbL(i)}: ${esc(a.title)}">${cbL(i)}</span>`).join('')}</div>` : ''}
+    <div class="cb-sum-row"><span>${p.refs.length} references</span>${old ? tag('c', `${old} superseded`) : tag('g', 'All current')}</div>
+    <div class="cb-sum-row"><span>${p.objectives.length} objectives</span></div>
+    ${pIssues.length ? `<div class="cb-sum-issues">${pIssues.map(x => `<div class="cb-issue ${x.sev}">${ic(x.sev === 'block' ? 'alert' : 'info')}<span>${esc(x.text)}</span></div>`).join('')}</div>` : ''}
+    ${cb.draft ? '<p class="note">Changing a setting puts its line back in the review queue.</p>' : ''}
+  </section>`;
+}
+function cbParam(k, v, rerender) { cbSnap(); cb.params[k] = v; rerender ? cbRerender() : cbTouched(); }
+function cbParamStep(k, d) { cbSnap(true); const lim = { weeks: [1, 52], hours: [10, 2000], students: [1, 200] }[k]; cb.params[k] = Math.min(lim[1], Math.max(lim[0], cb.params[k] + d)); cbRerender(); }
+function cbDelivery(btn, v) { slide(btn); cbSnap(true); cb.params.delivery = v; cbTouched(); }
+function cbRefSet(id, k, v) { cbSnap(); cbRef(id)[k] = v; cbTouched(); }
+function cbRefUpdate(id) { cbSnap(true); const r = cbRef(id); r.ed = r.update; r.status = 'current'; cbRerender(); toast(`Updated · ${r.title} (${r.ed})`); }
+function cbRefAdd() { cbSnap(true); const r = { id: cbId('r'), title: '', ed: '', status: 'current' }; cb.params.refs.push(r); cbRerender(); cbFocusField('ref-' + r.id); }
+function cbRefDel(id) {
+  const users = (cb.draft?.annexes || []).flatMap(a => a.items).filter(it => it.refs.includes(id));
+  const go = () => { cbSnap(true); cb.params.refs = cb.params.refs.filter(r => r.id !== id); closeDialog(); cbRerender(); };
+  if (!users.length) return go();
+  openDialog('Remove this reference?', `<p class="note">${users.length} item${users.length === 1 ? ' cites' : 's cite'} it: ${users.map(u => `“${esc(u.title)}”`).join(', ')}. Those items will be blocked until they cite another reference.</p>`,
+    `<button class="btn ghost press" onclick="closeDialog()">Keep it</button><button class="btn danger press" onclick="cbRefDelGo('${id}')">Remove</button>`);
+  window.cbRefDelGo = () => go();
+}
+function cbObjSet(id, v) { cbSnap(); cb.params.objectives.find(o => o.id === id).text = v; cbTouched(); }
+function cbObjAdd() { cbSnap(true); const o = cbT(''); cb.params.objectives.push(o); cbRerender(); cbFocusField('obj-' + o.id); }
+function cbObjDel(id) { cbSnap(true); cb.params.objectives = cb.params.objectives.filter(o => o.id !== id); cbRerender(); }
+
+/* ---------- 2 · generate ---------- */
+function cbStartGen() {
+  if (!cb.draft) return cbGenRun();
+  const pr = cbProgress();
+  openDialog('Regenerate the draft?', `<p class="note">This replaces every annex, assignment, quiz and question. Your edits are discarded and <b>${pr.ok} sign-off${pr.ok === 1 ? '' : 's'}</b> are cleared.</p>
+    <label class="attest"><input type="checkbox" onchange="document.getElementById('regenGo').disabled=!this.checked"><span>I understand my edits and sign-offs will be lost</span></label>`,
+    `<button class="btn ghost press" onclick="closeDialog()">Keep my draft</button><button class="btn danger press" id="regenGo" disabled onclick="closeDialog();cbGenRun()">Regenerate</button>`);
+}
+function cbGenView() {
+  const p = cb.params;
+  return `<section class="panel cb-gen"><div class="lead-k">Generating · ${esc(p.code)}</div><h2>Building ${esc(p.name)}</h2>
+    <p class="note">${p.weeks} weeks · ${p.hours} hours · grounded in ${p.refs.length} references and ${p.objectives.length} objectives.</p>
+    <ul class="steps" id="cbGenSteps">${['Quarry: parse the objectives', 'Anchor: retrieve cited passages', 'Coursewright: draft annexes, assignments and quizzes', 'HHEM: verify every claim'].map(s => `<li class="step"><span class="stepdot"></span>${s}</li>`).join('')}</ul>
+    <div class="cb-gen-out" id="cbGenOut"></div></section>`;
+}
+function cbGenRun() {
+  cb.stage = 'gen'; cbGo('gen');
+  const steps = [...document.querySelectorAll('#cbGenSteps .step')], out = document.getElementById('cbGenOut');
+  const set = k => steps.forEach((s, j) => { s.classList.toggle('done', j < k); s.classList.toggle('run', j === k); });
+  set(0);
+  setTimeout(() => {
+    set(1);
+    setTimeout(() => {
+      set(2);
+      CB_BLUEPRINT.forEach((b, i) => setTimeout(() => { if (!document.getElementById('cbGenOut')) return; out.insertAdjacentHTML('beforeend', `<div class="gen-card"><span class="item-kind">Annex ${cbL(i)}</span><b>${esc(b.title)}</b><span class="note">${b.items.map(x => `${CB_TYPES[x.type]}: ${esc(x.title)}`).join(' · ')}</span></div>`); }, 320 * i));
+      setTimeout(() => {
+        set(3);
+        setTimeout(() => {
+          cbGenerateDraft(); cb.view = 'edit'; cb.visitedReview = false;
+          if (state.view !== 'build') return;
+          cbGo('edit');
+          const pr = cbProgress(), items = cb.draft.annexes.flatMap(a => a.items);
+          notify({ tone: 'success', title: 'Draft ready', meta: cb.params.code, desc: `${cb.draft.annexes.length} annexes · ${items.length} items · ${items.reduce((s, it) => s + it.questions.length, 0)} questions. All ${pr.total} lines are unreviewed.`, duration: 5200 });
+        }, 700);
+      }, 320 * CB_BLUEPRINT.length + 500);
+    }, 700);
+  }, 700);
+}
+
+/* ---------- 3 · edit & preview ---------- */
+function cbEditView() {
+  return `<div class="cb-toolbar">${pillHtml([['edit', `${ic('edit')}Edit`], ['preview', `${ic('eye')}Preview the whole course`]], cb.view, 'cbSetView', 'modes')}
+    <span style="flex:1"></span>
+    <button class="btn sm ghost press" onclick="cbUndo()" ${cb.hist.length ? '' : 'disabled'}>${ic('undo')} Undo</button>
+    <button class="btn sm ghost press" onclick="cbCourseAI('fit')">${ic('bolt')} Fit to ${cb.params.weeks} weeks · ${cb.params.hours} hours</button></div>
+  ${cb.fromReview ? `<div class="cb-back">${ic('edit')}<span>Editing line ${cb.fromReview.n} from the review. Changed lines go back into the review queue.</span><button class="btn sm press" onclick="cbBackToReview()">Back to review ${ic('arrow')}</button></div>` : ''}
+  ${cb.view === 'preview' ? cbPreviewHtml() : `<div class="cb-edit"><nav class="cb-outline" id="cbOutline" aria-label="Course outline">${cbOutlineHtml()}</nav><section class="cb-node" id="cbNode">${cbNodeHtml()}</section></div>`}`;
+}
+function cbSetView(btn, v) { slide(btn); cb.view = v; const y = window.scrollY; cbRerender(); window.scrollTo(0, y); }
+function cbUndo() { if (cbUndoState()) { cbRerender(); toast('Undone'); } }
+function cbOutlineHtml() {
+  const R = cbRanges();
+  return `<button class="ol-course press" onclick="cbGo('params')">${ic('sliders')}<span class="cwho"><b>${esc(cb.params.name)}</b><small>${cb.params.weeks} weeks · ${cb.params.hours} hours · parameters</small></span></button>
+  ${cb.draft.annexes.map((a, ai) => `<div class="ol-annex">
+    <button class="ol-row ol-a ${cb.sel === a.id ? 'sel' : ''}" onclick="cbSelect('${a.id}')"><span class="mod-letter">${cbL(ai)}</span><span class="cwho"><b>${esc(a.title || 'Untitled annex')}</b><small>Weeks ${R[a.id][0]}–${R[a.id][1]} · ${a.hours} h</small></span>${cbRing(cbNodeProgress(a.id))}</button>
+    ${a.items.map(it => `<button class="ol-row ol-i ${cb.sel === it.id ? 'sel' : ''}" onclick="cbSelect('${it.id}')">${kico(it.type)}<span class="cwho"><b>${esc(it.title || 'Untitled')}</b><small>${CB_TYPES[it.type]} · ${it.pts} pts · week ${it.dueWeek}</small></span>${cbRing(cbNodeProgress(it.id))}</button>`).join('')}
+  </div>`).join('')}
+  <button class="linkbtn cb-add" onclick="cbAddAnnex()">${ic('plus')} Add an annex</button>`;
+}
+function cbSelect(id) {
+  cb.sel = id; cb.view = 'edit';
+  if (cb.stage !== 'edit' || !document.getElementById('cbNode')) { cb.stage = 'edit'; cbGo('edit'); return; }
+  swap('cbNode', cbNodeHtml()); document.getElementById('cbOutline').innerHTML = cbOutlineHtml(); placePills(false);
+  const n = document.getElementById('cbNode'), top = n.getBoundingClientRect().top;
+  if (top < 0 || top > innerHeight * .6) window.scrollTo({ top: window.scrollY + top - 140, behavior: 'smooth' });
+}
+function cbNodeHtml() { const f = cbFind(cb.sel) || { kind: 'annex', a: cb.draft.annexes[0] }; if (!f.a) return '<div class="panel empty">Add an annex to start.</div>'; cb.sel = (f.it || f.a).id; return f.kind === 'item' ? cbItemEditor(f.a, f.it) : cbAnnexEditor(f.a); }
+function cbRenderNode() { const y = window.scrollY, n = document.getElementById('cbNode'); if (!n) return cbRerender(); n.innerHTML = cbNodeHtml(); cbTouched(); window.scrollTo(0, y); }
+
+function cbAnnexEditor(a) {
+  const A = cb.draft.annexes, ai = A.indexOf(a), R = cbRanges();
+  return `<div class="nd-h"><span class="mod-letter">${cbL(ai)}</span><div class="cwho"><small>Annex ${cbL(ai)} · weeks ${R[a.id][0]}–${R[a.id][1]}</small><b>${esc(a.title || 'Untitled annex')}</b></div>
+    <div class="nd-actions"><button class="iconbtn sm press" onclick="cbMoveAnnex('${a.id}',-1)" ${ai ? '' : 'disabled'} aria-label="Move annex earlier">${ic('up')}</button><button class="iconbtn sm press" onclick="cbMoveAnnex('${a.id}',1)" ${ai < A.length - 1 ? '' : 'disabled'} aria-label="Move annex later">${ic('down')}</button><button class="iconbtn sm press" onclick="cbDelAnnex('${a.id}')" aria-label="Delete annex">${ic('trash')}</button></div></div>
+  <section class="panel nd-card"><h4>Annex layout</h4>
+    <label class="cb-field" data-f="title"><span class="cb-lab">Title${cbMk(`an.${a.id}.title`)}</span><input class="ti" value="${esc(a.title)}" oninput="cbSetAnnex('${a.id}','title',this.value)"></label>
+    <div class="cb-form">
+      <div class="cb-field" data-f="weeks"><span class="cb-lab">Weeks${cbMk(`an.${a.id}.span`)}</span>${cbNum(`cbAnnexStep('${a.id}','weeks',-1)`, a.weeks, `cbAnnexStep('${a.id}','weeks',1)`, `weeks ${R[a.id][0]}–${R[a.id][1]}`)}</div>
+      <div class="cb-field" data-f="hours"><span class="cb-lab">Hours of instruction${cbMk(`an.${a.id}.span`)}</span>${cbNum(`cbAnnexStep('${a.id}','hours',-5)`, a.hours, `cbAnnexStep('${a.id}','hours',5)`, `of ${cb.params.hours}`)}</div>
+    </div>
+    <label class="cb-field" data-f="objective"><span class="cb-lab">Objective${cbMk(`an.${a.id}.obj`)}</span><textarea class="ti ta" oninput="cbSetAnnex('${a.id}','objective',this.value)">${esc(a.objective)}</textarea></label>
+  </section>
+  <section class="panel nd-card"><div class="cb-sec-h"><h4>Assignments, quizzes and exams</h4><span class="btnrow" style="margin:0">${Object.entries(CB_TYPES).map(([t, l]) => `<button class="btn sm ghost press" onclick="cbAddItem('${a.id}','${t}')">${ic('plus')} ${l}</button>`).join('')}</span></div>
+    ${a.items.map((it, k) => `<div class="nd-item">${kico(it.type)}<button class="linkish cwho" onclick="cbSelect('${it.id}')"><b>${esc(it.title || 'Untitled')}</b><small>${CB_TYPES[it.type]} · ${it.pts} pts · due week ${it.dueWeek}${it.questions.length ? ` · ${it.questions.length} questions` : ''}</small></button>${cbRing(cbNodeProgress(it.id))}
+      <button class="iconbtn sm press" onclick="cbMoveItem('${it.id}',-1)" ${k ? '' : 'disabled'} aria-label="Move up">${ic('up')}</button><button class="iconbtn sm press" onclick="cbMoveItem('${it.id}',1)" ${k < a.items.length - 1 ? '' : 'disabled'} aria-label="Move down">${ic('down')}</button></div>`).join('') || '<p class="note">Nothing in this annex yet.</p>'}
+  </section>
+  ${cbAiPanel('annex', a.id)}`;
+}
+function cbItemEditor(a, it) {
+  const A = cb.draft.annexes, R = cbRanges(), [ws, we] = R[a.id], k = a.items.indexOf(it);
+  return `<div class="nd-h">${kico(it.type)}<div class="cwho"><small><button class="linkbtn" onclick="cbSelect('${a.id}')">Annex ${cbL(A.indexOf(a))}: ${esc(a.title)}</button></small><b>${esc(it.title || 'Untitled')}</b></div>
+    <div class="nd-actions"><button class="iconbtn sm press" onclick="cbMoveItem('${it.id}',-1)" ${k ? '' : 'disabled'} aria-label="Move up">${ic('up')}</button><button class="iconbtn sm press" onclick="cbMoveItem('${it.id}',1)" ${k < a.items.length - 1 ? '' : 'disabled'} aria-label="Move down">${ic('down')}</button><button class="iconbtn sm press" onclick="cbDelItem('${it.id}')" aria-label="Delete">${ic('trash')}</button></div></div>
+  <section class="panel nd-card"><h4>Basics</h4>
+    <label class="cb-field" data-f="title"><span class="cb-lab">Title${cbMk(`it.${it.id}.title`)}</span><input class="ti" value="${esc(it.title)}" oninput="cbSetItem('${it.id}','title',this.value)"></label>
+    <div class="cb-form four" data-f="pts">
+      <label class="cb-field"><span class="cb-lab">Type${cbMk(`it.${it.id}.meta`)}</span><select class="sel" onchange="cbSetItem('${it.id}','type',this.value,true)">${Object.entries(CB_TYPES).map(([v, l]) => `<option value="${v}" ${it.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="cb-field"><span class="cb-lab">Points${cbMk(`it.${it.id}.meta`)}</span><input class="ti tnum" type="number" min="1" max="500" value="${it.pts}" oninput="cbSetItem('${it.id}','pts',Math.max(1,+this.value||1))"></label>
+      <label class="cb-field"><span class="cb-lab">Due${cbMk(`it.${it.id}.meta`)}</span><select class="sel" onchange="cbSetItem('${it.id}','dueWeek',+this.value,true)">${Array.from({ length: cb.params.weeks }, (_, i) => i + 1).map(w => `<option value="${w}" ${it.dueWeek === w ? 'selected' : ''}>Week ${w}${w < ws || w > we ? ' · outside annex' : ''}</option>`).join('')}</select></label>
+      <label class="cb-field"><span class="cb-lab">Annex</span><select class="sel" onchange="cbMoveItemTo('${it.id}',this.value)">${A.map((x, i) => `<option value="${x.id}" ${x.id === a.id ? 'selected' : ''}>Annex ${cbL(i)}</option>`).join('')}</select></label>
+    </div>
+    <label class="cb-field" data-f="desc"><span class="cb-lab">Instructions${cbMk(`it.${it.id}.desc`)}</span><textarea class="ti ta" oninput="cbSetItem('${it.id}','desc',this.value)">${esc(it.desc)}</textarea></label>
+  </section>
+  <section class="panel nd-card"><div class="cb-sec-h"><h4>Grading criteria</h4><span class="note">becomes the rubric</span></div>
+    ${it.crit.map((c, i) => `<div class="cb-row" data-f="crit-${c.id}"><span class="cb-num tnum">${i + 1}</span><input class="ti" value="${esc(c.text)}" aria-label="Criterion ${i + 1}" oninput="cbSetCrit('${it.id}','${c.id}',this.value)">${cbMk(`it.${it.id}.crit.${c.id}`)}<button class="iconbtn sm press" onclick="cbDelCrit('${it.id}','${c.id}')" aria-label="Remove criterion">${ic('trash')}</button></div>`).join('') || '<p class="note">No criteria yet.</p>'}
+    <button class="linkbtn cb-add" onclick="cbAddCrit('${it.id}')">${ic('plus')} Add a criterion</button></section>
+  <section class="panel nd-card" data-f="refs"><div class="cb-sec-h"><h4>References${cbMk(`it.${it.id}.refs`)}</h4><button class="btn sm ghost press" onclick="openRefLibrary({item:'${it.id}'})">${ic('search')} Find or upload</button></div>
+    <div class="gen-types">${cb.params.refs.map(r => { const on = it.refs.includes(r.id); return `<button class="gtype ${on ? 'on' : ''} ${r.status === 'superseded' ? 'old' : ''}" aria-pressed="${on}" onclick="cbToggleRef('${it.id}','${r.id}')">${ic('check')}${esc(r.title || 'Untitled reference')}<small>${esc(r.ed)}${r.status === 'superseded' ? ' · superseded' : ''}</small></button>`; }).join('')}</div></section>
+  ${it.type !== 'assignment' ? `<section class="panel nd-card"><div class="cb-sec-h"><h4>Questions</h4><span class="note">go to the Test Bank when you submit</span></div>
+    ${it.questions.map((q, i) => `<div class="cb-q" data-f="q-${q.id}"><div class="cb-q-h"><span class="cb-num tnum">${i + 1}</span><select class="sel sm" aria-label="Question type" onchange="cbSetQ('${it.id}','${q.id}','kind',this.value)">${GEN_TYPES.map(t => `<option ${q.kind === t ? 'selected' : ''}>${t}</option>`).join('')}</select>${cbMk(`q.${q.id}`)}<span style="flex:1"></span><button class="iconbtn sm press" onclick="cbDelQ('${it.id}','${q.id}')" aria-label="Remove question">${ic('trash')}</button></div>
+      <textarea class="ti ta sm" aria-label="Question" placeholder="Question" oninput="cbSetQ('${it.id}','${q.id}','q',this.value)">${esc(q.q)}</textarea><textarea class="ti ta sm ans" aria-label="Answer key" placeholder="Answer key and rationale" oninput="cbSetQ('${it.id}','${q.id}','a',this.value)">${esc(q.a)}</textarea></div>`).join('') || '<p class="note">No questions yet.</p>'}
+    <button class="linkbtn cb-add" onclick="cbAddQ('${it.id}')">${ic('plus')} Add a question</button></section>` : ''}
+  ${cbAiPanel('item', it.id)}`;
+}
+
+/* manual edits */
+function cbSetItem(id, key, v, rerender) {
+  cbSnap(); const it = cbFind(id).it; it[key] = v;
+  if (key === 'type' && v !== 'assignment' && !it.questions.length) it.questions.push({ id: cbId('q'), kind: 'Multiple choice', q: '', a: '' });
+  rerender ? cbRenderNode() : cbTouched();
+}
+function cbSetAnnex(id, key, v) { cbSnap(); cbFind(id).a[key] = v; cbTouched(); }
+function cbAnnexStep(id, key, d) { cbSnap(true); const a = cbFind(id).a; a[key] = key === 'weeks' ? Math.min(52, Math.max(1, a.weeks + d)) : Math.max(0, a.hours + d); cbRenderNode(); }
+function cbSetCrit(id, cid, v) { cbSnap(); cbFind(id).it.crit.find(c => c.id === cid).text = v; cbTouched(); }
+function cbAddCrit(id) { cbSnap(true); const c = cbT(''); cbFind(id).it.crit.push(c); cbRenderNode(); cbFocusField('crit-' + c.id); }
+function cbDelCrit(id, cid) { cbSnap(true); const it = cbFind(id).it; it.crit = it.crit.filter(c => c.id !== cid); cbRenderNode(); }
+function cbToggleRef(id, rid) { cbSnap(true); const it = cbFind(id).it; it.refs = it.refs.includes(rid) ? it.refs.filter(r => r !== rid) : [...it.refs, rid]; cbRenderNode(); }
+function cbSetQ(id, qid, key, v) { cbSnap(); cbFind(id).it.questions.find(q => q.id === qid)[key] = v; cbTouched(); }
+function cbAddQ(id) { cbSnap(true); const q = { id: cbId('q'), kind: 'Multiple choice', q: '', a: '' }; cbFind(id).it.questions.push(q); cbRenderNode(); cbFocusField('q-' + q.id); }
+function cbDelQ(id, qid) { cbSnap(true); const it = cbFind(id).it; it.questions = it.questions.filter(q => q.id !== qid); cbRenderNode(); }
+function cbMoveItem(id, dir) {
+  cbSnap(true); const { a, it } = cbFind(id), i = a.items.indexOf(it), j = i + dir;
+  if (j < 0 || j >= a.items.length) return; a.items.splice(i, 1); a.items.splice(j, 0, it); cbRenderNode();
+}
+function cbMoveItemTo(id, annexId) {
+  cbSnap(true); const { a, it } = cbFind(id), to = cbFind(annexId).a; if (to === a) return;
+  a.items = a.items.filter(x => x !== it); to.items.push(it);
+  const [ws, we] = cbRanges()[to.id]; it.dueWeek = Math.min(we, Math.max(ws, it.dueWeek));
+  cbRenderNode(); toast(`Moved to Annex ${cbL(cb.draft.annexes.indexOf(to))} · due week ${it.dueWeek}`);
+}
+function cbAddItem(annexId, type) {
+  cbSnap(true); const a = cbFind(annexId).a, cur = cb.params.refs.find(r => r.status === 'current');
+  const it = { id: cbId('it'), type, title: `New ${CB_TYPES[type].toLowerCase()}`, pts: { assignment: 50, quiz: 25, exam: 100 }[type], dueWeek: cbRanges()[a.id][1], desc: '', crit: [], refs: cur ? [cur.id] : [], questions: type === 'assignment' ? [] : [{ id: cbId('q'), kind: 'Multiple choice', q: '', a: '' }] };
+  a.items.push(it); cbSelect(it.id); cbFocusField('title');
+}
+function cbConfirmDelete(title, body, run) {
+  openDialog(title, `<p class="note">${body}</p>`, `<button class="btn ghost press" onclick="closeDialog()">Keep it</button><button class="btn danger press" id="cbDelGo">Delete</button>`);
+  document.getElementById('cbDelGo').onclick = () => { closeDialog(); run(); };
+}
+function cbDelItem(id) {
+  const { a, it } = cbFind(id), n = cbLines().filter(l => l.jump?.node === id).length;
+  cbConfirmDelete(`Delete “${it.title || 'Untitled'}”?`, `Its ${n} lines, their sign-offs, and ${it.questions.length ? `${it.questions.length} questions` : 'its rubric'} are removed. You can undo this.`, () => { cbSnap(true); a.items = a.items.filter(x => x !== it); cb.sel = a.id; cbRerender(); toast('Deleted · Undo is in the toolbar'); });
+}
+function cbMoveAnnex(id, dir) { cbSnap(true); const A = cb.draft.annexes, a = cbFind(id).a, i = A.indexOf(a), j = i + dir; if (j < 0 || j >= A.length) return; A.splice(i, 1); A.splice(j, 0, a); cbRerender(); }
+function cbAddAnnex() { cbSnap(true); const a = { id: cbId('an'), title: 'New annex', weeks: 1, hours: 0, objective: '', items: [] }; cb.draft.annexes.push(a); cb.sel = a.id; cbRerender(); cbFocusField('title'); }
+function cbDelAnnex(id) {
+  const a = cbFind(id).a;
+  if (cb.draft.annexes.length === 1) return notify({ tone: 'warning', title: 'A course needs at least one annex' });
+  cbConfirmDelete(`Delete Annex “${a.title || 'Untitled'}”?`, `It holds ${a.items.length} item${a.items.length === 1 ? '' : 's'}. Weeks and hours will need rebalancing. You can undo this.`, () => { cbSnap(true); cb.draft.annexes = cb.draft.annexes.filter(x => x !== a); cb.sel = cb.draft.annexes[0].id; cbRerender(); });
+}
+
+/* AI-assisted edits: proposals with a before/after diff */
+function cbAiPanel(scope, id) {
+  const prop = cb.ai && cb.ai.id === id ? cb.ai : null, it = scope === 'item' ? cbFind(id).it : null;
+  return `<section class="panel nd-card ai-card"><div class="cb-sec-h"><h4>${ic('bolt')} AI-assisted edit</h4><span class="note">proposes a change · nothing applies until you accept</span></div>
+    ${prop ? cbDiffHtml(prop, 'cbAiAccept()', 'cbAiReject()') : `<div class="chips">${CB_AI[scope].filter(([k]) => !(k === 'question' && it && it.type === 'assignment')).map(([k, l]) => `<span class="chip" role="button" tabindex="0" onclick="cbAi('${scope}','${id}','${k}')">${l}</span>`).join('')}</div>
+      <div class="askbar"><input class="ti" id="cbAiIn" placeholder="Or describe the change, e.g. “make this harder and add a timed element”" onkeydown="if(event.key==='Enter')cbAiAsk('${scope}','${id}')"><button class="btn sm press" onclick="cbAiAsk('${scope}','${id}')">Propose</button></div>`}
+  </section>`;
+}
+function cbDiffHtml(prop, accept, reject) {
+  if (!prop.changes.length) return `<div class="diff"><p class="note">Nothing to change for “${esc(prop.label)}”.</p><div class="btnrow"><button class="btn sm ghost press" onclick="${reject}">OK</button></div></div>`;
+  return `<div class="diff"><div class="diff-h"><b>${esc(prop.label)}</b>${prop.prompt ? `<small>“${esc(prop.prompt)}”</small>` : ''}<span class="note">${prop.changes.length} change${prop.changes.length === 1 ? '' : 's'}</span></div>
+    ${prop.changes.map(c => `<div class="diff-row"><span class="diff-l">${esc(c.label)}</span><div class="diff-b"><del>${esc(cbFmt(c.key, c.before))}</del><ins>${esc(cbFmt(c.key, c.after))}</ins></div></div>`).join('')}
+    <p class="note">Accepting puts every line it touches back in the review queue.</p>
+    <div class="btnrow"><button class="btn sm press" onclick="${accept}">${ic('check')} Accept</button><button class="btn sm ghost press" onclick="${reject}">Reject</button></div></div>`;
+}
+function cbAi(scope, id, action) { cb.ai = cbPropose(scope, id, action); if (!cb.ai.changes.length) cb.ai.empty = true; cbRenderNode(); }
+function cbAiAsk(scope, id) {
+  const v = (document.getElementById('cbAiIn') || {}).value || ''; if (!v.trim()) return toast('Describe the change first');
+  cb.ai = cbPropose(scope, id, cbPromptAction(scope, v), v); cbRenderNode();
+}
+function cbAiAccept() { const n = cb.ai.changes.length; cbApply(cb.ai); cb.ai = null; cbRerender(); toast(`Accepted · ${n} change${n === 1 ? '' : 's'} applied`); }
+function cbAiReject() { cb.ai = null; cbRenderNode(); }
+function cbCourseAI(action) {
+  if (action === 'fit' && !cb.draft) return;
+  const prop = cbPropose('course', null, action); window.__cbCourseProp = prop;
+  openDialog(`AI-assisted edit · ${prop.label}`, cbDiffHtml(prop, 'cbCourseAccept()', 'closeDialog()'), '');
+}
+function cbCourseAccept() { const p = window.__cbCourseProp; cbApply(p); closeDialog(); cbRerender(); toast(`Accepted · ${p.changes.length} change${p.changes.length === 1 ? '' : 's'} applied`); }
+
+/* whole-course preview (read-only), with each line's review mark */
+function cbPreviewHtml() {
+  const p = cb.params, R = cbRanges(), end = p.start + p.weeks * 7 - 3, items = cb.draft.annexes.flatMap(a => a.items);
+  return `<article class="cb-preview">
+    <header class="panel pv-course"><div class="lead-k">Course preview · exactly what gets created</div><h2>${esc(p.name)} <code>${esc(p.code)}</code></h2>
+      <p class="note">${esc(p.section)} · ${esc(p.audience)} · ${esc(p.delivery)} · ${p.students} students</p>
+      <div class="bento pv-bento"><div><div class="tilelab">Length</div><div class="tileval tnum">${p.weeks} <small>weeks</small></div></div><div><div class="tilelab">Instruction</div><div class="tileval tnum">${p.hours} <small>hours</small></div></div><div><div class="tilelab">Graded items</div><div class="tileval tnum">${items.length}</div></div><div><div class="tilelab">Dates</div><div class="tileval pv-dates">${fmtDate(p.start)} – ${fmtDate(end)}</div></div></div>
+      <div class="pv-timeline">${cb.draft.annexes.map((a, i) => `<span class="band-${cbL(i)}" style="flex:${a.weeks}" title="Annex ${cbL(i)}: ${esc(a.title)}">Annex ${cbL(i)} · ${a.weeks} wk · ${a.hours} h</span>`).join('')}</div>
+      <div class="pv-refs">${p.refs.map(r => `<span class="doc ${r.status}">${ic('book')}<span>${esc(r.title)} · ${esc(r.ed)}${r.status === 'superseded' ? ' · superseded' : ''}</span>${cbMk('ref.' + r.id)}</span>`).join('')}</div>
+    </header>
+    ${cb.draft.annexes.map((a, ai) => `<section class="panel pv-sec">
+      <div class="pv-ah"><span class="mod-letter">${cbL(ai)}</span><div class="cwho"><b>Annex ${cbL(ai)}: ${esc(a.title)}${cbMk(`an.${a.id}.title`)}</b><small>Weeks ${R[a.id][0]}–${R[a.id][1]} · ${a.hours} hours${cbMk(`an.${a.id}.span`)}</small></div><button class="btn sm ghost press" onclick="cbSelect('${a.id}')">${ic('edit')} Edit</button></div>
+      <p class="pv-obj">${esc(a.objective)}${cbMk(`an.${a.id}.obj`)}</p>
+      ${a.items.map(it => `<div class="pv-it">
+        <div class="pv-ih">${kico(it.type)}<div class="cwho"><b>${esc(it.title)}${cbMk(`it.${it.id}.title`)}</b><small>${CB_TYPES[it.type]} · ${it.pts} points · due ${fmtDate(p.start + (it.dueWeek - 1) * 7 + 4)} (week ${it.dueWeek})${cbMk(`it.${it.id}.meta`)}</small></div><button class="iconbtn sm press" onclick="cbSelect('${it.id}')" aria-label="Edit ${esc(it.title)}">${ic('edit')}</button></div>
+        <p>${esc(it.desc)}${cbMk(`it.${it.id}.desc`)}</p>
+        <div class="pv-cols"><div><div class="docs-h">Graded on</div><ul>${it.crit.map(c => `<li>${esc(c.text)}${cbMk(`it.${it.id}.crit.${c.id}`)}</li>`).join('')}</ul></div>
+          <div><div class="docs-h">References${cbMk(`it.${it.id}.refs`)}</div>${it.refs.map(id => `<div class="note">${esc(cbRefLabel(cbRef(id)))}</div>`).join('') || '<div class="note">None</div>'}</div></div>
+        ${it.questions.length ? `<div class="docs-h">Questions for the Test Bank</div><ol class="pv-qs">${it.questions.map(q => `<li><b>${esc(q.q || 'Empty question')}</b>${cbMk(`q.${q.id}`)}<span class="note">${esc(q.kind)} · Answer: ${esc(q.a || '—')}</span></li>`).join('')}</ol>` : ''}
+      </div>`).join('')}
+    </section>`).join('')}
+  </article>`;
+}
+
+/* ============ Course Builder: forced line-by-line review, locked submit, course creation ============ */
+const CB_DWELL = { ms: 900 };     // each line must be on screen this long before its sign-off unlocks
+const CB_HOLD = { ms: 2000 };     // press-and-hold duration on the final submit
+const CB_ATTEST = ['I read every line myself and signed each one off', 'Every reference is current and every citation points to the right source', 'Points, due weeks and hours of instruction are final for this class'];
+
+function cbFiltered() {
+  return cbLines().map((l, i) => ({ ...l, n: i + 1, st: cbStatus(l) }))
+    .filter(l => cb.filter === 'all' || (cb.filter === 'todo' ? (l.st === 'todo' || l.st === 'changed') : l.st === cb.filter));
+}
+function cbReviewView() {
+  const pr = cbProgress(), p = Math.round(pr.ok / pr.total * 100);
+  return `<section class="panel rv-hero">
+      <span class="ring" style="--p:${p};--c:${pr.left ? 'var(--p-accent)' : 'var(--p-good)'}"><div><b class="tnum">${p}%</b><small>signed off</small></div></span>
+      <div><div class="lead-k">Line-by-line review</div><h2>${pr.left ? `${pr.left} line${pr.left === 1 ? '' : 's'} to go before you can submit` : 'Every line is signed off'}</h2>
+        <ul class="rv-rules"><li>Read each line, then sign it off. There is no “approve all”.</li><li>Sign-off unlocks after a short pause on each line.</li><li>Editing a line, or accepting an AI edit, sends it back here.</li><li>Flagged lines and blocking issues keep submit locked.</li></ul></div>
+    </section>
+    <div class="sectionbar rv-bar">${pillHtml([['todo', `To review · ${pr.todo + pr.changed}`], ['flag', `Flagged · ${pr.flag}`], ['ok', `Signed off · ${pr.ok}`], ['all', `All · ${pr.total}`]], cb.filter, 'cbFilter')}
+      <span style="flex:1"></span><span class="note rv-keys"><kbd>A</kbd> sign off <kbd>F</kbd> flag <kbd>E</kbd> edit <kbd>J</kbd><kbd>K</kbd> next / previous</span></div>
+    <div id="rvList">${cbReviewList()}</div>`;
+}
+function cbReviewList() {
+  const rows = cbFiltered();
+  if (!rows.length) {
+    const msg = { todo: ['Nothing left to review', cbBlocks().length ? 'Fix the blocking issues, then submit.' : 'Submit is unlocked in the bar below.'], flag: ['No flagged lines', 'Flag a line during review if it needs changes.'], ok: ['Nothing signed off yet', 'Start with the “To review” list.'], all: ['No lines', ''] }[cb.filter];
+    return `<div class="panel rv-empty"><span class="qdone">${ic(cb.filter === 'todo' ? 'check' : 'info')}</span><b>${msg[0]}</b><p class="note">${msg[1]}</p>${cb.filter === 'todo' && cbBlocks().length ? `<button class="btn press" onclick="cbShowIssues()">See blocking issues</button>` : ''}</div>`;
+  }
+  cb.focus = Math.max(0, Math.min(cb.focus, rows.length - 1));
+  let sec = '';
+  return rows.map((l, i) => {
+    const head = l.sec !== sec ? `<div class="rv-sec">${esc(sec = l.sec)}</div>` : '', rv = cb.review[l.id], focus = i === cb.focus;
+    const badge = l.st === 'changed' ? tag('w', 'Changed since sign-off') : l.st === 'flag' ? tag('c', 'Flagged') : l.st === 'ok' ? tag('g', 'Signed off') : '';
+    return `${head}<div class="rv-line ${l.st} ${focus ? 'focus' : ''}" id="rv-${i}" onclick="cbFocusLine(${i})" style="--dwell:${CB_DWELL.ms}ms">
+      <span class="rv-n tnum">${l.n}</span>
+      <div class="rv-body"><div class="rv-label">${esc(l.label)}${badge}</div><div class="rv-value">${esc(l.value) || '<span class="muted">Empty</span>'}</div>
+        ${l.st === 'flag' && rv.note ? `<div class="rv-note">${ic('flag')}${esc(rv.note)}</div>` : ''}
+        ${focus && cb.flagging ? `<div class="rv-flag" onclick="event.stopPropagation()"><input class="ti" id="rvNote" placeholder="What needs to change?" onkeydown="if(event.key==='Enter')cbFlagSave(${i});if(event.key==='Escape'){event.stopPropagation();cbFlagCancel()}"><button class="btn sm press" onclick="cbFlagSave(${i})">Flag line</button><button class="btn sm ghost press" onclick="cbFlagCancel()">Cancel</button></div>` : ''}</div>
+      <div class="rv-act">${l.st === 'ok' ? `<button class="btn sm ghost press" onclick="event.stopPropagation();cbUnsign(${i})">Undo sign-off</button>`
+        : `<button class="btn sm press rv-sign" onclick="event.stopPropagation();cbSign(${i})"><span class="rv-fill"></span>${ic('check')} Sign off</button>`}
+        <button class="iconbtn sm press" title="Flag for changes" aria-label="Flag line ${l.n}" onclick="event.stopPropagation();cbFlag(${i})">${ic('flag')}</button>
+        <button class="iconbtn sm press" title="Edit this line" aria-label="Edit line ${l.n}" onclick="event.stopPropagation();cbEditLine(${i})">${ic('edit')}</button></div>
+    </div>`;
+  }).join('');
+}
+function cbReviewAfter(keep) {
+  cb.dwell = Date.now() + CB_DWELL.ms;
+  const el = document.getElementById('rv-' + cb.focus);
+  if (el) el.scrollIntoView({ block: 'center', behavior: keep ? 'auto' : 'smooth' });
+  if (cb.flagging) setTimeout(() => document.getElementById('rvNote')?.focus(), 30);
+}
+function cbReviewRefresh() { cbRerender(); }
+function cbFilter(btn, v) { slide(btn); cb.filter = v; cb.focus = 0; cb.flagging = false; swap('rvList', cbReviewList()); cbReviewAfter(); }
+function cbFocusLine(i) { if (cb.focus === i && !cb.flagging) return; cb.focus = i; cb.flagging = false; cbReviewRefresh(); cbReviewAfter(); }
+let cbNudgeAt = 0;
+function cbSign(i) {
+  if (i !== cb.focus) return cbFocusLine(i);
+  if (Date.now() < cb.dwell) {
+    const el = document.getElementById('rv-' + i); if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+    if (Date.now() - cbNudgeAt > 1600) { cbNudgeAt = Date.now(); toast('Read the line first · sign-off unlocks in a moment'); }
+    return;
+  }
+  const l = cbFiltered()[i]; if (!l) return;
+  cb.review[l.id] = { st: 'ok', sig: l.value };
+  if (cb.filter !== 'todo') cb.focus = i + 1;
+  cbReviewRefresh(); cbReviewAfter();
+  if (!cbProgress().left) notify({ tone: 'success', title: 'Every line is signed off', desc: cbBlocks().length ? `Fix ${cbBlocks().length} blocking issue${cbBlocks().length === 1 ? '' : 's'} to unlock submit.` : 'Submit is unlocked.', burst: true, duration: 5000 });
+}
+function cbUnsign(i) { const l = cbFiltered()[i]; delete cb.review[l.id]; cbReviewRefresh(); }
+function cbFlag(i) { cb.focus = i; cb.flagging = true; cbReviewRefresh(); cbReviewAfter(); }
+function cbFlagCancel() { cb.flagging = false; cbReviewRefresh(); }
+function cbFlagSave(i) {
+  const l = cbFiltered()[i], note = (document.getElementById('rvNote') || {}).value || '';
+  if (!note.trim()) { toast('Say what needs to change'); document.getElementById('rvNote')?.focus(); return; }
+  cb.review[l.id] = { st: 'flag', sig: l.value, note: note.trim() }; cb.flagging = false;
+  if (cb.filter !== 'todo' && cb.filter !== 'flag') cb.focus = i + 1;
+  cbReviewRefresh(); cbReviewAfter(); toast(`Flagged line ${l.n}`);
+}
+function cbEditLine(i) { const l = cbFiltered()[i]; cbJump(l.jump, { n: l.n, id: l.id }); }
+function cbBackToReview() {
+  const back = cb.fromReview; cb.fromReview = null; cb.flagging = false;
+  cb.stage = 'review'; cb.filter = 'todo';
+  const rows = cbFiltered(), k = back ? rows.findIndex(r => r.id === back.id) : -1;
+  cb.focus = k >= 0 ? k : 0; cbGo('review');
+}
+document.addEventListener('keydown', e => {
+  if (state.view !== 'build' || cb.stage !== 'review' || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || !document.getElementById('dialog').hidden) return;
+  const k = e.key.toLowerCase(), n = cbFiltered().length;
+  if (k === 'a' || e.key === 'Enter') { e.preventDefault(); cbSign(cb.focus); }
+  else if (k === 'f') { e.preventDefault(); cbFlag(cb.focus); }
+  else if (k === 'e') { e.preventDefault(); cbEditLine(cb.focus); }
+  else if ((k === 'j' || e.key === 'ArrowDown') && cb.focus < n - 1) { e.preventDefault(); cbFocusLine(cb.focus + 1); }
+  else if ((k === 'k' || e.key === 'ArrowUp') && cb.focus > 0) { e.preventDefault(); cbFocusLine(cb.focus - 1); }
+});
+
+/* ---------- the locked submit ---------- */
+function cbTrySubmit() {
+  if (!cb.draft) return notify({ tone: 'warning', icon: 'lock', title: 'Nothing to submit yet', desc: 'Set the parameters and generate a draft first.' });
+  const pr = cbProgress(), blocks = cbBlocks(), todo = pr.todo + pr.changed;
+  if (pr.left || blocks.length) {
+    const why = [todo ? `${todo} line${todo === 1 ? '' : 's'} still need your sign-off` : '', pr.flag ? `${pr.flag} flagged line${pr.flag === 1 ? '' : 's'} need fixing` : '', blocks.length ? `${blocks.length} blocking issue${blocks.length === 1 ? '' : 's'}` : ''].filter(Boolean);
+    notify({ tone: 'warning', icon: 'lock', title: 'Submit is locked', desc: why.join(' · '), duration: 6000,
+      actions: [pr.left ? { label: 'Review lines', primary: true, run: () => { cb.visitedReview = true; cb.filter = todo ? 'todo' : 'flag'; cb.focus = 0; cbGo('review'); } } : null, blocks.length ? { label: 'See issues', run: () => cbShowIssues() } : null].filter(Boolean) });
+    const b = document.querySelector('#cbBar .btn.locked'); if (b) { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
+    return;
+  }
+  cbSubmitDialog();
+}
+function cbSubmitDialog() {
+  const p = cb.params, items = cb.draft.annexes.flatMap(a => a.items), qs = items.reduce((s, it) => s + it.questions.length, 0), pr = cbProgress();
+  openDialog(`Submit ${p.name}?`, `
+    <div class="sub-warn">${ic('alert')}<span>This creates <b>${esc(p.code)}</b> for ${esc(p.section)} and sends ${qs} questions to the Test Bank. Students see it when enrollment opens, and pulling it back takes an S-3 request.</span></div>
+    <div class="bento sub-bento"><div><div class="tilelab">Annexes</div><div class="tileval tnum">${cb.draft.annexes.length}</div></div><div><div class="tilelab">Graded items</div><div class="tileval tnum">${items.length}</div></div><div><div class="tilelab">Questions</div><div class="tileval tnum">${qs}</div></div><div><div class="tilelab">Lines signed off</div><div class="tileval tnum">${pr.ok}</div></div></div>
+    <p class="sub-list">${p.weeks} weeks · ${p.hours} hours of instruction · starts ${fmtDate(p.start)} · ${p.students} students · ${p.refs.length} references</p>
+    <div class="fl"><span>Confirm each statement</span>${CB_ATTEST.map(t => `<label class="attest"><input type="checkbox" class="sub-chk" onchange="cbSubCheck()"><span>${t}</span></label>`).join('')}</div>
+    <label class="fl"><span>Type the course code <code>${esc(p.code)}</code> to confirm</span><input class="ti" id="subCode" autocomplete="off" spellcheck="false" placeholder="${esc(p.code)}" oninput="cbSubCheck()"></label>`,
+    `<button class="btn ghost press" onclick="closeDialog()">Not yet</button><button class="btn hold" id="holdBtn" disabled style="--hold:${CB_HOLD.ms}ms"><span class="hold-fill"></span><span class="hold-l">${ic('lock')} Hold to submit</span></button>`);
+  document.querySelector('#dialog .dialog-card').classList.add('wide');
+  cbBindHold();
+}
+function cbSubCheck() {
+  const ok = [...document.querySelectorAll('.sub-chk')].every(c => c.checked) && document.getElementById('subCode').value.trim() === cb.params.code;
+  const b = document.getElementById('holdBtn'); b.disabled = !ok;
+  b.querySelector('.hold-l').innerHTML = `${ic(ok ? 'send' : 'lock')} ${ok ? 'Press and hold to submit' : 'Hold to submit'}`;
+}
+function cbBindHold() {
+  const b = document.getElementById('holdBtn'); let t = null;
+  const isKey = e => e.key === 'Enter' || e.key === ' ';
+  const start = e => { if (b.disabled || t || (e.type === 'keydown' && !isKey(e))) return; e.preventDefault(); b.classList.add('holding'); t = setTimeout(() => { t = null; b.classList.remove('holding'); cbCreateCourse(); }, CB_HOLD.ms); };
+  const stop = e => { if (!t || (e.type === 'keyup' && !isKey(e))) return; clearTimeout(t); t = null; b.classList.remove('holding'); toast('Keep holding to submit'); };
+  b.addEventListener('pointerdown', start); b.addEventListener('keydown', start);
+  ['pointerup', 'pointerleave', 'pointercancel', 'keyup'].forEach(ev => b.addEventListener(ev, stop));
+}
+function cbCreateCourse() {
+  if (!cbReady()) { closeDialog(); return cbTrySubmit(); }   // last guard: nothing changed since the dialog opened
+  const p = cb.params, id = `crs${++cbSeq}`, R = cbRanges();
+  const course = { id, code: p.code, name: p.name, short: p.short || p.name, section: p.section, instructor: 'SSgt White', students: p.students, week: 0, weeks: p.weeks,
+    enrollCode: `${p.code.replace(/[^A-Z0-9]/gi, '').slice(0, 5).toUpperCase()}-${String(4000 + cbSeq).slice(-4)}`, rivera: false, weights: { assignment: .4, quiz: .2, exam: .4 },
+    topics: cb.draft.annexes.map(a => [a.title, 0]),
+    annexes: cb.draft.annexes.map((a, i) => ({ l: cbL(i), title: a.title, start: p.start + (R[a.id][0] - 1) * 7, end: p.start + R[a.id][1] * 7 - 3,
+      items: a.items.map(it => { const due = p.start + (it.dueWeek - 1) * 7 + 4; return { id: `${id}-${it.id}`, type: it.type, title: it.title, issued: due - (it.type === 'assignment' ? 6 : 3), due, pts: it.pts, docs: it.refs.map(r => cbRefLabel(cbRef(r))), desc: it.desc, crit: it.crit.map(c => c.text) }; }) })) };
+  COURSES.push(course);
+  const qs = cb.draft.annexes.flatMap((a, i) => a.items.flatMap(it => it.questions.map(q => ({ course: id, annex: cbL(i), item: `${id}-${it.id}`, kind: q.kind, q: q.q, a: q.a, cite: cbRefLabel(cbRef(it.refs[0])), done: 'approved', new: true }))));
+  REVQ.push(...qs);
+  cb.done = { id, qs: qs.length, items: course.annexes.reduce((s, a) => s + a.items.length, 0), lines: cbProgress().ok, at: new Date() };
+  closeDialog(); state.course.instructor = id; setView('build');
+  notify({ tone: 'success', title: 'Course created', meta: p.code, desc: `${qs.length} questions sent to the Test Bank · ${cb.done.items} graded items with rubrics.`, burst: true, duration: 6000 });
+}
+function cbDoneView() {
+  const c = courseById(cb.done.id), d = cb.done, first = c.annexes[0];
+  return `<div class="pagehead"><h1>Course Builder</h1><p>Submitted after a full line-by-line review.</p></div>
+  <section class="panel cb-done"><span class="qdone">${ic('check')}</span><div class="lead-k">Submitted at ${d.at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
+    <h2>${esc(c.name)} is ready</h2><p class="note">${esc(c.code)} · ${esc(c.section)} · starts ${fmtDate(first.start)} · ${c.students} students · enrollment code <code>${esc(c.enrollCode)}</code></p>
+    <div class="bento sub-bento"><div><div class="tilelab">Annexes</div><div class="tileval tnum">${c.annexes.length}</div></div><div><div class="tilelab">Graded items</div><div class="tileval tnum">${d.items}</div></div><div><div class="tilelab">Questions in the Test Bank</div><div class="tileval tnum">${d.qs}</div></div><div><div class="tilelab">Lines reviewed</div><div class="tileval tnum">${d.lines}</div></div></div>
+    <div class="btnrow" style="justify-content:center"><button class="btn press" onclick="state.course.instructor='${c.id}';state.rev.course='${c.id}';state.rev.annex='A';setView('testbank')">${ic('review')} Open in the Test Bank</button>
+      <button class="btn ghost press" onclick="goRubric('${c.id}','A','${first.items[0].id}')">${ic('rubric')} See the rubrics</button>
+      <button class="btn ghost press" onclick="cbReset();setView('build')">${ic('plus')} Build another course</button></div>
+  </section>`;
+}
+
+/* ============ Course Builder references: search the system library, or upload your own ============ */
+IC.upload = '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>';
+const REF_LIBRARY = [
+  { id: 'lib-tc322-24', num: 'TC 3-22.9', title: 'Rifle and Carbine', ed: '2024, Change 1', status: 'current', type: 'Training circular', pages: 412, usedBy: ['TC 3-22.9'], summary: 'Rifle and carbine fundamentals, zeroing, firing positions and qualification.', topics: 'marksmanship sight alignment trigger control zero' },
+  { id: 'lib-tc322-16', num: 'TC 3-22.9', title: 'Rifle and Carbine', ed: '2016', status: 'superseded', update: '2024, Change 1', updateId: 'lib-tc322-24', type: 'Training circular', pages: 384, usedBy: [], summary: 'Superseded by the 2024 edition with Change 1.', topics: 'marksmanship' },
+  { id: 'lib-fm322', num: 'FM 3-22.9', title: 'Rifle Marksmanship M16-/M4-Series Weapons', ed: '2008', status: 'superseded', update: 'TC 3-22.9 (2024, Change 1)', updateId: 'lib-tc322-24', type: 'Field manual', pages: 364, usedBy: [], summary: 'Replaced by TC 3-22.9.', topics: 'marksmanship rifle' },
+  { id: 'lib-mcrp301a', num: 'MCRP 3-01A', title: 'Rifle Marksmanship', ed: '2012', status: 'current', type: 'Reference publication', pages: 296, usedBy: ['TC 3-22.9'], summary: 'Marine Corps rifle marksmanship program, coaching and range procedures.', topics: 'coaching positions natural point of aim' },
+  { id: 'lib-mco3574', num: 'MCO 3574.2', title: 'Marine Corps Marksmanship Program', ed: '2019', status: 'current', type: 'Order', pages: 58, usedBy: [], summary: 'Policy, qualification standards and coach certification.', topics: 'qualification coach certification policy' },
+  { id: 'lib-navmc350063', num: 'NAVMC 3500.63', title: 'Marksmanship Training and Readiness Manual', ed: '2021', status: 'current', type: 'T&R manual', pages: 142, usedBy: [], summary: 'Individual and collective marksmanship training standards.', topics: 'standards events' },
+  { id: 'lib-mcwp510', num: 'MCWP 5-10', title: 'Marine Corps Planning Process', ed: '2020', status: 'current', type: 'Warfighting publication', pages: 180, usedBy: ['MCWP 5-10'], summary: 'Problem framing, course of action development, war game and orders.', topics: 'planning coa mission analysis' },
+  { id: 'lib-mcrp3307', num: 'MCRP 3-30.7', title: 'Land Navigation', ed: '2016', status: 'current', type: 'Reference publication', pages: 210, usedBy: ['MCRP 3-30.7'], summary: 'Map reading, terrain association and dismounted navigation.', topics: 'map compass azimuth terrain' },
+  { id: 'lib-mcrp330b2', num: 'MCRP 3-30B.2', title: "Radio Operator's Handbook", ed: '2016', status: 'current', type: 'Reference publication', pages: 188, usedBy: ['MCRP 3-30B.2'], summary: 'Voice procedures, radio equipment and troubleshooting.', topics: 'communications prowords net' },
+  { id: 'lib-navmc350044', num: 'NAVMC 3500.44', title: 'Infantry Training and Readiness Manual', ed: '2023', status: 'current', type: 'T&R manual', pages: 520, usedBy: ['NAVMC 3500.44'], summary: 'Infantry individual and collective training events and standards.', topics: 'infantry defend position' },
+  { id: 'lib-mcwp610', num: 'MCWP 6-10', title: 'Leading Marines', ed: '2019', status: 'current', type: 'Warfighting publication', pages: 124, usedBy: ['MCWP 6-10'], summary: 'Leadership principles, traits and counseling.', topics: 'leadership counseling' },
+  { id: 'lib-tccc', num: 'TCCC', title: 'Tactical Combat Casualty Care Guidelines', ed: '2024', status: 'current', type: 'Guideline', pages: 64, usedBy: ['TCCC'], summary: 'Care under fire, tactical field care and evacuation.', topics: 'medical casualty march' },
+  { id: 'lib-navmc15531', num: 'NAVMC 1553.1', title: 'Systems Approach to Training and Education Manual', ed: '2021', status: 'current', type: 'Manual', pages: 250, usedBy: [], summary: 'How formal schools analyze, design, develop, implement and evaluate courses.', topics: 'sat curriculum design poi' },
+  { id: 'lib-mco15532', num: 'MCO 1553.2', title: 'Management of Marine Corps Formal Schools and Training Detachments', ed: '2021', status: 'current', type: 'Order', pages: 96, usedBy: [], summary: 'Policy for formal school course approval and management.', topics: 'formal schools poi approval' },
+];
+const libById = id => REF_LIBRARY.find(x => x.id === id);
+const REF_TYPES = [['all', 'All'], ['doctrine', 'Publications'], ['orders', 'Orders'], ['tr', 'T&R manuals'], ['uploaded', 'Uploaded']];
+const refTypeOf = x => x.source === 'uploaded' ? 'uploaded' : /Order/.test(x.type) ? 'orders' : /T&R/.test(x.type) ? 'tr' : 'doctrine';
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+/* a reference row on the parameters page: library/uploaded rows are locked to the source record */
+function cbRefRow(r) {
+  const lib = r.libId && libById(r.libId), src = r.source === 'uploaded' ? tag('b', 'Uploaded') : lib ? tag('', 'Library') : tag('', 'Entered manually');
+  return `<div class="cb-ref ${r.status}" data-f="ref-${r.id}"><span class="kico ${r.status === 'current' ? 'exam' : 'quiz'}">${ic(r.source === 'uploaded' ? 'file' : 'book')}</span>
+    ${lib ? `<span class="cwho cb-ref-t"><b>${esc(r.title)}</b><small>${esc(lib.type)}<span class="cb-ref-ed-m"> · ${esc(r.ed)}</span> · ${lib.pages} pages indexed${lib.rel ? ` · ${esc(lib.rel)}` : ''}</small></span><span class="cb-ref-ed tnum">${esc(r.ed)}</span>`
+      : `<input class="ti" value="${esc(r.title)}" placeholder="Title" aria-label="Reference title" oninput="cbRefSet('${r.id}','title',this.value)"><input class="ti ed" value="${esc(r.ed)}" placeholder="Edition" aria-label="Edition" oninput="cbRefSet('${r.id}','ed',this.value)">`}
+    ${r.status === 'superseded' ? `<button class="btn sm press" onclick="cbRefUpdate('${r.id}')">Update to ${esc(r.update)}</button>` : tag('g', 'Current')}${src}${cbMk('ref.' + r.id)}
+    <button class="iconbtn sm press" onclick="cbRefDel('${r.id}')" aria-label="Remove reference">${ic('trash')}</button></div>`;
+}
+/* the current edition may already be on the course: move the citations to it instead of keeping two copies */
+function cbMergeRef(fromId, into) {
+  (cb.draft?.annexes || []).flatMap(a => a.items).forEach(it => { if (it.refs.includes(fromId)) it.refs = [...new Set(it.refs.map(x => x === fromId ? into.id : x))]; });
+  cb.params.refs = cb.params.refs.filter(x => x.id !== fromId);
+}
+function cbToCurrent(r) {   // returns the ref that now stands for r
+  const lib = r.libId && libById(r.libId), next = lib && lib.updateId && libById(lib.updateId);
+  if (!next) { Object.assign(r, { ed: r.update || r.ed, status: 'current', update: undefined }); return r; }
+  const dup = cb.params.refs.find(x => x.id !== r.id && x.libId === next.id);
+  if (dup) { cbMergeRef(r.id, dup); return dup; }
+  Object.assign(r, { libId: next.id, title: `${next.num} ${next.title}`, ed: next.ed, status: 'current', update: undefined }); return r;
+}
+function cbRefUpdate(id) {
+  cbSnap(true);
+  const r = cbRef(id), now = cbToCurrent(r);
+  cbRerender(); toast(now === r ? `Updated · ${r.title} (${r.ed})` : `${now.title} (${now.ed}) was already on the course · citations moved to it`);
+}
+function cbSyncLib() {   // after an AI "update superseded references", point library refs at the current record
+  [...cb.params.refs].forEach(r => { const lib = r.libId && libById(r.libId); if (lib && lib.status === 'superseded' && r.status === 'current' && lib.updateId) cbToCurrent(r); });
+}
+function cbCourseAccept() { const p = window.__cbCourseProp; cbApply(p); cbSyncLib(); closeDialog(); cbRerender(); toast(`Accepted · ${plural(p.changes.length, 'change')} applied`); }
+function cbAddRefs(entries, ctx) {
+  cbSnap(true);
+  const added = entries.map(x => { const r = { id: cbId('r'), title: `${x.num} ${x.title}`.trim(), ed: x.ed, status: x.status, update: x.update, libId: x.id, source: x.source === 'uploaded' ? 'uploaded' : 'library' }; cb.params.refs.push(r); return r; });
+  if (ctx && ctx.item) { const f = cbFind(ctx.item); if (f) f.it.refs.push(...added.filter(r => r.status === 'current').map(r => r.id)); }
+  return added;
+}
+
+/* ---------- search the library ---------- */
+const refLib = { q: '', type: 'all', currentOnly: true, sel: new Set(), ctx: null };
+function openRefLibrary(ctx = {}) {
+  Object.assign(refLib, { q: '', type: 'all', currentOnly: true, sel: new Set(), ctx });
+  const it = ctx.item && cbFind(ctx.item)?.it;
+  openDialog('Add references from the library', `${it ? `<p class="note" style="margin:0">Selected references are added to the course and cited by “${esc(it.title)}”.</p>` : ''}
+    <div class="csearch">
+      <label class="csearch-box">${ic('search')}<input id="refQ" type="search" autocomplete="off" spellcheck="false" placeholder="Search by publication number, title or topic" oninput="refLib.q=this.value;renderRefHits()" onkeydown="if(event.key==='Enter'){event.preventDefault();refAddSelected()}"></label>
+      <div class="csearch-opts">${pillHtml(REF_TYPES, refLib.type, 'setRefType', 'sm')}<button class="switch" role="switch" aria-checked="true" onclick="refLib.currentOnly=!refLib.currentOnly;this.setAttribute('aria-checked',refLib.currentOnly);renderRefHits()"><span class="trk"></span>Current editions only</button></div>
+    </div>
+    <div class="note" id="refCount" aria-live="polite"></div><div class="cres ref-res" id="refRes" role="listbox" aria-multiselectable="true" aria-label="Library references"></div>
+    <button class="linkbtn cb-add" onclick="openRefUpload(refLib.ctx)">${ic('upload')} Can't find it? Upload your own</button>`, refFoot());
+  document.querySelector('#dialog .dialog-card').classList.add('wide');
+  placePills(false); renderRefHits();
+}
+function setRefType(btn, v) { slide(btn); refLib.type = v; renderRefHits(); }
+function refHl(t) {
+  const w = refLib.q.trim().split(/\s+/).filter(Boolean); if (!w.length) return esc(t);
+  const re = new RegExp('(' + w.map(x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'ig');
+  return String(t).split(re).map((p, i) => i % 2 ? `<mark>${esc(p)}</mark>` : esc(p)).join('');
+}
+function renderRefHits() {
+  const words = refLib.q.trim().toLowerCase().split(/\s+/).filter(Boolean), inCourse = x => cb.params.refs.some(r => r.libId === x.id);
+  const pool = REF_LIBRARY.filter(x => !x.private);
+  const hits = pool.filter(x => (refLib.type === 'all' || refTypeOf(x) === refLib.type) && (!refLib.currentOnly || x.status === 'current')
+    && words.every(w => `${x.num} ${x.title} ${x.type} ${x.summary} ${x.topics || ''} ${x.ed}`.toLowerCase().includes(w)));
+  const hidden = refLib.currentOnly ? pool.filter(x => x.status === 'superseded').length : 0;
+  document.getElementById('refCount').textContent = `${hits.length} of ${plural(pool.length, 'reference')}${words.length ? ` match “${refLib.q.trim()}”` : ''}${hidden ? ` · ${hidden} superseded hidden` : ''}`;
+  document.getElementById('refRes').innerHTML = hits.map(x => {
+    const added = inCourse(x), on = refLib.sel.has(x.id);
+    const right = added ? tag('', 'In this course') : x.status === 'superseded' ? `<span class="ref-old">${tag('c', 'Superseded')}<button class="linkbtn" onclick="event.preventDefault();refPickCurrent('${x.updateId}')">Use ${esc(x.update)}</button></span>` : x.source === 'uploaded' ? tag('b', 'Uploaded') : tag('g', 'Current');
+    return `<label class="ref-row ${added ? 'added' : ''} ${on ? 'on' : ''}" role="option" aria-selected="${on}"><input type="checkbox" ${added ? 'checked disabled' : on ? 'checked' : ''} onchange="refToggle('${x.id}',this.checked,this)" aria-label="${esc(`${x.num} ${x.title}`.trim())}">
+      <span class="kico ${x.status === 'current' ? 'exam' : 'quiz'}">${ic(x.source === 'uploaded' ? 'file' : 'book')}</span>
+      <span class="cwho"><b>${refHl([x.num, x.title].filter(Boolean).join(' · '))}</b><small>${esc(x.type)} · ${refHl(x.ed)} · ${x.pages} pages indexed${x.usedBy.length ? ` · used by ${plural(x.usedBy.length, 'course')}` : ''}</small><span class="ref-sum">${refHl(x.summary)}</span></span>${right}</label>`;
+  }).join('') || `<div class="pv-empty"><b>No references match</b><p class="note">Try a publication number like “3-22.9”${refLib.currentOnly ? ', turn off “Current editions only”,' : ''} or upload your own.</p></div>`;
+}
+function refToggle(id, on, el) {
+  on ? refLib.sel.add(id) : refLib.sel.delete(id);
+  const row = el.closest('.ref-row'); row.classList.toggle('on', on); row.setAttribute('aria-selected', on);
+  document.getElementById('dFoot').innerHTML = refFoot();
+}
+function refPickCurrent(id) {
+  const x = libById(id); refLib.currentOnly = true; refLib.type = 'all'; refLib.q = x.num;
+  if (!cb.params.refs.some(r => r.libId === id)) refLib.sel.add(id);
+  document.getElementById('refQ').value = x.num;
+  const sw = document.querySelector('#dialog .switch'); sw.setAttribute('aria-checked', 'true');
+  const pb = document.querySelector('#dialog .spill button'); if (pb) slide(pb);
+  renderRefHits(); document.getElementById('dFoot').innerHTML = refFoot();
+}
+function refFoot() {
+  const n = refLib.sel.size;
+  return `<span class="note dfoot-hint" style="margin-right:auto">${n ? `${plural(n, 'reference')} selected · each goes into the review queue` : 'Select the references to add'}</span><button class="btn ghost press" onclick="closeDialog()">Cancel</button><button class="btn press" onclick="refAddSelected()" ${n ? '' : 'disabled'}>${ic('plus')} Add ${n ? plural(n, 'reference') : 'references'}</button>`;
+}
+function refAddSelected() {
+  if (!refLib.sel.size) return;
+  const added = cbAddRefs([...refLib.sel].map(libById), refLib.ctx);
+  closeDialog(); cbRerender();
+  notify({ tone: 'success', title: `Added ${plural(added.length, 'reference')}`, desc: `${added.map(r => r.title).join(', ')}. ${cb.draft ? 'New lines are waiting in the review.' : ''}`, duration: 4200 });
+  if (cb.stage === 'params') cbFocusField('ref-' + added[added.length - 1].id);
+}
+
+/* ---------- upload your own ---------- */
+const UP_TYPES = ['Local SOP', 'Lesson plan', 'Reference publication', 'Order', 'Instructor guide', 'Other'];
+const UP_REL = ['Unclassified', 'Limited distribution', 'CUI'];
+const UP_EXT = ['pdf', 'docx', 'doc', 'txt', 'md'];
+const refUp = { file: null, ctx: null, meta: {}, share: true, rights: false, err: '' };
+const extOf = n => (n.split('.').pop() || '').toLowerCase();
+const fmtSize = b => b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`;
+const estPages = f => Math.max(1, Math.round(f.size / ({ pdf: 55000, docx: 18000, doc: 30000 }[extOf(f.name)] || 3200)));
+function openRefUpload(ctx = {}) {
+  Object.assign(refUp, { file: null, ctx, meta: { num: '', title: '', ed: String(new Date().getFullYear()), type: 'Local SOP', rel: 'Unclassified' }, share: true, rights: false, err: '' });
+  renderRefUpload();
+}
+function renderRefUpload() {
+  const m = refUp.meta, f = refUp.file, cui = m.rel === 'CUI';
+  openDialog('Upload a reference', `
+    <div class="drop-zone ${f ? 'has' : ''}" id="upZone" role="button" tabindex="0" aria-label="Choose or drop a file" ondragover="upDrag(event,true)" ondragenter="upDrag(event,true)" ondragleave="upDrag(event,false)" ondrop="upDrop(event)" onclick="if(!refUp.file)document.getElementById('upFile').click()" onkeydown="if((event.key==='Enter'||event.key===' ')&&!refUp.file){event.preventDefault();document.getElementById('upFile').click()}">
+      ${f ? `<span class="kico exam">${ic('file')}</span><span class="cwho"><b>${esc(f.name)}</b><small>${fmtSize(f.size)} · ${extOf(f.name).toUpperCase()} · about ${plural(estPages(f), 'page')}</small></span><button class="btn sm ghost press" onclick="event.stopPropagation();document.getElementById('upFile').click()">Replace</button><button class="iconbtn sm press" onclick="event.stopPropagation();upClear()" aria-label="Remove file">${ic('x')}</button>`
+        : `<span class="dz-ico">${ic('upload')}</span><b>Drag a file here</b><span class="note">or <span class="linkbtn">choose a file</span> · PDF, Word, TXT or Markdown · up to 50 MB</span>`}
+    </div>
+    <input type="file" id="upFile" hidden accept=".pdf,.doc,.docx,.txt,.md" onchange="upPick(this.files[0]);this.value=''">
+    ${refUp.err ? `<div class="cb-issue block">${ic('alert')}<span>${esc(refUp.err)}</span></div>` : ''}
+    <div class="cb-form">
+      <label class="cb-field"><span class="cb-lab">Publication number</span><input class="ti" value="${esc(m.num)}" placeholder="e.g. SOP 3-01" oninput="refUp.meta.num=this.value"></label>
+      <label class="cb-field"><span class="cb-lab">Title</span><input class="ti" id="upTitle" value="${esc(m.title)}" placeholder="e.g. Known distance range SOP" oninput="refUp.meta.title=this.value;upFoot()"></label>
+      <label class="cb-field"><span class="cb-lab">Edition or date</span><input class="ti" value="${esc(m.ed)}" oninput="refUp.meta.ed=this.value"></label>
+      <label class="cb-field"><span class="cb-lab">Type</span><select class="sel" onchange="refUp.meta.type=this.value">${UP_TYPES.map(t => `<option ${m.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+    </div>
+    <div class="cb-field"><span class="cb-lab">Releasability</span>${pillHtml(UP_REL.map(r => [r, r]), m.rel, 'setUpRel', 'sm')}</div>
+    ${cui ? `<div class="sub-warn">${ic('alert')}<span>CUI stays with this course. It won't be added to the shared library, and its passages stay on the local index.</span></div>` : ''}
+    <button class="switch" role="switch" aria-checked="${refUp.share && !cui}" ${cui ? 'disabled' : ''} onclick="refUp.share=!refUp.share;this.setAttribute('aria-checked',refUp.share)"><span class="trk"></span>Add to the shared library so other instructors can find it</button>
+    <label class="attest"><input type="checkbox" id="upRights" ${refUp.rights ? 'checked' : ''} onchange="refUp.rights=this.checked;upFoot()"><span>I'm authorized to use this document for training, and it's the edition I intend to cite</span></label>`, '');
+  document.querySelector('#dialog .dialog-card').classList.add('wide');
+  placePills(false); upFoot();
+  setTimeout(() => document.getElementById(f ? 'upTitle' : 'upZone')?.focus(), 40);
+}
+function upFoot() {
+  const m = refUp.meta, ready = !!refUp.file && !!m.title.trim() && refUp.rights;
+  const why = !refUp.file ? 'Choose a file' : !m.title.trim() ? 'Add a title' : !refUp.rights ? 'Confirm you can use it' : 'Ready to upload and index';
+  document.getElementById('dFoot').innerHTML = `<span class="note dfoot-hint" style="margin-right:auto">${why}</span><button class="btn ghost press" onclick="closeDialog()">Cancel</button><button class="btn press" id="upGo" ${ready ? '' : 'disabled'} onclick="upRun()">${ic('upload')} Upload and index</button>`;
+}
+function upDrag(e, on) { e.preventDefault(); document.getElementById('upZone')?.classList.toggle('over', on); }
+function upDrop(e) { e.preventDefault(); upDrag(e, false); const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) upPick(f); }
+function upClear() { refUp.file = null; refUp.err = ''; renderRefUpload(); }
+function setUpRel(btn, v) { slide(btn); refUp.meta.rel = v; if (v === 'CUI') refUp.share = false; renderRefUpload(); }
+function upPick(file) {
+  if (!file) return;
+  const ext = extOf(file.name);
+  if (!UP_EXT.includes(ext)) { refUp.err = `“${file.name}” isn't a supported file. Use PDF, Word, TXT or Markdown.`; return renderRefUpload(); }
+  if (file.size > 50 * 1048576) { refUp.err = `“${file.name}” is ${fmtSize(file.size)}. The limit is 50 MB.`; return renderRefUpload(); }
+  refUp.err = ''; refUp.file = { name: file.name, size: file.size };
+  const base = file.name.replace(/\.[^.]+$/, '').replace(/_+/g, ' ').replace(/\s+/g, ' ').trim();
+  const num = base.match(/\b(SOP|MCO|MCRP|MCWP|MCTP|TC|FM|NAVMC|ATP)[\s-]*\d[\w.-]*/i);   // "KD_Range_SOP-3-01" → SOP 3-01 · KD Range
+  if (!refUp.meta.num && num) refUp.meta.num = num[0].toUpperCase().replace(/^([A-Z]+)[\s-]*/, '$1 ');
+  if (!refUp.meta.title) refUp.meta.title = (num ? base.replace(num[0], '') : base).replace(/(\S)-(\S)/g, '$1 $2').replace(/\s+/g, ' ').trim() || base;
+  renderRefUpload();
+}
+function upRun() {
+  const m = { ...refUp.meta }, f = refUp.file, pages = estPages(f), passages = pages * 5 + 3, shared = refUp.share && m.rel !== 'CUI', ctx = refUp.ctx;
+  const title = `Indexing ${m.num || m.title}`, live = () => !document.getElementById('dialog').hidden && document.getElementById('dTitle').textContent === title;
+  const setBody = h => { if (live()) document.getElementById('dBody').innerHTML = h; }, setFoot = h => { if (live()) document.getElementById('dFoot').innerHTML = h; };
+  document.getElementById('dTitle').textContent = title;
+  setBody(`<div class="drop-zone has"><span class="kico exam">${ic('file')}</span><span class="cwho"><b>${esc(f.name)}</b><small>${fmtSize(f.size)} · ${esc(m.type)} · ${esc(m.rel)}</small></span></div>
+    <ul class="steps" id="upSteps">${['Upload the file', 'Quarry: extract text and structure', 'Anchor: index passages', 'Add to the course'].map(s => `<li class="step"><span class="stepdot"></span>${s}</li>`).join('')}</ul>
+    <div class="up-prog"><div class="up-bar"><i id="upBar" style="width:0%"></i></div><span class="note" id="upNote">Uploading · 0%</span></div>`);
+  setFoot(`<span class="note dfoot-hint" style="margin-right:auto">You can close this. Indexing keeps going.</span><button class="btn ghost press" onclick="closeDialog()">Hide</button>`);
+  const steps = () => [...document.querySelectorAll('#upSteps .step')], set = k => steps().forEach((s, j) => { s.classList.toggle('done', j < k); s.classList.toggle('run', j === k); });
+  const note = t => { const n = document.getElementById('upNote'); if (n) n.textContent = t; };
+  set(0); let pct = 0;
+  const timer = setInterval(() => {
+    pct = Math.min(100, pct + 9); const bar = document.getElementById('upBar'); if (bar) bar.style.width = pct + '%'; note(`Uploading · ${pct}% of ${fmtSize(f.size)}`);
+    if (pct < 100) return;
+    clearInterval(timer); set(1); note(`Found ${plural(pages, 'page')} and ${plural(Math.max(2, Math.round(pages / 6)), 'section heading')}`);
+    setTimeout(() => {
+      set(2); note(`Indexed ${passages} passages for grounded citations`);
+      setTimeout(() => {
+        set(3);
+        const entry = { id: `lib-up${++cbSeq}`, num: m.num.trim(), title: m.title.trim(), ed: m.ed.trim() || String(new Date().getFullYear()), status: 'current', type: m.type, pages, usedBy: [], summary: `Uploaded by SSgt White · ${m.rel}`, source: 'uploaded', rel: m.rel, private: !shared, file: f.name };
+        REF_LIBRARY.push(entry);
+        const [ref] = cbAddRefs([entry], ctx);
+        setTimeout(() => {
+          set(4); if (state.view === 'build') cbRerender();
+          setBody(`<div class="up-done"><span class="qdone">${ic('check')}</span><span class="cwho"><b>${esc(ref.title)}</b><small>${plural(pages, 'page')} · ${passages} passages indexed · ${esc(m.rel)} · ${shared ? 'shared to the library' : 'kept with this course'}</small></span></div>
+            <p class="note">It's now a reference on ${esc(cb.params.code)}${ctx && ctx.item ? ` and cited by “${esc(cbFind(ctx.item)?.it.title || '')}”` : ''}. ${cb.draft ? 'Its line is waiting in the review.' : ''}</p>`);
+          setFoot(`<button class="btn ghost press" onclick="openRefUpload(refUp.ctx)">${ic('upload')} Upload another</button><button class="btn press" onclick="closeDialog()">Done</button>`);
+          notify({ tone: 'success', title: 'Reference uploaded', meta: ref.title, desc: `${passages} passages indexed${shared ? ' · shared to the library' : ''}`, duration: 4200 });
+        }, 450);
+      }, 800);
+    }, 700);
+  }, 70);
 }
 
 
