@@ -14,10 +14,16 @@
     "test": "pnpm run test:next && pnpm run test:api",
     "api:test": "pnpm run test:api",
     "db:generate": "prisma generate --schema ./prisma/schema.prisma",
-    "db:seed": "prisma db seed",
+    "db:seed": "node scripts/database.mjs seed",
     "db:studio": "prisma studio --schema ./prisma/schema.prisma",
     "postinstall": "prisma generate",
-    "test:upstream-learning": "node --test test/auth.test.mjs test/learning-core.test.mjs test/learning-evidence.test.mjs test/learning-handlers.test.mjs test/learning-persistence.test.mjs"
+    "test:upstream-learning": "node --test test/auth.test.mjs test/learning-core.test.mjs test/learning-evidence.test.mjs test/learning-handlers.test.mjs test/learning-persistence.test.mjs",
+    "db:migrate": "node scripts/database.mjs develop",
+    "db:deploy": "node scripts/database.mjs deploy",
+    "db:status": "node scripts/database.mjs status",
+    "test:db-policy": "node --test tests/database-seed*.mjs",
+    "test:db": "node tests/postgres-integration.mjs",
+    "db:proxy": "node scripts/cloud-sql-proxy.mjs"
   },
   "private": true,
   "prisma": {
@@ -25,7 +31,9 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "@google-cloud/cloud-sql-connector": "^1.12.0",
     "@opentelemetry/api": "^1.9.1",
+    "@prisma/adapter-pg": "^6.19.3",
     "@prisma/client": "^6.3.0",
     "@replit/connectors-sdk": "^0.4.3",
     "@tanstack/react-query": "^5.90.21",
@@ -43,6 +51,7 @@
     "next": "15.5.25",
     "openid-client": "^6.8.8",
     "pdfjs-dist": "^4.10.38",
+    "pg": "^8.23.0",
     "pino": "^9.14.0",
     "pino-http": "^10.5.0",
     "quarry": "github:groundworklms/quarry#465b7515732bbc08b80b6ec8684e1fc49c7985ea",
