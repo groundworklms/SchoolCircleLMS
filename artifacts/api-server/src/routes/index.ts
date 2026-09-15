@@ -2,6 +2,9 @@ import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 // @ts-expect-error Legacy route module is intentionally kept as JavaScript for parity.
 import capabilitiesRouter from "./capabilities.js";
+// @ts-expect-error Feedback route intentionally remains JavaScript to match the
+// upstream Next handler's implementation.
+import feedbackRouter from "./feedback.js";
 // @ts-expect-error Legacy route module is intentionally kept as JavaScript for parity.
 import doctrineRouter from "./doctrine.js";
 // @ts-expect-error Legacy route module is intentionally kept as JavaScript for parity.
@@ -30,6 +33,7 @@ import { askJSON, providerStatus } from "../lib/model.js";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(feedbackRouter);
 // Browser OIDC endpoints are mounted below /api by app.ts.  The middleware
 // in app.ts runs before this router, so /auth/user also sees the verified
 // Prisma-backed session identity.
