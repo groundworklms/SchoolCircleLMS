@@ -30,6 +30,10 @@ const nextConfig = {
     'understudy',
     'waypoint',
     'whetstone',
+    // Cloud SQL connector (google-auth) and pg are loaded lazily by lib/db.js.
+    '@google-cloud/cloud-sql-connector',
+    '@prisma/adapter-pg',
+    'pg',
   ],
   env: {
     NEXT_PUBLIC_GIT_SHA: process.env.NEXT_PUBLIC_GIT_SHA || gitSha(),
