@@ -32,6 +32,7 @@ Imported SchoolCircle learning platform and hackathon planning board.
 ## Architecture decisions
 
 - Keep the migration narrow so collaborators can reconcile ongoing GitHub changes; do not replace source logic with generated clients or redesign components.
+- Use the full twelve-repository ecosystem described in `docs/05-arsenal-contracts.md` when extending SchoolCircle. Reuse each companion's existing capability rather than recreating it in the host. Verify actual source exports and versions before wiring integrations; documentation or ingested reference material alone does not establish runtime integration. Keep grounding/citation behavior intact.
 
 ## Product
 
@@ -41,6 +42,7 @@ Imported SchoolCircle learning platform and hackathon planning board.
 ## User preferences
 
 - Git work must stay on `replit/port`. Do not commit or push to the GitHub remote's main branch.
+- Before considering integration work done, rebase `replit/port` onto the latest merged `origin/main`, reconcile the ported paths, and recheck affected behavior. Do not push to `main` without explicit approval.
 - Keep this port current with GitHub `origin/main` (user-confirmed: merged team changes only): fetch and compare before further implementation or preparing a push. Do not incorporate collaborators' unmerged feature branches. Reconcile source changes into the ported paths rather than blindly pulling the Next.js layout over the workspace. This is a development workflow, not automatic background synchronization.
 - Preserve the imported routes, styling, and grounding/citation logic exactly; collaborators are actively editing the hackathon source on GitHub. Limit migration changes to runtime adapters and workspace wiring.
 
