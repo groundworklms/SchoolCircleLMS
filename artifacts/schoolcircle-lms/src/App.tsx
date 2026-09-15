@@ -4,6 +4,15 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
+import { AuthProvider } from '@/auth/AuthProvider';
+import AuthGuard from '@/auth/AuthGuard';
+import AskWidget from '@/components/AskWidget';
+import QaWidget from '@/components/QaWidget';
+import Landing from '@/pages/Landing';
+import Login from '@/pages/Login';
+import '@/styles/widgets.css';
+import '@/styles/widget-fixes.css';
+import '@/styles/auth-fixes.css';
 // @ts-ignore - migrated JSX modules intentionally remain JavaScript for parity with the source app.
 import Board from '@/pages/board';
 // @ts-ignore - migrated JSX modules intentionally remain JavaScript for parity with the source app.
@@ -23,9 +32,11 @@ function Router() {
     // survives a page crash.
     <RoutedErrorBoundary>
       <Switch>
-        <Route path="/" component={Board} />
-        <Route path="/prototype" component={Prototype} />
-        <Route path="/prototype/*" component={Prototype} />
+        <Route path="/" component={Landing} />
+        <Route path="/login" component={Login} />
+        <Route path="/plan" component={Board} />
+        <Route path="/prototype"><AuthGuard><Prototype /></AuthGuard></Route>
+        <Route path="/prototype/*"><AuthGuard><Prototype /></AuthGuard></Route>
         <Route component={NotFound} />
       </Switch>
     </RoutedErrorBoundary>
@@ -41,9 +52,13 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
-          <Router />
-        </WouterRouter>
+        <AuthProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}>
+            <Router />
+          </WouterRouter>
+          <AskWidget />
+          <QaWidget />
+        </AuthProvider>
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>

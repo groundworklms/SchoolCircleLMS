@@ -78,15 +78,15 @@
   --elevate-1: rgba(0, 0, 0, 0.03);
   --elevate-2: rgba(0, 0, 0, 0.08);
 
-  --background: 0 0% 0%;
+  --background: 225 20% 10%;
 
-  --foreground: 0 0% 0%;
+  --foreground: 220 18% 92%;
 
-  --border: 0 0% 0%;
+  --border: 220 14% 24%;
 
-  --card: 0 0% 0%;
+  --card: 224 18% 14%;
 
-  --card-foreground: 0 0% 0%;
+  --card-foreground: 220 18% 92%;
 
   --card-border: 0 0% 0%;
 
@@ -112,9 +112,9 @@
 
   --popover-border: 0 0% 0%;
 
-  --primary: 0 0% 0%;
+  --primary: 351 74% 39%;
 
-  --primary-foreground: 0 0% 0%;
+  --primary-foreground: 0 0% 100%;
 
   --secondary: 0 0% 0%;
 
@@ -140,7 +140,7 @@
   --chart-4: 0 0% 0%;
   --chart-5: 0 0% 0%;
 
-  --app-font-sans: 'Inter', sans-serif;
+  --app-font-sans: system-ui, sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: 0.5rem; /* 8px */
