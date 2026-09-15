@@ -137,7 +137,8 @@ for a direct remote connection.
 
 ## 3. Migrations: confirm the target, never reset
 
-The committed initial migration creates the schema already described by Prisma.
+The committed migrations (`20250915185900_init`, then `20250915190000_learning_records`)
+create the schema described by Prisma.
 It is intended for an **empty database**. Check for existing tables and migration
 history first using a read-only connection.
 
