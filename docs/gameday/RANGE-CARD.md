@@ -181,11 +181,11 @@ Every soldier, its entry point in the app, the exact call, how it's grounded, an
 | **Sourcerer** `ship` | `POST /api/ask` | `tutor.askDoctrine(q)` | Anchor cite-or-refuse | reads Chunk (FTS fallback) |
 | **Understudy** `ship` | behind `/api/ask` | `checkGrounding` · `fidelityReport` | gates the answer before it ships | — |
 | **Whetstone** `ship` | `POST /api/mastery/start` · `/turn` | `deriveMasteryRubric` · `firstQuestion` · `scoreTurn` | grounded in the objective's source | `Attempt.create` · `Mastery.upsert` |
-| **Sextant** `ship` | `/learn/insight` · lib `classGaps()` | `learningGain` · `classGaps` · `masteryRollup` | — | reads Attempt / Mastery |
+| **Sextant** `ship` | `/prototype` · lib `classGaps()` | `learningGain` · `classGaps` · `masteryRollup` | — | reads Attempt / Mastery |
 | **Cartridge** `ship` | `GET /api/scorm/:courseId` | `buildScormZip(course)` | — | reads Course / Section / Item |
 | **Cadence** `ship` | `POST /api/plan` (+ Schedule model) | `plan()` · `toICS()` | — | `Schedule.create` |
 | **Hotwash** `ship` | `POST /api/aar` (planned) | `hotwash()` · `narrativeAAR()` | — | reads Attempt + critiques |
-| **Waypoint** `ship` | `/learn/profile` (planned) | `profile()` · `classProfile()` | — | learner responses → faculty view |
+| **Waypoint** `ship` | `/prototype` (planned) | `profile()` · `classProfile()` | — | learner responses → faculty view |
 
 The `verification throughline`: Rubricon proves **grounding**, Sourcerer proves **faithfulness**, Whetstone proves **mastery**, Sextant proves **learning gain**, Understudy proves **doctrinal fidelity**. Five soldiers, five things proven not asserted.
 
@@ -198,7 +198,7 @@ docker start schoolcircle-dev          # local Postgres
 bash ops/tunnel.sh                     # workstation :8000 → Anchor on the Orin (KEEP OPEN)
 npm run dev                            # the app on :3111
 bash ops/orin-check.sh                 # link · services · health · corpus · key — all green
-# then in the app: open /learn/ask, ask "what is trigger control?" → confirm source = anchor
+# then in the app: open /prototype, ask "what is trigger control?" → confirm source = anchor
 ```
 
 ⚠ The Anchor tunnel is **not** persistent — if the tutor ever shows `source = fts`, re-run `ops/tunnel.sh`. (If it drops mid-demo, the FTS fallback still answers *with citations* — degrade, don't crash.)
@@ -226,8 +226,8 @@ The fields the use-case pages ask for, mapped to what we have.
 
 | Field | Status | What it is |
 | --- | --- | --- |
-| **Working prototype** | Ready | SchoolCircle at `/learn` — generate · tutor · rubric · mastery · SCORM · roles |
-| **Demo link** | Live | [jeranaias.github.io/grounded-training-demo](https://jeranaias.github.io/grounded-training-demo) (+ the interactive system at `/app.html`) |
+| **Working prototype** | Ready | SchoolCircle at `/prototype` — generate · tutor · rubric · mastery · SCORM · roles |
+| **Demo link** | Live | [schoolcircle.tannerwhite.net](https://schoolcircle.tannerwhite.net) (+ the interactive system at `/prototype`) |
 | **Repository** | Public | the Apache-2.0 platoon under `github.com/groundworklms` |
 | **Architecture diagram** | Above | edge / host / cloud, plus the piece-by-piece integration sequences |
 | **Tools used** | Listed | Next.js · Prisma · Postgres · Jetson Orin · llama.cpp · bge · HHEM · OpenRouter (Gemini) · Apache-2.0 |

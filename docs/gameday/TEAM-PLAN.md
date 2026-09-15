@@ -67,7 +67,7 @@ and SCORM/LTI export seams. Makes the surfaces flow smooth with the agreed front
 agreed product direction into real, on-brand UI. This is the "make it real" lane; Morgan/White pair
 and unblock. Start with well-scoped, high-learning tickets and grow.
 **Ramp (day one, Jesse walks you in):**
-1. Install: Node 18+, VS Code, Git, Claude Code. `git clone` the repo; `npm install`; `npm run dev` → open `http://localhost:3111/learn`.
+1. Install: Node 18+, VS Code, Git, Claude Code. `git clone` the repo; `npm install`; `npm run dev` → open `http://localhost:3111/prototype`.
 2. Read `../01-design-system.md` — the tokens, the shell, the component catalog. That file is your source of truth for how things should look.
 3. First tickets (safe, visible wins): implement one screen from `../06-learner-loop.md` / `../07-instructor-loop.md` using the design-system components; then pick up a QA issue Thompson filed and make the fix.
 4. Workflow: branch → change → `npm run dev` to see it → push → Morgan/White review. Ask early, commit often.
@@ -76,7 +76,7 @@ and unblock. Start with well-scoped, high-learning tickets and grow.
 ## Thompson — QA & product voice
 **Owns:** the product from the Marine's eyes. No code required.
 **Gameday tasks:**
-- Walk the deployed showcase (`jeranaias.github.io/grounded-training-demo`, both the landing and `/app.html`) and the live app as a student *and* an instructor.
+- Walk the deployed showcase (`schoolcircle.tannerwhite.net`, both the landing and `/prototype`) and the live app as a student *and* an instructor.
 - File every bug **and** every idea via the **QA widget** (bottom-left) — it auto-captures where you are and opens a GitHub issue; pick `bug` / `idea` / `question`.
 - Own the issue board: which are most important, which block the demo, what would make a judge say "wow."
 - Shape the 5-minute run-of-show from the user's perspective (see RANGE-CARD.md → SHOW).
@@ -91,6 +91,6 @@ and unblock. Start with well-scoped, high-learning tickets and grow.
 - **Demo-first:** if it isn't in the 5-minute run-of-show, it's a bonus, not a blocker. Keep the banked golden course as the safety net.
 
 ## Setup (every member, once)
-1. `git clone` the repo (the fresh `SchoolCircleLMS` once it exists; until then, `grounded-training-demo`).
+1. `git clone https://github.com/groundworklms/SchoolCircleLMS` — the app repo (docs travel with it).
 2. Read `docs/gameday/RANGE-CARD.md` + `docs/gameday/COLD-BORE.md` + `docs/README.md`.
 3. Point your Claude Code instance at your lane's docs (listed above). You're armed.

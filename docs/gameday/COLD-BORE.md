@@ -13,7 +13,7 @@ The cold-bore shot is the first round from a clean barrel — the one that has t
 - ◆ **Anchor use case:** #1 Rubric Generator — built
 - ◆ **Cluster:** 5 of 17 use cases, one platform
 - ◆ **Team:** 5, led by SSgt White
-- ◆ **Live showcase:** jeranaias.github.io/grounded-training-demo
+- ◆ **Live showcase:** schoolcircle.tannerwhite.net
 
 ---
 
@@ -103,7 +103,7 @@ Gameday order: `clone → npm install → wire env (OpenRouter key · DOCTRINE_B
 
 ## BUILD KIT — What a cold instance needs to build it
 
-The full design + architecture spec lives as a documentation stack — **[github.com/jeranaias/grounded-training-demo/docs](https://github.com/jeranaias/grounded-training-demo/tree/main/docs)** (north-star · design-system · architecture · data-model · grounding · arsenal-contracts · learner-loop · instructor-loop · build-guide · roadmap). **Copy that `docs/` folder into the new repo on day one.** The load-bearing essentials, inline:
+The full design + architecture spec lives as a documentation stack — **[github.com/groundworklms/SchoolCircleLMS/docs](https://github.com/groundworklms/SchoolCircleLMS/tree/main/docs)** (north-star · design-system · architecture · data-model · grounding · arsenal-contracts · learner-loop · instructor-loop · build-guide · roadmap). **Copy that `docs/` folder into the new repo on day one.** The load-bearing essentials, inline:
 
 | Field | Detail |
 | --- | --- |
@@ -164,15 +164,15 @@ Momentum going into Day 1 — everything here is done, tested, and committed loc
 
 ### ◧ Built & proven
 
-- [x] **#1 Rubric Generator — complete.** Studio (146 real tasks) → grounded BARS → SME review (edit/approve/reject each anchor) → JSON export. Live at `/learn/rubrics`.
-- [x] **#12 AI Tutor — complete.** Ask the doctrine → cited answer or honest refusal, wired live to Anchor on the Orin (HHEM-verified, score shown), app-FTS fallback. The out-of-doctrine refusal fires for real. Live at `/learn/ask`.
-- [x] **#13 + #16 — complete.** Pipeline now generates a grounded scenario-with-coaching, higher-order discussion prompts, and an instructor summary. A full **MCPP course** (MCWP 5-10) generated alongside marksmanship — MEU planning scenario, SFAD-C coaching, Bloom's-tier prompts. Course switcher live on `/learn`.
-- [x] **#9 Mastery agent — built (stand-in).** Grounded discuss-to-mastery at `/learn/mastery`: derives a rubric from the objective, probes, scores each answer, coaches the gap, advances, records a score for the LMS. Proven weak→developing, strong→mastered. Swaps to real 8670 ELOs on MCeLE access.
+- [x] **#1 Rubric Generator — complete.** Studio (146 real tasks) → grounded BARS → SME review (edit/approve/reject each anchor) → JSON export. Live at `/prototype`.
+- [x] **#12 AI Tutor — complete.** Ask the doctrine → cited answer or honest refusal, wired live to Anchor on the Orin (HHEM-verified, score shown), app-FTS fallback. The out-of-doctrine refusal fires for real. Live at `/prototype`.
+- [x] **#13 + #16 — complete.** Pipeline now generates a grounded scenario-with-coaching, higher-order discussion prompts, and an instructor summary. A full **MCPP course** (MCWP 5-10) generated alongside marksmanship — MEU planning scenario, SFAD-C coaching, Bloom's-tier prompts. Course switcher live on `/prototype`.
+- [x] **#9 Mastery agent — built (stand-in).** Grounded discuss-to-mastery at `/prototype`: derives a rubric from the objective, probes, scores each answer, coaches the gap, advances, records a score for the LMS. Proven weak→developing, strong→mastered. Swaps to real 8670 ELOs on MCeLE access.
 - [x] **Offline VERIFIED.** Broke the cloud key: tutor still answered via Anchor, refusal still fired, courses still rendered, generation failed gracefully. Zero external assets. Runbook: `ops/OFFLINE.md`.
 - [x] **Roles & auth — built.** Instructor vs. learner behind one swappable seam (`lib/auth.js`) → LTI 1.3 / SSO / CAC. Tabs filter by role; Studio/Rubrics/Insight guarded server-side. Verified by URL.
 - [x] **Gap-fills built — Cadence & Hotwash.** The chief instructor's two open asks now have real, tested repos: **Cadence** (syllabus+calendar → 3-COA study plan + .ics, 17 tests) and **Hotwash** (course critiques → ranked AAR across iterations, 16 tests). **Public & green** — `github.com/groundworklms/cadence · /hotwash`.
 - [x] **Run-of-show REHEARSED.** All beats pass live end-to-end: generate · cited answer + refusal (Anchor/HHEM) · rubric · mastery · SCORM export. Demo-day gotcha caught: the Anchor tunnel isn't persistent — run `ops/tunnel.sh` at start (fallback to FTS is graceful if it drops).
-- [x] **Public showcase refreshed.** jeranaias.github.io/grounded-training-demo — platform landing, real grounded output, and the linked arsenal; the full interactive instructor + student system at `/app.html` (with a live Ask-tutor widget and a QA issue-reporter).
+- [x] **Public showcase refreshed.** schoolcircle.tannerwhite.net — platform landing, real grounded output, and the linked arsenal; the full interactive instructor + student system at `/prototype` (with a live Ask-tutor widget and a QA issue-reporter).
 - [x] **BARS proven on real doctrine.** Anchors traceable to source performance-steps; vague standards correctly flag for SME definition rather than inventing criteria.
 - [x] **Corpus staged.** 44E parsed → 146 tasks; MCWP 5-10 (current) ingested = 163 chunks; TC 3-22.9 retained. App FTS = 345 chunks.
 - [x] **Pipeline hardened + golden course banked.** Per-request timeout (a hung model call can't stall a run); a full 36-item course saved as the guaranteed demo artifact.
@@ -226,7 +226,7 @@ ssh -i ~/.ssh/id_ed25519 vanguard@192.168.55.1
 | **Daily check** | Link, services, health, corpus, key — one shot each morning. | `bash ops/orin-check.sh` |
 | **Key → .env** | Pull the authoring key into an app env file. | `bash ops/get-key.sh path/.env` |
 | **Run the app** | Next.js on `:3111`; Postgres in Docker. | `docker start schoolcircle-dev && npm run dev` |
-| **#1 live at** | `/learn/rubrics` — the Rubric Studio + SME review, working now. | — |
+| **#1 live at** | `/prototype` — the Rubric Studio + SME review, working now. | — |
 
 ---
 
