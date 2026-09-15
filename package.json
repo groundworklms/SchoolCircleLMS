@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3111",
     "build": "next build",
+    "test:doctrine-auth": "node --experimental-test-module-mocks --test tests/doctrine-auth.test.mjs",
     "start": "next start -p 3111",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -16,8 +17,10 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
     "@prisma/client": "^6.3.0",
     "firebase": "^12.19.0",
+    "firebase-admin": "^14.4.0",
     "next": "15.5.25",
     "pdfjs-dist": "^4.10.38",
     "react": "19.0.0",
