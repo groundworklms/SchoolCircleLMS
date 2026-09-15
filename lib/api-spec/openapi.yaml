@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: courses
+    description: Learner-facing course content
 paths:
   /healthz:
     get:
@@ -24,6 +26,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /courses:
+    get:
+      operationId: listCourses
+      tags: [courses]
+      summary: List learner courses
+      description: Returns courses with sections and human-approved learner items only.
+      responses:
+        "200":
+          description: Courses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseListResponse"
+        "500":
+          description: Database error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /courses/{id}:
+    get:
+      operationId: getCourse
+      tags: [courses]
+      summary: Get a learner course
+      description: Returns one course with sections and human-approved learner items only.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Course identifier
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Course
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CourseResponse"
+        "404":
+          description: Course not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Database error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +86,138 @@ components:
           type: string
       required:
         - status
+    CourseListResponse:
+      type: object
+      properties:
+        courses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Course"
+      required:
+        - courses
+    CourseResponse:
+      type: object
+      properties:
+        course:
+          $ref: "#/components/schemas/Course"
+      required:
+        - course
+    Course:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        sourceId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        sections:
+          type: array
+          items:
+            $ref: "#/components/schemas/Section"
+      required:
+        - id
+        - title
+        - sourceId
+        - createdAt
+        - sections
+    Section:
+      type: object
+      properties:
+        id:
+          type: string
+        courseId:
+          type: string
+        title:
+          type: string
+        order:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CourseItem"
+      required:
+        - id
+        - courseId
+        - title
+        - order
+        - items
+    CourseItem:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [LESSON, QUESTION, SCENARIO]
+        stem:
+          type: string
+        options:
+          allOf:
+            - $ref: "#/components/schemas/JsonValue"
+          nullable: true
+        answer:
+          allOf:
+            - $ref: "#/components/schemas/JsonValue"
+          nullable: true
+        rationale:
+          type: string
+          nullable: true
+        citation:
+          allOf:
+            - $ref: "#/components/schemas/Citation"
+          nullable: true
+        support:
+          type: number
+          format: double
+          nullable: true
+        status:
+          type: string
+          enum: [APPROVED]
+      required:
+        - id
+        - kind
+        - stem
+        - options
+        - answer
+        - rationale
+        - citation
+        - support
+        - status
+    Citation:
+      type: object
+      additionalProperties: true
+      properties:
+        citation:
+          type: string
+        pubId:
+          type: string
+        section:
+          type: string
+        para:
+          type: string
+        page:
+          type: string
+    JsonValue:
+      description: JSON value stored with an item (for example, question options or an answer).
+      oneOf:
+        - type: string
+        - type: number
+        - type: boolean
+        - type: object
+          additionalProperties: true
+        - type: array
+          items: {}
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+      required:
+        - error
 
