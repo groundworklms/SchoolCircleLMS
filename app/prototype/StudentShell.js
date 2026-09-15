@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import './student.css';
 
 import { COURSES } from './data';
@@ -398,8 +400,21 @@ export default function StudentShell({ nav, onSwitchRole }) {
   const prefs = usePrefs();
   const course = courseId ? COURSES[courseId] : null;
 
+  // Remember the lesson + page you were on per course, so leaving Lessons for
+  // another screen and coming back resumes where you left off instead of the
+  // lesson list.
+  const lessonMemory = useRef({});
+  useEffect(() => {
+    if (area === 'course' && view === 'lessons' && lessonId) {
+      lessonMemory.current[courseId] = { lessonId, page };
+    }
+  }, [area, view, courseId, lessonId, page]);
+
   const setArea = (a) => nav.go({ area: a, courseId: null, view: null, lessonId: null, page: null });
-  const setView = (v) => nav.go({ area: 'course', courseId, view: v, lessonId: null, page: null, threadId: null });
+  const setView = (v) => {
+    const remembered = v === 'lessons' ? lessonMemory.current[courseId] : null;
+    nav.go({ area: 'course', courseId, view: v, lessonId: remembered?.lessonId ?? null, page: remembered?.page ?? null, threadId: null });
+  };
   const open = (id, v = 'home') => nav.go({ area: 'course', courseId: id, view: v || 'home', lessonId: null, page: null });
   const openLesson = (id, pg = null) => nav.go({ area: 'course', courseId, view: 'lessons', lessonId: id, page: pg, threadId: null });
   const openThread = (id, forLesson = null) => nav.go({ area: 'course', courseId, view: 'discussions', threadId: id, lessonId: forLesson, page: null });

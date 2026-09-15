@@ -93,6 +93,46 @@ const COURSES = {
     ],
     questions: [
       {
+        difficulty: 'basic',
+        topic: 'Transmission Lines',
+        q: 'What does SWR stand for?',
+        answers: [
+          { text: 'Standing Wave Ratio', correct: true },
+          { text: 'Signal Wave Reflection', correct: false },
+          { text: 'Static Wave Resistance', correct: false },
+          { text: 'Source Wave Regulation', correct: false },
+        ],
+        rationale:
+          'SWR — standing wave ratio — quantifies the ratio of maximum to minimum voltage on a transmission line caused by a mismatch. A perfect match reads 1:1.',
+      },
+      {
+        difficulty: 'basic',
+        topic: 'Fault Isolation',
+        q: 'Which best describes a signal-flow approach to fault isolation?',
+        answers: [
+          { text: 'Guessing which component failed based on symptoms alone', correct: false },
+          { text: 'Tracing a signal stage by stage until the faulty component is located', correct: true },
+          { text: 'Replacing every stage until the fault clears', correct: false },
+          { text: 'Testing only the final stage before the antenna', correct: false },
+        ],
+        rationale:
+          'Signal flow means tracing a signal stage by stage to isolate a fault to one component, rather than swapping parts or checking only the last stage.',
+      },
+      {
+        difficulty: 'basic',
+        topic: 'Grounding & Bonding',
+        q: 'What is bonding, as applied to two equipment racks?',
+        answers: [
+          { text: 'Joining metallic parts to form a low-impedance electrical path', correct: true },
+          { text: 'Insulating the racks from each other', correct: false },
+          { text: 'Carrying the primary AC operating current', correct: false },
+          { text: 'Grounding the operator rather than the equipment', correct: false },
+        ],
+        rationale:
+          'Bonding joins metallic parts to form a low-impedance electrical path between them, distinct from carrying operating current or physically securing equipment.',
+      },
+      {
+        difficulty: 'standard',
         topic: 'Transmission Lines',
         q: 'Forward power reads 100 W and reflected power reads 4 W. What is the approximate SWR?',
         answers: [
@@ -105,6 +145,7 @@ const COURSES = {
           'Power ratios must be converted to a voltage ratio first. The reflection coefficient is the square root of reflected over forward power: sqrt(4/100) = 0.2. SWR is then (1 + 0.2) / (1 - 0.2) = 1.5 : 1. The most common error is skipping the square root and using the raw power ratio of 0.04, which yields about 1.08 : 1 and understates the mismatch.',
       },
       {
+        difficulty: 'standard',
         topic: 'Fault Isolation',
         q: 'A transmitter shows high VSWR immediately after a field antenna install. Which is the most likely CAUSE rather than a symptom?',
         answers: [
@@ -117,6 +158,7 @@ const COURSES = {
           'Power foldback, a high meter reading, and low output are all downstream effects of the impedance mismatch. Only the damaged connector is a physical cause. Distinguishing cause from symptom is the core skill in signal-flow troubleshooting.',
       },
       {
+        difficulty: 'standard',
         topic: 'Grounding & Bonding',
         q: 'What is the primary purpose of a bonding strap between two equipment racks?',
         answers: [
@@ -127,6 +169,45 @@ const COURSES = {
         ],
         rationale:
           'Bonding equalizes potential and provides a low-impedance path, which matters most at RF where a wire long enough to be a fraction of a wavelength stops behaving like a short. It is not a structural or current-carrying member.',
+      },
+      {
+        difficulty: 'challenge',
+        topic: 'Transmission Lines',
+        q: 'A line shows a measured return loss of 14 dB. Approximately what is the SWR?',
+        answers: [
+          { text: '1.5 : 1', correct: true },
+          { text: '1.14 : 1', correct: false },
+          { text: '2.33 : 1', correct: false },
+          { text: '0.2 : 1', correct: false },
+        ],
+        rationale:
+          'Return loss in dB converts to the reflection coefficient via |Γ| = 10^(-RL/20): 10^(-14/20) ≈ 0.2. SWR is then (1 + 0.2) / (1 - 0.2) = 1.5 : 1 — the same mismatch as a 4 W reflected / 100 W forward reading. The common error is treating the dB value itself as a ratio.',
+      },
+      {
+        difficulty: 'challenge',
+        topic: 'Fault Isolation',
+        q: 'After rough transport handling, a radio shows both low output power AND high VSWR at the same time. What is the most efficient troubleshooting order?',
+        answers: [
+          { text: 'Assume a shared root cause and check the antenna feed line and connectors first', correct: true },
+          { text: 'Replace the transmitter first, since it is the most expensive component', correct: false },
+          { text: 'Troubleshoot output power and VSWR as fully unrelated faults, in parallel', correct: false },
+          { text: 'Escalate immediately without an operator-level check', correct: false },
+        ],
+        rationale:
+          'A damaged or loosened feedline connector — plausible after rough handling — produces both symptoms at once: it reflects power back (raising VSWR) and reduces power actually reaching the antenna (lowering output). Checking the shared cause first is faster than treating two symptoms as two separate faults.',
+      },
+      {
+        difficulty: 'challenge',
+        topic: 'Grounding & Bonding',
+        q: 'A bonding strap runs between two racks at a separation close to a quarter-wavelength at the operating HF frequency. What is the risk?',
+        answers: [
+          { text: 'At that length the strap can present high impedance instead of a low-impedance path, reducing its effectiveness', correct: true },
+          { text: 'None — bonding strap length never matters', correct: false },
+          { text: 'The strap will overheat from carrying primary operating current', correct: false },
+          { text: 'The strap only affects electrical code compliance, not RF performance', correct: false },
+        ],
+        rationale:
+          'A conductor that is a significant fraction of a wavelength stops behaving like a short: at roughly a quarter-wavelength it can present high impedance rather than the low-impedance path bonding is meant to provide. This is why strap length and routing matter at RF, not just conductivity.',
       },
     ],
     aar: [
@@ -200,6 +281,46 @@ const COURSES = {
     ],
     questions: [
       {
+        difficulty: 'basic',
+        topic: 'Antenna Selection',
+        q: 'What is the main advantage of a directional antenna over an omnidirectional one for a fixed point-to-point link?',
+        answers: [
+          { text: 'It concentrates radiated energy toward the distant station', correct: true },
+          { text: 'It requires no maintenance', correct: false },
+          { text: 'It only works at VHF', correct: false },
+          { text: 'It eliminates the need for line-of-sight', correct: false },
+        ],
+        rationale:
+          'A directional antenna focuses radiated energy toward the distant station and rejects noise off-axis, which is why it is preferred over an omnidirectional antenna for a fixed link.',
+      },
+      {
+        difficulty: 'basic',
+        topic: 'No-Comms Troubleshooting',
+        q: 'What does PMCS stand for?',
+        answers: [
+          { text: 'Preventive Maintenance Checks and Services', correct: true },
+          { text: 'Primary Mission Communication System', correct: false },
+          { text: 'Personnel Monitoring and Control System', correct: false },
+          { text: 'Portable Maintenance Certification Standard', correct: false },
+        ],
+        rationale:
+          'PMCS — preventive maintenance checks and services — are the operator-level checks performed on equipment, including the frequency and antenna checks used in no-comms troubleshooting.',
+      },
+      {
+        difficulty: 'basic',
+        topic: 'Voice Procedure',
+        q: "What does the proword 'ROGER' mean?",
+        answers: [
+          { text: 'Message received', correct: true },
+          { text: 'Received and will comply', correct: false },
+          { text: 'Repeat your last transmission', correct: false },
+          { text: 'Stop transmitting', correct: false },
+        ],
+        rationale:
+          "ROGER means the message was received. It is often confused with WILCO (received and will comply) or SAY AGAIN (repeat your transmission).",
+      },
+      {
+        difficulty: 'standard',
         topic: 'Antenna Selection',
         q: 'You need a reliable 40 km ground-to-ground link over rolling terrain. Which antenna choice is most appropriate?',
         answers: [
@@ -212,6 +333,7 @@ const COURSES = {
           'Beyond short ranges the antenna pattern matters more than raw output power. A directional antenna concentrates radiated energy toward the distant station and rejects noise off-axis. The last option is the most common misconception: power alone does not overcome a poor pattern or terrain masking.',
       },
       {
+        difficulty: 'standard',
         topic: 'No-Comms Troubleshooting',
         q: 'A radio powers on but cannot reach the net. What is the FIRST operator-level check?',
         answers: [
@@ -224,6 +346,7 @@ const COURSES = {
           'Operator troubleshooting works cheapest-and-most-likely first. Frequency and antenna faults account for the majority of no-comms conditions and cost seconds to check. Swapping sets or escalating before those checks wastes time and equipment.',
       },
       {
+        difficulty: 'standard',
         topic: 'Voice Procedure',
         q: 'Which proword directs the receiving station to repeat the entire message back to you?',
         answers: [
@@ -234,6 +357,45 @@ const COURSES = {
         ],
         rationale:
           'READ BACK directs the receiving station to repeat the message back. SAY AGAIN is a request for the sender to retransmit — the two are frequently swapped. ROGER means received; WILCO means received and will comply.',
+      },
+      {
+        difficulty: 'challenge',
+        topic: 'Antenna Selection',
+        q: 'A directional antenna link that worked reliably at 25 km now fails at 40 km over the same rolling terrain, with no equipment changes. What is the most likely explanation?',
+        answers: [
+          { text: 'The path now fails to clear terrain obstructions enough for the link, independent of antenna gain', correct: true },
+          { text: 'Output power always dominates over terrain at any range', correct: false },
+          { text: 'The antenna gain rating expires past 25 km', correct: false },
+          { text: 'The COMSEC fill expired', correct: false },
+        ],
+        rationale:
+          'At the longer range, terrain masking of the path (inadequate clearance over rolling terrain) becomes the limiting factor rather than antenna gain or output power — the same misconception flagged in the standard-tier question, taken further.',
+      },
+      {
+        difficulty: 'challenge',
+        topic: 'No-Comms Troubleshooting',
+        q: 'Frequency is confirmed correct and the antenna is connected and undamaged, but the radio still cannot reach the net — while a nearby station reports comms are fine. What should the operator check next, before escalating?',
+        answers: [
+          { text: 'Whether the frequency and settings actually match the net\'s current signal operating instructions (SOI), since a stale fill produces exactly this symptom', correct: true },
+          { text: 'Swap the radio immediately', correct: false },
+          { text: 'Replace the antenna anyway, despite the check already passing', correct: false },
+          { text: 'Report the entire net as down', correct: false },
+        ],
+        rationale:
+          'A working nearby station rules out a net-wide outage. With frequency and antenna already checked, a stale COMSEC/SOI fill is the next most likely operator-level cause — cheaper to check than swapping equipment or escalating.',
+      },
+      {
+        difficulty: 'challenge',
+        topic: 'Voice Procedure',
+        q: 'A station transmits: "SAY AGAIN, ALL AFTER GRID." What is being requested?',
+        answers: [
+          { text: 'Repeat only the portion of the message that comes after the word "GRID"', correct: true },
+          { text: 'Repeat the entire message', correct: false },
+          { text: 'Confirm receipt of the message', correct: false },
+          { text: 'End the transmission', correct: false },
+        ],
+        rationale:
+          'SAY AGAIN combined with a fill word like ALL AFTER (or ALL BEFORE) requests a partial retransmission from that point, not the whole message — a refinement most students miss when they only learn the basic SAY AGAIN / READ BACK distinction.',
       },
     ],
     aar: [
