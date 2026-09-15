@@ -7,7 +7,7 @@ import { COURSES } from './data';
    point is what lands in a Marine's inbox: instructor announcements, reminders
    the platform generates from the plan, and requirement notices. */
 
-const MESSAGES = [
+export const MESSAGES = [
   {
     id: 1,
     from: 'SSgt Okafor',
@@ -136,8 +136,7 @@ const FILTERS = [
   { id: 'reminder', label: 'Reminders' },
 ];
 
-export default function StudentInbox({ onOpen, onArea }) {
-  const [msgs, setMsgs] = useState(MESSAGES);
+export default function StudentInbox({ onOpen, onArea, msgs, onMarkRead }) {
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [reply, setReply] = useState('');
@@ -153,7 +152,7 @@ export default function StudentInbox({ onOpen, onArea }) {
   const openMsg = (id) => {
     setSelectedId(id);
     setReply('');
-    setMsgs((ms) => ms.map((m) => (m.id === id ? { ...m, unread: false } : m)));
+    onMarkRead(id);
   };
 
   const act = (a) => {
