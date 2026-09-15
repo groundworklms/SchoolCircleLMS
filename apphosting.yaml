@@ -1,5 +1,10 @@
 # Firebase App Hosting runtime config.
 # https://firebase.google.com/docs/app-hosting/configure
+# Database: see the DATABASE_URL block at the bottom and docs/CLOUD_POSTGRES.md.
+# Do not run migrations or demo seeding in the build/start commands.
+runConfig:
+  # db-f1-micro allows ~25 Postgres connections; each instance pools connection_limit=3.
+  maxInstances: 4
 env:
   # --- Grounding: point the cloud app's server-side /api/doctrine at the Orin's
   # Anchor engine, exposed over a tunnel.
@@ -72,5 +77,23 @@ env:
   # Shared team passphrase testers enter once in the widget.
   - variable: FEEDBACK_KEY
     secret: FEEDBACK_KEY
+    availability:
+      - RUNTIME
+
+  # --- Database: Cloud SQL Postgres (the Firebase Data Connect trial instance), reached
+  # through the Cloud SQL connector in lib/db.js -- the compute service account has
+  # roles/cloudsql.client. DATABASE_URL (Secret Manager) carries user/password/database;
+  # its host is ignored while CLOUD_SQL_CONNECTION_NAME is set. Migrations/seeds run from
+  # an operator laptop via `npm run db:proxy`, never from build/start.
+  - variable: DATABASE_URL
+    secret: DATABASE_URL
+    availability:
+      - RUNTIME
+  - variable: CLOUD_SQL_CONNECTION_NAME
+    value: schoolcircle-ae29a:us-east4:schoolcircle-ae29a-instance
+    availability:
+      - RUNTIME
+  - variable: SCHOOLCIRCLE_DB_ENV
+    value: demo
     availability:
       - RUNTIME

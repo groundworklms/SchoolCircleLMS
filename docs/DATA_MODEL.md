@@ -8,9 +8,10 @@ and the spaced-repetition schedule.
 
 - **Postgres** for the real product (local dev via `docker-compose.yml`; managed Postgres in
   the approved enclave for the enterprise/Track-B deployment).
-- **The same schema on SQLite** for offline/edge (a Jetson at a schoolhouse): change the
-  Prisma `datasource` provider to `sqlite` and point `DATABASE_URL` at a file. No other change.
-  That is the edge-to-enterprise story: one schema, connection-string swap.
+- **The same schema on local PostgreSQL** for offline/edge (a Jetson at a schoolhouse):
+  keep the Prisma provider and change `DATABASE_URL`. Cloud and local data remain
+  independent; a URL change does not synchronize them. SQLite requires additional
+  compatibility work and is not supported by this setup.
 - **Prisma** as the ORM/migration tool.
 
 ## Get it running (local)
@@ -19,9 +20,12 @@ and the spaced-repetition schedule.
 docker compose up -d          # local Postgres on :5432
 cp .env.example .env.local    # then set DATABASE_URL (default matches the compose file)
 npm install                   # runs prisma generate
-npm run db:migrate            # create the tables
-npm run db:seed               # a runnable TC 3-22.9 course + 1 instructor + 1 learner
+npm run db:deploy             # apply migrations to the confirmed dev target
+NODE_ENV=development ALLOW_DEMO_SEED=true npm run db:seed # isolated demo fixtures only
 ```
+
+See [Cloud PostgreSQL setup](CLOUD_POSTGRES.md) for target confirmation, seeding
+guards, Cloud SQL networking and Secret Manager setup.
 
 ## The tables
 
