@@ -1,2 +1,3 @@
 - [Vercel import migration](vercel-import-migration.md) — Next.js `app/` trees need explicit copy-helper handling before porting into the web artifact.
 - [Cited content parity](cited-content-parity.md) — strict section scoping takes precedence over upstream course-wide citation fallback.
+- [GitHub push access](github-push-access.md) — connector health does not establish Git-object write access or command-line Git authentication.
