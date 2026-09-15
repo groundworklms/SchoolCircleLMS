@@ -20,6 +20,8 @@ import Grades from './Grades';
 import Discussions from './Discussions';
 import { StudentSettings } from './Settings';
 import { usePrefs, setPref } from './prefs';
+import { useAuth } from '../_auth/AuthProvider';
+import { accountDisplay } from '../_auth/account-display';
 
 /* Student shell. Canvas-shaped — global icon rail, dashboard with course cards,
    course sub-nav, breadcrumb, and a To-Do column — on a neutral palette.
@@ -103,6 +105,8 @@ function Agenda({ courseId, onOpen }) {
 /* ---------- dashboard ---------- */
 
 function Dashboard({ onOpen }) {
+  const { ready, profile } = useAuth();
+  const identity = accountDisplay({ ready, profile, demo: STUDENT });
   const list = Object.values(COURSES);
   const hour = new Date().getHours();
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -117,7 +121,7 @@ function Dashboard({ onOpen }) {
     <div className="s-two">
       <div>
         <div className="s-pagehead">
-          <h1>{greet}, {STUDENT.name}</h1>
+          <h1>{greet}, {[identity.rank, identity.name].filter(Boolean).join(' ')}</h1>
           <p>{list.length} courses in progress · 1 requirement overdue</p>
         </div>
 
@@ -395,6 +399,22 @@ function CourseHome({ course, go, onOpen }) {
 /* ---------- shell ---------- */
 
 export default function StudentShell({ nav, onSwitchRole }) {
+  const { ready: authReady, profile, signOut, signOutError } = useAuth();
+  const {
+    authenticated,
+    name: displayName,
+    rank: displayRank,
+    initials,
+  } = accountDisplay({ ready: authReady, profile, demo: STUDENT });
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      window.location.href = '/';
+    } catch {
+      // AuthProvider exposes the explicit error in the shell.
+    }
+  };
+
   // Location comes from the URL (see nav.js); these are the three moves the shell makes.
   const { area, courseId, view, lessonId, page, threadId } = nav;
   const prefs = usePrefs();
@@ -445,7 +465,15 @@ export default function StudentShell({ nav, onSwitchRole }) {
   else if (area === 'courses') body = <Courses onOpen={open} />;
   else if (area === 'calendar') body = <StudentCalendar onOpen={open} />;
   else if (area === 'inbox') body = <StudentInbox onOpen={open} onArea={setArea} msgs={messages} onMarkRead={markRead} />;
-  else if (area === 'settings') body = <StudentSettings onSignOut={() => { window.location.href = '/'; }} />;
+  else if (area === 'settings') {
+    body = (
+      <StudentSettings
+        onSignOut={handleSignOut}
+        account={profile}
+        authenticated={authenticated}
+      />
+    );
+  }
   else if (view === 'home') body = <CourseHome course={course} go={setView} onOpen={open} />;
   else {
     const Screen = SCREENS[view];
@@ -456,14 +484,15 @@ export default function StudentShell({ nav, onSwitchRole }) {
     <div className="s-root" style={{ '--scale': prefs.textScale }}>
       <nav className="s-rail">
         <UserMenu
-          name={STUDENT.name}
+          name={displayName}
           role="Student"
-          initials={STUDENT.initials}
+          rank={displayRank}
+          initials={initials}
           items={[
             { label: 'Settings', hint: 'Reminders · How I learn', onClick: () => setArea('settings') },
             { label: 'My progress', onClick: () => open('M092721', 'progress') },
             'divider',
-            { label: 'Sign out', danger: true, onClick: () => { window.location.href = '/'; } },
+            { label: 'Sign out', danger: true, onClick: handleSignOut },
           ]}
         />
         <RailButton icon={I.dashboard} label="Dashboard" on={area === 'dashboard'} onClick={() => setArea('dashboard')} />
@@ -517,7 +546,14 @@ export default function StudentShell({ nav, onSwitchRole }) {
           <span className="s-lastlogin">Last login 12 Sep 26 at 0742</span>
         </div>
         <main className="s-main">
-          <div className="s-container">{body}</div>
+          <div className="s-container">
+            {signOutError && (
+              <div className="s-shell-error" role="alert">
+                {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
+              </div>
+            )}
+            {body}
+          </div>
         </main>
       </div>
 

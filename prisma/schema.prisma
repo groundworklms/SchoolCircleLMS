@@ -38,6 +38,8 @@ enum ItemStatus {
 model User {
   id        String    @id @default(cuid())
   name      String
+  rank      String?   @db.VarChar(40)
+  profileCompletedAt DateTime?
   role      Role      @default(LEARNER)
   // For MarineNet/LTI later: the LTI `sub` claim maps here, so local accounts and SSO
   // identities share one table without a schema change.

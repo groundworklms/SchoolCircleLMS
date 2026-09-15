@@ -39,6 +39,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Account profile and session regressions
+        run: npm run test:account-profile
+
   database:
     name: database
     runs-on: ubuntu-latest
