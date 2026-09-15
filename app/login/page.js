@@ -8,8 +8,11 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  getAdditionalUserInfo,
+  signOut,
 } from 'firebase/auth';
 import { auth, firebaseReady } from '../../lib/firebase';
+import { isAllowedEmail, DENIED_MESSAGE } from '../../lib/allowlist';
 import { useAuth } from '../_auth/AuthProvider';
 import '../landing.css';
 
@@ -29,17 +32,41 @@ export default function LoginPage() {
     if (wanted && wanted.startsWith('/') && !wanted.startsWith('//')) setNext(wanted);
   }, []);
 
-  // Already signed in → into the app.
+  // Already signed in (and allowed) → into the app.
   useEffect(() => {
-    if (ready && user) router.replace(next);
+    if (ready && user && isAllowedEmail(user.email)) router.replace(next);
   }, [ready, user, router, next]);
+
+  // Bounced here by AuthGuard with a session that isn't on the tester list.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('denied')) {
+      setErr(DENIED_MESSAGE);
+    }
+  }, []);
+
+  /* Allowlist gate for a fresh credential. A brand-new account for an email
+     that isn't on the list is deleted straight away (the session is fresh, so
+     Firebase allows it) so strangers can't accumulate accounts; an existing
+     one is just signed out. Returns true when the user may proceed. */
+  async function admit(cred) {
+    if (isAllowedEmail(cred.user.email)) return true;
+    const isNew = getAdditionalUserInfo(cred)?.isNewUser;
+    try {
+      if (isNew) await cred.user.delete();
+    } catch {
+      /* fall through to sign-out */
+    }
+    await signOut(auth);
+    setErr(DENIED_MESSAGE);
+    return false;
+  }
 
   async function google() {
     setErr('');
     setBusy(true);
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-      router.replace(next);
+      const cred = await signInWithPopup(auth, new GoogleAuthProvider());
+      if (await admit(cred)) router.replace(next);
     } catch (e) {
       setErr(e?.message || 'Sign-in failed.');
     } finally {
@@ -50,11 +77,18 @@ export default function LoginPage() {
   async function emailPass(e) {
     e.preventDefault();
     setErr('');
+    // Refuse sign-up for an email that isn't on the list before creating anything.
+    if (mode === 'signup' && !isAllowedEmail(email)) {
+      setErr(DENIED_MESSAGE);
+      return;
+    }
     setBusy(true);
     try {
-      if (mode === 'signup') await createUserWithEmailAndPassword(auth, email, password);
-      else await signInWithEmailAndPassword(auth, email, password);
-      router.replace(next);
+      const cred =
+        mode === 'signup'
+          ? await createUserWithEmailAndPassword(auth, email, password)
+          : await signInWithEmailAndPassword(auth, email, password);
+      if (await admit(cred)) router.replace(next);
     } catch (e2) {
       setErr(e2?.message || 'Sign-in failed.');
     } finally {

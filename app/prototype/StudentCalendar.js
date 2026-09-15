@@ -33,7 +33,7 @@ const FIXED = [
   { date: '2026-09-29', time: '0730', title: 'Block exam — Radio Fundamentals', kind: 'exam', courseId: 'M09CVS1', minutes: 90 },
   // student to-dos (same items the dashboard shows)
   { date: '2026-09-12', time: '1900', title: 'Practice set — Fault Isolation', kind: 'todo', courseId: 'M092721', view: 'materials', minutes: 30 },
-  { date: '2026-09-13', time: '1000', title: 'Net entry procedure — reading', kind: 'todo', courseId: 'M09CVS1', view: 'materials', minutes: 40 },
+  { date: '2026-09-13', time: '1000', title: 'Net entry procedure — reading', kind: 'todo', courseId: 'M09CVS1', view: 'lessons', minutes: 40 },
   { date: '2026-09-16', time: '1900', title: 'SWR calculation drill', kind: 'todo', courseId: 'M092721', view: 'materials', minutes: 30 },
   // requirements
   { date: '2026-09-10', time: '', title: 'FY safety standdown', kind: 'req', courseId: null, late: true, minutes: 45 },
