@@ -61,6 +61,12 @@ export const POIS = {
           { "id": "RM.Z.02", "title": "Qualification", "hours": 6.0, "kind": "exam" }
         ]
       }
+    ],
+    "mastery": [
+      { "letter": "A", "title": "Ch 5 · Functional Elements", "mastery": 96 },
+      { "letter": "B", "title": "Ch 6 · Stability & Natural Point of Aim", "mastery": 85 },
+      { "letter": "C", "title": "Ch 7 · Aiming — Sight Alignment & Picture", "mastery": 81 },
+      { "letter": "D", "title": "Ch 8 · Trigger Control & Follow-Through", "mastery": 64 }
     ]
   },
   "M092721": {
