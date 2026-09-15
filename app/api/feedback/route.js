@@ -33,6 +33,10 @@ export async function POST(req) {
   const type = TYPES[body.type] ? body.type : 'bug';
   const description = String(body.description || '').trim().slice(0, 10000);
   const ctx = body.context || {};
+  // Reports are attributed to the PAT owner on GitHub, so the reporter's name
+  // in the body is the only thing that says who actually filed it.
+  const reporter = String(ctx.reporter || '').trim().slice(0, 80);
+  if (!reporter) return Response.json({ error: 'Reporter name is required' }, { status: 400 });
 
   const issueBody = [
     description || '_No description given._',
@@ -47,7 +51,7 @@ export async function POST(req) {
     `| Build | ${ctx.build || 'unknown'} |`,
     `| Viewport | ${ctx.viewport || '?'} |`,
     `| Browser | ${ctx.userAgent || '?'} |`,
-    `| Reporter | ${ctx.reporter || 'anonymous'} |`,
+    `| Reporter | ${reporter} |`,
     `| Time | ${new Date().toISOString()} |`,
     '',
     '</details>',
