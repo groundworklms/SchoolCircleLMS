@@ -3,7 +3,7 @@ name: Cited content parity
 description: Scope decisions when adapting the imported cited-content feature.
 ---
 
-Treat the current request's strict section scoping as stronger than upstream feature parity.
+Treat strict lesson-section scoping as stronger than upstream feature parity.
 
 **Why:** The upstream lesson card fell back to course-wide claims when the section had none; that contradicts the requested association of evidence with the current lesson.
 

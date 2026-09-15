@@ -18,6 +18,7 @@ import Grades from './Grades';
 import Discussions from './Discussions';
 import { StudentSettings } from './Settings';
 import { usePrefs } from './prefs';
+import { useAuth } from '@/auth/AuthProvider';
 
 /* Student shell. Canvas-shaped — global icon rail, dashboard with course cards,
    course sub-nav, breadcrumb, and a To-Do column — on a neutral palette.
@@ -395,6 +396,7 @@ function CourseHome({ course, go, onOpen }) {
 import { useLocation } from 'wouter';
 
 export default function StudentShell({ nav, onSwitchRole }) {
+  const { signOut } = useAuth();
   const [, setLocation] = useLocation();
   // Location comes from the URL (see nav.js); these are the three moves the shell makes.
   const { area, courseId, view, lessonId, page, threadId } = nav;
@@ -422,7 +424,7 @@ export default function StudentShell({ nav, onSwitchRole }) {
   else if (area === 'courses') body = <Courses onOpen={open} />;
   else if (area === 'calendar') body = <StudentCalendar onOpen={open} />;
   else if (area === 'inbox') body = <StudentInbox onOpen={open} onArea={setArea} />;
-  else if (area === 'settings') body = <StudentSettings onSignOut={() => { setLocation('/'); }} />;
+  else if (area === 'settings') body = <StudentSettings onSignOut={async () => { if (await signOut()) setLocation('/'); }} />;
   else if (view === 'home') body = <CourseHome course={course} go={setView} onOpen={open} />;
   else {
     const Screen = SCREENS[view];
@@ -440,7 +442,7 @@ export default function StudentShell({ nav, onSwitchRole }) {
             { label: 'Settings', hint: 'Reminders · How I learn', onClick: () => setArea('settings') },
             { label: 'My progress', onClick: () => open('M092721', 'progress') },
             'divider',
-            { label: 'Sign out', danger: true, onClick: () => { setLocation('/'); } },
+            { label: 'Sign out', danger: true, onClick: async () => { if (await signOut()) setLocation('/'); } },
           ]}
         />
         <RailButton icon={I.dashboard} label="Dashboard" on={area === 'dashboard'} onClick={() => setArea('dashboard')} />
@@ -475,7 +477,7 @@ export default function StudentShell({ nav, onSwitchRole }) {
 
         <div className="s-rail-spacer" />
         <RailButton icon={I.swap} label="View as instructor" onClick={onSwitchRole} />
-        <RailButton icon={I.back} label="Planning board" onClick={() => { setLocation('/'); }} />
+        <RailButton icon={I.back} label="Planning board" onClick={() => { setLocation('/plan'); }} />
       </nav>
 
       <div className="s-content">

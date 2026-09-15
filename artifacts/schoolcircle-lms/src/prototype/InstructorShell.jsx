@@ -27,9 +27,11 @@ const VIEWS = [
 const SCREENS = { builder: Curriculum, control: LiveControl, mastery: Mastery, aar: AAR, settings: InstructorSettings };
 
 import { useLocation } from 'wouter';
+import { useAuth } from '@/auth/AuthProvider';
 
 export default function InstructorShell({ nav, onSwitchRole }) {
   const [, setLocation] = useLocation();
+  const { signOut } = useAuth();
   const courseId = COURSES[nav.courseId] ? nav.courseId : 'M092721';
   const course = COURSES[courseId];
   const view = VIEWS.find((v) => v.id === nav.view) ? nav.view : 'builder';
@@ -50,7 +52,7 @@ export default function InstructorShell({ nav, onSwitchRole }) {
             { label: 'Course settings', hint: course.id, onClick: () => go({ view: 'settings' }) },
             { label: 'View as student', onClick: onSwitchRole },
             'divider',
-            { label: 'Sign out', danger: true, onClick: () => { setLocation('/'); } },
+            { label: 'Sign out', danger: true, onClick: async () => { if (await signOut()) setLocation('/'); } },
           ]}
         />
 
@@ -76,7 +78,7 @@ export default function InstructorShell({ nav, onSwitchRole }) {
 
         <div className="s-rail-spacer" />
         <RailButton icon={I.swap} label="View as student" onClick={onSwitchRole} />
-        <RailButton icon={I.back} label="Planning board" onClick={() => { setLocation('/'); }} />
+        <RailButton icon={I.back} label="Planning board" onClick={() => { setLocation('/plan'); }} />
       </nav>
 
       <div className="s-content">

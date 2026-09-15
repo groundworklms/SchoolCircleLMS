@@ -1,0 +1,15 @@
+.scw-wgt { max-height: calc(100dvh - 8rem); }
+.scw-head, .scw-foot { flex: none; }
+.scw-body { min-height: 0; overflow-y: auto; }
+textarea.scw-field { min-height: 5.5rem; resize: vertical; }
+.scw-btn.full { display: block; text-align: center; text-decoration: none; }
+.scw-btn.disabled { opacity: .5; cursor: default; pointer-events: none; }
+.scw-fab.course-context { bottom: 5.4rem; }
+.scw-wgt.ask.course-context {
+  bottom: 9.4rem;
+  max-height: calc(100dvh - 10.4rem);
+}
+.scw-global-ask-open .s-chat { right: calc(22rem + 3.6rem); }
+@media (max-width: 640px) {
+  .scw-global-ask-open .s-chat { opacity: 0; pointer-events: none; }
+}
