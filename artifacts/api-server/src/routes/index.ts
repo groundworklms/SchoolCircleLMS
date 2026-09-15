@@ -5,6 +5,9 @@ import capabilitiesRouter from "./capabilities.js";
 // @ts-expect-error Feedback route intentionally remains JavaScript to match the
 // upstream Next handler's implementation.
 import feedbackRouter from "./feedback.js";
+// @ts-expect-error Courses read model intentionally remains JavaScript to match
+// the upstream Next handlers' implementation.
+import coursesRouter from "./courses.js";
 // @ts-expect-error Legacy route module is intentionally kept as JavaScript for parity.
 import doctrineRouter from "./doctrine.js";
 // @ts-expect-error Legacy route module is intentionally kept as JavaScript for parity.
@@ -34,6 +37,7 @@ const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(feedbackRouter);
+router.use(coursesRouter);
 // Browser OIDC endpoints are mounted below /api by app.ts.  The middleware
 // in app.ts runs before this router, so /auth/user also sees the verified
 // Prisma-backed session identity.
