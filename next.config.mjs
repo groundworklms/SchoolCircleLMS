@@ -12,8 +12,9 @@ function gitSha() {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // pdfjs-dist loads its worker from disk at runtime; bundling breaks that.
-  serverExternalPackages: ['pdfjs-dist'],
+  // pdfjs-dist loads its worker from disk at runtime; bundling breaks that. The Cloud SQL
+  // connector (google-auth) and pg are loaded lazily by lib/db.js; keep them unbundled too.
+  serverExternalPackages: ['pdfjs-dist', '@google-cloud/cloud-sql-connector', '@prisma/adapter-pg', 'pg'],
   env: {
     NEXT_PUBLIC_GIT_SHA: process.env.NEXT_PUBLIC_GIT_SHA || gitSha(),
   },
