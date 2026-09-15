@@ -1,7 +1,13 @@
 // Data model for the grounded LMS.
 //
 // Postgres for the real product; the SAME schema runs on SQLite for offline/edge (a Jetson
-// at a schoolhouse) -- change the datasource `provider` + DATABASE_URL, nothing else.
+// at a schoolhouse) -- change the datasource `provider` + DATABASE_URL, nothing else. That is
+// the edge-to-enterprise story: one schema, connection-string swap.
+//
+// One boundary is deliberate and lives HERE, not in the UI: there is no ClassGap table. The
+// instructor's aggregate view is a GROUP BY over Attempt that never SELECTs learnerId (see
+// docs/DATA_MODEL.md). Keeping it a query, not a table, means an instructor cannot be handed
+// one Marine's answers by construction.
 
 generator client {
   provider = "prisma-client-js"

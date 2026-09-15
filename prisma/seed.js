@@ -1,142 +1,79 @@
-// Idempotent seed: a demo-ready TC 3-22.9 course, one instructor, one learner, a few
-// attempts (including the confidently-wrong case), mastery rollups, and a due schedule.
-// Re-runnable — everything upserts by a stable id/unique key.
+/**
+ * Seed a runnable course so the app boots with real content: the TC 3-22.9 marksmanship
+ * course, an instructor and a learner, and a few board-verified, approved items.
+ * Idempotent -- safe to re-run (upserts by stable keys).
+ */
+import { PrismaClient } from '@prisma/client';
 
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const db = new PrismaClient();
 
-// Single source of truth shared with the app's "sample mode" fallback (lib/sample.js
-// imports the same JSON). Plain JSON so this CommonJS seed and the ESM app agree.
-const sampleCourse = require("../lib/sample.json");
+const SECTIONS = [
+  { title: 'Ch 5 · Functional Elements', order: 5 },
+  { title: 'Ch 6 · Stability & Natural Point of Aim', order: 6 },
+  { title: 'Ch 7 · Aiming — Sight Alignment & Picture', order: 7 },
+  { title: 'Ch 8 · Trigger Control & Follow-Through', order: 8 },
+];
 
-async function main() {
-  // --- users ---------------------------------------------------------------
-  const instructor = await prisma.user.upsert({
-    where: { externalId: "seed-instructor" },
-    update: { name: "SSgt Instructor", role: "INSTRUCTOR" },
-    create: { name: "SSgt Instructor", role: "INSTRUCTOR", externalId: "seed-instructor" },
-  });
-
-  const learner = await prisma.user.upsert({
-    where: { externalId: "seed-learner" },
-    update: { name: "Cpl Learner", role: "LEARNER" },
-    create: { name: "Cpl Learner", role: "LEARNER", externalId: "seed-learner" },
-  });
-
-  // --- course tree ---------------------------------------------------------
-  await prisma.course.upsert({
-    where: { id: sampleCourse.id },
-    update: { title: sampleCourse.title, sourceId: sampleCourse.sourceId },
-    create: { id: sampleCourse.id, title: sampleCourse.title, sourceId: sampleCourse.sourceId },
-  });
-
-  for (const s of sampleCourse.sections) {
-    await prisma.section.upsert({
-      where: { id: s.id },
-      update: { title: s.title, order: s.order, courseId: sampleCourse.id },
-      create: { id: s.id, title: s.title, order: s.order, courseId: sampleCourse.id },
-    });
-
-    for (const it of s.items) {
-      const data = {
-        sectionId: s.id,
-        kind: it.kind,
-        stem: it.stem,
-        options: it.options ?? undefined,
-        answer: it.answer ?? undefined,
-        rationale: it.rationale ?? undefined,
-        citation: it.citation ?? undefined,
-        support: it.support ?? undefined,
-        status: it.status,
-      };
-      await prisma.item.upsert({ where: { id: it.id }, update: data, create: { id: it.id, ...data } });
-    }
-  }
-
-  // --- attempts (the calibration signal) -----------------------------------
-  // it-fund-3 (trigger control MC): confident + correct = mastered.
-  // it-safety-2 (off safe MC): confident + WRONG = the confidently-wrong case.
-  // it-zero-... none pending attempts. it-fund-1 lesson has no attempts.
-  const attempts = [
+// Board-verified against Anchor / TC 3-22.9.
+const LESSONS = {
+  'Ch 7 · Aiming — Sight Alignment & Picture': [
     {
-      id: "att-1",
-      itemId: "it-fund-3",
-      confidence: 3,
-      answer: { choice: 1 },
-      correct: true,
-      gradedAgainst: { citation: "TC 3-22.9, Ch 3, Trigger Control, para 3-24, p.3-8" },
+      stem: 'Sight alignment is the relationship between the aiming device and the firer’s eye; sight picture is the placement of the aligned sights on the target.',
+      citation: { citation: 'TC 3-22.9, Ch 7 “Desired Point of Impact”, para 1, p.7-5', pubId: 'TC 3-22.9', page: '7-5' },
+      support: 0.96,
     },
+  ],
+  'Ch 8 · Trigger Control & Follow-Through': [
     {
-      id: "att-2",
-      itemId: "it-safety-2",
-      confidence: 3, // stated high confidence...
-      answer: { choice: 0 },
-      correct: false, // ...but wrong: confidently wrong -> priority re-teach
-      gradedAgainst: { citation: "TC 3-22.9, Ch 2, Weapons Safety Rules, para 2-1, p.2-1" },
+      stem: 'Trigger control is firing the weapon while maintaining proper aim and stabilization until the bullet leaves the muzzle.',
+      citation: { citation: 'TC 3-22.9, Ch 8 “Trigger Control”, para 2, p.8-2', pubId: 'TC 3-22.9', page: '8-2' },
+      support: 0.95,
     },
+  ],
+};
+
+const QUESTIONS = {
+  'Ch 7 · Aiming — Sight Alignment & Picture': [
     {
-      id: "att-3",
-      itemId: "it-fund-3",
-      confidence: 1, // unsure...
-      answer: { choice: 1 },
-      correct: true, // ...but right: re-test sooner
-      gradedAgainst: { citation: "TC 3-22.9, Ch 3, Trigger Control, para 3-24, p.3-8" },
+      stem: 'How many phases make up the shot process?',
+      options: ['Three — pre-shot, shot, post-shot', 'Four', 'Five', 'Two'],
+      answer: 0,
+      rationale: 'Aiming is conducted through pre-shot, shot, and post-shot — three phases.',
+      citation: { citation: 'TC 3-22.9, Ch 6 “Aiming”, para 3', pubId: 'TC 3-22.9' },
+      support: 0.93,
     },
-  ];
+  ],
+};
 
-  for (const a of attempts) {
-    const data = {
-      itemId: a.itemId,
-      learnerId: learner.id,
-      confidence: a.confidence,
-      answer: a.answer,
-      correct: a.correct,
-      gradedAgainst: a.gradedAgainst,
-    };
-    await prisma.attempt.upsert({ where: { id: a.id }, update: data, create: { id: a.id, ...data } });
-  }
-
-  // --- mastery rollups (per learner, per section title) ---------------------
-  const mastery = [
-    { section: "Safety & Weapon Handling", masteryPct: 0.55, calibrationGap: 0.4 }, // dragged down by the confidently-wrong miss
-    { section: "Fundamentals of Marksmanship", masteryPct: 0.78, calibrationGap: 0.15 },
-    { section: "Zeroing & Ballistics", masteryPct: 0.4, calibrationGap: null },
-  ];
-  for (const m of mastery) {
-    await prisma.mastery.upsert({
-      where: { learnerId_section: { learnerId: learner.id, section: m.section } },
-      update: { masteryPct: m.masteryPct, calibrationGap: m.calibrationGap },
-      create: { learnerId: learner.id, section: m.section, masteryPct: m.masteryPct, calibrationGap: m.calibrationGap },
-    });
-  }
-
-  // --- schedule (due today) ------------------------------------------------
-  const today = new Date();
-  const schedules = [
-    { itemId: "it-safety-2", dueAt: today, interval: 1 }, // shaky -> comes back now
-    { itemId: "it-fund-3", dueAt: new Date(today.getTime() + 7 * 86400000), interval: 7 }, // mastered -> spaced out
-  ];
-  for (const sc of schedules) {
-    await prisma.schedule.upsert({
-      where: { itemId_learnerId: { itemId: sc.itemId, learnerId: learner.id } },
-      update: { dueAt: sc.dueAt, interval: sc.interval },
-      create: { itemId: sc.itemId, learnerId: learner.id, dueAt: sc.dueAt, interval: sc.interval },
-    });
-  }
-
-  console.log("Seed complete:");
-  console.log(`  instructor: ${instructor.name} (${instructor.id})`);
-  console.log(`  learner:    ${learner.name} (${learner.id})`);
-  console.log(`  course:     ${sampleCourse.title} [${sampleCourse.sourceId}]`);
-  const pending = await prisma.item.count({ where: { status: "PENDING" } });
-  console.log(`  items PENDING review: ${pending}`);
+async function findOrCreateUser(name, role) {
+  const found = await db.user.findFirst({ where: { name } });
+  return found ?? db.user.create({ data: { name, role } });
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exitCode = 1;
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+async function main() {
+  await findOrCreateUser('SSgt White', 'INSTRUCTOR');
+  await findOrCreateUser('LCpl Doe', 'LEARNER');
+
+  // Course.title is not unique in the schema, so find-or-create by title.
+  let course = await db.course.findFirst({ where: { sourceId: 'TC 3-22.9' } });
+  if (!course) {
+    course = await db.course.create({ data: { title: 'Rifle Marksmanship — TC 3-22.9', sourceId: 'TC 3-22.9' } });
+  }
+
+  for (const s of SECTIONS) {
+    let section = await db.section.findFirst({ where: { courseId: course.id, title: s.title } });
+    if (!section) section = await db.section.create({ data: { ...s, courseId: course.id } });
+
+    for (const l of (LESSONS[s.title] || [])) {
+      const exists = await db.item.findFirst({ where: { sectionId: section.id, stem: l.stem } });
+      if (!exists) await db.item.create({ data: { sectionId: section.id, kind: 'LESSON', status: 'APPROVED', ...l } });
+    }
+    for (const q of (QUESTIONS[s.title] || [])) {
+      const exists = await db.item.findFirst({ where: { sectionId: section.id, stem: q.stem } });
+      if (!exists) await db.item.create({ data: { sectionId: section.id, kind: 'QUESTION', status: 'APPROVED', ...q } });
+    }
+  }
+  console.log('Seeded: course, sections, verified items, 1 instructor + 1 learner.');
+}
+
+main().catch((e) => { console.error(e); process.exit(1); }).finally(() => db.$disconnect());

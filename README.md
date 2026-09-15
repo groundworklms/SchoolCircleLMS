@@ -52,9 +52,10 @@ npm run db:seed               # seed a TC 3-22.9 course + instructor + learner
 npm run dev                   # http://localhost:3111
 ```
 
-Point `DOCTRINE_BASE_URL` at a running **Anchor** instance (default `http://localhost:8000`). The
-app runs in a resilient "sample mode" if the database isn't up yet, so `npm run dev` shows something
-immediately.
+Point `DOCTRINE_BASE_URL` at a running **Anchor** instance for grounded answers, and
+`MODEL_BASE_URL` + `MODEL_ID` at a self-hosted OpenAI-compatible model for the generation features
+(both are optional for a first run — see `.env.example`). The product is offline: generation runs
+against self-hosted compute, never a cloud API.
 
 **Edge build:** switch the Prisma `datasource` to `sqlite` and set
 `DATABASE_URL="file:./schoolcircle.db"` — same schema, same seed, offline on a Jetson.

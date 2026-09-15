@@ -1,16 +1,24 @@
+# Local Postgres for development. `docker compose up -d`, then `npm run db:migrate`.
+# Production uses a managed Postgres in the approved enclave (Track B); edge/offline uses
+# SQLite (change the Prisma provider + DATABASE_URL). See docs/DATA_MODEL.md.
 services:
   db:
-    image: postgres:16
-    container_name: schoolcircle-dev
+    image: postgres:16-alpine
+    container_name: schoolcircle-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: schoolcircle
       POSTGRES_PASSWORD: schoolcircle
       POSTGRES_DB: schoolcircle
     ports:
-      - "5433:5432"   # host 5433 -> container 5432 (matches DATABASE_URL in .env.example)
+      - "5432:5432"
     volumes:
-      - schoolcircle_pg:/var/lib/postgresql/data
+      - schoolcircle_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U schoolcircle"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
 volumes:
-  schoolcircle_pg:
+  schoolcircle_pgdata:

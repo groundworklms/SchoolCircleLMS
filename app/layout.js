@@ -1,8 +1,7 @@
-import "./globals.css";
+import './globals.css';
 
 export const metadata = {
-  title: "SchoolCircle",
-  description: "Grounded, offline, human-led LMS. Every answer cites the manual or refuses.",
+  title: 'Hackathon Planning Board',
 };
 
 export default function RootLayout({ children }) {
