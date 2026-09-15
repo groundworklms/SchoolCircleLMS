@@ -1,19 +1,43 @@
 # Arsenal verification matrix
 
+## Latest host verification
+
+After rebasing `replit/port` onto merged `origin/main` and reconciling Firebase
+login and the landing page, the full workspace typecheck and all **27** API
+tests passed. Both managed workflows started cleanly. A screenshot confirmed
+the merged landing page renders without browser errors.
+
+The running SchoolCircle `POST /api/doctrine` was checked with its real
+`{ "question": "..." }` input:
+
+- “According to MCDP 1, what is friction in war?” returned HTTP 200,
+  `abstained: false`, and three citations to MCDP 1, chapter 1, printed page 5.
+- “What is the current stock price of Microsoft?” returned HTTP 200,
+  `abstained: true`, `abstainReason: "low_retrieval_score"`, and no citations.
+
+These are live host-to-Anchor results, not injected fixtures. They supersede
+earlier pre-configuration observations below. Firebase public configuration
+and server token verification are wired, but an interactive sign-in and
+instructor session have not been verified. Generic model, Rubricon, Whetstone,
+and model-backed Understudy verification remain blocked by missing endpoint
+configuration. The task is **not complete**.
+
 This is a runnable verification record for the twelve repositories in
 [`05-arsenal-contracts.md`](./05-arsenal-contracts.md). The current development API
 has passed `pnpm --filter @workspace/api-server test` with 24 tests, including
 labelled real-PostgreSQL LearningRecord roundtrip/CAS-cleanup coverage and route
 tests; `pnpm run typecheck` has also passed and the API restarted cleanly. Those
 results are separated below from fixture/injected-model evidence. They do not prove
-a model endpoint, Anchor, an OIDC callback, an instructor identity, or a complete
-browser/deployed flow.
+a generic model endpoint, an OIDC callback, an instructor identity, or a complete
+browser/deployed flow. Direct Anchor HTTP evidence is recorded separately; it does
+not prove that the SchoolCircle host proxy has been restarted and retested with the
+new Anchor configuration.
 
 ## Per-repository matrix
 
 | Repo and reviewed SHA | Runnable command | Expected library output | Relevant SchoolCircle test/evidence | Auth / DB requirement | Live service requirement and current blocker |
 |---|---|---|---|---|---|
-| **Anchor** `fc9cc61a1a42121c3ad811f800b028805810ecf5` | `cd .cache/arsenal/anchor && pytest -q` | Pytest fixture/unit summary; pure retrieval, refusal, citation, and grounding tests can pass with stubs. | `artifacts/api-server/src/lib/doctrine.js`, `routes/doctrine.js`, `components/AskWidget.jsx` | `/api/doctrine` does not require SchoolCircle identity, but the API process must be running. | A running Anchor FastAPI service, indexed corpus, generator/embedding/reranker services, and its config are required for a real answer. `DOCTRINE_BASE_URL` is not configured; no live Anchor call is claimed. |
+| **Anchor** `fc9cc61a1a42121c3ad811f800b028805810ecf5` | `cd .cache/arsenal/anchor && pytest -q` | Pytest fixture/unit summary; pure retrieval, refusal, citation, and grounding tests can pass with stubs. Direct live probes also passed: `/api/health` 200 `ok=true` with generator/embeddings/reranker ready; `/api/corpus` 200 with 13 publications and 4,230 chunks; `/api/ask` produced both a cited answer and a retrieval refusal. | `artifacts/api-server/src/lib/doctrine.js`, `routes/doctrine.js`, `components/AskWidget.jsx`; direct live evidence below | `/api/doctrine` does not require SchoolCircle identity, but the API process must be restarted after configuration. | `https://calculations-probability-dozens-recommended.trycloudflare.com` is a temporary Cloudflare tunnel configured as `DOCTRINE_BASE_URL` with `DOCTRINE_TIMEOUT_MS`. Direct Anchor proof is live; the SchoolCircle adapter proxy has not yet been restarted/retested. The tunnel is ephemeral and not a durable production endpoint. |
 | **Quarry** `465b7515732bbc08b80b6ec8684e1fc49c7985ea` | `pnpm --filter @workspace/api-server test` | Observed 24-test API summary, including the Quarry adapter/route coverage; deterministic extraction is fixture-tested. | `artifacts/api-server/test/learning-core.test.mjs`; `arsenal-core.js#ingestSource` | Route use requires verified instructor identity and Prisma persistence; package functions do not. | No model or remote service. Development Prisma roundtrip coverage passed; no instructor-authenticated live PDF flow is claimed. |
 | **Coursewright** `f38d078a30195a6a6901ade22a3ce7484613fa57` | `pnpm --filter @workspace/api-server test` | Observed 24-test API summary; deterministic `chunk`, `match`, grounding, and refusal checks use injected seams. Full generation requires a configured model. | `artifacts/api-server/test/learning-core.test.mjs`; `arsenal-core.js#draftCourse`; `POST /api/learning/courses/draft` | Instructor auth, approved/persisted source records, and Prisma are required by the route. | SchoolCircle supplies the generic model seam (`MODEL_BASE_URL`, `MODEL_ID`); the upstream Coursewright defaults are not used. Generic model and instructor-authenticated live draft remain unverified. |
 | **Sourcerer** `8a2e6831ebc6ced8ee71b0215fb0037d1cb7c1bb` | `pnpm --filter @workspace/api-server test` | Observed 24-test API summary; keyword retrieval, normalization, refusal, and faithfulness fixtures use injected `chat`. | `artifacts/api-server/test/learning-core.test.mjs`; `arsenal-core.js#tutorAnswer`; `POST /api/learning/tutor` | Authenticated learner/instructor, approved source passages, and Prisma are required by the route. | The adapter uses SchoolCircle's generic model seam and does not silently use Sourcerer's default endpoint. No generic model or instructor-authenticated tutor flow is live-proven. |
@@ -31,11 +55,38 @@ browser/deployed flow.
 These observations are runtime evidence from the proxied development API, not
 production or browser proof:
 
+| Source/configuration check | Observed result | Meaning and remaining limit |
+|---|---|---|
+| Rebase | `replit/port` rebased onto `origin/main` at `fd925c7`; no pushes performed | The verification baseline includes the latest merged source. |
+| `apphosting.yaml` | Latest merged config contains temporary Anchor tunnel `https://calculations-probability-dozens-recommended.trycloudflare.com` | The tunnel URL is ephemeral and can disappear or rotate; it is not durable production service discovery. |
+| Firebase landing/login | Porting by the sync agent is in progress; Firebase verification auth bridge is in progress | No browser or live Firebase/OIDC callback proof is claimed. |
+
 | Workspace check | Observed result |
 |---|---|
 | `pnpm --filter @workspace/api-server test` | 24 tests passed, including labelled PostgreSQL LearningRecord roundtrip/CAS cleanup and route tests |
 | `pnpm run typecheck` | Passed for the full workspace |
 | API restart | Clean |
+
+### Direct Anchor service probes
+
+These calls were made directly against the temporary Anchor tunnel, not through
+the SchoolCircle `/api/doctrine` proxy:
+
+| Direct request | Observed result |
+|---|---|
+| `GET https://calculations-probability-dozens-recommended.trycloudflare.com/api/health` | `200`; `ok=true`; generator, embeddings, and reranker all `true` |
+| `GET https://calculations-probability-dozens-recommended.trycloudflare.com/api/corpus` | `200`; 13 publications and 4,230 chunks |
+| `POST /api/ask` with `According to MCDP 1, what is friction in war?` | `200`; `abstained:false`; answer present; 3 citations to `MCDP 1 Ch1 Friction` paragraphs 1–3, printed p. 5 |
+| `POST /api/ask` with `What is the current stock price of Microsoft?` | `200`; `abstained:true`; `abstain_reason: low_retrieval_score`; no citations |
+
+The grounded answer and refusal establish direct Anchor service behavior,
+including citation and low-retrieval abstention. They do not establish the
+SchoolCircle host proxy path: `DOCTRINE_BASE_URL`/`DOCTRINE_TIMEOUT_MS` were
+configured from the merged upstream settings, but the adapter has not yet been
+restarted and retested. Anchor's internal generator/embeddings/reranker readiness
+does not change the separate SchoolCircle generic model status, which remains
+unavailable. The prior `/api/doctrine` `200 ready:false` probe was before this
+Anchor configuration and must not be treated as a post-config result.
 
 | Check | Observed result | Meaning and remaining limit |
 |---|---|---|
@@ -44,7 +95,7 @@ production or browser proof:
 | `curl .../api/auth/user` | `200`, `{"user":null}` | Anonymous auth response is explicit; this is not a live OIDC callback or instructor identity. |
 | `curl .../api/learning/sources` | `401`, `AUTH_REQUIRED` | Authenticated authoring boundary rejects anonymous access as intended. |
 | `curl .../api/plan` | `200`, original markdown planning-board response | Existing planning board remains intact; Cadence does not replace it. |
-| `curl .../api/doctrine` | `200`, `ready:false` | Anchor adapter reports unavailable without fabricating doctrine. |
+| `curl .../api/doctrine` | Prior probe: `200`, `ready:false`, before the new Anchor env configuration | Historical pre-config result only; post-config SchoolCircle proxy restart/retest is pending. |
 
 The UI paths are source-inspected only. Browser testing and final UI contract
 corrections remain in progress and are not claimed here.
@@ -120,15 +171,17 @@ asserted here:
 | OIDC client | `OIDC_CLIENT_ID` **or** `REPL_ID` | Required by `authReadiness()` and `/api/login`; `ISSUER_URL` is optional and defaults to `https://replit.com/oidc`. Readiness is true in development, but discovery/callback and instructor identity remain unverified. |
 | Trusted auth origin / credentialed CORS | `AUTH_ALLOWED_HOSTS`, `AUTH_ALLOWED_ORIGINS`, `REPLIT_DOMAINS`, `REPLIT_DEV_DOMAIN`, `REPLIT_DEPLOYMENT_DOMAIN`, `APP_ORIGIN`; CORS additionally reads `WEB_ORIGIN`, `FRONTEND_ORIGIN` | Production callback/origin checks require a trusted host/origin. Development loopback is allowed only under the source rules. |
 | Generic SchoolCircle model | `MODEL_BASE_URL`, `MODEL_ID`; optional `MODEL_API_KEY` | Both base URL and model ID are required for `providerStatus().ready`; API key is sent when present. Used by Coursewright, Sourcerer, Whetstone seams and evidence model injection. |
-| Anchor doctrine | `DOCTRINE_BASE_URL`; optional `DOCTRINE_TIMEOUT_MS` | URL must point to a running Anchor `/api/ask`. Missing URL yields explicit `NO_DOCTRINE_SERVICE`; it never fabricates an answer. |
+| Anchor doctrine | `DOCTRINE_BASE_URL`; optional `DOCTRINE_TIMEOUT_MS` | URL must point to a running Anchor `/api/ask`. The temporary Cloudflare tunnel is configured and direct health/corpus/ask probes pass; missing URL yields explicit `NO_DOCTRINE_SERVICE` and never fabricates an answer. The SchoolCircle proxy still needs restart/retest, and the tunnel is not durable production service discovery. |
 | Rubricon production generation | `RUBRICON_ENDPOINT`, `RUBRICON_MODEL`, `RUBRICON_API_KEY` | All three are required by the explicit adapter gate, in addition to generic model readiness. |
 | Whetstone production generation | `WHETSTONE_ENDPOINT`, `WHETSTONE_MODEL`, `WHETSTONE_API_KEY` | All three are required by the explicit adapter gate, in addition to generic model readiness. |
 | Hotwash narrative / Understudy evidence | No additional SchoolCircle env names | Both receive the generic model only when it is ready. Hotwash has a deterministic memo; Understudy returns explicit `unavailable` without an injected model. Upstream default `UNDERSTUDY_*`/other package variables are intentionally not consulted by the adapter. |
 
-At the time of this audit, Anchor, the generic model, Rubricon, and Whetstone
-services are unconfigured. The development API, Prisma migration, auth readiness,
-anonymous authorization boundary, route tests, and selected PostgreSQL roundtrips
-are verified. Remaining blockers are live OIDC callback/instructor identity,
-approved source/course data for authenticated flows, model/Anchor/Rubricon/Whetstone
-service evidence, and browser verification; final UI contract corrections remain
-in progress.
+At the time of this audit, the generic model, Rubricon, and Whetstone services
+remain unavailable; direct Anchor is live only through the temporary tunnel. The
+development API, Prisma migration, auth readiness, anonymous authorization
+boundary, route tests, selected PostgreSQL roundtrips, and direct Anchor health,
+corpus, grounded-answer, and refusal behavior are verified. Remaining blockers are
+the SchoolCircle proxy restart/retest, live OIDC callback/instructor identity,
+approved source/course data for authenticated flows, generic model/Rubricon/Whetstone
+service evidence, and browser verification. Firebase landing/login porting and its
+verification auth bridge, plus final UI contract corrections, remain in progress.

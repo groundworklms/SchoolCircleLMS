@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  authBoundary,
+  resolveFirebaseUser,
   resolveSessionUser,
 } from '../src/lib/auth-boundary.js';
+import { firebaseExternalId, verifyFirebaseIdToken } from '../src/lib/firebase-auth.js';
 import {
   createSessionToken,
   SESSION_TTL,
@@ -104,6 +107,86 @@ test('session resolution takes role from Prisma, not session profile', async () 
     assert.equal(calls[0].where.id, 'user-1');
     assert.equal(calls[0].select.role, true);
   });
+});
+
+test('malformed Firebase bearer tokens fail closed before Prisma upsert', async () => {
+  await withEnv(
+    { NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'schoolcircle-ae29a' },
+    async () => {
+      let upserted = false;
+      const result = await resolveFirebaseUser(
+        'not-a-jwt',
+        {
+          upsert: async () => {
+            upserted = true;
+            return null;
+          },
+        },
+      );
+      assert.equal(result, null);
+      assert.equal(upserted, false);
+      assert.equal(await verifyFirebaseIdToken('not-a-jwt'), null);
+    },
+  );
+});
+
+test('Firebase identity is namespaced and Prisma default role wins', async () => {
+  await withEnv(
+    { NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'schoolcircle-ae29a' },
+    async () => {
+      let query;
+      const user = await resolveFirebaseUser(
+        'verified-token',
+        {
+          upsert: async (value) => {
+            query = value;
+            return {
+              id: 'user-firebase-1',
+              name: value.create.name,
+              role: 'LEARNER',
+              externalId: value.create.externalId,
+            };
+          },
+        },
+        async () => ({
+          uid: 'firebase-user-1',
+          name: 'Learner',
+          email: 'learner@example.test',
+          role: 'INSTRUCTOR',
+        }),
+      );
+
+      assert.equal(user.role, 'LEARNER');
+      assert.equal(user.externalId, firebaseExternalId('firebase-user-1'));
+      assert.equal(query.create.role, undefined);
+      assert.equal(query.update.role, undefined);
+      assert.equal(Object.hasOwn(user, 'uid'), false);
+    },
+  );
+});
+
+test('invalid Firebase bearer cannot populate auth middleware', async () => {
+  await withEnv(
+    { NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'schoolcircle-ae29a', SESSION_SECRET: undefined },
+    async () => {
+      const req = {
+        method: 'GET',
+        headers: { authorization: 'Bearer not-a-jwt' },
+      };
+      const res = {
+        clearCookie() {
+          throw new Error('invalid bearer must not clear a browser cookie');
+        },
+      };
+      let nextCalled = false;
+      await authBoundary(req, res, () => {
+        nextCalled = true;
+      });
+      assert.equal(nextCalled, true);
+      assert.equal(req.isAuthenticated(), false);
+      assert.equal(req.user, undefined);
+    },
+  );
 });
 
 test('trusted callback origin rejects an untrusted forwarded host', () => {

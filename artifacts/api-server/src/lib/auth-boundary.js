@@ -1,6 +1,12 @@
 import { Router } from 'express';
 import { db } from './db.js';
 import {
+  firebaseConfigured,
+  firebaseExternalId,
+  firebasePublicConfig,
+  verifyFirebaseIdToken,
+} from './firebase-auth.js';
+import {
   AuthConfigurationError,
   callbackUrl,
   clientId,
@@ -17,6 +23,7 @@ import {
   clearOidcCookies,
   clearSessionCookie,
   createSessionToken,
+  getBearerToken,
   getSessionToken,
   requestCookies,
   sessionConfigured,
@@ -28,7 +35,7 @@ import {
 const OIDC_COOKIE_TTL = 10 * 60 * 1000;
 
 function isUsableUser(user) {
-  return (
+  return Boolean(
     user &&
     typeof user.id === 'string' &&
     user.id.length > 0 &&
@@ -37,6 +44,7 @@ function isUsableUser(user) {
   );
 }
 
+
 export async function resolveSessionUser(session, userClient = db.user) {
   if (!session?.userId || !session?.subject) return null;
   const user = await userClient.findUnique({
@@ -44,6 +52,42 @@ export async function resolveSessionUser(session, userClient = db.user) {
     select: { id: true, name: true, role: true, externalId: true },
   });
   return isUsableUser(user) && user.externalId === session.subject ? user : null;
+}
+
+export async function resolveFirebaseUser(
+  idToken,
+  userClient = db.user,
+  verifier = verifyFirebaseIdToken,
+) {
+  const profile = await verifier(idToken);
+  if (!profile || typeof profile.uid !== 'string' || !profile.uid.trim()) {
+    return null;
+  }
+
+  const externalId = firebaseExternalId(profile.uid);
+  if (!externalId) return null;
+  const user = await userClient.upsert({
+    where: { externalId },
+    create: {
+      externalId,
+      name: profile.name,
+    },
+    update: {
+      name: profile.name,
+    },
+    select: { id: true, name: true, role: true, externalId: true },
+  });
+  if (!isUsableUser(user) || user.externalId !== externalId) return null;
+
+  // Keep the Prisma role authoritative. Only verified, non-authorization
+  // profile fields are copied onto the request user.
+  return {
+    ...user,
+    email: profile.email || null,
+    firstName: profile.firstName || null,
+    lastName: profile.lastName || null,
+    profileImageUrl: profile.profileImageUrl || null,
+  };
 }
 
 /**
@@ -56,6 +100,7 @@ export async function authBoundary(req, res, next) {
   req.isAuthenticated = () =>
     isUsableUser(req.user) && typeof req.user.id === 'string';
 
+  const bearerToken = getBearerToken(req);
   const token = getSessionToken(req);
   if (!token) {
     next();
@@ -63,6 +108,20 @@ export async function authBoundary(req, res, next) {
   }
 
   const session = verifySessionToken(token);
+  if (!session && bearerToken) {
+    try {
+      const user = await resolveFirebaseUser(bearerToken);
+      if (user) {
+        req.user = user;
+        req.auth = { provider: 'firebase', user };
+      }
+    } catch {
+      // Firebase verifier or Prisma failures remain anonymous. Never turn a
+      // failed external token check into a partially trusted identity.
+    }
+    next();
+    return;
+  }
   if (!session) {
     if (requestCookies(req).sid === token) clearSessionCookie(res);
     next();
@@ -135,6 +194,10 @@ authRouter.get('/auth/user', (req, res) => {
       profileImageUrl: req.user.profileImageUrl || null,
     },
   });
+});
+
+authRouter.get('/auth/firebase-config', (_req, res) => {
+  res.json(firebasePublicConfig());
 });
 
 authRouter.get('/login', async (req, res) => {
@@ -241,18 +304,21 @@ authRouter.get('/logout', async (req, res) => {
 });
 
 export function authReadiness() {
-  const configured = sessionConfigured() && Boolean(
+  const replitConfigured = sessionConfigured() && Boolean(
     process.env.OIDC_CLIENT_ID || process.env.REPL_ID,
   );
+  const firebase = firebaseConfigured();
+  const configured = replitConfigured || firebase;
   return {
     ready: configured,
     provider: 'replit-oidc',
     acceptsHeaderRoles: false,
+    firebase: { configured: firebase },
     ...(configured
       ? {}
       : {
           reason:
-            'Replit OIDC and signed session configuration are unavailable; authenticated routes remain closed.',
+            'No verified Replit OIDC or Firebase session provider is configured; authenticated routes remain closed.',
         }),
   };
 }

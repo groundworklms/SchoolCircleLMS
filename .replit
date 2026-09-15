@@ -18,3 +18,15 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[userenv]
+
+[userenv.shared]
+DOCTRINE_BASE_URL = "https://calculations-probability-dozens-recommended.trycloudflare.com"
+DOCTRINE_TIMEOUT_MS = "30000"
+VITE_FIREBASE_API_KEY = "AIzaSyDNULW649liOlpJEuIfKc5fGrsAjmrOF1g"
+VITE_FIREBASE_APP_ID = "1:770710930289:web:cda5d4e9c6ea74742cecd0"
+VITE_FIREBASE_AUTH_DOMAIN = "schoolcircle-ae29a.firebaseapp.com"
+VITE_FIREBASE_MESSAGING_SENDER_ID = "770710930289"
+VITE_FIREBASE_PROJECT_ID = "schoolcircle-ae29a"
+VITE_FIREBASE_STORAGE_BUCKET = "schoolcircle-ae29a.firebasestorage.app"
