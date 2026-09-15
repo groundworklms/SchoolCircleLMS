@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "audit": {
-    "status": "in-progress-service-and-browser-verification",
+    "status": "in-progress-anchor-live-proxy-and-browser-verification",
     "contract": "docs/05-arsenal-contracts.md",
     "anchorContract": "docs/04-grounding-and-anchor.md",
     "cacheRoot": ".cache/arsenal",
@@ -9,7 +9,14 @@
     "refResolution": "git -C .cache/arsenal/<repo> rev-parse HEAD",
     "sourcePolicy": "Resolved shallow main commit and checked-out source are authoritative for this audit; package metadata is preserved as evidence.",
     "schoolCircleIntegrationDefinition": "adapter-wired means current SchoolCircle/API source has an adapter or import and route for the repo; a clone or installed dependency alone is not integration.",
-    "currentSourceStatus": "All eleven JavaScript dependencies are pinned in artifacts/api-server/package.json at the reviewed SHAs. Core and evidence adapters, routes, and principal learner/instructor UI surfaces are present; UI paths are source-inspected only and final UI contract corrections remain in progress.",
+    "currentSourceStatus": "replit/port was rebased onto origin/main at fd925c7 with no pushes. All eleven JavaScript dependencies remain pinned in artifacts/api-server/package.json at the reviewed SHAs. Core and evidence adapters, routes, and principal learner/instructor UI surfaces are present; UI paths are source-inspected only, Firebase landing/login porting and its verification auth bridge are in progress, and final UI contract corrections remain in progress.",
+    "sourceVerification": {
+      "rebase": "replit/port rebased onto origin/main at fd925c7",
+      "pushes": "none",
+      "mergedConfig": "apphosting.yaml",
+      "temporaryAnchorTunnel": "https://calculations-probability-dozens-recommended.trycloudflare.com",
+      "tunnelRisk": "Temporary Cloudflare tunnel may disappear or rotate and is not durable production service discovery."
+    },
     "dependencyInstall": {
       "manifest": "artifacts/api-server/package.json",
       "lockfile": "pnpm-lock.yaml",
@@ -24,16 +31,18 @@
       "status": "not-complete",
       "evidenceClass": "24-tests-mixed-fixtures-injected-model-and-postgresql-roundtrip",
       "liveServiceProof": false,
+      "liveServiceProofScope": "anchor-direct-only",
       "liveApiProbe": true,
-      "liveExternalServiceProof": false,
+      "liveExternalServiceProof": true,
+      "liveExternalServiceProofScope": "Anchor direct HTTP only; generic model, Rubricon, and Whetstone remain unavailable.",
+      "directAnchorLiveProof": true,
       "databaseStatus": "Development Prisma baseline and LearningRecord migration are deployed. Labelled tests exercise real PostgreSQL LearningRecord roundtrip/CAS cleanup; no authenticated instructor end-to-end aggregate flow is claimed.",
       "unconfiguredServices": [
-        "Anchor doctrine service",
         "generic self-hosted model provider",
         "Rubricon endpoint",
         "Whetstone endpoint"
       ],
-      "authStatus": "Development auth readiness is true; /api/auth/user returns user:null and anonymous protected source access returns 401 AUTH_REQUIRED. No live OIDC callback or instructor identity is claimed.",
+      "authStatus": "Development auth readiness is true; /api/auth/user returns user:null and anonymous protected source access returns 401 AUTH_REQUIRED. No live OIDC callback or instructor identity is claimed. Firebase landing/login porting and the verification auth bridge are in progress.",
       "testVerification": {
         "apiCommand": "pnpm --filter @workspace/api-server test",
         "apiResult": "24 tests passed, including labelled PostgreSQL LearningRecord roundtrip/CAS cleanup and route tests",
@@ -46,8 +55,23 @@
           "/api/auth/user": "200; user:null",
           "/api/learning/sources": "401 AUTH_REQUIRED",
           "/api/plan": "200; original markdown planning-board response",
-          "/api/doctrine": "200; ready:false"
+          "/api/doctrine": "Prior 200; ready:false before new Anchor env configuration; post-config adapter restart/retest pending"
         }
+      },
+      "directAnchorEvidence": {
+        "baseUrl": "https://calculations-probability-dozens-recommended.trycloudflare.com",
+        "health": "200; ok=true; generator=true; embeddings=true; reranker=true",
+        "corpus": "200; 13 publications; 4230 chunks",
+        "groundedAsk": {
+          "question": "According to MCDP 1, what is friction in war?",
+          "result": "200; abstained=false; answer present; 3 citations to MCDP 1 Ch1 Friction paragraphs 1-3, printed p5"
+        },
+        "refusalAsk": {
+          "question": "What is the current stock price of Microsoft?",
+          "result": "200; abstained=true; abstain_reason=low_retrieval_score; no citations"
+        },
+        "scope": "Direct Anchor service proof only; DOCTRINE_BASE_URL and DOCTRINE_TIMEOUT_MS were configured from merged upstream settings, but the SchoolCircle adapter proxy was not restarted/retested.",
+        "tunnelRisk": "Temporary Cloudflare tunnel may disappear or rotate; do not treat it as durable production service discovery."
       },
       "uiVerification": "Source inspection only; browser testing is not claimed and final UI contract corrections remain in progress.",
       "verificationDocument": "docs/arsenal-verification.md"
@@ -89,11 +113,12 @@
         "contract /api/doctrine is the SchoolCircle wrapper, not an Anchor route"
       ],
       "schoolCircleIntegration": {
-        "status": "adapter-wired",
+        "status": "adapter-wired-direct-anchor-live-proxy-pending",
         "adapter": "artifacts/api-server/src/lib/doctrine.js",
         "route": "artifacts/api-server/src/routes/doctrine.js",
         "ui": "artifacts/schoolcircle/src/components/AskWidget.jsx",
-        "notes": "HTTP adapter posts to Anchor /api/ask, maps the response, preserves abstention, and reports an explicit unavailable state when DOCTRINE_BASE_URL is absent. This is source wiring only; Anchor is not configured or live-verified."
+        "directLiveEvidence": "Temporary tunnel https://calculations-probability-dozens-recommended.trycloudflare.com: /api/health 200 ok=true with generator/embeddings/reranker true; /api/corpus 200 with 13 publications and 4230 chunks; /api/ask grounded MCDP 1 friction with 3 citations and refused an unrelated Microsoft stock-price question with low_retrieval_score.",
+        "notes": "HTTP adapter posts to Anchor /api/ask, maps the response, preserves abstention, and reports an explicit unavailable state when DOCTRINE_BASE_URL is absent. DOCTRINE_BASE_URL and DOCTRINE_TIMEOUT_MS are configured from merged apphosting settings, but the SchoolCircle adapter proxy has not been restarted/retested. The Cloudflare tunnel is temporary and not durable production service discovery."
       },
       "evidence": [
         ".cache/arsenal/anchor/src/api/main.py",

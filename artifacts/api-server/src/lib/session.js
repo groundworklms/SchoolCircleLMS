@@ -154,12 +154,16 @@ export function requestCookies(req) {
   return parseCookieHeader(req?.headers?.cookie);
 }
 
-export function getSessionToken(req) {
+export function getBearerToken(req) {
   const authorization = req?.headers?.authorization;
-  if (typeof authorization === 'string') {
-    const match = authorization.match(/^Bearer\s+(\S+)$/i);
-    if (match) return match[1];
-  }
+  if (typeof authorization !== 'string') return null;
+  const match = authorization.match(/^Bearer\s+(\S+)$/i);
+  return match?.[1] || null;
+}
+
+export function getSessionToken(req) {
+  const bearer = getBearerToken(req);
+  if (bearer) return bearer;
   return requestCookies(req)[SESSION_COOKIE];
 }
 

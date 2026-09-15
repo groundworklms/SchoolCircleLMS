@@ -7,14 +7,16 @@ This is a source audit of the twelve repos named by
 2. what requires a model, service, dependency, or device; and
 3. what SchoolCircle currently consumes.
 
-**Audit status: in progress; service/browser verification is incomplete.**
+**Audit status: in progress; direct Anchor is live, but host-proxy/service/browser
+verification is incomplete.**
 
 `adapter-wired` below means that the current SchoolCircle/API source has an adapter
 or import and route for that repo. It does **not** mean that the upstream repository
 was merely cloned, or that a route has been proven against every live dependency. The
 development API has passed its health/status/auth-boundary probes and selected Prisma
-roundtrip tests; no claim of a live model, Anchor device, instructor OIDC callback,
-production database, or complete browser flow is made by this document.
+roundtrip tests. Direct Anchor HTTP service evidence is now live through a temporary
+tunnel; no claim of an Anchor device, instructor OIDC callback, production database,
+or complete browser flow is made by this document.
 
 ## Audit basis and provenance
 
@@ -38,8 +40,10 @@ HTTP service, and the pieces compose as JSON ([contract lines 10–35](./05-arse
 The current API package pins all eleven JavaScript repos to the reviewed SHAs. Current source
 inspection finds an adapter and route for every one, with learner/instructor UI for the principal
 flows. "Adapter-wired" below means source wiring exists; it does **not** mean a live model,
-Anchor process, instructor identity, or complete deployed end-to-end path was verified. The
-development Prisma baseline and LearningRecord migration have been deployed, and selected
+instructor identity, or complete deployed end-to-end path was verified. Direct Anchor service
+health, corpus, grounded-answer, and refusal probes are recorded separately from the
+SchoolCircle proxy, which has not yet been restarted and retested with the new Anchor URL.
+The development Prisma baseline and LearningRecord migration have been deployed, and selected
 tests exercise a real PostgreSQL roundtrip; this is not production deployment proof.
 The runnable commands and blockers are listed in [`arsenal-verification.md`](./arsenal-verification.md).
 
@@ -47,7 +51,7 @@ The runnable commands and blockers are listed in [`arsenal-verification.md`](./a
 
 | Repo, resolved `main` ref, and role | Verified exports and primary call/API shape | Runs locally without network/model | External requirements and non-local behavior | Contract drift found | Current SchoolCircle status |
 |---|---|---|---|---|---|
-| **anchor** · `fc9cc61a1a42121c3ad811f800b028805810ecf5`<br>Offline FastAPI doctrine tutor; remote `groundworklms/anchor` | No npm exports. `POST /api/ask` accepts `{"question": string}` and returns `question`, `retrieved`, `top_rerank_score`, `top_pub_id`, `top_effective_score`, `citations`, `abstained`, `abstain_reason`, plus `text`/`sources` on an answer and optional `grounding`. Also exposes `POST /api/ask/stream` SSE, learning, review, instructor, records, corpus, health, and telemetry routes. See `src/api/main.py` and `src/generation/pipeline.py`. | Pure chunking, retrieval gates, citation/refusal checks, grounding helpers, and API tests can use local fixtures/stubs. `GroundingVerifier` runs with an injected `ask_model` or local HHEM stub. A production answer requires an indexed corpus and model services. | Python device requirements (FastAPI, Uvicorn, Pydantic, SQLite/`sqlite-vec`, YAML) plus a corpus/config and local generator, embedding, and reranker services (documented ports 8080–8082). Optional HHEM verifier is another local service. It is designed for an air-gapped Jetson, not a cloud API. | The contract shows `{q}` and output names `abstainReason`, `answer`, `topScore`, and `latencyMs`; the service uses `{question}`, `abstain_reason`, `text`, `top_rerank_score`, and `latency_s` (the SchoolCircle adapter maps these). The contract’s `/api/doctrine` route is an app wrapper, not an Anchor route. | **Adapter-wired.** `artifacts/api-server/src/lib/doctrine.js` POSTs to Anchor `/api/ask`; `routes/doctrine.js` serves `/api/doctrine`; `schoolcircle/src/components/AskWidget.jsx` renders citations and refusal. The adapter is HTTP-only and intentionally reports unavailable when `DOCTRINE_BASE_URL` is absent; Anchor itself is not configured or live-verified here. |
+| **anchor** · `fc9cc61a1a42121c3ad811f800b028805810ecf5`<br>Offline FastAPI doctrine tutor; remote `groundworklms/anchor` | No npm exports. `POST /api/ask` accepts `{"question": string}` and returns `question`, `retrieved`, `top_rerank_score`, `top_pub_id`, `top_effective_score`, `citations`, `abstained`, `abstain_reason`, plus `text`/`sources` on an answer and optional `grounding`. Also exposes `POST /api/ask/stream` SSE, learning, review, instructor, records, corpus, health, and telemetry routes. See `src/api/main.py` and `src/generation/pipeline.py`. | Pure chunking, retrieval gates, citation/refusal checks, grounding helpers, and API tests can use local fixtures/stubs. `GroundingVerifier` runs with an injected `ask_model` or local HHEM stub. A production answer requires an indexed corpus and model services. | Python device requirements (FastAPI, Uvicorn, Pydantic, SQLite/`sqlite-vec`, YAML) plus a corpus/config and local generator, embedding, and reranker services (documented ports 8080–8082). Optional HHEM verifier is another local service. It is designed for an air-gapped Jetson, not a cloud API. | The contract shows `{q}` and output names `abstainReason`, `answer`, `topScore`, and `latencyMs`; the service uses `{question}`, `abstain_reason`, `text`, `top_rerank_score`, and `latency_s` (the SchoolCircle adapter maps these). The contract’s `/api/doctrine` route is an app wrapper, not an Anchor route. | **Direct Anchor live; SchoolCircle proxy pending.** `artifacts/api-server/src/lib/doctrine.js` POSTs to Anchor `/api/ask`; `routes/doctrine.js` serves `/api/doctrine`; `schoolcircle/src/components/AskWidget.jsx` renders citations and refusal. Through temporary `https://calculations-probability-dozens-recommended.trycloudflare.com`, Anchor `/api/health` returned `200 ok=true` with generator/embeddings/reranker ready, `/api/corpus` returned 13 publications and 4,230 chunks, and `/api/ask` produced both a cited MCDP 1 answer and a low-retrieval-score refusal. `DOCTRINE_BASE_URL` and timeout were configured from merged apphosting settings, but the SchoolCircle adapter has not been restarted/retested with them. |
 | **quarry** · `465b7515732bbc08b80b6ec8684e1fc49c7985ea`<br>PDF/text extraction and structure | Root: `pdfText`, `PdfParseError`, `chunkText`, `extractTasks`, `outline`, `sections`. Subpaths: `quarry/chunk`, `quarry/tasks`, `quarry/outline`, `quarry/pdf`. Primary calls: `pdfText(bytes) -> {text, pages, pageTexts}`, `chunkText(text, maxWords=180)`, `extractTasks(text, opts?)`. | `chunkText`, `extractTasks`, `outline`, and `sections` are deterministic. `pdfText` is local-only when passed local PDF bytes. | Node 18+ and local `pdfjs-dist`; no model, network, or API key. | The contract says PDF/POI bytes and `{text}`; this repo has a PDF parser and a text task parser, not a POI-specific parser, and `pdfText` returns `pages` and `pageTexts` too. The contract’s `pageTexts` key export is not a function; it is part of the `pdfText` result. | **Adapter-wired.** `arsenal-core.js:ingestSource` imports Quarry at call time and preserves page/chunk citations. `POST /api/learning/sources` and `/api/learning/sources/pdf` persist `SOURCE` records; `/teach` exposes text ingestion and source approval. Adapter tests include persistence/route coverage; no live PDF service or instructor flow is claimed. |
 | **coursewright** · `f38d078a30195a6a6901ade22a3ce7484613fa57`<br>Cited course generation | Root exports `buildCourse`, `fromDocuments`, `isRefusal`, `verifyGrounding`, `chunk`, `match`. Actual generation shape is `buildCourse(spec, emit?, options?)` where `spec` contains `title` and `objectives`; `fromDocuments(spec, emit?, options?)` takes `documents` and objectives. `options.ask`/fetch can be injected. | `chunk`, `match`, `verifyGrounding`, and refusal checks are deterministic. Full generation can run offline only with a deterministic injected `ask`/fetch; the default path calls a model. | Node 18+, no package dependency. Default generation uses `COURSEWRIGHT_API_KEY`/`OPENROUTER_API_KEY`, endpoint/model env vars, and optional diagram model. | Contract signatures say `buildCourse(objectives, {ask}?)` and `fromDocuments(docs, objectives, {ask}?)`; source/README use one spec object and separate `emit` then `options`. The documented output is richer than the contract’s generic `items` shape: sections contain lesson, pre/post, flashcards, diagram, and per-artifact refusals. | **Adapter-wired.** `arsenal-core.js:draftCourse` calls `fromDocuments` with the SchoolCircle model seam and preserves generated course JSON/refusals. `POST /api/learning/courses/draft` persists `COURSE_DRAFT` as `PENDING`; `/teach` offers source-backed draft and approval. Requires configured model and persistence for production calls. |
 | **sourcerer** · `8a2e6831ebc6ced8ee71b0215fb0037d1cb7c1bb`<br>Cite-or-refuse document Q&A | Root exports `ask`, `normalizeEndpointResponse`, `keywordRetriever`, `embedRetriever`, `verifyFaithfulness`, `summarizeFaithfulness`. Primary call is `ask(question, opts?)`, not an object-only call. Options include `passages`, `retriever`, `endpoint`, `chat`, `verify`, `k`, `minScore`, and history. | Keyword retrieval, endpoint normalization, refusal thresholds, and faithfulness summary are local. `ask` can be exercised without network using passages plus an injected `chat`; verification accepts an injected chat. | Node 18+ and no package dependency. Default `ask` model calls the OpenRouter-compatible endpoint; `embedRetriever` needs an embeddings endpoint. Endpoint grounding is an external HTTP service and returns citations without passage text. | Contract shows `ask({q, passages\|retriever\|endpoint,...})`; actual API is `ask(question, opts)`. Contract names `verifyFaithfulness`/`keywordRetriever`/`embedRetriever` but omits the exported normalizer and summary helper. `verify` intentionally throws on endpoint-only results because there is no passage text to verify. | **Adapter-wired.** `arsenal-core.js:tutorAnswer` calls Sourcerer over approved persisted passages, with strict cite-or-refuse semantics. `POST /api/learning/tutor` persists `TUTOR_TURN`; the existing global Ask widget remains the separate Anchor `/api/doctrine` surface. Route/Prisma tests pass, but no tutor model or instructor-authenticated live flow is claimed. |
@@ -88,12 +92,14 @@ contract text as an npm/git dependency recipe:
    endpoint error but deliberately throws if endpoint-only citations are asked to be
    verified; Anchor’s SchoolCircle adapter surfaces unavailable/502 states and does not
    turn abstention into an ungrounded answer. Preserve these distinctions.
-6. **The source now contains the named adapter seams, but they remain unverified at
-   runtime.** `lib/arsenal-core.js` wires Quarry, Coursewright, Rubricon, Sourcerer,
-   and Whetstone; `lib/arsenal-evidence.js` wires Sextant, Cadence, Hotwash, Waypoint,
-   Cartridge, and instructor-only Understudy. The learning and evidence routers persist
-   through Prisma and the `/learn`/`/teach` surfaces call the principal routes. This is
-   source integration evidence, not deployment or live-service proof.
+ 6. **The source contains the named adapter seams, with Anchor now directly live but
+    the host proxy still pending.** `lib/arsenal-core.js` wires Quarry, Coursewright,
+    Rubricon, Sourcerer, and Whetstone; `lib/arsenal-evidence.js` wires Sextant, Cadence,
+    Hotwash, Waypoint, Cartridge, and instructor-only Understudy. The learning and
+    evidence routers persist through Prisma and the `/learn`/`/teach` surfaces call the
+    principal routes. Direct Anchor HTTP evidence is recorded; the SchoolCircle adapter
+    has not yet been restarted/retested against the temporary tunnel, and the other
+    external model/service paths remain unverified.
 
 ## Current wiring and remaining verification
 
@@ -126,9 +132,12 @@ The remaining work is service and flow verification, not a claim of completion:
 LearningRecord roundtrip/CAS-cleanup and route tests; `pnpm run typecheck` also passed.
 The development Prisma baseline and LearningRecord migration are deployed, the API restarted
 cleanly, and the proxy probes are recorded in [`arsenal-verification.md`](./arsenal-verification.md).
-Anchor, the generic model provider, Rubricon, and Whetstone endpoints remain unconfigured;
-the live OIDC callback and instructor identity were not exercised. UI paths are source-inspected
-only, with final UI contract corrections and browser testing still in progress.
+Anchor direct HTTP is live only through the temporary Cloudflare tunnel recorded in the
+verification document; the SchoolCircle host proxy still needs a restart/retest. The generic
+model provider, Rubricon, and Whetstone endpoints remain unavailable; the live OIDC callback
+and instructor identity were not exercised. Firebase landing/login porting and its verification
+auth bridge are in progress. UI paths are source-inspected only, with final UI contract
+corrections and browser testing still in progress.
 
 The companion [`arsenal-revisions.json`](./arsenal-revisions.json) is intentionally
 machine-readable and contains the same per-repo evidence without relying on Markdown
