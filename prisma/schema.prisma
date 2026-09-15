@@ -130,3 +130,21 @@ model Schedule {
   @@unique([itemId, learnerId])
   @@index([learnerId, dueAt])
 }
+
+// Additive boundary for integrations that do not have a first-class LMS table yet.
+// The payload is always JSON produced by a reviewed adapter (source, draft, rubric,
+// tutor turn, or mastery session). `ownerId` is the authenticated SchoolCircle User
+// id; no client-provided identity is accepted by the learning routes.
+model LearningRecord {
+  id        String   @id @default(cuid())
+  ownerId   String
+  type      String
+  status    String   @default("PENDING")
+  payload   Json
+  version   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, type])
+  @@index([type, status])
+}

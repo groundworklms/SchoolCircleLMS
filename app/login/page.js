@@ -21,18 +21,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Where to land after sign-in: /prototype by default, or a same-site ?next=
+  // path (the Learn / Teach apps send users here and want them back).
+  const [next, setNext] = useState('/prototype');
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get('next');
+    if (wanted && wanted.startsWith('/') && !wanted.startsWith('//')) setNext(wanted);
+  }, []);
 
   // Already signed in → into the app.
   useEffect(() => {
-    if (ready && user) router.replace('/prototype');
-  }, [ready, user, router]);
+    if (ready && user) router.replace(next);
+  }, [ready, user, router, next]);
 
   async function google() {
     setErr('');
     setBusy(true);
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
-      router.replace('/prototype');
+      router.replace(next);
     } catch (e) {
       setErr(e?.message || 'Sign-in failed.');
     } finally {
@@ -47,7 +54,7 @@ export default function LoginPage() {
     try {
       if (mode === 'signup') await createUserWithEmailAndPassword(auth, email, password);
       else await signInWithEmailAndPassword(auth, email, password);
-      router.replace('/prototype');
+      router.replace(next);
     } catch (e2) {
       setErr(e2?.message || 'Sign-in failed.');
     } finally {
