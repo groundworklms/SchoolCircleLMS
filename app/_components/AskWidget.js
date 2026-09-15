@@ -9,6 +9,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../_auth/AuthProvider';
+import { authenticatedFetch } from '../../lib/auth-fetch';
 
 const SUGGESTIONS = [
   { label: 'Sight alignment?', q: 'What is sight alignment?' },
@@ -22,12 +24,22 @@ const GREETING = {
 };
 
 export default function AskWidget() {
+  const { user, loading, ready } = useAuth();
+  if (!ready || loading || !user) return null;
+  // Unmount on sign-out and reset the conversation when accounts change.
+  return <SignedInAskWidget key={user.uid} />;
+}
+
+function SignedInAskWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([GREETING]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const chatRef = useRef(null);
   const inputRef = useRef(null);
+  const requestRef = useRef(null);
+
+  useEffect(() => () => requestRef.current?.abort(), []);
 
   useEffect(() => {
     if (open && inputRef.current) setTimeout(() => inputRef.current.focus(), 60);
@@ -50,8 +62,11 @@ export default function AskWidget() {
     setMessages((m) => [...m, { who: 'me', text: q }]);
     setBusy(true);
     try {
-      const res = await fetch('/api/doctrine', {
+      const controller = new AbortController();
+      requestRef.current = controller;
+      const res = await authenticatedFetch('/api/doctrine', {
         method: 'POST',
+        signal: controller.signal,
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ question: q }),
       });
@@ -78,7 +93,8 @@ export default function AskWidget() {
           meta: data.topScore != null ? `rerank ${Number(data.topScore).toFixed(2)}${data.ms ? ` · ${data.ms}ms` : ''}` : null,
         }]);
       }
-    } catch {
+    } catch (err) {
+      if (err.name === 'AbortError') return;
       setMessages((m) => [...m, { who: 'ai', note: true, text: 'Couldn’t reach the tutor. Check your connection and try again.' }]);
     } finally {
       setBusy(false);
