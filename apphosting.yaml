@@ -1,0 +1,18 @@
+# Firebase App Hosting runtime config.
+# https://firebase.google.com/docs/app-hosting/configure
+#
+# DOCTRINE_BASE_URL points the cloud app's grounding (server-side /api/doctrine)
+# at the offline Anchor engine on the Orin, exposed over a tunnel.
+#
+# NOTE: the value below is a TEMPORARY Cloudflare quick-tunnel URL — it changes
+# whenever the tunnel restarts. For a stable setup use a named Cloudflare tunnel
+# or a console-set secret. Update this value if the tunnel is restarted.
+env:
+  - variable: DOCTRINE_BASE_URL
+    value: https://calculations-probability-dozens-recommended.trycloudflare.com
+    availability:
+      - RUNTIME
+  - variable: DOCTRINE_TIMEOUT_MS
+    value: "30000"
+    availability:
+      - RUNTIME
