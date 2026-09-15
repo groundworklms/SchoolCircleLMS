@@ -79,3 +79,43 @@ export interface ErrorResponse {
   error: string;
   code?: string;
 }
+
+export type FeedbackRequestType = typeof FeedbackRequestType[keyof typeof FeedbackRequestType];
+
+
+export const FeedbackRequestType = {
+  bug: 'bug',
+  enhancement: 'enhancement',
+  idea: 'idea',
+  question: 'question',
+} as const;
+
+export type FeedbackRequestContext = {
+  /** @maxLength 1000 */
+  where?: string;
+  /** @maxLength 1000 */
+  url?: string;
+  /** @maxLength 1000 */
+  build?: string;
+  /** @maxLength 1000 */
+  viewport?: string;
+  /** @maxLength 1000 */
+  userAgent?: string;
+  /** @maxLength 1000 */
+  reporter?: string;
+  [key: string]: unknown;
+};
+
+export interface FeedbackRequest {
+  /** @maxLength 200 */
+  title: string;
+  type?: FeedbackRequestType;
+  /** @maxLength 10000 */
+  description?: string;
+  context?: FeedbackRequestContext;
+}
+
+export interface FeedbackResponse {
+  number: number;
+  url: string;
+}
