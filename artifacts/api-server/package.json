@@ -8,7 +8,7 @@
     "build": "pnpm run db:generate && node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "DATABASE_URL='postgresql://localhost:5432/schoolcircle_test' tsx --test test/courses.test.ts",
+    "test": "DATABASE_URL='postgresql://localhost:5432/schoolcircle_test' tsx --test test/*.test.ts",
     "db:generate": "prisma generate --schema ../../prisma/schema.prisma",
     "db:seed": "prisma db seed --schema ../../prisma/schema.prisma"
   },

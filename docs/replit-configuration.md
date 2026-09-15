@@ -69,3 +69,22 @@ Drizzle scaffold over these tables.
 
 No production database, Firebase provider setting, or external service was
 changed as part of the rebase.
+
+## Direct feedback filing
+
+The QA widget uses `POST /api/feedback`, preserving the newer upstream feedback
+flow. Direct filing is disabled unless the server has a `GITHUB_FEEDBACK_TOKEN`
+with issue-write access. `GITHUB_FEEDBACK_REPO` defaults to this project's
+repository. Set `FEEDBACK_KEY` to restrict direct submissions to testers who
+know the team key; the browser sends it in `x-feedback-key`.
+These are API-server settings, never `VITE_` variables.
+
+When direct filing is disabled (503), the report remains in the form and the
+widget offers a prefilled GitHub issue draft. It does not claim an issue was
+created. A successful direct response shows the actual issue number and URL;
+other failures preserve the report for retry. The widget can remember reporter
+and team-key settings in the browser, as in upstream; avoid shared browsers for
+team-key access.
+
+The build label can be supplied with optional `VITE_GIT_SHA`.
+No live GitHub issue is created by the automated checks.

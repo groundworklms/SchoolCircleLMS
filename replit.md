@@ -43,7 +43,7 @@ SchoolCircle is a grounded learning-management workspace with a live hackathon p
 - Live multi-column hackathon planning board with Markdown rendering and display controls.
 - Student and instructor prototype flows for courses, lessons, discussions, progress, live sessions, and curriculum authoring.
 - API-backed capability status, grounded doctrine questions, study-aid generation, and POI PDF ingestion.
-- Global Ask-the-doctrine and QA-report widgets, preserving upstream behavior.
+- Global Ask-the-doctrine and QA-report widgets, including optional direct GitHub issue filing with retained-draft fallback when unconfigured.
 
 ## User preferences
 

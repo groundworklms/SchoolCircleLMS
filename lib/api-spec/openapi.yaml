@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: courses
     description: Learner-facing course content
+  - name: feedback
+    description: Tester feedback submission
 paths:
   /healthz:
     get:
@@ -73,6 +75,56 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "500":
           description: Database error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /feedback:
+    post:
+      operationId: submitFeedback
+      tags: [feedback]
+      summary: Submit tester feedback
+      description: Files tester feedback as a GitHub issue when feedback is configured on the server.
+      parameters:
+        - name: x-feedback-key
+          in: header
+          required: false
+          description: Shared team key when FEEDBACK_KEY is configured on the server.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackRequest"
+      responses:
+        "200":
+          description: GitHub issue created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackResponse"
+        "400":
+          description: Invalid feedback request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Invalid feedback key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: GitHub could not create the issue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "503":
+          description: Feedback is not configured
           content:
             application/json:
               schema:
@@ -220,4 +272,52 @@ components:
           type: string
       required:
         - error
+    FeedbackRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 200
+        type:
+          type: string
+          enum: [bug, enhancement, idea, question]
+        description:
+          type: string
+          maxLength: 10000
+        context:
+          type: object
+          additionalProperties:
+            type: string
+          properties:
+            where:
+              type: string
+              maxLength: 1000
+            url:
+              type: string
+              maxLength: 1000
+            build:
+              type: string
+              maxLength: 1000
+            viewport:
+              type: string
+              maxLength: 1000
+            userAgent:
+              type: string
+              maxLength: 1000
+            reporter:
+              type: string
+              maxLength: 1000
+      required:
+        - title
+    FeedbackResponse:
+      type: object
+      properties:
+        number:
+          type: integer
+        url:
+          type: string
+          format: uri
+      required:
+        - number
+        - url
 

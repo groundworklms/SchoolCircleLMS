@@ -15,6 +15,8 @@ import * as zod from 'zod';
 export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
+
+
 /**
  * Returns courses with sections and human-approved learner items only.
  * @summary List learner courses
@@ -50,6 +52,7 @@ export const ListCoursesResponse = zod.object({
 }))
 }))
 })
+
 
 /**
  * Returns one course with sections and human-approved learner items only.
@@ -89,4 +92,50 @@ export const GetCourseResponse = zod.object({
 }))
 }))
 })
+})
+
+
+/**
+ * Files tester feedback as a GitHub issue when feedback is configured on the server.
+ * @summary Submit tester feedback
+ */
+export const SubmitFeedbackHeader = zod.object({
+  "x-feedback-key": zod.string().optional().describe('Shared team key when FEEDBACK_KEY is configured on the server.')
+})
+
+export const submitFeedbackBodyTitleMax = 200;
+
+export const submitFeedbackBodyDescriptionMax = 10000;
+
+export const submitFeedbackBodyContextWhereMax = 1000;
+
+export const submitFeedbackBodyContextUrlMax = 1000;
+
+export const submitFeedbackBodyContextBuildMax = 1000;
+
+export const submitFeedbackBodyContextViewportMax = 1000;
+
+export const submitFeedbackBodyContextUserAgentMax = 1000;
+
+export const submitFeedbackBodyContextReporterMax = 1000;
+
+
+
+export const SubmitFeedbackBody = zod.object({
+  "title": zod.string().max(submitFeedbackBodyTitleMax),
+  "type": zod.enum(['bug', 'enhancement', 'idea', 'question']).optional(),
+  "description": zod.string().max(submitFeedbackBodyDescriptionMax).optional(),
+  "context": zod.object({
+  "where": zod.string().max(submitFeedbackBodyContextWhereMax).optional(),
+  "url": zod.string().max(submitFeedbackBodyContextUrlMax).optional(),
+  "build": zod.string().max(submitFeedbackBodyContextBuildMax).optional(),
+  "viewport": zod.string().max(submitFeedbackBodyContextViewportMax).optional(),
+  "userAgent": zod.string().max(submitFeedbackBodyContextUserAgentMax).optional(),
+  "reporter": zod.string().max(submitFeedbackBodyContextReporterMax).optional()
+}).optional()
+})
+
+export const SubmitFeedbackResponse = zod.object({
+  "number": zod.number().int(),
+  "url": zod.string().url()
 })
