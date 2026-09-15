@@ -53,7 +53,7 @@ export function LearnerTutor({ sourceId }) {
             )}
             {msg.citations?.length > 0 && (
               <div style={{ marginTop: "0.5rem", fontSize: "0.75em", opacity: 0.8 }}>
-                {msg.citations.map((cj) => (
+                {msg.citations.map((c, j) => (
                   <span key={j} style={{ display: "inline-block", background: "rgba(0,0,0,0.1)", padding: "0.1rem 0.4rem", borderRadius: "4px", marginRight: "0.25rem", marginBottom: "0.25rem" }}>
                     {c.source || "Source"} {c.page ? `p. ${c.page}` : ""}
                   </span>
@@ -113,7 +113,7 @@ export function SourceViewer({ sourceId }) {
                 </div>
               ))
             ) : sourceData.chunks?.length > 0 ? (
-              sourceData.chunks.map((ci) => (
+              sourceData.chunks.map((c, i) => (
                 <div key={i} style={{ marginBottom: "1rem" }}>
                   <strong style={{ display: "block", marginBottom: "0.25rem", color: "var(--p-dim)" }}>Chunk {i + 1}</strong>
                   <p style={{ margin: 0 }}>{c.text}</p>

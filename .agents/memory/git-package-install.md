@@ -14,3 +14,14 @@ can also make freshly fetched upstream code appear broken.
 dependencies with npm's clean-install operation when the helper cannot express
 the existing dependency set. Do not interpret missing modules before restoration
 as source regressions.
+
+Do not commit regenerated lockfiles containing Replit-internal registry URLs.
+Prefer preserving the portable upstream lock when dependency requirements did
+not change.
+
+**Why:** Regenerating a lock during workspace reconciliation embedded
+package-firewall.replit.internal URLs that external CI runners cannot reach.
+
+**How to apply:** Inspect resolved hosts after regeneration and run a clean
+install with the public registry. Keep GitHub-pinned dependencies unchanged;
+distinguish local clean-install results from hosted-CI evidence.

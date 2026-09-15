@@ -42,6 +42,9 @@ jobs:
       - name: Account profile and session regressions
         run: npm run test:account-profile
 
+      - name: Non-empty learning views
+        run: npm run test:ui-rendering
+
   database:
     name: database
     runs-on: ubuntu-latest
