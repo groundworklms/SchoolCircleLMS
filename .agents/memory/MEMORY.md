@@ -1,2 +1,3 @@
 - [Arsenal boundaries](arsenal-boundaries.md) — verify producer-to-consumer JSON projections; adapter tests alone do not prove working learning workflows.
 - [Rebase artifact registration](rebase-artifact-registration.md) — Git replay can unregister a restored preview; revalidate its existing manifest instead of creating a duplicate.
+- [Managed AI provisioning](managed-ai-provisioning.md) — documented setup may be absent in task runners; check availability before promising immediate hosted access.
