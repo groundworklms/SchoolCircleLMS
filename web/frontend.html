@@ -931,6 +931,56 @@ body{background:var(--p-bg)}
 /* notifications move out from under the drawer's footer while grading */
 body:has(#drawer:not([hidden])) .ntf-stack{right:calc(min(34rem,100vw) + 1.3rem)}
 @media(max-width:900px){body:has(#drawer:not([hidden])) .ntf-stack{right:.8rem;left:.8rem;top:.8rem;bottom:auto;align-items:stretch}body:has(#drawer:not([hidden])) .ntf{width:auto}}
+
+/* dashboard: +N avatar chip expands the full list of students who submitted */
+button.av.more{border:none;font:inherit;font-size:.62rem;font-weight:700;cursor:pointer;transition:transform var(--dur) var(--ease),background-color var(--dur) var(--ease),color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+button.av.more:hover,button.av.more:focus-visible{background:var(--acc-100);color:var(--p-accent);transform:translateY(-2px);outline:none;transition:transform var(--dur-spring) var(--spring-hover),background-color var(--dur) var(--ease),color var(--dur) var(--ease)}
+button.av.more[aria-expanded="true"]{background:var(--p-accent);color:#fff}
+.subtoggle{font-size:.86em;display:inline-flex;align-items:center;gap:.25rem}
+.subtoggle .chev{width:.9rem;height:.9rem;transition:transform var(--dur) var(--ease)}
+.subtoggle[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.sublist-in{margin-top:.85rem;padding-top:.75rem;border-top:.5px solid var(--p-border)}
+.sublist-h{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.45rem}
+.sublist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15.5rem,1fr));gap:0 1rem}
+.subrow{display:flex;align-items:center;gap:.6rem;width:100%;border:none;border-bottom:.5px solid var(--p-border-soft);background:none;font:inherit;color:inherit;text-align:left;padding:.5rem .45rem;border-radius:0;cursor:pointer;transition:background-color var(--dur) var(--ease)}
+.subrow:hover,.subrow:focus-visible{background:var(--acc-50);border-radius:9px;outline:none}
+.subrow>.cwho{flex:1}
+.subrow .asg-score{min-width:auto;font-size:.85em}
+.sublist.open .subrow{animation:bloom var(--dur) var(--ease) both;animation-delay:calc(var(--i) * 18ms)}
+
+/* class selection: second sliding pill inside a carousel, plus the mini search that opens the class search dialog */
+.classbar{display:flex;align-items:center;gap:.45rem;margin:-.3rem 0 1.15rem;min-width:0}
+.cb-label{font-size:.82rem;font-weight:600;color:var(--p-faint);margin-right:.1rem;flex:none}
+.cb-track{flex:1;min-width:0;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;scroll-snap-type:x proximity;overscroll-behavior-x:contain;padding:2px 1px}
+.cb-track::-webkit-scrollbar{display:none}
+.cb-track.fade-l{-webkit-mask-image:linear-gradient(90deg,transparent,#000 2.2rem);mask-image:linear-gradient(90deg,transparent,#000 2.2rem)}
+.cb-track.fade-r{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 2.2rem),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 2.2rem),transparent)}
+.cb-track.fade-l.fade-r{-webkit-mask-image:linear-gradient(90deg,transparent,#000 2.2rem,#000 calc(100% - 2.2rem),transparent);mask-image:linear-gradient(90deg,transparent,#000 2.2rem,#000 calc(100% - 2.2rem),transparent)}
+.spill.cb{overflow:visible;max-width:none}
+.spill.cb button{scroll-snap-align:center;display:inline-flex;align-items:center;gap:.45rem;padding-right:.55rem}
+.cb-ct{min-width:1.35rem;height:1.25rem;padding:0 .38rem;border-radius:980px;display:inline-grid;place-items:center;font-size:.68rem;font-weight:700;background:var(--p-accent-tint);color:var(--p-accent);font-variant-numeric:tabular-nums;transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease)}
+.cb-ct.zero{background:rgba(0,0,0,.06);color:var(--p-faint)}
+.spill.cb button.on .cb-ct:not(.zero){background:var(--p-accent);color:#fff}
+.cb-arrow{flex:none}
+.classbar.no-overflow .cb-arrow{display:none}
+.minisearch{display:inline-flex;align-items:center;gap:.45rem;height:2.3rem;padding:0 .9rem 0 .7rem;border:none;border-radius:980px;background:var(--p-surface);box-shadow:0 0 0 .5px rgba(0,0,0,.12);font:inherit;font-size:.82rem;color:var(--p-faint);cursor:pointer;flex:none;min-width:9.5rem;transition:box-shadow var(--dur) var(--ease),color var(--dur) var(--ease)}
+.minisearch:hover,.minisearch:focus-visible{box-shadow:0 0 0 1.5px var(--p-accent);color:var(--p-text);outline:none}
+.minisearch .i{width:.9rem;height:.9rem}
+.csearch{display:flex;flex-direction:column;gap:.65rem}
+.csearch-box{display:flex;align-items:center;gap:.55rem;height:2.8rem;padding:0 .85rem;border-radius:12px;background:var(--p-surface-2);box-shadow:0 0 0 .5px rgba(0,0,0,.08);cursor:text;transition:box-shadow var(--dur) var(--ease),background-color var(--dur) var(--ease)}
+.csearch-box:focus-within{box-shadow:0 0 0 1.5px var(--p-accent);background:var(--p-surface)}
+.csearch-box .i{color:var(--p-faint)}
+.csearch-box input{flex:1;min-width:0;border:none;outline:none;background:none;font:inherit;font-size:.95rem;color:var(--p-text)}
+.csearch .switch{align-self:flex-start}
+.cres{display:flex;flex-direction:column;gap:2px;max-height:min(23rem,52vh);overflow-y:auto;margin:0 -.45rem;padding:.1rem .45rem}
+.cres-row{display:flex;align-items:center;gap:.7rem;width:100%;border:none;background:none;font:inherit;color:inherit;text-align:left;padding:.55rem .6rem;border-radius:10px;cursor:pointer;transition:background-color 150ms var(--ease)}
+.cres-row.sel{background:var(--p-accent-tint)}
+.cres-row>.cwho{flex:1}
+.cres-row mark{background:rgba(179,18,46,.15);color:inherit;border-radius:3px;padding:0 .1em}
+.cres-row .ctile .i{width:1rem;height:1rem}
+.cres-cur{width:1.1rem;flex:none;display:grid;place-items:center}
+@media(max-width:760px){.classbar{flex-wrap:wrap;row-gap:.45rem}.cb-label{width:100%}.cb-arrow{display:none}.minisearch{min-width:0;width:2.3rem;padding:0;justify-content:center}.minisearch span{display:none}}
+.csearch-box input::-webkit-search-cancel-button{display:none;-webkit-appearance:none}
 </style>
 </head>
 <body>
@@ -1057,6 +1107,51 @@ const COURSES = [
     ] },
 ];
 
+/* more classes the instructor teaches (generated; not in the student's enrollment) */
+function mkCourse(o) {
+  const n = o.annexes.length, start = -(o.week - 1) * 7 - 2, span = Math.round(o.weeks * 7 / n);
+  const c = { id: o.id, code: o.code, name: o.name, short: o.short, section: o.section, instructor: 'SSgt White', students: o.students, week: o.week, weeks: o.weeks,
+    enrollCode: o.enroll, rivera: false, weights: { assignment: .4, quiz: .2, exam: .4 }, topics: o.topics,
+    annexes: o.annexes.map((an, k) => {
+      const s = start + k * span, e = s + span - 1, L = 'ABCDEFG'[k];
+      const items = [
+        { id: `${o.id}-${L}1`, type: 'assignment', title: an.a, issued: s + 1, due: s + 6, pts: 50, docs: [`${o.doc} · Ch ${k + 1}`, `${an.a} template`], desc: an.ad, crit: an.crit },
+        { id: `${o.id}-${L}2`, type: 'quiz', title: `Quiz ${L}: ${an.title}`, issued: s + 4, due: s + 8, pts: 25, docs: [`${o.doc} · Ch ${k + 1}`], desc: '10 items.', crit: ['Terminology', 'Application', 'Judgment'] },
+      ];
+      if (k === n - 1) items.push({ id: `${o.id}-${L}3`, type: 'exam', title: 'Final evaluation', issued: e - 8, due: e, pts: 100, docs: ['Evaluation packet'], desc: 'Comprehensive: practical and written.', crit: ['Knowledge', 'Practical execution', 'Written response'] });
+      return { l: L, title: an.title, start: s, end: e, items };
+    }) };
+  const cur = c.annexes.find(a => a.start <= 0 && a.end >= 0);
+  if (cur) Object.assign(cur.items[0], { issued: -3, due: 3 });   // an open assignment, so there is work to grade
+  return c;
+}
+COURSES.push(
+  mkCourse({ id: 'lnav', code: 'MCRP 3-30.7', name: 'Land Navigation', short: 'Land Nav', section: 'All MOS · Class 26-06', students: 21, week: 4, weeks: 8, enroll: 'LNAV-3307', doc: 'MCRP 3-30.7',
+    topics: [['Map reading', 84], ['Terrain association', 72], ['Azimuths & back azimuths', 66], ['Pace count', 79], ['Night navigation', 58]],
+    annexes: [{ title: 'Map reading', a: 'Grid coordinate exercise', ad: 'Plot and read ten 8-digit grids on the training map.', crit: ['Identifies grid zones correctly', 'Reads coordinates to 8 digits', 'Plots points accurately'] },
+      { title: 'Terrain association', a: 'Terrain feature sketch', ad: 'Sketch and label the major and minor terrain features on your lane.', crit: ['Identifies terrain features', 'Sketch accuracy', 'Labels and legend'] },
+      { title: 'Dismounted navigation', a: 'Lane log: day course', ad: 'Log azimuths, pace counts and checkpoints for the day course.', crit: ['Azimuth accuracy', 'Pace count consistency', 'Checkpoint log completeness'] }] }),
+  mkCourse({ id: 'tccc', code: 'TCCC', name: 'Tactical Combat Casualty Care', short: 'TCCC', section: 'All MOS · Class 26-03', students: 16, week: 3, weeks: 6, enroll: 'TCCC-2603', doc: 'TCCC guidelines',
+    topics: [['Care under fire', 81], ['Tourniquet application', 88], ['MARCH assessment', 70], ['Casualty evacuation', 64], ['Casualty card (DD 1380)', 59]],
+    annexes: [{ title: 'Care under fire', a: 'Scenario response write-up', ad: 'Describe your actions for the care-under-fire scenario, step by step.', crit: ['Establishes security first', 'Controls massive hemorrhage', 'Moves the casualty correctly'] },
+      { title: 'Tactical field care', a: 'MARCH assessment worksheet', ad: 'Work through the MARCH sequence for three casualty cards.', crit: ['Follows the MARCH order', 'Identifies life threats', 'Selects correct interventions'] },
+      { title: 'Evacuation', a: '9-line and casualty card practice', ad: 'Complete a 9-line request and casualty card for the lane scenario.', crit: ['9-line format', 'Casualty card completeness', 'Clarity under time pressure'] }] }),
+  mkCourse({ id: 'dap', code: 'NAVMC 3500.44', name: 'Defend a Position', short: 'Defend', section: '03xx · Infantry · Class 26-05', students: 22, week: 2, weeks: 6, enroll: 'DAP-5510', doc: 'NAVMC 3500.44',
+    topics: [['Fighting position prep', 76], ['Fields of fire', 71], ['Camouflage & concealment', 62], ['Range cards', 68], ['Supplementary positions', 55]],
+    annexes: [{ title: 'Occupy and prepare', a: 'Fighting position plan', ad: 'Plan your fighting position with sectors and priorities of work.', crit: ['Sectors of fire defined', 'Priorities of work sequenced', 'Camouflage breaks up the outline'] },
+      { title: 'Range cards', a: 'Range card practical', ad: 'Complete a range card for your assigned sector.', crit: ['Sector limits', 'Target reference points', 'Data section accuracy'] },
+      { title: 'Alternate and supplementary', a: 'Supplementary position brief', ad: 'Brief the alternate and supplementary positions and when to occupy them.', crit: ['Positions identified', 'Triggers for movement', 'Coordination with adjacent units'] }] }),
+  mkCourse({ id: 'radio', code: 'MCRP 3-30B.2', name: 'Radio Operator Fundamentals', short: 'Radio Ops', section: '06xx · Comm · Class 26-01', students: 14, week: 5, weeks: 7, enroll: 'RADIO-2601', doc: 'MCRP 3-30B.2',
+    topics: [['Prowords', 86], ['Net procedures', 74], ['Antenna theory', 63], ['Troubleshooting', 60], ['COMSEC', 77]],
+    annexes: [{ title: 'Voice procedures', a: 'Proword drill transcript', ad: 'Transcribe and correct a recorded net with procedure errors.', crit: ['Identifies procedure errors', 'Uses correct prowords', 'Message format'] },
+      { title: 'Equipment', a: 'Radio setup checklist', ad: 'Set up and load the radio; document each step with the checklist.', crit: ['Setup sequence', 'Loading and fills', 'Operational check'] },
+      { title: 'Troubleshooting', a: 'Comm failure analysis', ad: 'Diagnose three simulated comm failures and document the fix.', crit: ['Diagnoses the fault', 'Isolates the cause', 'Documents the fix'] }] }),
+  mkCourse({ id: 'lead', code: 'MCWP 6-10', name: 'Leading Marines', short: 'Leadership', section: 'Corporals Course · Class 26-07', students: 28, week: 2, weeks: 5, enroll: 'LEAD-2607', doc: 'MCWP 6-10',
+    topics: [['Leadership traits', 83], ['Counseling', 69], ['Troop welfare', 78], ['Decision making', 71], ['Mentorship', 65]],
+    annexes: [{ title: 'Leadership principles', a: 'Leadership principle reflection', ad: 'Apply two leadership principles to a situation you led.', crit: ['Explains the principles', 'Applies them to the situation', 'Identifies lessons learned'] },
+      { title: 'Counseling', a: 'Counseling session plan', ad: 'Plan an initial counseling session for a junior Marine.', crit: ['Sets clear expectations', 'Uses the counseling format', 'Plans follow-up'] }] }),
+);
+
 /* courses a student can request to join (Enrollment → Browse catalog) */
 const CATALOG = [
   { id: 'n3500', code: 'NAVMC 3500.44', name: 'Defend a Position', section: '03xx · Infantry · Class 26-05', seats: 6, starts: 21 },
@@ -1144,20 +1239,21 @@ function roster(c) {
   if (ROSTERS[c.id]) return ROSTERS[c.id];
   const list = [];
   for (let i = 0; i < c.students; i++) {
-    const name = i === 0 ? 'Cpl Rivera' : RANKS[Math.floor(hash(c.id + i + 'r') * RANKS.length)] + ' ' + LAST.filter(n => n !== 'Rivera')[(i * 7 + (c.id === 'mcpp' ? 5 : 0)) % (LAST.length - 1)];   // only the real student is a Rivera
-    const ability = i === 0 ? null : .55 + hash(c.id + name) * .42;
+    const riv = i === 0 && c.rivera !== false;   // Cpl Rivera is only in the student's own courses
+    const name = riv ? 'Cpl Rivera' : RANKS[Math.floor(hash(c.id + i + 'r') * RANKS.length)] + ' ' + LAST.filter(n => n !== 'Rivera')[(i * 7 + (c.id === 'mcpp' ? 5 : 0)) % (LAST.length - 1)];   // only the real student is a Rivera
+    const ability = riv ? null : .55 + hash(c.id + name) * .42;
     const scoreOf = it => {
       const g = GRADES[it.id + '|' + name]; if (g) return g.score;
-      if (i === 0) return it.score;                       // Rivera = the student view's own scores
+      if (riv) return it.score;                       // Rivera = the student view's own scores
       if (it.issued > 0 || it.due > 0) return null;       // not graded yet
       if (hash(name + it.id + 'm') < .06) return null;     // a few pieces of missing work
       const s = Math.min(1, Math.max(.35, ability + (hash(name + it.id) - .6) * .25));
       return Math.round(s * it.pts);
     };
     const g = courseGrade(c, scoreOf);
-    const submittedNow = it => i === 0 ? !!it.submitted : hash(name + it.id + 's') < Math.min(.92, .25 + (-it.issued) * .12);
+    const submittedNow = it => riv ? !!it.submitted : hash(name + it.id + 's') < Math.min(.92, .25 + (-it.issued) * .12);
     list.push({ name, initials: name.split(' ').pop().slice(0, 2).toUpperCase(), scoreOf, submittedNow, pct: g.pct, cats: g.cats,
-      missing: allItems(c).filter(it => it.due < 0 && scoreOf(it) == null && !(i === 0 && it.submitted)).length,
+      missing: allItems(c).filter(it => it.due < 0 && scoreOf(it) == null && !(riv && it.submitted)).length,
       lastActive: Math.floor(hash(name + 'la') * 5) });
   }
   return (ROSTERS[c.id] = list);
@@ -1541,13 +1637,13 @@ document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ document.getEle
 /* ============ rubrics: shared model + dependency-free PDF writer ============
    PDFs are US Letter (612 x 792 pt) with 1 inch (72 pt) margins on every side. */
 const LEVELS = [['Exceeds', 4], ['Meets', 3], ['Approaching', 2], ['Beginning', 1]];
-const VERB = /^(Identifies|Sequences|Explains|Describes|Diagnoses|Prescribes|Measures|Links|Proposes|Covers|Cites|Names)\b/;
+const VERB = /^(Identifies|Sequences|Explains|Describes|Diagnoses|Prescribes|Measures|Links|Proposes|Covers|Cites|Names|Establishes|Controls|Moves|Follows|Selects|Plots|Reads|Isolates|Documents|Uses|Applies|Sets|Plans)\b/;
 function rubricFor(it) {
   const per = Math.round(it.pts / it.crit.length * 2) / 2;
   const rows = it.crit.map(cr => {
     const m = cr.match(VERB);
     if (m) {
-      const base = (m[1].endsWith('ies') ? m[1].slice(0, -3) + 'y' : m[1].slice(0, -1)).toLowerCase() + cr.slice(m[1].length);
+      const base = (m[1].endsWith('ies') ? m[1].slice(0, -3) + 'y' : /(sh|ch|ss|x|z)es$/.test(m[1]) ? m[1].slice(0, -2) : m[1].slice(0, -1)).toLowerCase() + cr.slice(m[1].length);
       const lower = cr[0].toLowerCase() + cr.slice(1);
       return { crit: cr, cells: [`${cr} completely and precisely, citing the source; could teach it to a peer.`, `${cr} correctly, with only minor omissions.`, `Partially ${lower}; key parts are missing or unclear.`, `Does not yet ${base}; major errors or missing.`] };
     }
@@ -1988,7 +2084,7 @@ const itemAvg = (R, it) => mean(R.map(s => s.scoreOf(it)).filter(v => v != null)
 /* ---------- Dashboard ---------- */
 V.dash = () => {
   const c = curCourse(), a = currentAnnex(c), R = roster(c);
-  const cur = a.items.filter(it => it.type === 'assignment' && it.issued <= 0 && it.due >= 0).sort((p, q) => p.due - q.due)[0] || a.items.find(it => it.issued <= 0) || a.items[0];
+  const cur = dashCur(c);
   const sub = R.filter(s => s.submittedNow(cur)).length;
   const started = R.filter(s => !s.submittedNow(cur)).filter((s, i) => i % 3 !== 2).length;   // two in three who haven't submitted have started
   const notStarted = R.length - sub - started;
@@ -2007,7 +2103,8 @@ V.dash = () => {
     </div>
     <div class="stack" role="img" aria-label="${sub} submitted, ${started} in progress, ${notStarted} not started"><span style="width:${w(sub)};background:var(--p-good)"></span><span style="width:${w(started)};background:var(--p-warning)"></span><span style="width:${w(notStarted)};background:rgba(0,0,0,.14)"></span></div>
     <div class="slegend"><span><i style="background:var(--p-good)"></i>${sub} submitted</span><span><i style="background:var(--p-warning)"></i>${started} in progress</span><span><i style="background:rgba(0,0,0,.2)"></i>${notStarted} not started</span></div>
-    <div class="avrow">${avatars(R.filter(s => s.submittedNow(cur)).map(s => s.name), { max: 7, label: 'Students who submitted' })}<span class="note">${sub ? 'Submitted so far · hover a face for the name' : 'Nobody has submitted yet'}</span></div>
+    <div class="avrow">${avatars(R.filter(s => s.submittedNow(cur)).map(s => s.name), { max: 7, label: 'Students who submitted', onMore: 'toggleSubmitted()', ctrl: 'subList', expanded: state.dashSub })}${sub ? `<button class="linkbtn subtoggle" aria-controls="subList" aria-expanded="${!!state.dashSub}" onclick="toggleSubmitted()">Show all ${sub} who submitted ${ic('chev', 'chev')}</button>` : '<span class="note">Nobody has submitted yet</span>'}</div>
+    ${sub ? `<div class="disc sublist ${state.dashSub ? 'open' : ''}" id="subList" role="region" aria-label="Students who submitted"><div class="disc-b"><div>${submittedList(c, cur)}</div></div></div>` : ''}
   </section>
   <div class="bento">
     <div class="itile"><div class="tilelab">Students on assignment</div><div class="tileval tnum">${sub + started}<small>of ${R.length}</small></div><div class="tilenote">${sub} submitted · ${started} working</div></div>
@@ -2214,6 +2311,24 @@ function progOpen(name) {
 
 function progBelow(btn) { state.prog.below = !state.prog.below; btn.setAttribute('aria-checked', state.prog.below); swap('progList', progList(curCourse())); }
 
+/* dashboard: the current assignment and the dropdown of everyone who has submitted it */
+function dashCur(c) {
+  const a = currentAnnex(c);
+  return a.items.filter(it => it.type === 'assignment' && it.issued <= 0 && it.due >= 0).sort((p, q) => p.due - q.due)[0] || a.items.find(it => it.issued <= 0) || a.items[0];
+}
+function toggleSubmitted() {
+  state.dashSub = !state.dashSub;
+  const d = document.getElementById('subList'); if (d) d.classList.toggle('open', state.dashSub);
+  document.querySelectorAll('[aria-controls="subList"]').forEach(b => b.setAttribute('aria-expanded', state.dashSub));
+}
+function submittedList(c, cur) {
+  const last = x => x.s.name.split(' ').pop();
+  const xs = submissionsFor(c).filter(x => x.it.id === cur.id).sort((p, q) => q.at - p.at || last(p).localeCompare(last(q)));
+  const graded = xs.filter(x => x.graded).length;
+  return `<div class="sublist-in"><div class="sublist-h"><b>${xs.length} submitted</b><span class="note">${graded} graded · ${xs.length - graded} to grade · newest first · select a student to grade</span><span style="flex:1"></span><button class="btn sm ghost press" onclick="goGradeItem('${c.id}','${cur.id}')">${ic('inbox')} Open in Assignments</button></div>
+    <div class="sublist-grid">${xs.map((x, i) => { const p = x.score != null ? x.score / x.it.pts * 100 : null; return `<button class="subrow" style="--i:${Math.min(i, 14)}" onclick="openGrader('${x.key}')">${avatar1(x.s.name)}<span class="cwho"><b>${esc(x.s.name)}</b><small>Submitted ${rel(x.at).toLowerCase()}${x.late ? ' · late' : ''}</small></span>${x.graded ? `<span class="asg-score tnum" style="color:${toneFor(p)}">${x.score}/${x.it.pts}</span>` : tag('w', 'To grade')}</button>`; }).join('')}</div></div>`;
+}
+
 /* ============ polish layer: components from the UI/UX reference .fig files ============ */
 IC.info = '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>';
 IC.pause = '<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>';
@@ -2267,9 +2382,9 @@ function burst(host) {
 }
 
 /* ---------- avatar stack with spring name tags ---------- */
-function avatars(names, { max = 5, total = names.length, label = '' } = {}) {
+function avatars(names, { max = 5, total = names.length, label = '', onMore = '', ctrl = '', expanded = false } = {}) {
   const shown = names.slice(0, max), more = total - shown.length;
-  return `<div class="avs" role="group" aria-label="${esc(label || total + ' people')}">${shown.map(n => `<span class="av" tabindex="0" style="--h:${Math.round(hash(n) * 360)}" aria-label="${esc(n)}">${esc(n.split(' ').pop().slice(0, 2).toUpperCase())}<span class="av-tag" aria-hidden="true">${esc(n)}</span></span>`).join('')}${more > 0 ? `<span class="av more" aria-label="${more} more">+${more}</span>` : ''}</div>`;
+  return `<div class="avs" role="group" aria-label="${esc(label || total + ' people')}">${shown.map(n => `<span class="av" tabindex="0" style="--h:${Math.round(hash(n) * 360)}" aria-label="${esc(n)}">${esc(n.split(' ').pop().slice(0, 2).toUpperCase())}<span class="av-tag" aria-hidden="true">${esc(n)}</span></span>`).join('')}${more > 0 ? (onMore ? `<button type="button" class="av more" aria-label="Show all ${total}" aria-controls="${ctrl}" aria-expanded="${!!expanded}" onclick="${onMore}">+${more}</button>` : `<span class="av more" aria-label="${more} more">+${more}</span>`) : ''}</div>`;
 }
 
 /* ---------- keyboard shortcut teaching card + shortcuts ---------- */
@@ -2451,7 +2566,7 @@ AFTER.dash = () => trendBind();
 /* ============ instructor: Assignments — submissions grouped by class, graded in a side drawer ============ */
 IC.inbox = '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>';
 const GR_COMMENTS = ['Clear and well cited.', 'Cite the manual for each claim.', 'Good diagnosis; expand on the correction.', 'Let\'s talk before you resubmit.'];
-const asg = { status: 'todo', sort: 'oldest', q: '', closed: new Set() };
+const asg = { status: 'todo', sort: 'oldest', q: '', cls: 'all', closed: new Set() };
 const DRAFTS = {};
 let grading = null, gradingShown = null;
 
@@ -2499,11 +2614,18 @@ V.assign = () => {
     <label class="note" for="asgSort">Sort</label><select id="asgSort" class="sel" style="width:auto;height:2.3rem;font-size:.85rem" onchange="asg.sort=this.value;swap('asgList',asgList())">${[['oldest', 'Oldest submission first'], ['newest', 'Newest first'], ['name', 'Student A–Z']].map(([v, l]) => `<option value="${v}" ${asg.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
     <input class="ti" style="width:12rem;height:2.3rem" placeholder="Filter students" aria-label="Filter students" value="${esc(asg.q)}" oninput="asg.q=this.value;document.getElementById('asgList').innerHTML=asgList()">
   </div>
+  <div class="classbar" role="group" aria-label="Class">
+    <span class="cb-label">Class</span>
+    <button class="iconbtn sm cb-arrow press" id="cbPrev" onclick="cbScroll(-1)" aria-label="Previous classes"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(90deg)">${IC.chev}</svg></button>
+    <div class="cb-track" id="cbTrack">${classPill()}</div>
+    <button class="iconbtn sm cb-arrow press" id="cbNext" onclick="cbScroll(1)" aria-label="More classes"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(-90deg)">${IC.chev}</svg></button>
+    <button class="minisearch press" onclick="openClassSearch()" aria-haspopup="dialog" title="Search your classes">${ic('search')}<span>Find a class</span></button>
+  </div>
   <div id="asgList">${asgList()}</div>`;
 };
 function asgList() {
-  return [...COURSES].sort((x, y) => x.name.localeCompare(y.name)).map(c => {
-    const all = submissionsFor(c), graded = all.filter(x => x.graded).length, todo = all.length - graded, open = !asg.closed.has(c.id), R = roster(c), groups = classGroups(c);
+  return [...COURSES].sort((x, y) => x.name.localeCompare(y.name)).filter(c => asg.cls === 'all' || c.id === asg.cls).map(c => {
+    const all = submissionsFor(c), graded = all.filter(x => x.graded).length, todo = all.length - graded, open = asg.cls !== 'all' || !asg.closed.has(c.id), R = roster(c), groups = classGroups(c);
     return `<section class="panel flush asg-class disc ${open ? 'open' : ''}" id="asg-${c.id}">
       <button class="disc-h" aria-expanded="${open}" onclick="asgToggle('${c.id}',this)">${courseTile(c)}<span class="cwho"><b>${esc(c.name)}</b><small>${esc(c.code)} · ${esc(c.section)} · ${c.students} students</small></span>
         <span class="asg-meter">${bar(all.length ? graded / all.length * 100 : 0, 'var(--p-good)')}<small class="tnum">${graded} of ${all.length} graded</small></span>${tag(todo ? 'w' : 'g', todo ? `${todo} to grade` : 'All graded')}${ic('chev', 'chev')}</button>
@@ -2524,14 +2646,16 @@ function asgRow(x) {
 function setAsgStatus(btn, v) { slide(btn); asg.status = v; swap('asgList', asgList()); }
 function asgToggle(cid, btn) { const d = btn.closest('.disc'), open = !d.classList.contains('open'); d.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); open ? asg.closed.delete(cid) : asg.closed.add(cid); }
 function goGradeItem(cid, itemId) {
-  asg.status = 'todo'; asg.q = ''; asg.closed.delete(cid); setView('assign');
+  asg.status = 'todo'; asg.q = ''; asg.cls = cid; asg.closed.delete(cid); setView('assign');
   setTimeout(() => { const el = document.getElementById('asgi-' + itemId); if (el) { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); el.classList.add('flash'); } }, 80);
 }
 function refreshAsg() {
   renderNav();
+  if (state.view === 'dash') { const box = document.querySelector('#subList .disc-b > div'); if (box) box.innerHTML = submittedList(curCourse(), dashCur(curCourse())); }
   if (state.view !== 'assign') return;
   const y = window.scrollY, el = document.getElementById('asgList'); if (el) el.innerHTML = asgList();
   const pb = document.querySelector('.sectionbar .spill button'); if (pb) pb.textContent = `To grade · ${toGradeCount()}`;
+  const subs = allSubs(); document.querySelectorAll('.cb-ct[data-c]').forEach(el => { const n = subs.filter(x => !x.graded && (el.dataset.c === 'all' || x.c.id === el.dataset.c)).length; el.textContent = n; el.classList.toggle('zero', !n); });
   placePills(false); window.scrollTo(0, y);
 }
 
@@ -2634,6 +2758,76 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight' || e.key === 'j') grStep(1);
   if (e.key === 'ArrowLeft' || e.key === 'k') grStep(-1);
 });
+
+/* ---------- class selection: second sliding pill in a carousel + class search dialog ---------- */
+function classPill() {
+  const subs = allSubs(), cnt = id => subs.filter(x => !x.graded && (id === 'all' || x.c.id === id)).length;
+  const opts = [['all', 'All classes'], ...[...COURSES].sort((x, y) => x.short.localeCompare(y.short)).map(c => [c.id, c.short])];   // ordered by the label the pill shows
+  return pillHtml(opts.map(([v, l]) => { const n = cnt(v); return [v, `${esc(l)}<span class="cb-ct ${n ? '' : 'zero'}" data-c="${v}">${n}</span>`]; }), asg.cls, 'setAsgClass', 'cb');
+}
+function setAsgClass(btn, v) { slide(btn); asg.cls = v; cbReveal(btn, true); swap('asgList', asgList()); }
+function cbReveal(btn, smooth) {
+  const t = document.getElementById('cbTrack'); if (!t || !btn) return;
+  t.scrollTo({ left: btn.offsetLeft - (t.clientWidth - btn.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' });
+  setTimeout(cbUpdate, smooth ? 380 : 0);
+}
+function cbScroll(dir) { const t = document.getElementById('cbTrack'); if (t) t.scrollBy({ left: dir * Math.max(160, t.clientWidth * .75), behavior: 'smooth' }); }
+function cbUpdate() {
+  const t = document.getElementById('cbTrack'); if (!t) return;
+  const max = t.scrollWidth - t.clientWidth, atStart = t.scrollLeft <= 2, atEnd = t.scrollLeft >= max - 2;
+  t.classList.toggle('fade-l', !atStart); t.classList.toggle('fade-r', !atEnd && max > 2);
+  const bar = t.closest('.classbar'); bar.classList.toggle('no-overflow', max <= 2);
+  document.getElementById('cbPrev').disabled = atStart; document.getElementById('cbNext').disabled = atEnd || max <= 2;
+}
+function cbBind() {
+  const t = document.getElementById('cbTrack'); if (!t) return;
+  t.addEventListener('scroll', () => { clearTimeout(t._u); t._u = setTimeout(cbUpdate, 40); }, { passive: true });
+  cbReveal(t.querySelector('.spill button.on'), false); cbUpdate();
+}
+AFTER.assign = () => cbBind();
+window.addEventListener('resize', () => { if (state.view === 'assign') cbUpdate(); });
+
+const clsSearch = { q: '', onlyTodo: false, sel: 0, hits: [] };
+function openClassSearch() {
+  clsSearch.q = ''; clsSearch.sel = 0; clsSearch.onlyTodo = false;
+  openDialog('Find a class', `<div class="csearch">
+      <label class="csearch-box">${ic('search')}<input id="clsQ" type="search" placeholder="Search by name, code or class number" autocomplete="off" aria-controls="clsRes" oninput="clsSearch.q=this.value;clsSearch.sel=0;renderClassHits()" onkeydown="classSearchKey(event)"></label>
+      <button class="switch" role="switch" aria-checked="false" onclick="clsSearch.onlyTodo=!clsSearch.onlyTodo;this.setAttribute('aria-checked',clsSearch.onlyTodo);clsSearch.sel=0;renderClassHits()"><span class="trk"></span>Only classes with work to grade</button>
+    </div><div class="note" id="clsCount" aria-live="polite"></div><div class="cres" id="clsRes" role="listbox" aria-label="Your classes"></div>`,
+    `<span class="note" style="margin-right:auto">↑ ↓ to move · Enter to select</span><button class="btn ghost press" onclick="closeDialog()">Cancel</button>`);
+  renderClassHits();
+}
+function renderClassHits() {
+  const subs = allSubs(), q = clsSearch.q.trim(), words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const todoOf = id => subs.filter(x => !x.graded && (id === 'all' || x.c.id === id)).length;
+  const hits = [...COURSES].sort((x, y) => x.name.localeCompare(y.name)).map(c => ({ c, todo: todoOf(c.id) }))
+    .filter(h => words.every(w => `${h.c.name} ${h.c.short} ${h.c.code} ${h.c.section}`.toLowerCase().includes(w)))
+    .filter(h => !clsSearch.onlyTodo || h.todo);
+  clsSearch.hits = (!q && !clsSearch.onlyTodo ? [{ all: true, todo: todoOf('all') }] : []).concat(hits);
+  clsSearch.sel = Math.min(clsSearch.sel, Math.max(0, clsSearch.hits.length - 1));
+  document.getElementById('clsCount').textContent = `${hits.length} of ${COURSES.length} classes${q ? ` match “${q}”` : ''}${clsSearch.onlyTodo ? ' with work to grade' : ''}`;
+  const hl = t => { if (!words.length) return esc(t); const re = new RegExp('(' + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'ig'); return t.split(re).map((p, i) => i % 2 ? `<mark>${esc(p)}</mark>` : esc(p)).join(''); };
+  const row = (h, i) => {
+    const id = h.all ? 'all' : h.c.id, cur = asg.cls === id;
+    return `<button class="cres-row ${i === clsSearch.sel ? 'sel' : ''}" role="option" aria-selected="${i === clsSearch.sel}" onclick="pickClass('${id}')" onmousemove="clsHover(${i})">
+      ${h.all ? `<span class="ctile">${ic('inbox')}</span><span class="cwho"><b>All classes</b><small>${COURSES.length} classes you teach</small></span>` : `${courseTile(h.c)}<span class="cwho"><b>${hl(h.c.name)}</b><small>${hl(h.c.code)} · ${hl(h.c.section)} · ${h.c.students} students</small></span>`}
+      ${h.todo ? tag('w', `${h.todo} to grade`) : tag('g', 'All graded')}<span class="cres-cur">${cur ? ic('check', 'acc') : ''}</span></button>`;
+  };
+  document.getElementById('clsRes').innerHTML = clsSearch.hits.length ? clsSearch.hits.map(row).join('') : `<div class="empty">No classes match. Try a course code like “3-22.9” or a class number like “26-04”.</div>`;
+  const s = document.querySelector('#clsRes .cres-row.sel'); if (s) s.scrollIntoView({ block: 'nearest' });
+}
+function classSearchKey(e) {
+  const n = clsSearch.hits.length; if (!n) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); clsSearch.sel = (clsSearch.sel + (e.key === 'ArrowDown' ? 1 : n - 1)) % n; renderClassHits(); }
+  if (e.key === 'Enter') { e.preventDefault(); const h = clsSearch.hits[clsSearch.sel]; pickClass(h.all ? 'all' : h.c.id); }
+}
+function clsHover(i) { if (clsSearch.sel === i) return; clsSearch.sel = i; document.querySelectorAll('#clsRes .cres-row').forEach((r, j) => { r.classList.toggle('sel', j === i); r.setAttribute('aria-selected', j === i); }); }
+function pickClass(id) {
+  closeDialog();
+  if (state.view !== 'assign') { asg.cls = id; setView('assign'); return; }
+  const btn = [...document.querySelectorAll('#cbTrack .spill button')].find(b => b.querySelector(`.cb-ct[data-c="${id}"]`));
+  if (btn && !btn.classList.contains('on')) setAsgClass(btn, id); else cbReveal(btn, true);
+}
 
 
 /* ---- QA issue widget ---- */
