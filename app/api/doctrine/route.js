@@ -1,4 +1,5 @@
-import { askDoctrine, doctrineProvider } from '../../../lib/doctrine';
+import { askDoctrine, doctrineProvider } from '../../../lib/doctrine.js';
+import { requireFirebaseUser } from '../../../lib/firebase-server.js';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -9,6 +10,9 @@ export async function GET() {
 }
 
 export async function POST(req) {
+  const denied = await requireFirebaseUser(req);
+  if (denied) return denied;
+
   try {
     const { question } = await req.json();
     if (!question) {
