@@ -21,6 +21,13 @@ function Toggle({ on, onChange, label, note }) {
   );
 }
 
+const QUIET_HOURS = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2);
+  const m = i % 2 ? '30' : '00';
+  const val = `${String(h).padStart(2, '0')}${m}`;
+  return [val, `${String(h).padStart(2, '0')}:${m}`];
+});
+
 /* ---------- "How do I learn?" ---------- */
 
 const SURVEY = [
@@ -157,7 +164,15 @@ export function StudentSettings({ onSignOut }) {
         <Toggle label="Text message" note="15 minutes before a plan block" on={r.text} onChange={(v) => setPref('reminders.text', v)} />
         <div className="s-settings-row">
           <span>Quiet hours</span>
-          <span className="s-settings-val">{r.quietFrom} – {r.quietTo}</span>
+          <span className="s-settings-val" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <select className="s-dq-select small" value={r.quietFrom} onChange={(e) => setPref('reminders.quietFrom', e.target.value)}>
+              {QUIET_HOURS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <span>–</span>
+            <select className="s-dq-select small" value={r.quietTo} onChange={(e) => setPref('reminders.quietTo', e.target.value)}>
+              {QUIET_HOURS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </span>
         </div>
       </section>
 

@@ -24,11 +24,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Where to land after sign-in: /prototype by default, or a same-site ?next=
+  // path (the Learn / Teach apps send users here and want them back).
+  const [next, setNext] = useState('/prototype');
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get('next');
+    if (wanted && wanted.startsWith('/') && !wanted.startsWith('//')) setNext(wanted);
+  }, []);
 
   // Already signed in (and allowed) → into the app.
   useEffect(() => {
-    if (ready && user && isAllowedEmail(user.email)) router.replace('/prototype');
-  }, [ready, user, router]);
+    if (ready && user && isAllowedEmail(user.email)) router.replace(next);
+  }, [ready, user, router, next]);
 
   // Bounced here by AuthGuard with a session that isn't on the tester list.
   useEffect(() => {
@@ -59,7 +66,7 @@ export default function LoginPage() {
     setBusy(true);
     try {
       const cred = await signInWithPopup(auth, new GoogleAuthProvider());
-      if (await admit(cred)) router.replace('/prototype');
+      if (await admit(cred)) router.replace(next);
     } catch (e) {
       setErr(e?.message || 'Sign-in failed.');
     } finally {
@@ -81,7 +88,7 @@ export default function LoginPage() {
         mode === 'signup'
           ? await createUserWithEmailAndPassword(auth, email, password)
           : await signInWithEmailAndPassword(auth, email, password);
-      if (await admit(cred)) router.replace('/prototype');
+      if (await admit(cred)) router.replace(next);
     } catch (e2) {
       setErr(e2?.message || 'Sign-in failed.');
     } finally {

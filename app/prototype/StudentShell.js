@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import './student.css';
 
 import { COURSES } from './data';
@@ -8,7 +10,7 @@ import StudyMaterials from './StudyMaterials';
 import LiveSession from './LiveSession';
 import MyProgress from './MyProgress';
 import StudentCalendar from './StudentCalendar';
-import StudentInbox from './StudentInbox';
+import StudentInbox, { MESSAGES } from './StudentInbox';
 import Assignments, { dueSoon } from './Assignments';
 import Lessons, { currentLesson } from './Lessons';
 import CourseChat from './CourseChat';
@@ -17,7 +19,7 @@ import { I, RailButton, UserMenu } from './shell';
 import Grades from './Grades';
 import Discussions from './Discussions';
 import { StudentSettings } from './Settings';
-import { usePrefs } from './prefs';
+import { usePrefs, setPref } from './prefs';
 
 /* Student shell. Canvas-shaped — global icon rail, dashboard with course cards,
    course sub-nav, breadcrumb, and a To-Do column — on a neutral palette.
@@ -396,10 +398,34 @@ export default function StudentShell({ nav, onSwitchRole }) {
   // Location comes from the URL (see nav.js); these are the three moves the shell makes.
   const { area, courseId, view, lessonId, page, threadId } = nav;
   const prefs = usePrefs();
+  const readIds = Array.isArray(prefs.inboxReadIds) ? prefs.inboxReadIds : [];
+  const messages = MESSAGES.map((message) => ({
+    ...message,
+    unread: message.unread && !readIds.includes(message.id),
+  }));
+  const unreadCount = messages.filter((message) => message.unread).length;
+  const markRead = (id) => {
+    if (messages.some((message) => message.id === id && message.unread)) {
+      setPref('inboxReadIds', [...readIds, id]);
+    }
+  };
   const course = courseId ? COURSES[courseId] : null;
 
+  // Remember the lesson + page you were on per course, so leaving Lessons for
+  // another screen and coming back resumes where you left off instead of the
+  // lesson list.
+  const lessonMemory = useRef({});
+  useEffect(() => {
+    if (area === 'course' && view === 'lessons' && lessonId) {
+      lessonMemory.current[courseId] = { lessonId, page };
+    }
+  }, [area, view, courseId, lessonId, page]);
+
   const setArea = (a) => nav.go({ area: a, courseId: null, view: null, lessonId: null, page: null });
-  const setView = (v) => nav.go({ area: 'course', courseId, view: v, lessonId: null, page: null, threadId: null });
+  const setView = (v) => {
+    const remembered = v === 'lessons' ? lessonMemory.current[courseId] : null;
+    nav.go({ area: 'course', courseId, view: v, lessonId: remembered?.lessonId ?? null, page: remembered?.page ?? null, threadId: null });
+  };
   const open = (id, v = 'home') => nav.go({ area: 'course', courseId: id, view: v || 'home', lessonId: null, page: null });
   const openLesson = (id, pg = null) => nav.go({ area: 'course', courseId, view: 'lessons', lessonId: id, page: pg, threadId: null });
   const openThread = (id, forLesson = null) => nav.go({ area: 'course', courseId, view: 'discussions', threadId: id, lessonId: forLesson, page: null });
@@ -418,7 +444,7 @@ export default function StudentShell({ nav, onSwitchRole }) {
   else if (area === 'dashboard') body = <Dashboard onOpen={open} />;
   else if (area === 'courses') body = <Courses onOpen={open} />;
   else if (area === 'calendar') body = <StudentCalendar onOpen={open} />;
-  else if (area === 'inbox') body = <StudentInbox onOpen={open} onArea={setArea} />;
+  else if (area === 'inbox') body = <StudentInbox onOpen={open} onArea={setArea} msgs={messages} onMarkRead={markRead} />;
   else if (area === 'settings') body = <StudentSettings onSignOut={() => { window.location.href = '/'; }} />;
   else if (view === 'home') body = <CourseHome course={course} go={setView} onOpen={open} />;
   else {
@@ -443,7 +469,7 @@ export default function StudentShell({ nav, onSwitchRole }) {
         <RailButton icon={I.dashboard} label="Dashboard" on={area === 'dashboard'} onClick={() => setArea('dashboard')} />
         <RailButton icon={I.courses} label="Courses" on={area === 'courses'} onClick={() => setArea('courses')} />
         <RailButton icon={I.calendar} label="Calendar" on={area === 'calendar'} onClick={() => setArea('calendar')} />
-        <RailButton icon={I.inbox} label="Inbox" on={area === 'inbox'} onClick={() => setArea('inbox')} badge={2} />
+        <RailButton icon={I.inbox} label="Inbox" on={area === 'inbox'} onClick={() => setArea('inbox')} badge={unreadCount} />
 
         {area === 'course' && course ? (
           <>
