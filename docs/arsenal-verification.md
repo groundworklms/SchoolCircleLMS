@@ -1,5 +1,22 @@
 # Arsenal verification matrix
 
+## Accepted handoff scope
+
+The user approved closing the integration task on **wiring and documented
+evidence**, without waiting for all twelve live workflows to be proven.
+All twelve repositories have reviewed revisions and adapter wiring. This is
+not a claim of full end-to-end verification.
+
+Verified evidence includes live SchoolCircle-to-Anchor cited answers and
+refusals, the 27-test adapter/auth/persistence suite, workspace typechecking,
+and the running landing page. Model-backed authoring, rubric generation,
+local-source tutoring, mastery, and fidelity still require live provider
+verification. Full instructor/learner browser workflows remain unproven.
+
+The setup blockers and earlier incomplete status below are retained as
+historical evidence. Downstream access, core-loop, and demonstration work must
+not interpret this handoff as proof of live or offline readiness.
+
 ## Hosted verification setup blocker
 
 The user approved temporary hosted-model verification with public test material.
