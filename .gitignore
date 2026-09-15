@@ -1,26 +1,5 @@
-# dependencies
-node_modules/
-
-# next.js
-.next/
-out/
-
-# env
+node_modules
+.next
 .env
 .env.local
 .env*.local
-
-# prisma / sqlite
-*.db
-*.db-journal
-prisma/dev.db
-prisma/migrations/dev.db*
-
-# logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# os
-.DS_Store
-Thumbs.db
