@@ -34,3 +34,25 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  database:
+    name: database
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Locate native PostgreSQL
+        run: |
+          PG_BIN="$(pg_config --bindir)"
+          test -x "$PG_BIN/initdb"
+          echo "$PG_BIN" >> "$GITHUB_PATH"
+      - name: Seed safety policy
+        run: npm run test:db-policy
+      - name: Isolated PostgreSQL persistence
+        run: npm run test:db
