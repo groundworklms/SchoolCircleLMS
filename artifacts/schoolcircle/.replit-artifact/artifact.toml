@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "SchoolCircle"
+description = "The imported SchoolCircle learning platform and hackathon planning board, preserving instructor and student experiences."
+version = "1.0.0"
+id = "artifacts/schoolcircle"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24405
+
+[services.development]
+run = "pnpm --filter @workspace/schoolcircle run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/schoolcircle", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/schoolcircle/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24405"
+BASE_PATH = "/"

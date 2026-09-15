@@ -1,44 +1,50 @@
-# [Project name]
+# SchoolCircle
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Imported SchoolCircle learning platform and hackathon planning board.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- Use managed workflows `artifacts/schoolcircle: web` and `artifacts/api-server: API Server` for preview; they provide the required ports and routing.
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- The imported Prisma schema is preserved; no database conversion or schema push was performed.
+- Live integrations retain their original configuration: `MODEL_BASE_URL`, `MODEL_ID`, optional `MODEL_API_KEY`, and `DOCTRINE_BASE_URL`. Without them the original explicit unavailable states remain.
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
 - API: Express 5
-- DB: PostgreSQL + Drizzle ORM
+- Imported DB support: Prisma + PostgreSQL; unused Drizzle workspace scaffold retained
 - Validation: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Build: Vite frontend and esbuild ESM API bundle
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/schoolcircle/src/`: imported board and prototype; original CSS retained.
+- `artifacts/api-server/src/`: Express adapters and unchanged imported backend libraries.
+- `artifacts/api-server/prisma/schema.prisma`: imported database schema.
+- `PLAN.md`, `docs/`: original planning content and documentation.
+- `.migration-backup/`: untouched imported source for comparison.
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Keep the migration narrow so collaborators can reconcile ongoing GitHub changes; do not replace source logic with generated clients or redesign components.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- `/`: live markdown planning board.
+- `/prototype` and its existing nested routes: student and instructor learning-platform prototype.
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- Git work must stay on `replit/port`. Do not commit or push to the GitHub remote's main branch.
+- Preserve the imported routes, styling, and grounding/citation logic exactly; collaborators are actively editing the hackathon source on GitHub. Limit migration changes to runtime adapters and workspace wiring.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- The prototype's original scripted demo data is intentional. Live generation/grounding must not be silently simulated when services are unavailable.
 
 ## Pointers
 
