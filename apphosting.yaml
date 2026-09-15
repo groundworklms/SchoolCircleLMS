@@ -51,6 +51,16 @@ env:
       - BUILD
       - RUNTIME
 
+  # --- Tester allowlist. Only these emails may sign in / create an account;
+  # anyone else is refused at login and any just-created account is deleted.
+  # Comma-separated, case-insensitive. Baked into the client at BUILD time, so
+  # editing this list needs a new rollout. Unset = allowlist off (open).
+  - variable: NEXT_PUBLIC_ALLOWED_EMAILS
+    value: 189409964+tewhite4@users.noreply.github.com,121060100+canester67@users.noreply.github.com,328472012+N0t-A-User@users.noreply.github.com,195714926+jeranaias@users.noreply.github.com
+    availability:
+      - BUILD
+      - RUNTIME
+
   # --- In-app "Report an issue" widget -> files GitHub issues directly via
   # /api/feedback. Secrets live in Cloud Secret Manager; the App Hosting compute
   # service account has Secret Accessor on both.
