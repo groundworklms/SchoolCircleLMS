@@ -352,6 +352,11 @@ export async function seedDemo(db, { env = process.env } = {}) {
       sectionIds: DEMO_SEED_FIXTURE.sections.map((section) => section.id),
       itemIds: DEMO_SEED_FIXTURE.items.map((item) => item.id),
     });
+  }, {
+    // ~25 sequential round-trips; Prisma's 5 s default expires over a laptop -> Cloud SQL
+    // hop and surfaces as "Transaction not found". Idle contention is bounded by the lock.
+    maxWait: 15_000,
+    timeout: 120_000,
   });
 }
 
