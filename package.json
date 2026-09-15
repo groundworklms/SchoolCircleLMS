@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3111",
     "build": "next build",
+    "test:doctrine-auth": "node --experimental-test-module-mocks --test tests/doctrine-auth.test.mjs",
     "start": "next start -p 3111",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -17,12 +18,13 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
     "@prisma/client": "^6.3.0",
     "cadence": "github:groundworklms/cadence#9b6b2df0ab1e11080510262a631ffb7e13acda4e",
     "cartridge": "github:groundworklms/cartridge#68f02aa93bca51c4d24f42b8392a4f5ad02c8db3",
     "coursewright": "github:groundworklms/coursewright#f38d078a30195a6a6901ade22a3ce7484613fa57",
     "firebase": "^12.19.0",
-    "firebase-admin": "^13.6.0",
+    "firebase-admin": "^14.4.0",
     "hotwash": "github:groundworklms/hotwash#a972df65aa1c45c6b28c7fd6540a3b9303cf7b74",
     "next": "15.5.25",
     "pdfjs-dist": "^4.10.38",

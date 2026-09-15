@@ -10,6 +10,7 @@
   --s-rail-w: 14.5rem;
   --s-agenda-w: 20rem;
   --s-max: 84rem;
+  font-size: calc(15px * var(--scale, 1));
 }
 
 /* One label style for every section header. */
