@@ -22,6 +22,7 @@
     "coursewright": "github:groundworklms/coursewright#f38d078a30195a6a6901ade22a3ce7484613fa57",
     "drizzle-orm": "catalog:",
     "express": "^5.2.1",
+    "firebase-admin": "^13.6.0",
     "hotwash": "github:groundworklms/hotwash#a972df65aa1c45c6b28c7fd6540a3b9303cf7b74",
     "multer": "^2.0.2",
     "openid-client": "^6.8.8",

@@ -7,6 +7,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { authFetch } from '../../../../lib/firebase.js';
 
 const SUGGESTIONS = [
   { label: 'Sight alignment?', q: 'What is sight alignment?' },
@@ -48,7 +49,7 @@ export default function AskWidget() {
     setMessages((m) => [...m, { who: 'me', text: q }]);
     setBusy(true);
     try {
-      const res = await fetch('/api/doctrine', {
+      const res = await authFetch('/api/doctrine', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ question: q }),

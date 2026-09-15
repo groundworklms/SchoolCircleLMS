@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
-import "../prototype/instructor.css";
+import "../prototype/student.css";
 import { I, RailButton, UserMenu } from "../prototype/shell";
-import { useAuthUser, useLearningStatus, useApiQuery, useApiMutation } from "../hooks/use-learning";
+import { downloadAuthenticated, useAuthUser, useLearningStatus, useApiQuery, useApiMutation } from "../hooks/use-learning";
 import { InstructorFidelity, InstructorAAR, InstructorSyllabus, RubricsView } from "./instructor-features";
 
 export default function TeachApp() {
@@ -57,7 +57,7 @@ export default function TeachApp() {
         
         <div className="s-rail-spacer" />
         <RailButton icon={I.swap} label="View as learner" onClick={() => setLocation("/learn")} />
-        <RailButton icon={I.back} label="Planning board" onClick={() => setLocation("/")} />
+        <RailButton icon={I.back} label="Planning board" onClick={() => setLocation("/plan")} />
       </nav>
 
       <div className="s-content">
@@ -273,8 +273,28 @@ function CourseCard({ course, onApproved }: { course: any, onApproved: () => voi
 
       {course.status === "APPROVED" && (
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-          <a href={`/api/learning/export?courseId=${course.id}&version=1.2`} download className="p-btn ghost" style={{ textDecoration: "none" }}>Export SCORM 1.2</a>
-          <a href={`/api/learning/export?courseId=${course.id}&version=2004`} download className="p-btn ghost" style={{ textDecoration: "none" }}>Export SCORM 2004</a>
+          <button
+            type="button"
+            className="p-btn ghost"
+            style={{ textDecoration: "none" }}
+            onClick={() => downloadAuthenticated(
+              `/api/learning/export?courseId=${course.id}&version=1.2`,
+              `${course.id}-scorm-1.2.zip`,
+            ).catch((error) => alert(error.message))}
+          >
+            Export SCORM 1.2
+          </button>
+          <button
+            type="button"
+            className="p-btn ghost"
+            style={{ textDecoration: "none" }}
+            onClick={() => downloadAuthenticated(
+              `/api/learning/export?courseId=${course.id}&version=2004`,
+              `${course.id}-scorm-2004.zip`,
+            ).catch((error) => alert(error.message))}
+          >
+            Export SCORM 2004
+          </button>
         </div>
       )}
 

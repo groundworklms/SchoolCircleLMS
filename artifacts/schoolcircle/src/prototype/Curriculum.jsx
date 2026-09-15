@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { POIS } from './poi';
+import { authFetch } from '../../../../lib/firebase.js';
 
 /* Instructor-facing curriculum ingest.
    The POI upload and parse are REAL — the file is posted to /api/ingest and
@@ -46,11 +47,11 @@ export default function Curriculum({ course }) {
   const isLive = Boolean(poi);
 
   useEffect(() => {
-    fetch('/api/generate')
+    authFetch('/api/generate')
       .then((r) => r.json())
       .then(setProvider)
       .catch(() => setProvider({ ready: false, reason: 'status unavailable' }));
-    fetch('/api/capabilities')
+    authFetch('/api/capabilities')
       .then((r) => r.json())
       .then((d) => setCaps(d.capabilities))
       .catch(() => setCaps(null));
@@ -65,7 +66,7 @@ export default function Curriculum({ course }) {
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch('/api/ingest', { method: 'POST', body: fd });
+      const res = await authFetch('/api/ingest', { method: 'POST', body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
       setPoi(json);
@@ -87,7 +88,7 @@ export default function Curriculum({ course }) {
     setGenErr(null);
     setGen(null);
     try {
-      const res = await fetch('/api/generate', {
+      const res = await authFetch('/api/generate', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ course: active, annex, lesson }),
