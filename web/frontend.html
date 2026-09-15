@@ -669,6 +669,9 @@ table.rt td:first-child{font-weight:700;width:25.6%}
   --dur-spring:450ms;--dur-tab:600ms;
 }
 body{background:var(--p-bg)}
+/* the original html/body overflow-x:hidden turns body into a scroll container and silently disables every position:sticky
+   (top bar, rail, pinned filters); clip trims horizontal overflow without creating a scroll container */
+html,body{overflow-x:clip}
 
 /* Vibe Coded SaaS counter-example: no uppercase micro-labels; sans labels at readable contrast */
 .navlabel{text-transform:none;letter-spacing:0;font-size:.8em;color:var(--p-faint)}
@@ -981,6 +984,21 @@ button.av.more[aria-expanded="true"]{background:var(--p-accent);color:#fff}
 .cres-cur{width:1.1rem;flex:none;display:grid;place-items:center}
 @media(max-width:760px){.classbar{flex-wrap:wrap;row-gap:.45rem}.cb-label{width:100%}.cb-arrow{display:none}.minisearch{min-width:0;width:2.3rem;padding:0;justify-content:center}.minisearch span{display:none}}
 .csearch-box input::-webkit-search-cancel-button{display:none;-webkit-appearance:none}
+
+/* assignment pill (third row) + pinned filter panel so class/assignment switching never needs a scroll back up */
+.asg-sticky{position:sticky;top:var(--tb-h,3.95rem);z-index:30;margin:-.3rem -2.4rem 1rem;padding:.55rem 2.4rem .6rem;background:rgba(246,245,246,.9);-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);border-bottom:.5px solid var(--p-border)}
+.asg-sticky .classbar{margin:0}
+.asg-sticky .classbar+.classbar{margin-top:.45rem}
+.cb-label{min-width:5.6rem}
+.minisearch{min-width:11.4rem}
+.spill.ib button{max-width:19rem}
+.ib-t{min-width:0;max-width:14rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib-cls{font-size:.68rem;font-weight:600;color:var(--p-faint);padding:.04rem .42rem;border-radius:980px;box-shadow:inset 0 0 0 .5px var(--p-border);white-space:nowrap}
+.spill.ib button.on .ib-cls{color:var(--p-dim)}
+.asg-item,.asg-class{scroll-margin-top:calc(var(--tb-h,3.95rem) + 7.5rem)}
+.csearch-opts{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap}
+@media(max-width:900px){.asg-sticky{margin-left:-1.1rem;margin-right:-1.1rem;padding-left:1.1rem;padding-right:1.1rem}}
+@media(max-width:760px){.asg-sticky{position:static;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;border-bottom:none;margin:-.3rem 0 1rem;padding:0}.cb-label{min-width:0}.minisearch{min-width:0}.asg-sticky .classbar+.classbar{margin-top:.7rem}}
 </style>
 </head>
 <body>
@@ -2566,7 +2584,7 @@ AFTER.dash = () => trendBind();
 /* ============ instructor: Assignments — submissions grouped by class, graded in a side drawer ============ */
 IC.inbox = '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>';
 const GR_COMMENTS = ['Clear and well cited.', 'Cite the manual for each claim.', 'Good diagnosis; expand on the correction.', 'Let\'s talk before you resubmit.'];
-const asg = { status: 'todo', sort: 'oldest', q: '', cls: 'all', closed: new Set() };
+const asg = { status: 'todo', sort: 'oldest', q: '', cls: 'all', item: 'all', closed: new Set() };
 const DRAFTS = {};
 let grading = null, gradingShown = null;
 
@@ -2602,7 +2620,7 @@ function asgFiltered(c) {
 /* assignment groups inside a class: most recently due first */
 function classGroups(c) {
   const xs = asgFiltered(c);
-  return allItems(c).filter(it => it.type === 'assignment' && it.issued <= 0).sort((p, q) => q.due - p.due)
+  return allItems(c).filter(it => it.type === 'assignment' && it.issued <= 0 && (asg.item === 'all' || it.id === asg.item)).sort((p, q) => q.due - p.due)
     .map(it => ({ it, rows: xs.filter(x => x.it.id === it.id) })).filter(g => g.rows.length);
 }
 
@@ -2614,6 +2632,7 @@ V.assign = () => {
     <label class="note" for="asgSort">Sort</label><select id="asgSort" class="sel" style="width:auto;height:2.3rem;font-size:.85rem" onchange="asg.sort=this.value;swap('asgList',asgList())">${[['oldest', 'Oldest submission first'], ['newest', 'Newest first'], ['name', 'Student A–Z']].map(([v, l]) => `<option value="${v}" ${asg.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
     <input class="ti" style="width:12rem;height:2.3rem" placeholder="Filter students" aria-label="Filter students" value="${esc(asg.q)}" oninput="asg.q=this.value;document.getElementById('asgList').innerHTML=asgList()">
   </div>
+  <div class="asg-sticky">
   <div class="classbar" role="group" aria-label="Class">
     <span class="cb-label">Class</span>
     <button class="iconbtn sm cb-arrow press" id="cbPrev" onclick="cbScroll(-1)" aria-label="Previous classes"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(90deg)">${IC.chev}</svg></button>
@@ -2621,11 +2640,19 @@ V.assign = () => {
     <button class="iconbtn sm cb-arrow press" id="cbNext" onclick="cbScroll(1)" aria-label="More classes"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(-90deg)">${IC.chev}</svg></button>
     <button class="minisearch press" onclick="openClassSearch()" aria-haspopup="dialog" title="Search your classes">${ic('search')}<span>Find a class</span></button>
   </div>
+  <div class="classbar itembar" role="group" aria-label="Assignment">
+    <span class="cb-label">Assignment</span>
+    <button class="iconbtn sm cb-arrow press" id="ibPrev" onclick="cbScroll(-1,'ib')" aria-label="Previous assignments"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(90deg)">${IC.chev}</svg></button>
+    <div class="cb-track" id="ibTrack">${itemPill()}</div>
+    <button class="iconbtn sm cb-arrow press" id="ibNext" onclick="cbScroll(1,'ib')" aria-label="More assignments"><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(-90deg)">${IC.chev}</svg></button>
+    <button class="minisearch press" onclick="openItemSearch()" aria-haspopup="dialog" title="Search assignments">${ic('search')}<span>Find an assignment</span></button>
+  </div>
+  </div>
   <div id="asgList">${asgList()}</div>`;
 };
 function asgList() {
-  return [...COURSES].sort((x, y) => x.name.localeCompare(y.name)).filter(c => asg.cls === 'all' || c.id === asg.cls).map(c => {
-    const all = submissionsFor(c), graded = all.filter(x => x.graded).length, todo = all.length - graded, open = asg.cls !== 'all' || !asg.closed.has(c.id), R = roster(c), groups = classGroups(c);
+  return [...COURSES].sort((x, y) => x.name.localeCompare(y.name)).filter(c => (asg.cls === 'all' || c.id === asg.cls) && (asg.item === 'all' || allItems(c).some(it => it.id === asg.item))).map(c => {
+    const all = submissionsFor(c), graded = all.filter(x => x.graded).length, todo = all.length - graded, open = asg.cls !== 'all' || asg.item !== 'all' || !asg.closed.has(c.id), R = roster(c), groups = classGroups(c);
     return `<section class="panel flush asg-class disc ${open ? 'open' : ''}" id="asg-${c.id}">
       <button class="disc-h" aria-expanded="${open}" onclick="asgToggle('${c.id}',this)">${courseTile(c)}<span class="cwho"><b>${esc(c.name)}</b><small>${esc(c.code)} · ${esc(c.section)} · ${c.students} students</small></span>
         <span class="asg-meter">${bar(all.length ? graded / all.length * 100 : 0, 'var(--p-good)')}<small class="tnum">${graded} of ${all.length} graded</small></span>${tag(todo ? 'w' : 'g', todo ? `${todo} to grade` : 'All graded')}${ic('chev', 'chev')}</button>
@@ -2646,7 +2673,7 @@ function asgRow(x) {
 function setAsgStatus(btn, v) { slide(btn); asg.status = v; swap('asgList', asgList()); }
 function asgToggle(cid, btn) { const d = btn.closest('.disc'), open = !d.classList.contains('open'); d.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); open ? asg.closed.delete(cid) : asg.closed.add(cid); }
 function goGradeItem(cid, itemId) {
-  asg.status = 'todo'; asg.q = ''; asg.cls = cid; asg.closed.delete(cid); setView('assign');
+  asg.status = 'todo'; asg.q = ''; asg.cls = cid; asg.item = itemId; asg.closed.delete(cid); setView('assign');
   setTimeout(() => { const el = document.getElementById('asgi-' + itemId); if (el) { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); el.classList.add('flash'); } }, 80);
 }
 function refreshAsg() {
@@ -2656,6 +2683,7 @@ function refreshAsg() {
   const y = window.scrollY, el = document.getElementById('asgList'); if (el) el.innerHTML = asgList();
   const pb = document.querySelector('.sectionbar .spill button'); if (pb) pb.textContent = `To grade · ${toGradeCount()}`;
   const subs = allSubs(); document.querySelectorAll('.cb-ct[data-c]').forEach(el => { const n = subs.filter(x => !x.graded && (el.dataset.c === 'all' || x.c.id === el.dataset.c)).length; el.textContent = n; el.classList.toggle('zero', !n); });
+  document.querySelectorAll('.ib-ct[data-i]').forEach(el => { const id = el.dataset.i, n = subs.filter(x => !x.graded && (id === 'all' ? (asg.cls === 'all' || x.c.id === asg.cls) : x.it.id === id)).length; el.textContent = n; el.classList.toggle('zero', !n); });
   placePills(false); window.scrollTo(0, y);
 }
 
@@ -2765,27 +2793,54 @@ function classPill() {
   const opts = [['all', 'All classes'], ...[...COURSES].sort((x, y) => x.short.localeCompare(y.short)).map(c => [c.id, c.short])];   // ordered by the label the pill shows
   return pillHtml(opts.map(([v, l]) => { const n = cnt(v); return [v, `${esc(l)}<span class="cb-ct ${n ? '' : 'zero'}" data-c="${v}">${n}</span>`]; }), asg.cls, 'setAsgClass', 'cb');
 }
-function setAsgClass(btn, v) { slide(btn); asg.cls = v; cbReveal(btn, true); swap('asgList', asgList()); }
-function cbReveal(btn, smooth) {
-  const t = document.getElementById('cbTrack'); if (!t || !btn) return;
-  t.scrollTo({ left: btn.offsetLeft - (t.clientWidth - btn.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' });
-  setTimeout(cbUpdate, smooth ? 380 : 0);
+function setAsgClass(btn, v) {
+  slide(btn); asg.cls = v;
+  if (v === 'all' || (asg.item !== 'all' && findItem(asg.item).c.id !== v)) asg.item = 'all';
+  cbReveal(btn, true); renderItemBar(); swap('asgList', asgList());
 }
-function cbScroll(dir) { const t = document.getElementById('cbTrack'); if (t) t.scrollBy({ left: dir * Math.max(160, t.clientWidth * .75), behavior: 'smooth' }); }
-function cbUpdate() {
-  const t = document.getElementById('cbTrack'); if (!t) return;
+/* assignment pill: scoped to the selected class, or every class (with a class tag) */
+const asgItems = cls => (cls === 'all' ? [...COURSES].sort((x, y) => x.short.localeCompare(y.short)) : [courseById(cls)])
+  .flatMap(c => allItems(c).filter(it => it.type === 'assignment' && it.issued <= 0).sort((p, q) => q.due - p.due).map(it => ({ it, c })));
+function itemPill() {
+  const subs = allSubs(), multi = asg.cls === 'all';
+  const cnt = id => subs.filter(x => !x.graded && (id === 'all' ? (multi || x.c.id === asg.cls) : x.it.id === id)).length;
+  const opts = [['all', multi ? 'All assignments' : `All ${esc(courseById(asg.cls).short)} assignments`]]
+    .concat(asgItems(asg.cls).map(({ it, c }) => [it.id, `<span class="ib-t" title="${esc(it.title)}">${esc(it.title)}</span>${multi ? `<small class="ib-cls">${esc(c.short)}</small>` : ''}`]));
+  return pillHtml(opts.map(([v, l]) => { const n = cnt(v); return [v, `${l}<span class="cb-ct ib-ct ${n ? '' : 'zero'}" data-i="${v}">${n}</span>`]; }), asg.item, 'setAsgItem', 'cb ib');
+}
+function renderItemBar() {
+  const t = document.getElementById('ibTrack'); if (!t) return;
+  t.innerHTML = itemPill(); t.scrollLeft = 0; placePills(false);
+  const sp = t.querySelector('.spill'); sp.classList.add('enter');
+  cbReveal(t.querySelector('.spill button.on'), false); cbUpdate('ib');
+}
+function setAsgItem(btn, v) { slide(btn); asg.item = v; cbReveal(btn, true); swap('asgList', asgList()); }
+
+/* shared carousel behaviour for the class and assignment pills (prefix 'cb' / 'ib') */
+function cbReveal(btn, smooth) {
+  const t = btn && btn.closest('.cb-track'); if (!t) return;
+  t.scrollTo({ left: btn.offsetLeft - (t.clientWidth - btn.offsetWidth) / 2, behavior: smooth ? 'smooth' : 'auto' });
+  setTimeout(() => cbUpdate(t.id.slice(0, 2)), smooth ? 380 : 0);
+}
+function cbScroll(dir, p = 'cb') { const t = document.getElementById(p + 'Track'); if (t) t.scrollBy({ left: dir * Math.max(160, t.clientWidth * .75), behavior: 'smooth' }); }
+function cbUpdate(p) {
+  if (!p) { cbUpdate('cb'); cbUpdate('ib'); return; }
+  const t = document.getElementById(p + 'Track'); if (!t) return;
   const max = t.scrollWidth - t.clientWidth, atStart = t.scrollLeft <= 2, atEnd = t.scrollLeft >= max - 2;
   t.classList.toggle('fade-l', !atStart); t.classList.toggle('fade-r', !atEnd && max > 2);
-  const bar = t.closest('.classbar'); bar.classList.toggle('no-overflow', max <= 2);
-  document.getElementById('cbPrev').disabled = atStart; document.getElementById('cbNext').disabled = atEnd || max <= 2;
+  t.closest('.classbar').classList.toggle('no-overflow', max <= 2);
+  document.getElementById(p + 'Prev').disabled = atStart; document.getElementById(p + 'Next').disabled = atEnd || max <= 2;
 }
 function cbBind() {
-  const t = document.getElementById('cbTrack'); if (!t) return;
-  t.addEventListener('scroll', () => { clearTimeout(t._u); t._u = setTimeout(cbUpdate, 40); }, { passive: true });
-  cbReveal(t.querySelector('.spill button.on'), false); cbUpdate();
+  const tb = document.querySelector('.topbar'); if (tb) document.documentElement.style.setProperty('--tb-h', tb.offsetHeight + 'px');
+  for (const p of ['cb', 'ib']) {
+    const t = document.getElementById(p + 'Track'); if (!t) continue;
+    t.addEventListener('scroll', () => { clearTimeout(t._u); t._u = setTimeout(() => cbUpdate(p), 40); }, { passive: true });
+    cbReveal(t.querySelector('.spill button.on'), false); cbUpdate(p);
+  }
 }
 AFTER.assign = () => cbBind();
-window.addEventListener('resize', () => { if (state.view === 'assign') cbUpdate(); });
+window.addEventListener('resize', () => { if (state.view !== 'assign') return; const tb = document.querySelector('.topbar'); if (tb) document.documentElement.style.setProperty('--tb-h', tb.offsetHeight + 'px'); cbUpdate(); });
 
 const clsSearch = { q: '', onlyTodo: false, sel: 0, hits: [] };
 function openClassSearch() {
@@ -2827,6 +2882,55 @@ function pickClass(id) {
   if (state.view !== 'assign') { asg.cls = id; setView('assign'); return; }
   const btn = [...document.querySelectorAll('#cbTrack .spill button')].find(b => b.querySelector(`.cb-ct[data-c="${id}"]`));
   if (btn && !btn.classList.contains('on')) setAsgClass(btn, id); else cbReveal(btn, true);
+}
+
+/* ---------- assignment search dialog ---------- */
+const itmSearch = { q: '', onlyTodo: false, scope: 'class', sel: 0, hits: [] };
+function openItemSearch() {
+  Object.assign(itmSearch, { q: '', sel: 0, onlyTodo: false, scope: asg.cls === 'all' ? 'all' : 'class' });
+  const c = asg.cls === 'all' ? null : courseById(asg.cls);
+  openDialog('Find an assignment', `<div class="csearch">
+      <label class="csearch-box">${ic('search')}<input id="itmQ" type="search" placeholder="Search by assignment, annex or class" autocomplete="off" aria-controls="itmRes" oninput="itmSearch.q=this.value;itmSearch.sel=0;renderItemHits()" onkeydown="itemSearchKey(event)"></label>
+      <div class="csearch-opts">${c ? pillHtml([['class', `In ${esc(c.short)}`], ['all', 'All classes']], itmSearch.scope, 'setItmScope', 'sm') : ''}
+        <button class="switch" role="switch" aria-checked="false" onclick="itmSearch.onlyTodo=!itmSearch.onlyTodo;this.setAttribute('aria-checked',itmSearch.onlyTodo);itmSearch.sel=0;renderItemHits()"><span class="trk"></span>Only with work to grade</button></div>
+    </div><div class="note" id="itmCount" aria-live="polite"></div><div class="cres" id="itmRes" role="listbox" aria-label="Assignments"></div>`,
+    `<span class="note" style="margin-right:auto">↑ ↓ to move · Enter to select</span><button class="btn ghost press" onclick="closeDialog()">Cancel</button>`);
+  placePills(false); renderItemHits();
+}
+function setItmScope(btn, v) { slide(btn); itmSearch.scope = v; itmSearch.sel = 0; renderItemHits(); document.getElementById('itmQ').focus(); }
+function renderItemHits() {
+  const subs = allSubs(), q = itmSearch.q.trim(), words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const scopeCls = itmSearch.scope === 'class' && asg.cls !== 'all' ? asg.cls : 'all';
+  const hits = asgItems(scopeCls).map(({ it, c }) => { const xs = subs.filter(x => x.it.id === it.id); return { it, c, n: xs.length, todo: xs.filter(x => !x.graded).length }; })
+    .filter(h => words.every(w => `${h.it.title} annex ${h.it.annex} ${h.c.short} ${h.c.name} ${h.c.code}`.toLowerCase().includes(w)))
+    .filter(h => !itmSearch.onlyTodo || h.todo);
+  itmSearch.hits = hits; itmSearch.sel = Math.min(itmSearch.sel, Math.max(0, hits.length - 1));
+  const total = asgItems(scopeCls).length;
+  document.getElementById('itmCount').textContent = `${hits.length} of ${total} assignments${scopeCls === 'all' ? ' across your classes' : ` in ${courseById(scopeCls).short}`}${q ? ` match “${q}”` : ''}`;
+  const hl = t => { if (!words.length) return esc(t); const re = new RegExp('(' + words.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'ig'); return t.split(re).map((p, i) => i % 2 ? `<mark>${esc(p)}</mark>` : esc(p)).join(''); };
+  document.getElementById('itmRes').innerHTML = hits.length ? hits.map((h, i) => `<button class="cres-row ${i === itmSearch.sel ? 'sel' : ''}" role="option" aria-selected="${i === itmSearch.sel}" onclick="pickItem('${h.it.id}')" onmousemove="itmHover(${i})">
+      ${kico('assignment')}<span class="cwho"><b>${hl(h.it.title)}</b><small>${hl(h.c.short)} · Annex ${h.it.annex} · ${dueWord(h.it)} ${fmtDate(h.it.due)} · ${h.n} submitted</small></span>
+      ${h.todo ? tag('w', `${h.todo} to grade`) : tag('g', h.n ? 'All graded' : 'None yet')}<span class="cres-cur">${asg.item === h.it.id ? ic('check', 'acc') : ''}</span></button>`).join('')
+    : `<div class="empty">No assignments match.${scopeCls !== 'all' ? ' Try “All classes”.' : ''}</div>`;
+  const sEl = document.querySelector('#itmRes .cres-row.sel'); if (sEl) sEl.scrollIntoView({ block: 'nearest' });
+}
+function itemSearchKey(e) {
+  const n = itmSearch.hits.length; if (!n) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); itmSearch.sel = (itmSearch.sel + (e.key === 'ArrowDown' ? 1 : n - 1)) % n; renderItemHits(); }
+  if (e.key === 'Enter') { e.preventDefault(); pickItem(itmSearch.hits[itmSearch.sel].it.id); }
+}
+function itmHover(i) { if (itmSearch.sel === i) return; itmSearch.sel = i; document.querySelectorAll('#itmRes .cres-row').forEach((r, j) => { r.classList.toggle('sel', j === i); r.setAttribute('aria-selected', j === i); }); }
+function pickItem(id) {
+  closeDialog();
+  const f = findItem(id);
+  if (state.view !== 'assign') { asg.cls = f.c.id; asg.item = id; setView('assign'); return; }
+  if (asg.cls !== 'all' && asg.cls !== f.c.id) {   // from another class: move the class pill too
+    asg.item = id;
+    setAsgClass([...document.querySelectorAll('#cbTrack .spill button')].find(b => b.querySelector(`.cb-ct[data-c="${f.c.id}"]`)), f.c.id);
+    return;
+  }
+  const btn = [...document.querySelectorAll('#ibTrack .spill button')].find(b => b.querySelector(`.ib-ct[data-i="${id}"]`));
+  if (btn && !btn.classList.contains('on')) setAsgItem(btn, id); else cbReveal(btn, true);
 }
 
 
