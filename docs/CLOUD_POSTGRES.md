@@ -43,6 +43,37 @@ irreversible without a usable backup.
 
 ## 2. Connectivity and credentials
 
+### What is live (hackathon, 2026-09-15)
+
+The app talks to the Firebase Data Connect trial instance
+`schoolcircle-ae29a:us-east4:schoolcircle-ae29a-instance` (public IP only,
+legacy per-instance CA, `db-f1-micro`) through the **Cloud SQL Node connector**,
+not a VPC. `lib/db.js` switches to a Prisma `pg` driver adapter backed by the
+connector when `CLOUD_SQL_CONNECTION_NAME` is set; the connector authenticates
+with the App Hosting service account (`roles/cloudsql.client`) and encrypts to
+the instance, so no authorized networks, TLS certificate files, or private IP
+are needed. `DATABASE_URL` (Secret Manager secret `DATABASE_URL`) still supplies
+user/password/database; its host is ignored in the cloud. Database
+`schoolcircle_demo`, user `schoolcircle_app` (kept separate from any Data
+Connect-managed database on the same instance).
+
+Migrations and seeds run from a laptop with `gcloud auth login --update-adc`:
+
+```bash
+export CLOUD_SQL_CONNECTION_NAME=schoolcircle-ae29a:us-east4:schoolcircle-ae29a-instance
+npm run db:proxy            # loopback 127.0.0.1:5433 -> instance, in a second terminal
+export DATABASE_URL='postgresql://schoolcircle_app:PASSWORD@127.0.0.1:5433/schoolcircle_demo?schema=public'
+export DATABASE_TARGET_CONFIRM=schoolcircle_demo SCHOOLCIRCLE_DB_ENV=demo
+npm run db:deploy
+NODE_ENV=development ALLOW_DEMO_SEED=true npm run db:seed
+```
+
+**Switching to the offline box:** leave `CLOUD_SQL_CONNECTION_NAME` unset, point
+`DATABASE_URL` at the local PostgreSQL, run the same `db:deploy` / `db:seed`.
+No code change. The remainder of this section describes the private-IP/VPC
+alternative, which is not in use.
+
+
 Recommended staged configuration: **private-IP Cloud SQL + App Hosting Direct
 VPC egress**. Do not expose PostgreSQL to `0.0.0.0/0`.
 
