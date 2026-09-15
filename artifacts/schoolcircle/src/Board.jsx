@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { authFetch } from '../../../lib/firebase.js';
 
 const POLL_MS = 1000;
 const EVENT_START = new Date('2026-09-15T09:00:00');
@@ -70,7 +71,7 @@ export default function Board() {
   // --- poll the markdown file ---
   const poll = useCallback(async () => {
     try {
-      const res = await fetch('/api/plan', { cache: 'no-store' });
+      const res = await authFetch('/api/plan', { cache: 'no-store' });
       const data = await res.json();
       setStale(false);
       if (data.content !== lastRef.current) {
@@ -163,7 +164,7 @@ export default function Board() {
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <a
-            href="/prototype"
+             href="/prototype"
             style={{
               fontSize: '0.8em',
               color: 'var(--accent)',
@@ -177,7 +178,7 @@ export default function Board() {
             Prototype →
           </a>
           <a
-            href="/learn"
+             href="/learn"
             style={{
               fontSize: '0.8em',
               color: 'var(--accent-2)',

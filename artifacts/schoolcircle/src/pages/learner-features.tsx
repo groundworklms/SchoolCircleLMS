@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useApiQuery, useApiMutation } from "../hooks/use-learning";
+import { downloadAuthenticated, useApiQuery, useApiMutation } from "../hooks/use-learning";
 
 export function LearnerProfile() {
   const { data: profileData, loading, refetch } = useApiQuery<any>("/profile", { enabled: true });
@@ -153,9 +153,17 @@ export function LearnerStudyPlan({ courseId }: { courseId?: string }) {
           <h3>Current Plan Status: <strong style={{ color: planData.plan?.status === "behind" ? "var(--p-warning)" : "var(--p-good)" }}>{planData.plan?.status || "On track"}</strong></h3>
           <p>Recommended Action: {planData.plan?.recommended}</p>
           <div style={{ marginTop: "1rem" }}>
-            <a href={`/api/learning/study-plan?courseId=${selectedCourseId}&format=ics`} download className="p-btn ghost" style={{ textDecoration: "none" }}>
+            <button
+              type="button"
+              className="p-btn ghost"
+              style={{ textDecoration: "none" }}
+              onClick={() => downloadAuthenticated(
+                `/api/learning/study-plan?courseId=${selectedCourseId}&format=ics`,
+                "schoolcircle-study-plan.ics",
+              ).catch((error) => alert(error.message))}
+            >
               Download ICS Calendar
-            </a>
+            </button>
           </div>
         </div>
       ) : (

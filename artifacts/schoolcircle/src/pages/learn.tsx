@@ -66,7 +66,7 @@ export default function LearnApp() {
 
         <div className="s-rail-spacer" />
         <RailButton icon={I.swap} label="View as instructor" onClick={() => setLocation("/teach")} />
-        <RailButton icon={I.back} label="Planning board" onClick={() => setLocation("/")} />
+        <RailButton icon={I.back} label="Planning board" onClick={() => setLocation("/plan")} />
       </nav>
 
       <div className="s-content">

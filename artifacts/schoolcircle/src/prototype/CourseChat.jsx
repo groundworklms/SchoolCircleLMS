@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { authFetch } from '../../../../lib/firebase.js';
 
 /* Floating course chat. Bottom-right of every course screen.
    Real when a grounded doctrine service is configured (DOCTRINE_BASE_URL):
@@ -84,7 +85,7 @@ export default function CourseChat({ course, view }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
-    fetch('/api/doctrine')
+    authFetch('/api/doctrine')
       .then((r) => r.json())
       .then(setStatus)
       .catch(() => setStatus({ ready: false }));
@@ -113,7 +114,7 @@ export default function CourseChat({ course, view }) {
     let out;
     try {
       if (grounded) {
-        const res = await fetch('/api/doctrine', {
+        const res = await authFetch('/api/doctrine', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ question }),

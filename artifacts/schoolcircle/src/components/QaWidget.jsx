@@ -18,7 +18,7 @@ const TYPES = [
 ];
 
 function viewLabel(pathname) {
-  if (!pathname || pathname === '/') return 'Planning board (home)';
+  if (!pathname || pathname === '/' || pathname === '/plan') return 'Planning board';
   if (pathname.startsWith('/prototype')) return 'App — Student / Instructor';
   return pathname;
 }

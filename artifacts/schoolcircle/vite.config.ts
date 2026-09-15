@@ -50,6 +50,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, 'src'),
+      // lib/firebase.js lives at the workspace root while Firebase is owned
+      // by this artifact, so make its package resolution explicit for Vite.
+      firebase: path.resolve(import.meta.dirname, 'node_modules/firebase'),
       '@assets': path.resolve(
         import.meta.dirname,
         '..',
@@ -71,6 +74,7 @@ export default defineConfig({
     allowedHosts: true,
     fs: {
       strict: true,
+      allow: [path.resolve(import.meta.dirname, '..', '..')],
     },
   },
   preview: {
