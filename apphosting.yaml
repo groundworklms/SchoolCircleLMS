@@ -46,3 +46,21 @@ env:
     availability:
       - BUILD
       - RUNTIME
+
+  # --- In-app "Report an issue" widget -> files GitHub issues directly via
+  # /api/feedback. Secrets live in Cloud Secret Manager; the App Hosting compute
+  # service account has Secret Accessor on both.
+  - variable: GITHUB_FEEDBACK_REPO
+    value: groundworklms/SchoolCircleLMS
+    availability:
+      - RUNTIME
+  # Fine-grained PAT (schoolcircle-feedback-widget): Issues read/write on the repo above.
+  - variable: GITHUB_FEEDBACK_TOKEN
+    secret: GITHUB_FEEDBACK_TOKEN
+    availability:
+      - RUNTIME
+  # Shared team passphrase testers enter once in the widget.
+  - variable: FEEDBACK_KEY
+    secret: FEEDBACK_KEY
+    availability:
+      - RUNTIME
