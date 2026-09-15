@@ -5,6 +5,7 @@ import { POIS } from './poi';
 import { contentFor } from './lessonContent';
 import { usePrefs, setPref } from './prefs';
 import { countForLesson } from './Discussions';
+import { useDoctrineCourse } from './grounded';
 
 /* ---------- real cited items from the DB (issue #8) ----------
    The lesson reader's structure is POI-driven and real; its teaching CONTENT was mock.
@@ -12,29 +13,6 @@ import { countForLesson } from './Discussions';
    seeded course database via GET /api/courses, matched to the course (and section) on screen.
    It degrades silently: on the static Pages build (no API/DB), if the DB is unreachable, or if
    this course has no grounded items seeded yet, the reader still works and the card stays hidden. */
-
-// Which seeded (DB) course backs each prototype course, by Anchor sourceId (Course.sourceId).
-// Grow: as the content lane ingests more courses, extend this mapping.
-const COURSE_SOURCE = { TC32209: 'TC 3-22.9' };
-
-function useDoctrineCourse(courseId) {
-  const [state, setState] = useState({ status: 'loading', db: null });
-  useEffect(() => {
-    const sourceId = COURSE_SOURCE[courseId];
-    if (!sourceId) { setState({ status: 'ready', db: null }); return; }
-    let alive = true;
-    fetch('/api/courses')
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
-      .then((d) => {
-        if (!alive) return;
-        const db = (d.courses || []).find((c) => c.sourceId === sourceId) || null;
-        setState({ status: 'ready', db });
-      })
-      .catch(() => alive && setState({ status: 'error', db: null }));
-    return () => { alive = false; };
-  }, [courseId]);
-  return state;
-}
 
 /* Grounded key-points card: real APPROVED lesson claims for THIS course, scoped to the current
    section when the DB has one, each with a clickable citation that expands the paragraph/page

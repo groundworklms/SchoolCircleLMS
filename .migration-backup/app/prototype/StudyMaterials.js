@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNarration } from './shared';
+import { useDoctrineCourse, itemsOfKind } from './grounded';
 
 const DIFFICULTY = [
   { id: 'basic', label: 'Basic', note: 'Recall and definitions' },
@@ -10,6 +11,13 @@ const DIFFICULTY = [
 ];
 
 const KEY_TERMS = {
+  'TC32209': [
+    ['Sight alignment', 'The relationship between the front and rear sights and the aiming eye.'],
+    ['Sight picture', 'The placement of the aligned sights on the target once the sights are aligned.'],
+    ['Trigger control', 'Firing the weapon while maintaining aim and stabilization until the bullet leaves the muzzle.'],
+    ['Natural point of aim', 'Where the weapon settles on the target with the body relaxed, without muscular correction.'],
+    ['Follow-through', 'Holding trigger and position after the shot so the muzzle is not disturbed before the round exits.'],
+  ],
   'M092721': [
     ['SWR', 'Ratio of maximum to minimum voltage on a transmission line. A perfect match is 1:1.'],
     ['Reflection coefficient', 'Fraction of incident voltage returned by a mismatch. The square root of the power ratio.'],
@@ -30,13 +38,32 @@ function StudyMaterials({ course }) {
   const [qi, setQi] = useState(0);
   const narration = useNarration();
 
+  // Real, human-ratified, cited questions from the seeded course DB (issue #8). Each APPROVED
+  // QUESTION carries its options, keyed answer, rationale, and Anchor citation. When this course
+  // has them we practice on the real bank; otherwise we fall back to the prototype's mock set.
+  const { db } = useDoctrineCourse(course.id);
+  const groundedQs = useMemo(
+    () =>
+      itemsOfKind(db, 'QUESTION').map((it) => ({
+        q: it.stem,
+        answers: (it.options || []).map((text, i) => ({ text, correct: i === it.answer })),
+        rationale: it.rationale || '',
+        topic: it.section,
+        citation: it.citation || null,
+        support: it.support,
+        grounded: true,
+      })),
+    [db]
+  );
+  const questions = groundedQs.length ? groundedQs : course.questions;
+
   useEffect(() => {
     setPicked(null);
     setQi(0);
   }, [course.id, diff]);
 
-  const q = course.questions[qi % course.questions.length];
-  const terms = KEY_TERMS[course.id];
+  const q = questions[qi % questions.length];
+  const terms = KEY_TERMS[course.id] || [];
 
   return (
     <>
@@ -96,6 +123,14 @@ function StudyMaterials({ course }) {
         <div className="p-panel">
           <h3>
             Practice
+            {groundedQs.length > 0 && (
+              <span
+                className="p-cite"
+                style={{ marginLeft: '0.5rem', background: 'var(--p-accent-tint)', color: 'var(--p-accent)', border: 'none' }}
+              >
+                ✓ Grounded · approved question bank
+              </span>
+            )}
             <span style={{ float: 'right' }}>
               <span className="p-diff">
                 {DIFFICULTY.map((d) => (
@@ -142,6 +177,17 @@ function StudyMaterials({ course }) {
                 </span>
                 {q.rationale}
               </div>
+              {q.citation && (
+                <div className="s-gkp-passage" style={{ marginTop: '0.6rem' }}>
+                  <div className="s-gkp-loc">
+                    <span><b>Source</b> {q.citation.citation}</span>
+                    {q.citation.page && <span><b>Page</b> {q.citation.page}</span>}
+                    {typeof q.support === 'number' && (
+                      <span><b>HHEM support</b> {(q.support * 100).toFixed(0)}%</span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="p-btnrow" style={{ marginTop: '0.8rem' }}>
                 <button
                   className="p-btn"
