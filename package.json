@@ -13,6 +13,7 @@
     "db:seed": "node scripts/database.mjs seed",
     "test:db-policy": "node --test tests/database-seed*.mjs",
     "test:db": "node tests/postgres-integration.mjs",
+    "db:proxy": "node scripts/cloud-sql-proxy.mjs",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },
@@ -20,10 +21,13 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "@google-cloud/cloud-sql-connector": "^1.12.0",
+    "@prisma/adapter-pg": "^6.19.3",
     "@prisma/client": "^6.3.0",
     "firebase": "^12.19.0",
     "next": "15.5.25",
     "pdfjs-dist": "^4.10.38",
+    "pg": "^8.23.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-markdown": "9.0.3",
