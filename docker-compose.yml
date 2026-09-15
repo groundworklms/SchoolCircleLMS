@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: schoolcircle-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: schoolcircle
+      POSTGRES_PASSWORD: schoolcircle
+      POSTGRES_DB: schoolcircle
+    ports:
+      - "5433:5432"   # host 5433 -> container 5432 (matches DATABASE_URL in .env.example)
+    volumes:
+      - schoolcircle_pg:/var/lib/postgresql/data
+
+volumes:
+  schoolcircle_pg:
