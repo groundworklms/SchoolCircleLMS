@@ -1,0 +1,850 @@
+{
+  "schemaVersion": 1,
+  "audit": {
+    "status": "in-progress-service-and-browser-verification",
+    "contract": "docs/05-arsenal-contracts.md",
+    "anchorContract": "docs/04-grounding-and-anchor.md",
+    "cacheRoot": ".cache/arsenal",
+    "cloneCommand": "git clone --depth 1 --branch main https://github.com/groundworklms/<repo>.git .cache/arsenal/<repo>",
+    "refResolution": "git -C .cache/arsenal/<repo> rev-parse HEAD",
+    "sourcePolicy": "Resolved shallow main commit and checked-out source are authoritative for this audit; package metadata is preserved as evidence.",
+    "schoolCircleIntegrationDefinition": "adapter-wired means current SchoolCircle/API source has an adapter or import and route for the repo; a clone or installed dependency alone is not integration.",
+    "currentSourceStatus": "All eleven JavaScript dependencies are pinned in artifacts/api-server/package.json at the reviewed SHAs. Core and evidence adapters, routes, and principal learner/instructor UI surfaces are present; UI paths are source-inspected only and final UI contract corrections remain in progress.",
+    "dependencyInstall": {
+      "manifest": "artifacts/api-server/package.json",
+      "lockfile": "pnpm-lock.yaml",
+      "pinnedToReviewedShas": true,
+      "installedAtCallBoundary": true,
+      "sourceEvidence": [
+        "artifacts/api-server/src/lib/arsenal-core.js",
+        "artifacts/api-server/src/lib/arsenal-evidence.js"
+      ]
+    },
+    "runtimeVerification": {
+      "status": "not-complete",
+      "evidenceClass": "24-tests-mixed-fixtures-injected-model-and-postgresql-roundtrip",
+      "liveServiceProof": false,
+      "liveApiProbe": true,
+      "liveExternalServiceProof": false,
+      "databaseStatus": "Development Prisma baseline and LearningRecord migration are deployed. Labelled tests exercise real PostgreSQL LearningRecord roundtrip/CAS cleanup; no authenticated instructor end-to-end aggregate flow is claimed.",
+      "unconfiguredServices": [
+        "Anchor doctrine service",
+        "generic self-hosted model provider",
+        "Rubricon endpoint",
+        "Whetstone endpoint"
+      ],
+      "authStatus": "Development auth readiness is true; /api/auth/user returns user:null and anonymous protected source access returns 401 AUTH_REQUIRED. No live OIDC callback or instructor identity is claimed.",
+      "testVerification": {
+        "apiCommand": "pnpm --filter @workspace/api-server test",
+        "apiResult": "24 tests passed, including labelled PostgreSQL LearningRecord roundtrip/CAS cleanup and route tests",
+        "typecheckCommand": "pnpm run typecheck",
+        "typecheckResult": "passed",
+        "restart": "API restarted cleanly",
+        "proxyProbes": {
+          "/api/healthz": "200",
+          "/api/learning/status": "200; auth.ready true; model/rubricon/whetstone/doctrine false; Prisma persistence present",
+          "/api/auth/user": "200; user:null",
+          "/api/learning/sources": "401 AUTH_REQUIRED",
+          "/api/plan": "200; original markdown planning-board response",
+          "/api/doctrine": "200; ready:false"
+        }
+      },
+      "uiVerification": "Source inspection only; browser testing is not claimed and final UI contract corrections remain in progress.",
+      "verificationDocument": "docs/arsenal-verification.md"
+    }
+  },
+  "repositories": [
+    {
+      "name": "anchor",
+      "role": "Offline FastAPI doctrine tutor",
+      "url": "https://github.com/groundworklms/anchor.git",
+      "branch": "main",
+      "sha": "fc9cc61a1a42121c3ad811f800b028805810ecf5",
+      "shallow": true,
+      "language": "Python",
+      "package": null,
+      "verifiedExports": [],
+      "primaryApis": [
+        "POST /api/ask accepts {question:string}",
+        "POST /api/ask/stream emits SSE stages",
+        "GET /api/health, /api/corpus, /api/records, /api/instructor/overview",
+        "GET /api/learn/track, /api/learn/next, /api/learn/history, /api/learn/calibration",
+        "POST /api/learn/answer, /api/review/decide, /api/review/precheck, /api/gaps/run"
+      ],
+      "localDeterministicCapabilities": [
+        "retrieval and score gates with local fixtures",
+        "citation/refusal gate",
+        "GroundingVerifier with injected ask_model or local verifier stub",
+        "API tests with injected pipeline state"
+      ],
+      "externalRequirements": [
+        "Python device requirements including FastAPI, Uvicorn, Pydantic, SQLite/sqlite-vec, and YAML support",
+        "indexed SQLite corpus and config",
+        "local generator, embedding, and reranker services; optional HHEM verifier",
+        "Jetson/air-gapped deployment is the intended production environment"
+      ],
+      "contractDrift": [
+        "contract request uses q; actual Anchor request uses question",
+        "contract response names differ from actual abstain_reason, text, top_rerank_score, latency_s fields",
+        "contract /api/doctrine is the SchoolCircle wrapper, not an Anchor route"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired",
+        "adapter": "artifacts/api-server/src/lib/doctrine.js",
+        "route": "artifacts/api-server/src/routes/doctrine.js",
+        "ui": "artifacts/schoolcircle/src/components/AskWidget.jsx",
+        "notes": "HTTP adapter posts to Anchor /api/ask, maps the response, preserves abstention, and reports an explicit unavailable state when DOCTRINE_BASE_URL is absent. This is source wiring only; Anchor is not configured or live-verified."
+      },
+      "evidence": [
+        ".cache/arsenal/anchor/src/api/main.py",
+        ".cache/arsenal/anchor/src/generation/pipeline.py",
+        "artifacts/api-server/src/lib/doctrine.js",
+        "artifacts/api-server/src/routes/doctrine.js",
+        "artifacts/schoolcircle/src/components/AskWidget.jsx"
+      ]
+    },
+    {
+      "name": "quarry",
+      "role": "PDF/text extraction and structure",
+      "url": "https://github.com/groundworklms/quarry.git",
+      "branch": "main",
+      "sha": "465b7515732bbc08b80b6ec8684e1fc49c7985ea",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "quarry",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js",
+          "./chunk": "./src/chunk.js",
+          "./tasks": "./src/tasks.js",
+          "./outline": "./src/outline.js",
+          "./pdf": "./src/pdf.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/quarry.git",
+        "dependencies": [
+          "pdfjs-dist"
+        ]
+      },
+      "verifiedExports": [
+        "pdfText",
+        "PdfParseError",
+        "chunkText",
+        "extractTasks",
+        "outline",
+        "sections"
+      ],
+      "primaryApis": [
+        "pdfText(bytes) -> {text,pages,pageTexts}",
+        "chunkText(text,maxWords=180) -> string[]",
+        "extractTasks(text,opts?) -> task[]",
+        "outline(text) -> heading[]",
+        "sections(text) -> section[]"
+      ],
+      "localDeterministicCapabilities": [
+        "chunkText",
+        "extractTasks",
+        "outline",
+        "sections",
+        "pdfText over local bytes"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "local pdfjs-dist dependency"
+      ],
+      "contractDrift": [
+        "contract mentions PDF/POI bytes; source exposes PDF parsing and text task parsing, not a POI-specific parser",
+        "pageTexts is a pdfText result field, not a callable root export",
+        "pdfText returns pages and pageTexts in addition to text"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired",
+        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#ingestSource",
+        "routes": [
+          "POST /api/learning/sources",
+          "POST /api/learning/sources/pdf"
+        ],
+        "ui": "artifacts/schoolcircle/src/pages/teach.tsx#SourcesView",
+        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "runtime": "24-test adapter/route suite passed with selected PostgreSQL persistence coverage; no instructor-authenticated live PDF flow is claimed",
+        "notes": "Quarry is loaded at the call boundary; page text, chunks, and citation pages are persisted in SOURCE records."
+      },
+      "evidence": [
+        ".cache/arsenal/quarry/package.json",
+        ".cache/arsenal/quarry/src/index.js",
+        ".cache/arsenal/quarry/README.md"
+      ]
+    },
+    {
+      "name": "coursewright",
+      "role": "Cited course generation",
+      "url": "https://github.com/groundworklms/coursewright.git",
+      "branch": "main",
+      "sha": "f38d078a30195a6a6901ade22a3ce7484613fa57",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "coursewright",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/coursewright.git",
+        "dependencies": []
+      },
+      "verifiedExports": [
+        "buildCourse",
+        "fromDocuments",
+        "isRefusal",
+        "verifyGrounding",
+        "chunk",
+        "match"
+      ],
+      "primaryApis": [
+        "buildCourse(spec,emit?,options?)",
+        "fromDocuments(spec,emit?,options?)",
+        "verifyGrounding(text,passage,threshold=0.4)",
+        "chunk(documents,maxWords=180)",
+        "match(objective,chunks,minScore=0.34,minOverlap=2)"
+      ],
+      "localDeterministicCapabilities": [
+        "chunk and IDF keyword match",
+        "verifyGrounding",
+        "isRefusal",
+        "full generation with an injected deterministic ask/fetch"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "default generation requires an OpenAI-compatible model endpoint and COURSEWRIGHT_API_KEY or OPENROUTER_API_KEY",
+        "optional diagram model configuration"
+      ],
+      "contractDrift": [
+        "contract signatures show separate objectives/docs arguments; source uses one spec object followed by emit and options",
+        "actual sections contain lesson, pre/post, flashcards, diagram, and per-artifact refusals beyond the generic map shape"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired",
+        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#draftCourse",
+        "routes": [
+          "POST /api/learning/courses/draft",
+          "GET /api/learning/courses",
+          "POST /api/learning/courses/:id/approve"
+        ],
+        "ui": "artifacts/schoolcircle/src/pages/teach.tsx#CoursesView",
+        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "runtime": "24-test adapter suite passed with injected-model coverage; production draft still requires MODEL_BASE_URL, MODEL_ID, auth, and persistence",
+        "notes": "Calls Coursewright fromDocuments through the SchoolCircle model seam and persists draft/refusal data as PENDING until instructor approval."
+      },
+      "evidence": [
+        ".cache/arsenal/coursewright/package.json",
+        ".cache/arsenal/coursewright/src/index.js",
+        ".cache/arsenal/coursewright/src/coursewright.js",
+        ".cache/arsenal/coursewright/README.md"
+      ]
+    },
+    {
+      "name": "sourcerer",
+      "role": "Cite-or-refuse document Q&A",
+      "url": "https://github.com/groundworklms/sourcerer.git",
+      "branch": "main",
+      "sha": "8a2e6831ebc6ced8ee71b0215fb0037d1cb7c1bb",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "sourcerer",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/sourcerer.git",
+        "dependencies": []
+      },
+      "verifiedExports": [
+        "ask",
+        "normalizeEndpointResponse",
+        "keywordRetriever",
+        "embedRetriever",
+        "verifyFaithfulness",
+        "summarizeFaithfulness"
+      ],
+      "primaryApis": [
+        "ask(question,opts?)",
+        "keywordRetriever(passages)",
+        "embedRetriever(options)",
+        "verifyFaithfulness(question,answer,passages,chat?)",
+        "normalizeEndpointResponse(body)"
+      ],
+      "localDeterministicCapabilities": [
+        "keyword retrieval",
+        "retrieval floor and cite-or-refuse checks",
+        "endpoint response normalization",
+        "faithfulness summary",
+        "ask with injected chat"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "default ask path uses an OpenAI-compatible chat endpoint",
+        "embedRetriever uses an embeddings endpoint",
+        "endpoint grounding mode requires an external HTTP service"
+      ],
+      "contractDrift": [
+        "contract shows ask({q,...}); actual API is ask(question,opts)",
+        "root exports normalizeEndpointResponse and summarizeFaithfulness in addition to map entries",
+        "verify intentionally throws for endpoint-only citations without passage text"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired",
+        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#tutorAnswer",
+        "route": "POST /api/learning/tutor",
+        "ui": "No dedicated Sourcerer UI; the global Ask widget remains the separate Anchor /api/doctrine surface.",
+        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "runtime": "24-test adapter suite passed with injected-chat coverage and persistence/route tests; approved persisted passages, auth, persistence, and model are required for production",
+        "notes": "Sourcerer is called with approved passages and strict cite-or-refuse verification; refusals and citations are recorded as TUTOR_TURN."
+      },
+      "evidence": [
+        ".cache/arsenal/sourcerer/package.json",
+        ".cache/arsenal/sourcerer/src/index.js",
+        ".cache/arsenal/sourcerer/src/sourcerer.js",
+        ".cache/arsenal/sourcerer/README.md"
+      ]
+    },
+    {
+      "name": "rubricon",
+      "role": "BARS rubric generation and rater reliability",
+      "url": "https://github.com/groundworklms/rubricon.git",
+      "branch": "main",
+      "sha": "1a3d88c9cef6e0239da060e936398fa6b999c6a9",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "rubricon",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/rubricon.git",
+        "dependencies": []
+      },
+      "verifiedExports": [
+        "generateRubric",
+        "taskToText",
+        "verifyTraceability",
+        "validateRubric",
+        "percentAgreement",
+        "cohenKappa",
+        "weightedKappa",
+        "fleissKappa",
+        "interpretKappa",
+        "reliabilityReport",
+        "TIERS"
+      ],
+      "primaryApis": [
+        "generateRubric(task) -> Promise<object>",
+        "verifyTraceability(rubric,sourceText,opts?)",
+        "validateRubric(rubric)",
+        "weightedKappa(a,b,opts?)",
+        "reliabilityReport(a,b,opts?)"
+      ],
+      "localDeterministicCapabilities": [
+        "traceability verification",
+        "rubric shape validation",
+        "percent agreement and kappa statistics"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "generateRubric uses an OpenAI-compatible endpoint and RUBRICON_API_KEY or OPENROUTER_API_KEY"
+      ],
+      "contractDrift": [
+        "isValidRubricShape is named by the contract but is not a root export",
+        "generateRubric has no {ask} injection option in the checked source",
+        "invalid task and model failure semantics do not satisfy the shared TypeError-only statement"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired",
+        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#generateRubric",
+        "routes": [
+          "POST /api/learning/rubrics/generate",
+          "GET /api/learning/rubrics/:id",
+          "POST /api/learning/rubrics/:id/approve"
+        ],
+        "ui": "No dedicated rubric UI is currently present.",
+        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "runtime": "validator/traceability tests use injected callbacks; production requires MODEL_BASE_URL, MODEL_ID plus RUBRICON_ENDPOINT, RUBRICON_MODEL, RUBRICON_API_KEY",
+        "notes": "The adapter preserves Rubricon validation/traceability and stores generated rubrics as PENDING for human approval. Rubricon is not configured or live-verified."
+      },
+      "evidence": [
+        ".cache/arsenal/rubricon/package.json",
+        ".cache/arsenal/rubricon/src/index.js",
+        ".cache/arsenal/rubricon/src/rubric.js",
+        ".cache/arsenal/rubricon/README.md"
+      ]
+    },
+    {
+      "name": "whetstone",
+      "role": "Conversational mastery loop",
+      "url": "https://github.com/groundworklms/whetstone.git",
+      "branch": "main",
+      "sha": "4b5d0a4be05a5a2161a4d46f9261ff88a43d8b2b",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "whetstone",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/whetstone.git",
+        "dependencies": []
+      },
+      "verifiedExports": [
+        "deriveRubric",
+        "firstQuestion",
+        "scoreTurn",
+        "computeScore",
+        "LEVELS",
+        "Session",
+        "masteryReport"
+      ],
+      "primaryApis": [
+        "new Session({objectives,source,scorer?,deriveRubric?,firstQuestion?,maxTurns?,maxAttemptsPerCriterion?,maxTranscript?})",
+        "session.start()",
+        "session.answer(text)",
+        "session.report()",
+        "scoreTurn({criteria,eloIndex,question,answer,source,transcript})"
+      ],
+      "localDeterministicCapabilities": [
+        "Session progression with injected scorer/rubric/question functions",
+        "computeScore and masteryReport"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "default rubric, question, and scoring calls use WHETSTONE_API_KEY or OPENROUTER_API_KEY and an OpenAI-compatible endpoint"
+      ],
+      "contractDrift": [
+        "constructor uses objectives plural, not objective singular",
+        "session cap validation uses RangeError in checked source, not the shared TypeError claim"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired",
+        "adapter": "artifacts/api-server/src/lib/arsenal-core.js#startMasterySession,answerMasterySession,restoreMasterySession",
+        "routes": [
+          "POST /api/learning/mastery/sessions",
+          "POST /api/learning/mastery/sessions/:id/turn"
+        ],
+        "ui": "artifacts/schoolcircle/src/pages/learn.tsx#MasteryWidget",
+        "testEvidence": "artifacts/api-server/test/learning-core.test.mjs",
+        "runtime": "24-test adapter suite passed with injected-model progression coverage; production requires MODEL_BASE_URL, MODEL_ID plus WHETSTONE_ENDPOINT, WHETSTONE_MODEL, WHETSTONE_API_KEY, auth, and persistence",
+        "notes": "Session state/transcript and terminal complete/stalled reports are serialized to MASTERY_SESSION and MASTERY_ATTEMPT. Whetstone is not configured or live-verified."
+      },
+      "evidence": [
+        ".cache/arsenal/whetstone/package.json",
+        ".cache/arsenal/whetstone/src/index.js",
+        ".cache/arsenal/whetstone/src/session.js",
+        ".cache/arsenal/whetstone/README.md"
+      ]
+    },
+    {
+      "name": "sextant",
+      "role": "Learning gain, class gaps, mastery rollups",
+      "url": "https://github.com/groundworklms/sextant.git",
+      "branch": "main",
+      "sha": "007a2c0f47fd50a9acbc3f3538814c1bf8683e95",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "sextant",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js",
+          "./analytics": "./src/analytics.js",
+          "./competency": "./src/competency.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/sextant.git",
+        "dependencies": []
+      },
+      "verifiedExports": [
+        "learningGain",
+        "classGaps",
+        "masteryRollup",
+        "summarize",
+        "competencyEvidence"
+      ],
+      "primaryApis": [
+        "learningGain(attempts)",
+        "classGaps(attempts,{phase?,minCohort?})",
+        "masteryRollup(records)",
+        "summarize({attempts?,sessions?})",
+        "competencyEvidence(transcript,{heuristicOnly?,fetch?,apiKey?,endpoint?,model?})"
+      ],
+      "localDeterministicCapabilities": [
+        "all analytics",
+        "heuristicOnly competencyEvidence",
+        "distinct-learner small-cell suppression"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "optional OpenAI-compatible model endpoint for competencyEvidence model mode"
+      ],
+      "contractDrift": [
+        "shared deterministic-core statement must be scoped because competencyEvidence has an optional model path",
+        "classGaps must receive learner IDs when available to preserve distinct-cohort suppression"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired",
+        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildAnalytics",
+        "routes": [
+          "GET /api/learning/analytics",
+          "GET /api/learning/analytics/cohort"
+        ],
+        "ui": "artifacts/schoolcircle/src/pages/learner-features.tsx#LearnerProgress",
+        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "runtime": "24-test evidence suite passed with deterministic analytics and selected PostgreSQL persistence/route coverage; no instructor-authenticated live aggregate is claimed",
+        "notes": "Explicit pre/post attempts and validated mastery reports feed Sextant; cohort scope preserves five-learner suppression and never returns learner IDs."
+      },
+      "evidence": [
+        ".cache/arsenal/sextant/package.json",
+        ".cache/arsenal/sextant/src/index.js",
+        ".cache/arsenal/sextant/README.md"
+      ]
+    },
+    {
+      "name": "understudy",
+      "role": "Doctrine-constrained stand-in and fidelity benchmark",
+      "url": "https://github.com/groundworklms/understudy.git",
+      "branch": "main",
+      "sha": "6ecb931b85af9cf36aab185f587dd3ede4a61d96",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "understudy",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js",
+          "./benchmark": "./src/benchmark.js",
+          "./grounding": "./src/grounding.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/understudy.git",
+        "dependencies": []
+      },
+      "verifiedExports": [
+        "respond",
+        "doctrineRetriever",
+        "groundResponse",
+        "benchmark",
+        "scoreCase",
+        "fidelityReport",
+        "checkGrounding",
+        "normalizeVerdict",
+        "VERDICTS",
+        "UNKNOWN",
+        "tokenize"
+      ],
+      "primaryApis": [
+        "respond({persona,doctrine|retriever,situation,strict?,chat?})",
+        "benchmark(cases,{persona,doctrine|retriever,judge?,chat?,strict?})",
+        "groundResponse(raw,passages,opts?)",
+        "fidelityReport(results)",
+        "checkGrounding(text,citations,opts?)"
+      ],
+      "localDeterministicCapabilities": [
+        "doctrineRetriever",
+        "groundResponse and strict gate",
+        "checkGrounding",
+        "fidelityReport and verdict normalization",
+        "respond/benchmark with injected chat and judge"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "default agent and judge paths use UNDERSTUDY_* OpenAI-compatible model endpoints"
+      ],
+      "contractDrift": [
+        "source exports tokenize, VERDICTS, and UNKNOWN in addition to contract map",
+        "errored model/input runs are deliberately distinct from refusal and excluded from fidelity denominator"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired-instructor-only",
+        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#evaluateFidelity",
+        "routes": [
+          "POST /api/learning/fidelity/cases",
+          "GET /api/learning/fidelity",
+          "POST /api/learning/fidelity"
+        ],
+        "ui": "artifacts/schoolcircle/src/pages/instructor-features.tsx#InstructorFidelity",
+        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "runtime": "24-test evidence suite passed with injected agent/judge coverage; no default Understudy model fallback is permitted and no live model result is claimed",
+        "notes": "Independent instructor benchmark over approved doctrine. Missing injected model returns explicit unavailable; ordinary learner tutor requests never invoke Understudy."
+      },
+      "evidence": [
+        ".cache/arsenal/understudy/package.json",
+        ".cache/arsenal/understudy/src/index.js",
+        ".cache/arsenal/understudy/README.md"
+      ]
+    },
+    {
+      "name": "cartridge",
+      "role": "SCORM package builder",
+      "url": "https://github.com/groundworklms/cartridge.git",
+      "branch": "main",
+      "sha": "68f02aa93bca51c4d24f42b8392a4f5ad02c8db3",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "cartridge",
+        "version": "0.1.0",
+        "main": "src/cartridge.js",
+        "exports": {
+          ".": "./src/cartridge.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/cartridge.git",
+        "dependencies": [
+          "jszip"
+        ]
+      },
+      "verifiedExports": [
+        "buildCartridge",
+        "validatePackage",
+        "safe"
+      ],
+      "primaryApis": [
+        "buildCartridge(course,{version:'1.2'|'2004'}) -> Promise<Buffer>",
+        "validatePackage(zip) -> Promise<{valid,version,issues}>",
+        "safe(value) -> string"
+      ],
+      "localDeterministicCapabilities": [
+        "reproducible SCORM 1.2/2004 ZIP build with local jszip",
+        "manifest/XML/reference validation"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "jszip dependency",
+        "LMS/SCORM player is required only to consume the output"
+      ],
+      "contractDrift": [
+        "masteryScore is read from course.masteryScore; build options only select version",
+        "package repository metadata points to jeranaias while audited remote is groundworklms"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired-instructor-only",
+        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildApprovedScorm",
+        "route": "GET /api/learning/export?courseId=&version=1.2|2004",
+        "ui": "artifacts/schoolcircle/src/pages/teach.tsx#CourseCard",
+        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "runtime": "24-test evidence suite passed with deterministic package/validation and route authorization coverage; requires instructor auth and an approved persisted course for route use, and no LMS/player proof is claimed",
+        "notes": "Only approved course items enter Cartridge; generated ZIPs are validated before download and export records are persisted. Export is instructor-only."
+      },
+      "evidence": [
+        ".cache/arsenal/cartridge/package.json",
+        ".cache/arsenal/cartridge/src/cartridge.js",
+        ".cache/arsenal/cartridge/README.md"
+      ]
+    },
+    {
+      "name": "cadence",
+      "role": "Study scheduling and calendar export",
+      "url": "https://github.com/groundworklms/cadence.git",
+      "branch": "main",
+      "sha": "9b6b2df0ab1e11080510262a631ffb7e13acda4e",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "cadence",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js",
+          "./plan": "./src/plan.js",
+          "./ics": "./src/ics.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/cadence.git",
+        "dependencies": []
+      },
+      "verifiedExports": [
+        "plan",
+        "assessStatus",
+        "COAS",
+        "addDays",
+        "diffDays",
+        "toICS",
+        "toReminders"
+      ],
+      "primaryApis": [
+        "plan({syllabus,availability?,asOf,status?})",
+        "assessStatus(syllabus,{asOf,tolerance?})",
+        "toICS(blocks,opts?)",
+        "toReminders(blocks)"
+      ],
+      "localDeterministicCapabilities": [
+        "all planning and status functions",
+        "RFC-5545 iCalendar and reminder output",
+        "availability hard-cap and late-risk accounting"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "no model, network, or API key",
+        "calendar client is needed only to consume generated ICS"
+      ],
+      "contractDrift": [
+        "none material in the primary signatures; native app plan code is not evidence of this package being integrated"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired-separate-from-planning-board",
+        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildStudyPlan",
+        "routes": [
+          "GET /api/learning/study-plan",
+          "POST /api/learning/study-plan",
+          "GET /api/learning/study-plan?courseId=&format=ics|reminders"
+        ],
+        "ui": "artifacts/schoolcircle/src/pages/learner-features.tsx#LearnerStudyPlan",
+        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "runtime": "24-test evidence suite passed with deterministic injected-store and route coverage; approved persisted syllabus, auth, and database are required for route use",
+        "notes": "Cadence plans and ICS/reminders are persisted through the learning-evidence routes. Existing /api/plan remains the planning board and is not replaced."
+      },
+      "evidence": [
+        ".cache/arsenal/cadence/package.json",
+        ".cache/arsenal/cadence/src/index.js",
+        ".cache/arsenal/cadence/README.md"
+      ]
+    },
+    {
+      "name": "hotwash",
+      "role": "Course critique and AAR worklist",
+      "url": "https://github.com/groundworklms/hotwash.git",
+      "branch": "main",
+      "sha": "a972df65aa1c45c6b28c7fd6540a3b9303cf7b74",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "hotwash",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js",
+          "./aar": "./src/aar.js",
+          "./narrative": "./src/narrative.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/hotwash.git",
+        "dependencies": []
+      },
+      "verifiedExports": [
+        "rollup",
+        "trendByArea",
+        "rankFindings",
+        "sustains",
+        "hotwash",
+        "heuristicMemo",
+        "narrativeAAR"
+      ],
+      "primaryApis": [
+        "hotwash({critiques,epsilon?})",
+        "rankFindings(critiques,opts?)",
+        "trendByArea(critiques,opts?)",
+        "narrativeAAR(report,opts?)",
+        "heuristicMemo(report,opts?)"
+      ],
+      "localDeterministicCapabilities": [
+        "all critique analytics",
+        "heuristicMemo",
+        "chronological trend and ranked worklist"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "optional OpenAI-compatible model endpoint for narrativeAAR"
+      ],
+      "contractDrift": [
+        "deterministic-core statement applies to analytics and heuristicMemo; narrativeAAR has an optional model path"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired",
+        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildAar",
+        "routes": [
+          "POST /api/learning/aar/critiques",
+          "GET /api/learning/aar",
+          "POST /api/learning/aar"
+        ],
+        "ui": "artifacts/schoolcircle/src/pages/instructor-features.tsx#InstructorAAR",
+        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "runtime": "24-test evidence suite passed with deterministic Hotwash/injected narrative and persistence/route coverage; critiques must be persisted and no live model or instructor-authenticated AAR is claimed",
+        "notes": "Hotwash's deterministic memo is always available; narrative output receives only the explicitly injected SchoolCircle model seam."
+      },
+      "evidence": [
+        ".cache/arsenal/hotwash/package.json",
+        ".cache/arsenal/hotwash/src/index.js",
+        ".cache/arsenal/hotwash/README.md"
+      ]
+    },
+    {
+      "name": "waypoint",
+      "role": "Learner preference profile and faculty cohort view",
+      "url": "https://github.com/groundworklms/waypoint.git",
+      "branch": "main",
+      "sha": "a861421b03399b8dc39f06aad113d1f064f465e4",
+      "shallow": true,
+      "language": "JavaScript",
+      "package": {
+        "name": "waypoint",
+        "version": "0.1.0",
+        "main": "src/index.js",
+        "exports": {
+          ".": "./src/index.js",
+          "./profile": "./src/profile.js",
+          "./cohort": "./src/cohort.js"
+        },
+        "repositoryMetadata": "https://github.com/jeranaias/waypoint.git",
+        "dependencies": []
+      },
+      "verifiedExports": [
+        "scoreProfile",
+        "profile",
+        "recommendations",
+        "toMarkdown",
+        "defaultInstrument",
+        "DIMENSIONS",
+        "classProfile"
+      ],
+      "primaryApis": [
+        "profile(responses,opts?)",
+        "scoreProfile(responses,opts?)",
+        "classProfile(entries,opts?)",
+        "recommendations(profile)",
+        "toMarkdown(profile)"
+      ],
+      "localDeterministicCapabilities": [
+        "all survey scoring and recommendations",
+        "class aggregation",
+        "escaped Markdown export"
+      ],
+      "externalRequirements": [
+        "Node >=18",
+        "no model, network, or API key"
+      ],
+      "contractDrift": [
+        "primary signatures are materially consistent; output must be framed as delivery preference rather than a fixed learning-style diagnosis"
+      ],
+      "schoolCircleIntegration": {
+        "status": "adapter-wired",
+        "adapter": "artifacts/api-server/src/lib/arsenal-evidence.js#buildProfile,buildCohortProfile",
+        "routes": [
+          "GET /api/learning/profile",
+          "POST /api/learning/profile",
+          "GET /api/learning/profile/cohort"
+        ],
+        "ui": "artifacts/schoolcircle/src/pages/learner-features.tsx#LearnerProfile",
+        "testEvidence": "artifacts/api-server/test/learning-evidence.test.mjs",
+        "runtime": "24-test evidence suite passed with deterministic profile and persistence/route coverage; auth and persisted records are required for an authenticated live profile flow",
+        "notes": "Learner-owned survey and suppressed cohort aggregation are wired without exposing raw responses or learner IDs; outputs remain delivery preferences, not diagnoses."
+      },
+      "evidence": [
+        ".cache/arsenal/waypoint/package.json",
+        ".cache/arsenal/waypoint/src/index.js",
+        ".cache/arsenal/waypoint/README.md"
+      ]
+    }
+  ]
+}

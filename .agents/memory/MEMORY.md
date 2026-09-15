@@ -1,0 +1,1 @@
+- [Arsenal boundaries](arsenal-boundaries.md) — verify producer-to-consumer JSON projections; adapter tests alone do not prove working learning workflows.

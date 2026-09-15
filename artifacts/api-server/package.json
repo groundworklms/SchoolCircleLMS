@@ -8,20 +8,33 @@
     "build": "pnpm run db:generate && node ./build.mjs",
     "db:generate": "prisma generate --schema ./prisma/schema.prisma",
     "start": "node --enable-source-maps ./dist/index.mjs",
+    "test": "node --test ./test/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@prisma/client": "^6.3.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "cadence": "github:groundworklms/cadence#9b6b2df0ab1e11080510262a631ffb7e13acda4e",
+    "cartridge": "github:groundworklms/cartridge#68f02aa93bca51c4d24f42b8392a4f5ad02c8db3",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "coursewright": "github:groundworklms/coursewright#f38d078a30195a6a6901ade22a3ce7484613fa57",
     "drizzle-orm": "catalog:",
     "express": "^5.2.1",
+    "hotwash": "github:groundworklms/hotwash#a972df65aa1c45c6b28c7fd6540a3b9303cf7b74",
     "multer": "^2.0.2",
+    "openid-client": "^6.8.8",
     "pdfjs-dist": "^4.10.38",
     "pino": "^9.14.0",
-    "pino-http": "^10.5.0"
+    "pino-http": "^10.5.0",
+    "quarry": "github:groundworklms/quarry#465b7515732bbc08b80b6ec8684e1fc49c7985ea",
+    "rubricon": "github:groundworklms/rubricon#1a3d88c9cef6e0239da060e936398fa6b999c6a9",
+    "sextant": "github:groundworklms/sextant#007a2c0f47fd50a9acbc3f3538814c1bf8683e95",
+    "sourcerer": "github:groundworklms/sourcerer#8a2e6831ebc6ced8ee71b0215fb0037d1cb7c1bb",
+    "understudy": "github:groundworklms/understudy#6ecb931b85af9cf36aab185f587dd3ede4a61d96",
+    "waypoint": "github:groundworklms/waypoint#a861421b03399b8dc39f06aad113d1f064f465e4",
+    "whetstone": "github:groundworklms/whetstone#4b5d0a4be05a5a2161a4d46f9261ff88a43d8b2b"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",
@@ -30,8 +43,8 @@
     "@types/node": "catalog:",
     "esbuild": "0.28.2",
     "esbuild-plugin-pino": "^2.3.3",
-    "prisma": "^6.3.0",
     "pino-pretty": "^13.1.3",
+    "prisma": "^6.3.0",
     "thread-stream": "3.1.0"
   }
 }

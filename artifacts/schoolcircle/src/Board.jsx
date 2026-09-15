@@ -161,20 +161,50 @@ export default function Board() {
           <span className={`dot${pulse ? ' pulse' : ''}${stale ? ' stale' : ''}`} />
           <span>{stale ? 'disconnected' : `updated ${agoLabel}`}</span>
         </div>
-        <a
-          href="/prototype"
-          style={{
-            fontSize: '0.8em',
-            color: 'var(--accent)',
-            textDecoration: 'none',
-            border: '1px solid var(--border)',
-            borderRadius: '999px',
-            padding: '0.2rem 0.75rem',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Prototype →
-        </a>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <a
+            href="/prototype"
+            style={{
+              fontSize: '0.8em',
+              color: 'var(--accent)',
+              textDecoration: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: '999px',
+              padding: '0.2rem 0.75rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Prototype →
+          </a>
+          <a
+            href="/learn"
+            style={{
+              fontSize: '0.8em',
+              color: 'var(--accent-2)',
+              textDecoration: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: '999px',
+              padding: '0.2rem 0.75rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Learn App →
+          </a>
+          <a
+            href="/teach"
+            style={{
+              fontSize: '0.8em',
+              color: '#f87171',
+              textDecoration: 'none',
+              border: '1px solid var(--border)',
+              borderRadius: '999px',
+              padding: '0.2rem 0.75rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Teach App →
+          </a>
+        </div>
         <div className="hint">
           <kbd>f</kbd> full <kbd>v</kbd> view <kbd>+</kbd>/<kbd>-</kbd> size
         </div>
