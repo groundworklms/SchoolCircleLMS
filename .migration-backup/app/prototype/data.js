@@ -3,6 +3,54 @@
    here (mastery, missed items, AAR findings) are hand-written demo data. */
 
 const COURSES = {
+  'TC32209': {
+    id: 'TC32209',
+    school: '03xx — Infantry',
+    name: 'Rifle Marksmanship — TC 3-22.9',
+    students: 30,
+    week: 3,
+    weeks: 8,
+    sourceDoc: 'TC 3-22.9 Rifle Marksmanship.pdf',
+    sourcePages: 296,
+    outline: 'Student_Outline_Marksmanship_Fundamentals.pdf',
+    objectives: [
+      'Explain sight alignment and sight picture',
+      'Apply trigger control and follow-through',
+      'Build a stable firing position and establish natural point of aim',
+      'Sequence the phases of the shot process',
+    ],
+    references: [
+      { tag: 'TC 3-22.9', note: 'Rifle and Carbine' },
+      { tag: 'TC 3-22.9 §7', note: 'Aiming — sight alignment & picture' },
+      { tag: 'TC 3-22.9 §8', note: 'Trigger control & follow-through' },
+    ],
+    topics: [
+      { name: 'Weapon Safety', mastery: 96 },
+      { name: 'Stable Position', mastery: 88 },
+      { name: 'Natural Point of Aim', mastery: 82 },
+      { name: 'Sight Picture', mastery: 81 },
+      { name: 'Trigger Control', mastery: 73 },
+      { name: 'Follow-Through', mastery: 54 },
+    ],
+    missed: [
+      { q: 'Sequence the phases of the shot process', topic: 'Sight Picture', pct: 68, why: 'Phase order not memorized' },
+      { q: 'Define follow-through', topic: 'Follow-Through', pct: 54, why: 'Confused with re-aiming' },
+    ],
+    questions: [
+      {
+        topic: 'Sight Picture',
+        q: 'How many phases make up the shot process?',
+        answers: [
+          { text: 'Three — pre-shot, shot, post-shot', correct: true },
+          { text: 'Four', correct: false },
+          { text: 'Five', correct: false },
+          { text: 'Two', correct: false },
+        ],
+        rationale:
+          'Aiming is conducted through pre-shot, shot, and post-shot — three phases (TC 3-22.9, Ch 6). Naming four or five usually splits a single phase; two collapses pre-shot and shot.',
+      },
+    ],
+  },
   'M092721': {
     id: 'M092721',
     school: '28xx — Ground Electronics Maintenance',
