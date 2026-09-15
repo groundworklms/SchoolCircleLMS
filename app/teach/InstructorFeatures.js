@@ -125,7 +125,7 @@ export function InstructorFidelity({ courseId }) {
               <p><strong>Fidelity Score:</strong> {fidelityData.report.fidelity}</p>
               <p><strong>Strict Mode:</strong> {fidelityData.report.strict ? "Yes" : "No"}</p>
               <ul style={{ paddingLeft: "1.5rem", fontSize: "0.9em", color: "var(--p-dim)" }}>
-                {fidelityData.runs?.map((ri) => (
+                {fidelityData.runs?.map((r, i) => (
                   <li key={i} style={{ marginBottom: "0.5rem" }}>
                     <strong style={{ color: r.verdict === "pass" ? "var(--p-good)" : "var(--p-critical)" }}>{r.verdict}</strong>
                     {" - Grounding: "}{r.grounding}
