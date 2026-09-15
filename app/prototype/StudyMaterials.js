@@ -35,7 +35,8 @@ function StudyMaterials({ course }) {
     setQi(0);
   }, [course.id, diff]);
 
-  const q = course.questions[qi % course.questions.length];
+  const pool = course.questions.filter((c) => c.difficulty === diff);
+  const q = pool[qi % pool.length];
   const terms = KEY_TERMS[course.id];
 
   return (
