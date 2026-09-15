@@ -7,7 +7,7 @@ const TODO = [
   { title: 'SWR calculation drill', due: 'Wed 1900', kind: 'Practice', courseId: 'M092721', view: 'materials', minutes: 30 },
   { title: 'FY safety standdown', due: 'Overdue', kind: 'Requirement', courseId: null, late: true, minutes: 45 },
   { title: 'CY range qualification', due: 'In 22 days', kind: 'Requirement', courseId: null },
-  { title: 'Net entry procedure — reading', due: 'Sun 1000', kind: 'Reading', courseId: 'M09CVS1', view: 'materials', minutes: 40 },
+  { title: 'Net entry procedure — reading', due: 'Sun 1000', kind: 'Reading', courseId: 'M09CVS1', view: 'lessons', minutes: 40 },
 ];
 
 const UPCOMING = [

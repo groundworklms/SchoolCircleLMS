@@ -230,7 +230,7 @@
   background: rgba(0,0,0,0.05); border: none;
   display: grid; place-items: center; font-size: 0.8em; font-weight: 700; color: var(--p-dim);
 }
-.p-ans.correct { box-shadow: 0 0 0 1.5px var(--p-good); background: rgba(30,122,60,0.08); }
+.p-ans.correct { box-shadow: 0 0 0 1.5px var(--p-good); background: rgba(30,122,60,0.08); color: var(--p-good); }
 .p-ans.correct .p-anskey { background: var(--p-good); color: #fff; }
 .p-ans.wrong { box-shadow: 0 0 0 1.5px var(--p-critical); background: rgba(194,65,12,0.08); }
 .p-ans.wrong .p-anskey { background: var(--p-critical); color: #fff; }
