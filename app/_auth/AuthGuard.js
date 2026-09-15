@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
 import { isAllowedEmail } from '../../lib/allowlist';
@@ -18,13 +18,19 @@ export default function AuthGuard({ children }) {
   const router = useRouter();
 
   const denied = Boolean(user) && !isAllowedEmail(user.email);
+  // Set once we have bounced a denied session: the sign-out flips `user` to
+  // null and re-runs this effect, which must not issue a second redirect that
+  // would drop the ?denied flag.
+  const bounced = useRef(false);
 
   useEffect(() => {
-    if (!ready || loading) return;
-    if (!user) router.replace('/login');
-    else if (denied) {
+    if (!ready || loading || bounced.current) return;
+    if (denied) {
+      bounced.current = true;
       signOut();
       router.replace('/login?denied=1');
+    } else if (!user) {
+      router.replace('/login');
     }
   }, [ready, loading, user, denied, router, signOut]);
 
