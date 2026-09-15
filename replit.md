@@ -1,58 +1,80 @@
 # SchoolCircle
 
-Imported SchoolCircle learning platform and hackathon planning board.
+SchoolCircle is a single Next.js 15 application. The root app is the only serving runtime:
+the restored landing, authentication, planning board, prototype, learning, teaching, and API
+route-handler surfaces all run through the Next server.
 
-## Run & Operate
+## Run & operate
 
-- User-provided preview address: `https://schoolcircle.tannerwhite.net`. Its routing to this workspace has not been verified; do not assume it reflects local changes automatically.
-- Use managed workflows `artifacts/schoolcircle: web` and `artifacts/api-server: API Server` for preview; they provide the required ports and routing.
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- The imported Prisma schema is preserved; no database conversion or schema push was performed.
-- Live integrations retain their original configuration: `MODEL_BASE_URL`, `MODEL_ID`, optional `MODEL_API_KEY`, and `DOCTRINE_BASE_URL`. Without them the original explicit unavailable states remain.
+- User-provided preview address: `https://schoolcircle.tannerwhite.net`. Its routing to this workspace has not been verified; local changes are not proof of an update there.
 
-## Stack
+- `pnpm run dev` starts `next dev` on `0.0.0.0` using `$PORT` (default `3000`).
+- `pnpm run build` runs the root Next production build.
+- `pnpm run start` starts the built Next server on `0.0.0.0` using `$PORT` (default `3000`).
+- `pnpm run typecheck` runs the root TypeScript check.
+- `pnpm run test:api` runs the API contract/auth tests owned by the API lane.
+- `pnpm run db:generate` generates Prisma Client from `prisma/schema.prisma`; it does not
+  alter the database.
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- Imported DB support: Prisma + PostgreSQL; unused Drizzle workspace scaffold retained
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: Vite frontend and esbuild ESM API bundle
+Do not start a second web or API service. Do not migrate, push, or replace the existing
+Postgres database as part of the root app wiring. The Prisma schema and migration history are
+the extended artifacts in `artifacts/api-server/prisma`, mirrored under `prisma/` for the root
+Next runtime.
 
-## Where things live
+## Stack and boundaries
 
-- `artifacts/schoolcircle/src/`: imported board and prototype; original CSS retained.
-- `artifacts/api-server/src/`: Express adapters and unchanged imported backend libraries.
-- `artifacts/api-server/prisma/schema.prisma`: imported database schema.
-- `PLAN.md`, `docs/`: original planning content and documentation.
-- `.migration-backup/`: untouched imported source for comparison.
+### Explicit development AI testing
 
-## Architecture decisions
+OpenRouter is permitted for user-authorized development tests using non-sensitive
+sample material. Select its URL and model explicitly in development configuration;
+a stored key alone must never enable a cloud fallback. Keep OpenRouter credentials
+restricted to its HTTPS origin unless a separate endpoint-specific key is configured.
+This exception does not change the self-hosted/offline production goal or authorize
+cloud processing of real training documents.
 
-- Keep the migration narrow so collaborators can reconcile ongoing GitHub changes; do not replace source logic with generated clients or redesign components.
-- Use the full twelve-repository ecosystem described in `docs/05-arsenal-contracts.md` when extending SchoolCircle. Reuse each companion's existing capability rather than recreating it in the host. Verify actual source exports and versions before wiring integrations; documentation or ingested reference material alone does not establish runtime integration. Keep grounding/citation behavior intact.
+- **SchoolCircle stays on Next.js. Do not migrate it to Vite or replace its original framework.**
 
-## Product
+- PostgreSQL through Prisma 6; no schema conversion or destructive migration.
+- Firebase web auth uses `NEXT_PUBLIC_FIREBASE_*` for local public configuration and
+  `/api/auth/firebase-config` for runtime public configuration mapped from the existing secure
+  deployment variables. Server routes verify bearer tokens; clients never assign roles.
+- Root shared grounding/model/provider adapters are restored from `.migration-backup`.
+- `app/api` and `lib/server` are owned by the native API lane.
+- `app/learn`, `app/teach`, and `app/_learning` are owned by the learning UI lane.
+- The original `/prototype`, landing/auth shell, `/plan` reader, styles, and merged feedback
+  widgets remain unchanged in behavior. The lesson reader and feedback workflow remain wired.
 
-- `/`: merged SchoolCircle landing page; `/plan`: live markdown planning board. `GET /api/plan` remains the board API, not Cadence.
-- `/prototype` and its existing nested routes: student and instructor learning-platform prototype.
-- `/learn` and `/teach`: API-backed learning and instructor workflows; model-backed operations explicitly report unavailable until their providers are configured.
-- Merged Firebase sign-in is preserved, with ID tokens verified server-side and roles read from Prisma. Replit OIDC remains an alternative. Public Firebase client configuration comes from environment settings; no client may assign an instructor role.
-- Temporary hosted-model verification is user-approved for public test material only. Keep it separate from production/self-hosted provider settings and remove temporary verification configuration afterward; hosted evidence does not prove offline Orin operation.
+## Wiring-only acceptance
 
-## User preferences
+Acceptance is integration wiring, not a redesign:
 
-- Git work must stay on `replit/port`. Do not commit or push to the GitHub remote's main branch.
-- Before considering integration work done, rebase `replit/port` onto the latest merged `origin/main`, reconcile the ported paths, and recheck affected behavior. Do not push to `main` without explicit approval.
-- Keep this port current with GitHub `origin/main` (user-confirmed: merged team changes only): fetch and compare before further implementation or preparing a push. Do not incorporate collaborators' unmerged feature branches. Reconcile source changes into the ported paths rather than blindly pulling the Next.js layout over the workspace. This is a development workflow, not automatic background synchronization.
-- Preserve the imported routes, styling, and grounding/citation logic exactly; collaborators are actively editing the hackathon source on GitHub. Limit migration changes to runtime adapters and workspace wiring.
+1. The root process is Next.js and binds the Replit-provided port.
+2. The original root pages and prototype remain reachable.
+3. Existing feedback and lesson-reader flows are preserved.
+4. API route handlers use verified bearer auth and approved-content boundaries.
+5. Firebase public configuration contains no server secrets and resolves through the runtime
+   config endpoint when build-time `NEXT_PUBLIC_*` values are absent.
+6. Existing companion adapters remain pinned and are externalized from the Next server bundle
+   when they require dynamic filesystem/CJS behavior.
 
-## Gotchas
+## Git and handoff boundaries
 
-- The prototype's original scripted demo data is intentional. Live generation/grounding must not be silently simulated when services are unavailable.
+- Keep Git work on `replit/port`; never push to or merge into GitHub `main` without explicit approval.
+- Synchronize only merged `origin/main` work, not collaborators' unmerged feature branches.
+- Reconcile upstream changes without replacing Next.js, and recheck affected behavior before handoff.
+- The user is handling the existing PR separately. Do not create another PR or update the existing one for this restoration.
+- Live model verification is deferred under the accepted wiring-only scope. Missing providers must return explicit unavailable states, not simulated outputs.
+- Human approval and human-only proctoring remain required; integration adapters must not bypass them.
 
-## Pointers
+## Documentation pointers
 
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- For gameday claims, use `docs/gameday/EVIDENCE-MATRIX.md` and `RANGE-CARD.md`.
+  Keep historical hardware results separate from current development evidence;
+  Thompson retains QA/run-of-show ownership. No published, offline or LMS acceptance
+  follows from a local API or fixture pass.
+- `README.md`, `PLAN.md`, and `docs/` retain the project specification and planning material.
+- `prisma/schema.prisma` and `artifacts/api-server/prisma/` are the database contract.
+- `.migration-backup/` is retained as the source archive for restored original modules.
+
+Keep the original grounded rule: every answer cites its source or the system refuses; nothing
+unreviewed reaches a learner.

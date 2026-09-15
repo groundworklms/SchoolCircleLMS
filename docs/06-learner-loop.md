@@ -1,5 +1,23 @@
 # 06 · The Learner Loop
 
+## Implemented planning/reporting boundary
+
+The screen specifications below describe the broader product goal, not a claim
+that every loop is implemented. The current `/learn` feature panels persist
+partial Waypoint responses, show unanswered dimensions explicitly, and build
+Cadence's three COAs only from an instructor-saved syllabus on an approved
+course. The recommended COA has an authenticated `.ics` download. Plans are
+regenerated explicitly; automatic daily replanning and spaced-review scheduling
+are not established by this implementation.
+
+Sextant displays saved mastery criteria and reports insufficient evidence when
+scored pre/post attempts are absent. Conversational mastery turns are not
+converted into assessment correctness or learning gain. These features do not
+establish educational efficacy or offline inference.
+
+See [planning/reporting contract](planning-reporting-contract.md) for the actual
+`/api/learning/*` routes and [acceptance evidence](learning-loop-proof.md).
+
 The ultimate learning loop for a Marine: a closed cycle that starts by learning *how they learn*,
 routes them through grounded material at the right pace, proves mastery honestly, and comes back
 around sharper every pass. Nothing a student sees is ungrounded, and nothing reaches them that an

@@ -1,96 +1,107 @@
-# Gameday team plan — who owns what
+# Gameday team plan — lanes and evidence ownership
 
-Four people, four lanes, one intake loop. Everyone has a clear job that maps to a real part
-of the winning platform, and the hand-offs between lanes are explicit so nobody blocks or
-collides. Read this with [`RANGE-CARD.md`](RANGE-CARD.md) (the operator's brief) and
-[`COLD-BORE.md`](COLD-BORE.md) (the battle plan); the deep specs are in [`../`](../README.md).
+Four lanes support one Next.js application and one evidence record. Read this
+with [`EVIDENCE-MATRIX.md`](./EVIDENCE-MATRIX.md), dated **2026-09-15**, and
+the current operator brief [`RANGE-CARD.md`](./RANGE-CARD.md). The historical
+objective and metrics remain in [`COLD-BORE.md`](./COLD-BORE.md).
 
 ## The team
 
-| Member | Lane | One-line mission |
+| Member | Lane | Current mission |
 |---|---|---|
-| **Morgan (Jesse)** | Lead · grounding, integration & corpus | Own Anchor + the doctrine seam + wiring the 12 soldiers; own the corpus and the human-in-the-loop guardrail |
-| **White** | Backend & function (LMS host) | Own the Next.js/Prisma app, data layer, API routes — make every surface flow |
-| **McDonald** | Frontend implementation (mentored) | Build the screens from the design system; turn QA/product asks into real UI |
-| **Thompson** | QA & product voice | Walk it as a Marine, file bugs/ideas via the widget, own the issue board |
+| **Morgan (Jesse)** | Grounding, integration, and corpus | Keep source/provider boundaries explicit and reconcile adapter evidence |
+| **White** | Next.js, Prisma, and API | Maintain the root app, PostgreSQL data path, auth/role boundaries, and route contracts |
+| **McDonald** | Learning UI | Refine `/learn` and `/teach`; keep the historical `/prototype` separate from current claims |
+| **Thompson** | QA and product voice | Review the learner/instructor experience, record bounded observations, and own **#9 run-of-show** |
 
-## The intake loop (how work flows)
+## Current surfaces and ownership
 
-```mermaid
-flowchart LR
-  T["Thompson<br/>walks the app, files issues<br/>via the QA widget"] --> B[("GitHub Issues<br/>auto-tagged qa/bug/idea")]
-  B --> TR["Triage<br/>(Morgan + White + Thompson)"]
-  TR -->|frontend| M["McDonald<br/>builds the UI change"]
-  TR -->|backend / data / grounding| BE["Morgan + White"]
-  TR -->|content / rubric / corpus| MO["Morgan<br/>(corpus & SME lane)"]
-  M --> R["Review + merge"]
-  BE --> R
-  MO --> R
-  R --> T
+### Morgan — grounding, integration, corpus
+
+- Reconcile source citations, refusal behavior, provider readiness, and adapter
+  results against the evidence matrix.
+- Preserve the human approval boundary for source, course, rubric, and
+  instructor-authored records.
+- Track the historical five-use-case corpus and hardware numbers without
+  presenting them as current offline acceptance.
+- Distinguish fixture/injected-model checks, PostgreSQL persistence checks, and
+  connected development HTTP checks.
+- Do not treat a remote Anchor endpoint, cloud configuration, or an old Orin
+  run as current deployment proof.
+
+### White — Next.js and data
+
+- Keep the single root Next.js process and native `app/api` route handlers.
+- Maintain the Prisma PostgreSQL schema and existing migration history; no
+  SQLite conversion or connection-string swap.
+- Preserve verified identity and role boundaries: `/teach` is instructor-only
+  and `/learn` is the learner surface.
+- Keep provider failures explicit rather than filling them with simulated
+  output.
+- Use the repository's pnpm scripts and default Replit port behavior
+  (`$PORT`, default `3000`).
+
+### McDonald — learning UI
+
+- Build against `/learn` and `/teach`, matching the existing learning shell and
+  API hooks.
+- Keep learner views limited to approved course/source projections and keep
+  instructor review states visible.
+- Treat `/prototype` as a historical reference while migrating no current
+  evidence back to that route.
+- Report UI observations with route and scope; a visual observation is not
+  browser acceptance.
+
+### Thompson — QA and product voice
+
+- Review the current `/learn` learner path and `/teach` instructor path as
+  product surfaces, subject to the authentication and provider boundaries.
+- Own the issue/observation intake and the five-minute presentation order.
+- Retain **GitHub issue #9 QA/run-of-show ownership for the full demo**.
+  Use case #9 (PME Mastery Eval) is a separate identifier: explain its mastery
+  objective, actual records, and any ELO stand-in or missing provider.
+- Keep the presentation honest about the historical prototype, Orin/offline
+  material, SCORM export, and any unverified browser or hosted behavior.
+
+## Evidence hand-offs
+
+1. **Source → authoring:** Morgan records source identity, approval state, and
+   grounding scope; White keeps the persisted record boundary.
+2. **Authoring → learner:** White and McDonald verify that `/learn` receives
+   approved projections, while pending instructor material remains a review
+   state.
+3. **Mastery → run-of-show:** Thompson maps the #9 story to the actual
+   `/learn` route and the evidence matrix, not to the historical prototype.
+4. **Provider/test result → record:** The lane owner names the command,
+   environment, date, and limits before calling a result evidence.
+
+The feedback widget and issue board are coordination aids only. They do not
+replace the dated evidence matrix, and no repository automation or CI workflow
+is required for this plan.
+
+## Working agreement
+
+- Use **pnpm** only: `pnpm install`, `pnpm run db:generate`,
+  `pnpm run dev`, `pnpm run typecheck`, and the scoped test scripts in
+  `package.json`.
+- Do not start a second API/web process. Do not use Docker or refer to
+  `ops/` scripts; neither is part of this repository baseline.
+- Use PostgreSQL through the existing `DATABASE_URL`; do not swap to SQLite or
+  alter the schema as a documentation task.
+- Separate current evidence from historical Cold Bore numbers and label
+  unrecorded dates as unknown.
+- Keep the five-use-case objective visible while reporting each route and
+  provider at its actual evidence level.
+
+## Initial setup
+
+```bash
+git clone https://github.com/groundworklms/SchoolCircleLMS
+cd SchoolCircleLMS
+pnpm install
+pnpm run db:generate
+pnpm run dev
 ```
 
-Thompson's QA widget is the front door for everything the product needs: he files it with the
-context auto-captured, it lands as a GitHub issue, triage routes it, the right lane makes it real.
-
----
-
-## Morgan (Jesse) — Lead · grounding, integration & corpus
-**Owns:** Anchor + the Orin, the doctrine adapter (`lib/doctrine.js` / `DOCTRINE_BASE_URL`), the
-grounded pipeline (Author/Deliver/Improve), env/secrets, offline verification, the final
-architecture call with White — **and** the corpus + the human-in-the-loop guardrail that keeps
-the platform honest.
-**Gameday tasks (engineering):**
-- Bring Anchor up + tunnel; run `ops/orin-check.sh` each morning (all green before anyone demos).
-- Wire the four integration sequences (see RANGE-CARD.md) — Studio→Quarry+Coursewright+Anchor; Ask→Sourcerer+Anchor+Understudy; Mastery→Whetstone; Improve→Sextant/Hotwash.
-- Consume the 12 soldiers (`npm i github:groundworklms/<repo>`), keep the cite-or-refuse guarantee enforced.
-- Prove offline (pull the network; tutor still answers; refusal still fires).
-**Gameday tasks (content & SME — the guardrail):**
-- Source and **screen for releasability** the 28xx / 06xx doctrine (POIs, outlines, sample assessments); run ingest (`quarry`) → the Anchor corpus. Track it on the corpus board (COLD-BORE.md).
-- Curate the golden course so the demo always has a banked artifact.
-- Feed real T&R standards to `rubricon` and **ratify** generated items (approve/edit/reject) — "the instructor owns the truth," made real. Nothing `PENDING` ships.
-- Own the submission package + decision log + the honest scorecard (COLD-BORE.md → HONESTY).
-**Reads:** the whole `../` stack, esp. `02-architecture`, `04-grounding-and-anchor`, `05-arsenal-contracts`, `08-build-guide`, plus `07-instructor-loop` (review/rubrics/AAR) and `03-data-model` (Item/citation/status) for the SME lane.
-
-## White — Backend & function (LMS host)
-**Owns:** the Next.js 15 app + Prisma (the schema in `../03-data-model.md`), `/api/*` route handlers
-and server actions, the Course→Section→Item lifecycle, Attempt/Mastery/Schedule, the roles/auth seam,
-and SCORM/LTI export seams. Makes the surfaces flow smooth with the agreed frontend.
-**Gameday tasks:**
-- Stand up the data layer (migrate + seed a TC 3-22.9 course + instructor + learner).
-- Own the API contracts each screen calls; keep the human-in-the-loop review real (nothing `PENDING` ships).
-- Pair with Jesse on the backend↔grounding contracts and with McDonald on the frontend↔API contracts.
-- Wire Cartridge (SCORM export) + the LTI/`externalId` seam.
-**Reads:** `03-data-model`, `02-architecture`, `05-arsenal-contracts`, `04-grounding-and-anchor`.
-
-## McDonald — Frontend implementation (mentored)
-**Owns:** building and refining the screens in White's design — turning Thompson's issues and the
-agreed product direction into real, on-brand UI. This is the "make it real" lane; Morgan/White pair
-and unblock. Start with well-scoped, high-learning tickets and grow.
-**Ramp (day one, Jesse walks you in):**
-1. Install: Node 18+, VS Code, Git, Claude Code. `git clone` the repo; `npm install`; `npm run dev` → open `http://localhost:3111/prototype`.
-2. Read `../01-design-system.md` — the tokens, the shell, the component catalog. That file is your source of truth for how things should look.
-3. First tickets (safe, visible wins): implement one screen from `../06-learner-loop.md` / `../07-instructor-loop.md` using the design-system components; then pick up a QA issue Thompson filed and make the fix.
-4. Workflow: branch → change → `npm run dev` to see it → push → Morgan/White review. Ask early, commit often.
-**Claude instance:** point it at `../01-design-system.md` + the loop docs + the live `app.html` as the visual target; ask it to build a component/screen to spec, then you review it in the browser.
-
-## Thompson — QA & product voice
-**Owns:** the product from the Marine's eyes. No code required.
-**Gameday tasks:**
-- Walk the deployed showcase (`schoolcircle.tannerwhite.net`, both the landing and `/prototype`) and the live app as a student *and* an instructor.
-- File every bug **and** every idea via the **QA widget** (bottom-left) — it auto-captures where you are and opens a GitHub issue; pick `bug` / `idea` / `question`.
-- Own the issue board: which are most important, which block the demo, what would make a judge say "wow."
-- Shape the 5-minute run-of-show from the user's perspective (see RANGE-CARD.md → SHOW).
-**Reads:** `../06-learner-loop.md` + `../07-instructor-loop.md` so you know what "correct" looks like; RANGE-CARD.md for the demo beats.
-
----
-
-## Shared rhythm
-- **Each morning:** Morgan runs `ops/orin-check.sh` (engine green); quick triage of Thompson's overnight issues; assign lanes.
-- **Contracts before code:** backend (White/Morgan) and frontend (McDonald) agree the API/props shape for a screen *before* building it — the design system + data model are the shared language.
-- **Cite-or-refuse is non-negotiable:** nothing ungrounded ships; nothing `PENDING` reaches a learner. Morgan is the human ratifier.
-- **Demo-first:** if it isn't in the 5-minute run-of-show, it's a bonus, not a blocker. Keep the banked golden course as the safety net.
-
-## Setup (every member, once)
-1. `git clone https://github.com/groundworklms/SchoolCircleLMS` — the app repo (docs travel with it).
-2. Read `docs/gameday/RANGE-CARD.md` + `docs/gameday/COLD-BORE.md` + `docs/README.md`.
-3. Point your Claude Code instance at your lane's docs (listed above). You're armed.
+The root Next server uses `0.0.0.0:$PORT` with a default port of `3000`.
+Read the dated matrix and Range Card before interpreting a local result.

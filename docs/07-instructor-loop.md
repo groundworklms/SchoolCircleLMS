@@ -1,5 +1,26 @@
 # 07 · The Instructor Loop
 
+## Implemented planning/reporting boundary
+
+The screen specifications below remain product goals. Current course feature
+panels let instructors save and reload syllabus entries, including after course
+approval; inspect cohort reporting; and submit critiques with iteration labels.
+Hotwash AARs retain exact input snapshots, submission provenance, and the saved
+memo/report. A deterministic heuristic is explicitly labeled when model
+narrative is unavailable. The report covers submitted critiques, not invented
+attempt trends.
+
+Cohort reporting counts distinct persisted users with the LEARNER role who have
+course attempts or mastery sessions. Instructors, unknown owners, and repeated
+records cannot inflate that count. The application reads identities internally
+to enforce this boundary but never returns identities or individual answers in
+the aggregate response. Fewer than five learners suppresses the cohort output.
+No gain is claimed without explicit scored pre/post evidence.
+
+Fidelity changes only repair the existing report display; they do not implement
+the deferred wargaming feature. See the [contract](planning-reporting-contract.md)
+and [acceptance evidence](learning-loop-proof.md) for current behavior and limits.
+
 The ultimate course-building, planning, and reviewing tool for an instructor: a closed cycle that
 turns raw doctrine into a cited course, keeps a human in command of everything the AI drafts, measures
 where the class actually is without ever exposing an individual, and feeds the next iteration. The

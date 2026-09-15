@@ -79,22 +79,49 @@ export function createEvidenceRouter({
 
   function cohortRows(value, key) {
     if (Array.isArray(value)) {
+      const learnerIds = new Set(
+        value
+          .map((row) => row?.learnerId)
+          .filter((id) => id != null && String(id).trim())
+          .map((id) => String(id)),
+      );
       return {
         rows: value,
-        distinctLearnerCount: new Set(
-          value
-            .map((row) => row?.learnerId)
-            .filter((id) => id != null && String(id).trim())
-            .map((id) => String(id)),
-        ).size,
+        learnerIds,
+        distinctLearnerCount: learnerIds.size,
       };
     }
+    const rows = Array.isArray(value?.[key]) ? value[key] : [];
+    const learnerIds = new Set(
+      rows
+        .map((row) => row?.learnerId)
+        .filter((id) => id != null && String(id).trim())
+        .map((id) => String(id)),
+    );
+    if (Array.isArray(value?.learnerIds)) {
+      for (const id of value.learnerIds) {
+        if (id != null && String(id).trim()) learnerIds.add(String(id));
+      }
+    }
     return {
-      rows: Array.isArray(value?.[key]) ? value[key] : [],
-      distinctLearnerCount: Number.isInteger(value?.distinctLearnerCount)
+      rows,
+      learnerIds,
+      distinctLearnerCount: learnerIds.size || (Number.isInteger(value?.distinctLearnerCount)
         ? value.distinctLearnerCount
-        : Number.isInteger(value?.learnerCount) ? value.learnerCount : undefined,
+        : Number.isInteger(value?.learnerCount) ? value.learnerCount : undefined),
     };
+  }
+
+  function unionDistinctLearnerCount(...results) {
+    const learnerIds = new Set();
+    let countWithoutIds = 0;
+    for (const result of results) {
+      for (const learnerId of result.learnerIds) learnerIds.add(learnerId);
+      if (!result.learnerIds.size && Number.isInteger(result.distinctLearnerCount)) {
+        countWithoutIds += result.distinctLearnerCount;
+      }
+    }
+    return learnerIds.size + countWithoutIds;
   }
 
   function sendError(res, error) {
@@ -190,7 +217,7 @@ export function createEvidenceRouter({
           sessions: sessionResult.rows,
           minCohort: COHORT_MIN,
           cohort: true,
-          distinctLearnerCount: attemptResult.distinctLearnerCount ?? sessionResult.distinctLearnerCount,
+          distinctLearnerCount: unionDistinctLearnerCount(attemptResult, sessionResult),
         }),
       });
       return;
@@ -221,7 +248,7 @@ export function createEvidenceRouter({
         sessions: sessionResult.rows,
         minCohort: COHORT_MIN,
         cohort: true,
-        distinctLearnerCount: attemptResult.distinctLearnerCount ?? sessionResult.distinctLearnerCount,
+        distinctLearnerCount: unionDistinctLearnerCount(attemptResult, sessionResult),
       }),
     });
   }));

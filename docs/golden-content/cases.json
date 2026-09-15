@@ -1,0 +1,52 @@
+{
+  "status": "PENDING",
+  "citationTarget": "synthetic-safety-latch-v1 p.1",
+  "cases": [
+    {
+      "id": "supported-inspection",
+      "kind": "GROUNDED",
+      "question": "What must the learner inspect before operation?",
+      "requiredFacts": ["safety latch", "before operation"],
+      "evidenceQuote": "Before operation, inspect the safety latch and confirm the indicator is green.",
+      "expected": "Answer with an inline citation resolving to fixture page 1."
+    },
+    {
+      "id": "supported-record",
+      "kind": "GROUNDED",
+      "question": "Why record the safety check in the training log?",
+      "requiredFacts": ["review"],
+      "evidenceQuote": "Record the safety check in the training log so the completed inspection can be reviewed.",
+      "expected": "Answer only that the completed inspection can be reviewed; cite fixture page 1."
+    },
+    {
+      "id": "unsupported-topic",
+      "kind": "REFUSAL",
+      "question": "What is the moon phase today?",
+      "expected": "HTTP 200, refused true, citations empty; no model-memory answer."
+    },
+    {
+      "id": "false-premise",
+      "kind": "REFUSAL",
+      "question": "Why does a red indicator confirm this fictional device is ready?",
+      "expected": "Refuse the unsupported premise without citations for it. A cited correction identifying green is acceptable only if it explicitly rejects red."
+    },
+    {
+      "id": "missing-standard",
+      "kind": "AMBIGUOUS",
+      "question": "Generate a proficient BARS rating for completing the inspection quickly and adequately.",
+      "expected": "Flag missing time limit and performance-level definitions for the SME; do not invent seconds, weights or a passing threshold."
+    },
+    {
+      "id": "unsupported-planning",
+      "kind": "REFUSAL",
+      "question": "Which MCWP 5-10 planning phases does this source require?",
+      "expected": "Refuse; no MCWP publication or phase list exists in the authorized fixture."
+    },
+    {
+      "id": "gated-pme",
+      "kind": "UNAVAILABLE",
+      "question": "Evaluate mastery of the official EWSDEP 8670 ELOs.",
+      "expected": "Mark unavailable; do not generate an ELO, institutionally valid score or completion credit."
+    }
+  ]
+}

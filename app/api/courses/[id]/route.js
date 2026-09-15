@@ -1,34 +1,15 @@
-import { db } from '../../../../lib/db';
+import { dispatchRequest } from '../../../../lib/server/router.js';
+import { authBoundary, registry } from '../../../../lib/server/integration.js';
 
-// One course with its sections and APPROVED items (LESSON/QUESTION/SCENARIO), each carrying its
-// paragraph-level Anchor citation. Same ratified-only guarantee as the list route.
+// Keep this native Next entry point on the same verified identity boundary as
+// the rest of /api. The route registry owns the role-aware course projection;
+// this adapter must not query Prisma directly and accidentally bypass it.
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-export async function GET(_req, { params }) {
-  try {
-    const { id } = await params;
-    const course = await db.course.findUnique({
-      where: { id },
-      include: {
-        sections: {
-          orderBy: { order: 'asc' },
-          include: {
-            items: {
-              where: { status: 'APPROVED' },
-              orderBy: { createdAt: 'asc' },
-              select: {
-                id: true, kind: true, stem: true, options: true, answer: true,
-                rationale: true, citation: true, support: true, status: true,
-              },
-            },
-          },
-        },
-      },
-    });
-    if (!course) return Response.json({ error: 'course not found' }, { status: 404 });
-    return Response.json({ course });
-  } catch (err) {
-    console.error('[courses/:id]', err.message);
-    return Response.json({ error: err.message, code: 'DB_ERROR' }, { status: 500 });
-  }
+export async function GET(request) {
+  return dispatchRequest(request, registry, {
+    prefix: '/api',
+    middleware: [authBoundary],
+  });
 }

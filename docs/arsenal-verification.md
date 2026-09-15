@@ -1,5 +1,36 @@
 # Arsenal verification matrix
 
+## Next.js restoration and current evidence
+
+SchoolCircle runs on its original **Next.js 15 App Router** framework. The
+original pages, prototype, and styles are restored under `app/`; integration
+handlers and shared adapters run under `app/api/` and `lib/server/`. There is no
+SchoolCircle Vite entry point or separate serving Express process. The old API
+artifact remains only for regression fixtures.
+
+The Next production build and typecheck pass. The native Request/Response suite
+passes **13 tests**, including authoritative roles, cookies/CSRF, bounded uploads
+before parsing, and ZIP/ICS response handling. The **27** existing adapter/auth/
+PostgreSQL regression tests also pass.
+
+Production-store regression tests additionally verify a real Cartridge ZIP
+response with its instructor-owned export audit, mastery-only cohort suppression
+below five distinct learners, and unified membership across attempt/session
+evidence. Native course reads require verified identity and omit assessment
+answers/rationales and pending items from learner responses; verified instructors
+can inspect them. The original lesson reader uses the authenticated fetch helper.
+
+One browser journey verified a test OIDC login, default learner restriction on
+`/teach`, deliberate promotion of only the test user, source creation, pending
+inspection, instructor approval, and approved source/text persistence after
+reload. Only that journey's test records and user were removed afterward.
+This is real source-ingestion/approval evidence; no model-generated content
+was substituted. Live model-provider verification remains deferred under the
+accepted wiring-only scope below.
+
+The existing GitHub PR is being handled separately by the user. The Next
+restoration has not been pushed to it or published in a new PR.
+
 ## Accepted handoff scope
 
 The user approved closing the integration task on **wiring and documented

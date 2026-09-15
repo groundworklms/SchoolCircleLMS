@@ -1,3 +1,6 @@
 - [Arsenal boundaries](arsenal-boundaries.md) — verify producer-to-consumer JSON projections; adapter tests alone do not prove working learning workflows.
 - [Rebase artifact registration](rebase-artifact-registration.md) — Git replay can unregister a restored preview; revalidate its existing manifest instead of creating a duplicate.
 - [Managed AI provisioning](managed-ai-provisioning.md) — documented setup may be absent in task runners; check availability before promising immediate hosted access.
+- [Source restoration fidelity](source-restoration-fidelity.md) — restore verified upstream files verbatim; a passing build does not prove existing features survived.
+- [Package tool configuration drift](package-tool-drift.md) — package installation can also change the Nix channel; review environment changes before retaining them.
+- [Cohort role boundary](cohort-role-boundary.md) — evidence owners can be instructors; authoritative learner roles must qualify privacy-threshold membership.

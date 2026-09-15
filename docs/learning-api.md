@@ -1,8 +1,12 @@
 # SchoolCircle learning API
 
-All routes in this document are mounted below `/api/learning`. They are
-server-side Express routes backed by Prisma/Postgres. `GET /api/plan` is the
-existing planning-board route and is intentionally not part of this API.
+All routes in this document are mounted below `/api/learning` by the native
+Next catch-all handler (`app/api/[...path]/route.js`) and backed by
+Prisma/Postgres. The framework-free learning modules in `lib/learning/` and
+the shared arsenal adapters remain available for contract tests; the serving
+implementation is the local `lib/server` route registry. `GET /api/plan` is
+the existing planning-board route and is intentionally not part of this API.
+The Learn (`/learn`) and Teach (`/teach`) apps are the reference clients.
 
 ## Readiness and authentication
 
@@ -31,12 +35,12 @@ readiness boundary:
 }
 ```
 
-Learning requests require a verified server-side session. The route never
-accepts `x-user`, `x-role`, a bearer value interpreted as a role, or an
-identity in a JSON body. Replit Auth OIDC/PKCE middleware must attach the
-verified user to `req.user`; the API resolves that identity to the Prisma
-`User` row and reads the role there. Until the OIDC client and signed session
-secret are configured,
+Learning requests require a verified server-side identity. The route handler
+never accepts `x-user`, `x-role`, a bearer value interpreted as a role, or an
+identity in a JSON body. The auth boundary accepts a verified Firebase bearer
+token or the original Replit Auth OIDC/PKCE session, resolves that identity to
+the Prisma `User` row, and reads the role there. Until one configured provider
+is available,
 authenticated routes return `401 AUTH_REQUIRED` (or `503 AUTH_UNAVAILABLE`
 when the identity database boundary cannot be reached).
 

@@ -1,8 +1,8 @@
 // Data model for the grounded LMS.
 //
-// Postgres for the real product; the SAME schema runs on SQLite for offline/edge (a Jetson
-// at a schoolhouse) -- change the datasource `provider` + DATABASE_URL, nothing else. That is
-// the edge-to-enterprise story: one schema, connection-string swap.
+// PostgreSQL is the supported datasource. SQLite edge delivery requires a separately
+// validated provider/schema, migration and query conversion; changing DATABASE_URL alone
+// is not sufficient. No SQLite compatibility or disconnected delivery is claimed here.
 //
 // One boundary is deliberate and lives HERE, not in the UI: there is no ClassGap table. The
 // instructor's aggregate view is a GROUP BY over Attempt that never SELECTs learnerId (see
@@ -14,7 +14,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"          // swap to "sqlite" for offline/edge; see .env.example
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
