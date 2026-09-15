@@ -6,6 +6,92 @@ import { contentFor } from './lessonContent';
 import { usePrefs, setPref } from './prefs';
 import { countForLesson } from './Discussions';
 
+/* ---------- real cited items from the DB (issue #8) ----------
+   The lesson reader's structure is POI-driven and real; its teaching CONTENT was mock.
+   This pulls the human-ratified (APPROVED) items — with their Anchor citations — from the
+   seeded course database via GET /api/courses, matched to the course (and section) on screen.
+   It degrades silently: on the static Pages build (no API/DB), if the DB is unreachable, or if
+   this course has no grounded items seeded yet, the reader still works and the card stays hidden. */
+
+// Which seeded (DB) course backs each prototype course, by Anchor sourceId (Course.sourceId).
+// Grow: as the content lane ingests more courses, extend this mapping.
+const COURSE_SOURCE = { TC32209: 'TC 3-22.9' };
+
+function useDoctrineCourse(courseId) {
+  const [state, setState] = useState({ status: 'loading', db: null });
+  useEffect(() => {
+    const sourceId = COURSE_SOURCE[courseId];
+    if (!sourceId) { setState({ status: 'ready', db: null }); return; }
+    let alive = true;
+    fetch('/api/courses')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
+      .then((d) => {
+        if (!alive) return;
+        const db = (d.courses || []).find((c) => c.sourceId === sourceId) || null;
+        setState({ status: 'ready', db });
+      })
+      .catch(() => alive && setState({ status: 'error', db: null }));
+    return () => { alive = false; };
+  }, [courseId]);
+  return state;
+}
+
+/* Grounded key-points card: real APPROVED lesson claims for THIS course, scoped to the current
+   section when the DB has one, each with a clickable citation that expands the paragraph/page
+   locator — the "trust on tap" moment from 06-learner-loop. Silent unless matching items exist. */
+function GroundedKeyPoints({ course, lesson }) {
+  const { status, db } = useDoctrineCourse(course.id);
+  const [open, setOpen] = useState(null);
+
+  // Offline/static, DB unreachable, or no grounded items for this course yet: stay silent.
+  if (status !== 'ready' || !db) return null;
+
+  const withLessons = db.sections.filter((s) => (s.items || []).some((it) => it.kind === 'LESSON'));
+  const scoped = withLessons.filter((s) => s.title === lesson?.annex?.title);
+  const sections = scoped.length ? scoped : withLessons;
+  const lessons = sections.flatMap((s) =>
+    (s.items || []).filter((it) => it.kind === 'LESSON').map((it) => ({ ...it, section: s.title }))
+  );
+  if (!lessons.length) return null;
+
+  return (
+    <div className="s-gkp">
+      <div className="s-gkp-head">
+        <span className="s-gkp-t">Grounded key points</span>
+        <span className="s-gkp-src">✓ Verified from {db.sourceId} · {scoped.length ? 'this section' : 'this course'} · live from the database</span>
+      </div>
+      <ul className="s-gkp-list">
+        {lessons.map((it, i) => {
+          const c = it.citation || {};
+          const isOpen = open === i;
+          return (
+            <li key={it.id} className={`s-gkp-item${isOpen ? ' open' : ''}`}>
+              <p className="s-gkp-stem">{it.stem}</p>
+              <button className="s-gkp-cite" onClick={() => setOpen(isOpen ? null : i)} aria-expanded={isOpen}>
+                <span className="s-gkp-cite-mark">§</span>
+                <span className="s-gkp-cite-txt">{c.citation || 'citation'}</span>
+                <span className="s-gkp-cite-chev">{isOpen ? '▾' : '▸'}</span>
+              </button>
+              {isOpen && (
+                <div className="s-gkp-passage">
+                  <div className="s-gkp-loc">
+                    <span><b>Publication</b> {c.pubId || '—'}</span>
+                    {c.page && <span><b>Page</b> {c.page}</span>}
+                    {typeof it.support === 'number' && (
+                      <span><b>HHEM support</b> {(it.support * 100).toFixed(0)}%</span>
+                    )}
+                  </div>
+                  <div className="s-gkp-note">Full passage text opens from Anchor when the grounding service is connected.</div>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 /* Student · Lessons. The course as the POI lays it out — annexes as modules,
    lessons in order, exams where they fall. Structure, IDs, and hours are REAL
    (parsed from the POI Combined Report). Completion state is mock, derived from
@@ -405,6 +491,7 @@ function LessonPage({ course, lesson, seq, page, onBack, onPick, onPage, go, onO
                 <div><b>{lesson.hours} h</b> of instruction</div>
                 <div><b>~{Math.max(8, content.items.length * 3)} min</b> to read</div>
               </div>
+              <GroundedKeyPoints course={course} lesson={lesson} />
               {prog.complete && <div className="s-ls-callout tip" style={{ marginTop: '1rem' }}><div className="s-ls-callout-t">Completed</div><div>You have finished this lesson. Pages stay open for review.</div></div>}
             </>
           )}
