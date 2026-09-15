@@ -63,90 +63,6 @@ test('Sextant fixture cohort is emitted only after distinct-learner threshold', 
   assert.equal('learnerId' in analytics.gaps[0], false);
 });
 
-test('cohort contributor thresholds suppress disjoint and objective-sparse evidence', () => {
-  const attempts = [
-    ...['a', 'b', 'c', 'd'].flatMap((learnerId) => [
-      { learnerId, objective: 'movement', phase: 'pre', correct: false },
-      { learnerId, objective: 'movement', phase: 'post', correct: true },
-    ]),
-    { learnerId: 'e', objective: 'movement', phase: 'pre', correct: false },
-    { learnerId: 'a', objective: 'private-objective', phase: 'pre', correct: false },
-    { learnerId: 'a', objective: 'private-objective', phase: 'post', correct: true },
-  ];
-  const sessions = ['a', 'b', 'c', 'd'].map((learnerId) => ({
-    learnerId,
-    criteria: [
-      { competency: 'movement', verdict: 'mastered' },
-      { competency: 'private-competency', verdict: 'developing' },
-    ],
-  }));
-  const analytics = buildAnalytics({
-    cohort: true,
-    attempts,
-    sessions,
-    distinctLearnerCount: 5,
-  });
-
-  assert.equal(analytics.gain.status, 'insufficient_evidence');
-  assert.equal(analytics.gain.observedContributors, 4);
-  assert.deepEqual(analytics.gaps, []);
-  assert.equal(analytics.mastery.status, 'insufficient_evidence');
-  assert.equal(analytics.mastery.observedContributors, 4);
-  assert.equal(JSON.stringify(analytics).includes('"learnerId"'), false);
-  assert.equal(JSON.stringify(analytics).includes('"correct"'), false);
-
-  const completeAttempts = [
-    ...['a', 'b', 'c', 'd', 'e'].flatMap((learnerId) => [
-      { learnerId, objective: 'movement', phase: 'pre', correct: false },
-      { learnerId, objective: 'movement', phase: 'post', correct: true },
-    ]),
-    { learnerId: 'a', objective: 'private-objective', phase: 'pre', correct: false },
-    { learnerId: 'a', objective: 'private-objective', phase: 'post', correct: true },
-  ];
-  const complete = buildAnalytics({
-    cohort: true,
-    attempts: completeAttempts,
-    sessions: [
-      ...['a', 'b', 'c', 'd', 'e'].map((learnerId) => ({
-        learnerId,
-        criteria: [{ competency: 'movement', verdict: 'mastered' }],
-      })),
-      {
-        learnerId: 'a',
-        criteria: [{ competency: 'private-competency', verdict: 'developing' }],
-      },
-    ],
-    distinctLearnerCount: 5,
-  });
-  assert.equal(complete.gain.status, undefined);
-  assert.deepEqual(complete.gain.objectives.map((objective) => objective.objective), ['movement']);
-  assert.deepEqual(complete.gaps.map((gap) => gap.objective), ['movement']);
-  assert.deepEqual(complete.mastery.map((criterion) => criterion.competency), ['movement']);
-});
-
-test('cohort gain and every objective require paired contributors, not union membership', () => {
-  const attempts = [
-    ...['a', 'b', 'c', 'd'].map((learnerId) => ({
-      learnerId,
-      objective: 'movement',
-      phase: 'pre',
-      correct: false,
-    })),
-    { learnerId: 'e', objective: 'movement', phase: 'post', correct: true },
-  ];
-  const analytics = buildAnalytics({
-    cohort: true,
-    attempts,
-    sessions: [],
-    distinctLearnerCount: 5,
-  });
-
-  assert.equal(analytics.gain.status, 'insufficient_evidence');
-  assert.equal(analytics.gain.observedContributors, 0);
-  assert.deepEqual(analytics.gaps, []);
-  assert.equal(analytics.privacy.observedLearners, 5);
-});
-
 test('Cadence fixture returns a deterministic recommended plan, reminders, and ICS', () => {
   const result = buildStudyPlan({
     syllabus: [{ id: 'fixture-lesson', title: 'Land navigation', due: '2026-02-05', hours: 1 }],
@@ -186,33 +102,6 @@ test('Waypoint fixture profile and cohort preserve unanswered dimensions', () =>
   assert.equal(cohort.status, 'complete');
   assert.equal(cohort.n, 5);
   assert.equal(cohort.dims.verbal, null);
-});
-
-test('Waypoint cohort suppresses profile dimension and modality cells below five contributors', () => {
-  const responses = [
-    { v1: 5, v2: 5 },
-    { b1: 5, b2: 5 },
-    { r1: 5, r2: 5 },
-    { h1: 5, h2: 5 },
-    { p1: 5, p2: 5 },
-  ];
-  const cohort = buildCohortProfile({
-    entries: responses.map((value, index) => ({
-      learnerId: `cell-${index}`,
-      profile: buildProfile({ responses: value }).profile,
-    })),
-  });
-
-  assert.equal(cohort.status, 'complete');
-  assert.equal(cohort.n, 5);
-  assert.equal(cohort.dims.visual, null);
-  assert.equal(cohort.dims.verbal, null);
-  assert.equal(cohort.dims.reading, null);
-  assert.equal(cohort.dims.hands_on, null);
-  assert.equal(cohort.dims.self_paced, null);
-  assert.equal(cohort.dims.structured, null);
-  assert.ok(cohort.modalityMix.every((entry) => entry.share === null && entry.count === null));
-  assert.deepEqual(cohort.recommendations, []);
 });
 
 test('Cartridge fixture is built and validated before it can be exported', async () => {

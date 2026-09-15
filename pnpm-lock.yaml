@@ -155,9 +155,15 @@ importers:
 
   .:
     dependencies:
+      '@google-cloud/cloud-sql-connector':
+        specifier: ^1.12.0
+        version: 1.12.0
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
+      '@prisma/adapter-pg':
+        specifier: ^6.19.3
+        version: 6.19.3
       '@prisma/client':
         specifier: ^6.3.0
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
@@ -209,6 +215,9 @@ importers:
       pdfjs-dist:
         specifier: ^4.10.38
         version: 4.10.38
+      pg:
+        specifier: ^8.23.0
+        version: 8.23.0
       pino:
         specifier: ^9.14.0
         version: 9.14.0
@@ -572,7 +581,7 @@ importers:
     dependencies:
       '@tanstack/react-query':
         specifier: 'catalog:'
-        version: 5.102.8(react@19.0.0)
+        version: 5.102.8(react@19.1.0)
 
   lib/api-spec:
     devDependencies:
@@ -978,6 +987,10 @@ packages:
   '@gerrit0/mini-shiki@3.23.0':
     resolution: {integrity: sha512-bEMORlG0cqdjVyCEuU0cDQbORWX+kYCeo0kV1lbxF5bt4r7SID2l9bqsxJEM0zndaxpOUT7riCyIVEuqq/Ynxg==}
 
+  '@google-cloud/cloud-sql-connector@1.12.0':
+    resolution: {integrity: sha512-cUrI+6StY8F/dQB5Lujrl9TFYibDZGGWvPp1aHhvLn4btOlbflxdHoZ6NDWeWySCNtnOYhoiZNQfK4qPC5moBw==}
+    engines: {node: '>=22'}
+
   '@google-cloud/firestore-api@0.2.0':
     resolution: {integrity: sha512-wfHJPZmLqzpy6FN6U+7HkkP/AKhGsbHSpEy/qL2TyI3/pKRAvpamQxZ2qvps5hMRgAjfuHCim+oeJj9RveCaqg==}
     engines: {node: '>=18'}
@@ -1014,6 +1027,10 @@ packages:
     resolution: {integrity: sha512-lpN2AtoQ/iimp7jjm5zJFWbpW7OJc5qWmQdt59CI4ENeoIRIx+yf2ShSR2kanQfjFOshA74eSbimXXuRaSCUVg==}
     engines: {node: '>=22'}
 
+  '@google-cloud/sql@0.25.0':
+    resolution: {integrity: sha512-OKAA98q2M25rQcqcFvbQniix4zTFcbeSyauj+PcPd+6ngn7eXvAUqpuCRVxbIGmA8r5OtE6Ru/oCJ1xwcUR2vA==}
+    engines: {node: '>=18'}
+
   '@google-cloud/storage@7.22.0':
     resolution: {integrity: sha512-W98gTQOAntEeEQ7/pZxSQXxfUO5CiQcXJRsxBpUa6UU25n8YN/VtogPBi0H+MAmUrn/6bY/sBhFansoWEsr2/g==}
     engines: {node: '>=18'}
@@ -1021,6 +1038,10 @@ packages:
   '@google-cloud/storage@8.1.0':
     resolution: {integrity: sha512-iFDlOGBzmzTelslzcf0yTpoqloyfTUi448PxJXvjtbvGqtc2ftT8HUSl5+sKQPRz70y64ha5FqojDhABP103EA==}
     engines: {node: '>=22'}
+
+  '@googleapis/sqladmin@38.1.1':
+    resolution: {integrity: sha512-piWbtan+dw/cYzGopUsFH131mVx23osOeBAFSM78fgTzgRJjehgA5QnGGZiGYn+zgSNqdnf+7/ZzdHN1XkUAEg==}
+    engines: {node: '>=12.0.0'}
 
   '@grpc/grpc-js@1.14.4':
     resolution: {integrity: sha512-k9Dj3DV/itK9D06Y8f190Qgop7/Ui+D0njFV3LHMPwPT75DpXLQohE9Wmz0QElrJnzsjB7KPWiKJbOl7IPDArQ==}
@@ -1439,6 +1460,9 @@ packages:
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
 
+  '@prisma/adapter-pg@6.19.3':
+    resolution: {integrity: sha512-ocbvVIP/wX2uJWWLvo1/UK0nH8L5dv4MlE1DddVPID0/VRiEZDguWmAgKLVuPM6BuWTH3wGluZR40VgXb4WjiQ==}
+
   '@prisma/client@6.19.3':
     resolution: {integrity: sha512-mKq3jQFhjvko5LTJFHGilsuQs+W+T3Gm451NzuTDGQxwCzwXHYnIu2zGkRoW+Exq3Rob7yp2MfzSrdIiZVhrBg==}
     engines: {node: '>=18.18'}
@@ -1456,6 +1480,9 @@ packages:
 
   '@prisma/debug@6.19.3':
     resolution: {integrity: sha512-ljkJ+SgpXNktLG0Q/n4JGYCkKf0f8oYLyjImS2I8e2q2WCfdRRtWER062ZV/ixaNP2M2VKlWXVJiGzZaUgbKZw==}
+
+  '@prisma/driver-adapter-utils@6.19.3':
+    resolution: {integrity: sha512-UUxn6VLfKKVqm5n9vexOQgFJ9TCBIxupb7F5FzLQ6iM2VV0WZxhgzbQVqBDsGY+VmQLmqaSoKRusEfy3O5KZpA==}
 
   '@prisma/engines-version@7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7':
     resolution: {integrity: sha512-03bgb1VD5gvuumNf+7fVGBzfpJPjmqV423l/WxsWk2cNQ42JD0/SsFBPhN6z8iAvdHs07/7ei77SKu7aZfq8bA==}
@@ -2512,7 +2539,7 @@ packages:
         optional: true
 
   cadence@https://codeload.github.com/groundworklms/cadence/tar.gz/9b6b2df0ab1e11080510262a631ffb7e13acda4e:
-    resolution: {tarball: https://codeload.github.com/groundworklms/cadence/tar.gz/9b6b2df0ab1e11080510262a631ffb7e13acda4e}
+    resolution: {gitHosted: true, integrity: sha512-mMiq2dSbKdptqCRdHxfJ4KFIwZx7F4v4QUcSaCm3Ltr2lIM92EteF72OGrrrHUSGkNihz9ml3jkJP42Vt7ftCg==, tarball: https://codeload.github.com/groundworklms/cadence/tar.gz/9b6b2df0ab1e11080510262a631ffb7e13acda4e}
     version: 0.1.0
     engines: {node: '>=18'}
 
@@ -2528,7 +2555,7 @@ packages:
     resolution: {integrity: sha512-TITQPUkaz+aVk5GL6NhOdwk1aEaNTSDPsGFWrTuhKGtjTF70jL/Oht2W4c6rXUe5fu7Ie19VIahAXHIIiWWNeg==}
 
   cartridge@https://codeload.github.com/groundworklms/cartridge/tar.gz/68f02aa93bca51c4d24f42b8392a4f5ad02c8db3:
-    resolution: {tarball: https://codeload.github.com/groundworklms/cartridge/tar.gz/68f02aa93bca51c4d24f42b8392a4f5ad02c8db3}
+    resolution: {gitHosted: true, integrity: sha512-2qQq4w7hD7LNn53JW5F6mwkEeak2E7dHmevFQgZP0ANQUdzqIM5imenkTx6LQeiCaHgUeQz+bYBp1b44g6yE0w==, tarball: https://codeload.github.com/groundworklms/cartridge/tar.gz/68f02aa93bca51c4d24f42b8392a4f5ad02c8db3}
     version: 0.1.0
     engines: {node: '>=18'}
     hasBin: true
@@ -2654,7 +2681,7 @@ packages:
     engines: {node: '>= 0.10'}
 
   coursewright@https://codeload.github.com/groundworklms/coursewright/tar.gz/f38d078a30195a6a6901ade22a3ce7484613fa57:
-    resolution: {tarball: https://codeload.github.com/groundworklms/coursewright/tar.gz/f38d078a30195a6a6901ade22a3ce7484613fa57}
+    resolution: {gitHosted: true, integrity: sha512-IleF/IYATN+KWfT1BEiOamU9v5q0aa1heDn4ES8gfT5qgVrII7hxuy8teBK7jALgAbwgo7IGZStjfWWYGOD8rA==, tarball: https://codeload.github.com/groundworklms/coursewright/tar.gz/f38d078a30195a6a6901ade22a3ce7484613fa57}
     version: 0.1.0
     engines: {node: '>=18'}
 
@@ -3157,6 +3184,10 @@ packages:
     resolution: {integrity: sha512-kB3rzJV7d9juLZh8/56QTXCwQfxyhdOMdyYk1HdQKFtF8TJTDTZQJtixWIwXdE9Jji91mC41DUNpjleo4L4eAQ==}
     engines: {node: '>=18'}
 
+  gaxios@8.0.0:
+    resolution: {integrity: sha512-UaktzloW/Hvb/VMNr/wxADpNOsfmnerPpZTthb9R0JzjVTYYcJ0N0o5HOMzKV3XplpcFMSoLj52h9IK/wRs9Gw==}
+    engines: {node: '>=22'}
+
   gcp-metadata@6.1.1:
     resolution: {integrity: sha512-a4tiq7E0/5fTjxPAaH4jpjkSv/uCaU2p5KC6HVGrvl0cDjA8iBZv4vv1gyzlmK0ZUKqwpOyQMKzZQe3lTit77A==}
     engines: {node: '>=14'}
@@ -3249,6 +3280,10 @@ packages:
     resolution: {integrity: sha512-HMhaQghlOTvbcb3c4T5jmmOMtG3JUF1iOQMezaJXL86CDS+Tm2vHd0IeLFRAx3+ewd+bo9E1HFHoy17X5aJa9A==}
     engines: {node: '>=22'}
 
+  googleapis-common@9.0.4:
+    resolution: {integrity: sha512-fcI5bm1gN+9MNb+gvANRPFsxaJ07h/ZYvKCh6H3RoDJBUTwp5ySaCpCqnmX8gnGJUD/9bKmkacivRJT1g+xXyg==}
+    engines: {node: '>=22'}
+
   gopd@1.2.0:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
     engines: {node: '>= 0.4'}
@@ -3286,7 +3321,7 @@ packages:
     resolution: {integrity: sha512-7xgomUX6ADmcYzFik0HzAxh/73YlKR9bmFzf51CZwR+b6YtzU2m0u49hQCqV6SvlqIqsaxovfwdvbnsw3b/zpg==}
 
   hotwash@https://codeload.github.com/groundworklms/hotwash/tar.gz/a972df65aa1c45c6b28c7fd6540a3b9303cf7b74:
-    resolution: {tarball: https://codeload.github.com/groundworklms/hotwash/tar.gz/a972df65aa1c45c6b28c7fd6540a3b9303cf7b74}
+    resolution: {gitHosted: true, integrity: sha512-OIByKNqG85mLlquY7kCBQmiVV2T91kPN+54LOVzub2vqEkQ6ArqLcRxz5wVBaIdICRyShrvAvKms/CERSfG7tA==, tarball: https://codeload.github.com/groundworklms/hotwash/tar.gz/a972df65aa1c45c6b28c7fd6540a3b9303cf7b74}
     version: 0.1.0
     engines: {node: '>=18'}
 
@@ -3915,6 +3950,10 @@ packages:
     resolution: {integrity: sha512-wPrq66Llhl7/4AGC6I+cqxT07LhXvWL08LNXz1fENOw0Ap4sRZZ/gZpTTJ5jpurzzzfS2W/Ge9BY3LgLjCShcw==}
     engines: {node: ^12.20.0 || ^14.13.1 || >=16.0.0}
 
+  p-throttle@8.1.1:
+    resolution: {integrity: sha512-xxWFBUyvbrQ10XC3VAr0SoXoOCKXqCX/yvbFIkBE98upphHFwjIKR6AId13ZH3jngFfF6yK43QTOtrngYAmFMA==}
+    engines: {node: '>=20'}
+
   package-json-from-dist@1.0.1:
     resolution: {integrity: sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==}
 
@@ -4041,6 +4080,10 @@ packages:
     resolution: {integrity: sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA==}
     engines: {node: '>=4'}
 
+  postgres-array@3.0.4:
+    resolution: {integrity: sha512-nAUSGfSDGOaOAEGwqsRY27GPOea7CNipJPOA7lPbdEpx5Kg3qzdP0AaWC5MlhTWV9s4hFX39nomVZ+C4tnGOJQ==}
+    engines: {node: '>=12'}
+
   postgres-bytea@1.0.1:
     resolution: {integrity: sha512-5+5HqXnsZPE65IJZSMkZtURARZelel2oXUEO8rH83VS/hxH5vv1uHquPg5wZs8yMAfdv971IU+kcPUczi7NVBQ==}
     engines: {node: '>=0.10.0'}
@@ -4119,7 +4162,7 @@ packages:
     engines: {node: '>=0.6'}
 
   quarry@https://codeload.github.com/groundworklms/quarry/tar.gz/465b7515732bbc08b80b6ec8684e1fc49c7985ea:
-    resolution: {tarball: https://codeload.github.com/groundworklms/quarry/tar.gz/465b7515732bbc08b80b6ec8684e1fc49c7985ea}
+    resolution: {gitHosted: true, integrity: sha512-ZLSaTYK5NTc4wO8BAIYePFIytWJ7YJt0/1wLxRoHc8TC9o74Z8P70ehVvpP+XhkLxrAGxec+h+cQA4MTRlHcfQ==, tarball: https://codeload.github.com/groundworklms/quarry/tar.gz/465b7515732bbc08b80b6ec8684e1fc49c7985ea}
     version: 0.1.0
     engines: {node: '>=18'}
     hasBin: true
@@ -4330,7 +4373,7 @@ packages:
     engines: {node: '>= 18'}
 
   rubricon@https://codeload.github.com/groundworklms/rubricon/tar.gz/1a3d88c9cef6e0239da060e936398fa6b999c6a9:
-    resolution: {tarball: https://codeload.github.com/groundworklms/rubricon/tar.gz/1a3d88c9cef6e0239da060e936398fa6b999c6a9}
+    resolution: {gitHosted: true, integrity: sha512-Hf9jf0A773ublDBo9tQzFUBDMU+vlEemtKm+BClHYAZg7M6gMLG+leEoaKmkdl3p/ELpXrOSrT7JygF+qUjPiw==, tarball: https://codeload.github.com/groundworklms/rubricon/tar.gz/1a3d88c9cef6e0239da060e936398fa6b999c6a9}
     version: 0.1.0
     engines: {node: '>=18'}
     hasBin: true
@@ -4384,7 +4427,7 @@ packages:
     resolution: {integrity: sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==}
 
   sextant@https://codeload.github.com/groundworklms/sextant/tar.gz/007a2c0f47fd50a9acbc3f3538814c1bf8683e95:
-    resolution: {tarball: https://codeload.github.com/groundworklms/sextant/tar.gz/007a2c0f47fd50a9acbc3f3538814c1bf8683e95}
+    resolution: {gitHosted: true, integrity: sha512-uYvJ/dXZNJorXs8P8v66JAljjV5y66I3lflchuy1r8crNMAhoWw5P+jcyoq45STB9rQ5pWxgg3FqKWOQcIpNKg==, tarball: https://codeload.github.com/groundworklms/sextant/tar.gz/007a2c0f47fd50a9acbc3f3538814c1bf8683e95}
     version: 0.1.0
     engines: {node: '>=18'}
 
@@ -4443,7 +4486,7 @@ packages:
     engines: {node: '>=0.10.0'}
 
   sourcerer@https://codeload.github.com/groundworklms/sourcerer/tar.gz/8a2e6831ebc6ced8ee71b0215fb0037d1cb7c1bb:
-    resolution: {tarball: https://codeload.github.com/groundworklms/sourcerer/tar.gz/8a2e6831ebc6ced8ee71b0215fb0037d1cb7c1bb}
+    resolution: {gitHosted: true, integrity: sha512-KBIx77N5Sui5NUwRD3JbNUPLcgD6JE9rSGdMXvLTpiewCWzIhJ57Y86iXmMwuWgEZqJsw9tuwd3IqzcddKGjsg==, tarball: https://codeload.github.com/groundworklms/sourcerer/tar.gz/8a2e6831ebc6ced8ee71b0215fb0037d1cb7c1bb}
     version: 0.1.0
     engines: {node: '>=18'}
 
@@ -4632,7 +4675,7 @@ packages:
     resolution: {integrity: sha512-ARDJmphmdvUk6Glw7y9DQ2bFkKBHwQHLi2lsaH6PPmz/Ka9sFOBsBluozhDltWmnv9u/cF6Rt87znRTPV+yp/A==}
 
   understudy@https://codeload.github.com/groundworklms/understudy/tar.gz/6ecb931b85af9cf36aab185f587dd3ede4a61d96:
-    resolution: {tarball: https://codeload.github.com/groundworklms/understudy/tar.gz/6ecb931b85af9cf36aab185f587dd3ede4a61d96}
+    resolution: {gitHosted: true, integrity: sha512-WCEhmOafDZzAdVAQDtkZiZHD5mrOv58ctGeKpkU4gj//Z8u9Z+24QNy44wNa5rD5jYUFQ8LKhpM/VIZHjicmfw==, tarball: https://codeload.github.com/groundworklms/understudy/tar.gz/6ecb931b85af9cf36aab185f587dd3ede4a61d96}
     version: 0.1.0
     engines: {node: '>=18'}
     hasBin: true
@@ -4675,6 +4718,9 @@ packages:
     hasBin: true
     peerDependencies:
       browserslist: '>= 4.21.0'
+
+  url-template@2.0.8:
+    resolution: {integrity: sha512-XdVKMF4SJ0nP/O7XIPB0JwAEuT9lDIYnNsK8yGVe43y0AWoKeJNdv3ZNWh7ksJ6KqQFjOO6ox/VEitLnaVNufw==}
 
   use-callback-ref@1.3.3:
     resolution: {integrity: sha512-jQL3lRnocaFtu3V00JToYz/4QkNWswxijDaCVNZRiRTO3HQDLsdu1ZtmIUvV4yPp+rvWm5j0y0TG/S61cuijTg==}
@@ -4764,7 +4810,7 @@ packages:
         optional: true
 
   waypoint@https://codeload.github.com/groundworklms/waypoint/tar.gz/a861421b03399b8dc39f06aad113d1f064f465e4:
-    resolution: {tarball: https://codeload.github.com/groundworklms/waypoint/tar.gz/a861421b03399b8dc39f06aad113d1f064f465e4}
+    resolution: {gitHosted: true, integrity: sha512-HuU2KgXe2PLTSni5TX5fyJ7LbIAeuFR4APljMyqPlDUiG3HKJnJ6ESGGPmwTtijgS/I1yUSn4akUv3b9UgNfFg==, tarball: https://codeload.github.com/groundworklms/waypoint/tar.gz/a861421b03399b8dc39f06aad113d1f064f465e4}
     version: 0.1.0
     engines: {node: '>=18'}
 
@@ -4790,7 +4836,7 @@ packages:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
   whetstone@https://codeload.github.com/groundworklms/whetstone/tar.gz/4b5d0a4be05a5a2161a4d46f9261ff88a43d8b2b:
-    resolution: {tarball: https://codeload.github.com/groundworklms/whetstone/tar.gz/4b5d0a4be05a5a2161a4d46f9261ff88a43d8b2b}
+    resolution: {gitHosted: true, integrity: sha512-koJJ+Xw89QgMcP5CqWBWIuq73u/77UcThn6Gli0RM4CnwHrFHz1q0u7weTNz0x1a1SNb2i93+E9eVD/yUTK6dw==, tarball: https://codeload.github.com/groundworklms/whetstone/tar.gz/4b5d0a4be05a5a2161a4d46f9261ff88a43d8b2b}
     version: 0.1.0
     engines: {node: '>=18'}
 
@@ -5336,6 +5382,17 @@ snapshots:
       '@shikijs/types': 3.23.0
       '@shikijs/vscode-textmate': 10.0.2
 
+  '@google-cloud/cloud-sql-connector@1.12.0':
+    dependencies:
+      '@google-cloud/sql': 0.25.0
+      '@googleapis/sqladmin': 38.1.1
+      '@grpc/grpc-js': 1.14.4
+      gaxios: 8.0.0
+      google-auth-library: 11.0.2
+      p-throttle: 8.1.1
+    transitivePeerDependencies:
+      - supports-color
+
   '@google-cloud/firestore-api@0.2.0':
     dependencies:
       google-gax: 5.0.8
@@ -5390,6 +5447,12 @@ snapshots:
   '@google-cloud/promisify@6.0.1':
     optional: true
 
+  '@google-cloud/sql@0.25.0':
+    dependencies:
+      google-gax: 5.0.8
+    transitivePeerDependencies:
+      - supports-color
+
   '@google-cloud/storage@7.22.0':
     dependencies:
       '@google-cloud/paginator': 5.0.2
@@ -5432,11 +5495,16 @@ snapshots:
       - supports-color
     optional: true
 
+  '@googleapis/sqladmin@38.1.1':
+    dependencies:
+      googleapis-common: 9.0.4
+    transitivePeerDependencies:
+      - supports-color
+
   '@grpc/grpc-js@1.14.4':
     dependencies:
       '@grpc/proto-loader': 0.8.1
       '@js-sdsl/ordered-map': 4.4.2
-    optional: true
 
   '@grpc/grpc-js@1.9.16':
     dependencies:
@@ -5456,7 +5524,6 @@ snapshots:
       long: 5.3.2
       protobufjs: 7.6.6
       yargs: 17.7.3
-    optional: true
 
   '@hookform/resolvers@3.10.0(react-hook-form@7.87.0(react@19.1.0))':
     dependencies:
@@ -5577,7 +5644,6 @@ snapshots:
       strip-ansi-cjs: strip-ansi@6.0.1
       wrap-ansi: 8.1.0
       wrap-ansi-cjs: wrap-ansi@7.0.0
-    optional: true
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
@@ -5598,8 +5664,7 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@js-sdsl/ordered-map@4.4.2':
-    optional: true
+  '@js-sdsl/ordered-map@4.4.2': {}
 
   '@napi-rs/canvas-android-arm64@0.1.100':
     optional: true
@@ -5818,6 +5883,14 @@ snapshots:
   '@pkgjs/parseargs@0.11.0':
     optional: true
 
+  '@prisma/adapter-pg@6.19.3':
+    dependencies:
+      '@prisma/driver-adapter-utils': 6.19.3
+      pg: 8.23.0
+      postgres-array: 3.0.4
+    transitivePeerDependencies:
+      - pg-native
+
   '@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)':
     optionalDependencies:
       prisma: 6.19.3(typescript@5.9.3)
@@ -5833,6 +5906,10 @@ snapshots:
       - magicast
 
   '@prisma/debug@6.19.3': {}
+
+  '@prisma/driver-adapter-utils@6.19.3':
+    dependencies:
+      '@prisma/debug': 6.19.3
 
   '@prisma/engines-version@7.1.1-3.c2990dca591cba766e3b7ef5d9e8a84796e47ab7': {}
 
@@ -6664,6 +6741,11 @@ snapshots:
       '@tanstack/query-core': 5.102.8
       react: 19.0.0
 
+  '@tanstack/react-query@5.102.8(react@19.1.0)':
+    dependencies:
+      '@tanstack/query-core': 5.102.8
+      react: 19.1.0
+
   '@tootallnate/once@2.0.1':
     optional: true
 
@@ -6873,15 +6955,13 @@ snapshots:
 
   ansi-regex@5.0.1: {}
 
-  ansi-regex@6.3.0:
-    optional: true
+  ansi-regex@6.3.0: {}
 
   ansi-styles@4.3.0:
     dependencies:
       color-convert: 2.0.1
 
-  ansi-styles@6.2.3:
-    optional: true
+  ansi-styles@6.2.3: {}
 
   anynum@1.0.1:
     optional: true
@@ -6909,8 +6989,7 @@ snapshots:
 
   bail@2.0.2: {}
 
-  balanced-match@1.0.2:
-    optional: true
+  balanced-match@1.0.2: {}
 
   balanced-match@4.0.4: {}
 
@@ -6937,7 +7016,6 @@ snapshots:
   brace-expansion@2.1.4:
     dependencies:
       balanced-match: 1.0.2
-    optional: true
 
   brace-expansion@5.0.9:
     dependencies:
@@ -7225,10 +7303,8 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
       stream-shift: 1.0.3
-    optional: true
 
-  eastasianwidth@0.2.0:
-    optional: true
+  eastasianwidth@0.2.0: {}
 
   ecdsa-sig-formatter@1.0.11:
     dependencies:
@@ -7257,8 +7333,7 @@ snapshots:
 
   emoji-regex@8.0.0: {}
 
-  emoji-regex@9.2.2:
-    optional: true
+  emoji-regex@9.2.2: {}
 
   empathic@2.0.0: {}
 
@@ -7527,7 +7602,6 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.6
       signal-exit: 4.1.0
-    optional: true
 
   form-data@2.5.6:
     dependencies:
@@ -7590,6 +7664,14 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  gaxios@8.0.0:
+    dependencies:
+      extend: 3.0.2
+      https-proxy-agent: 7.0.6
+      node-fetch: 3.3.2
+    transitivePeerDependencies:
+      - supports-color
+
   gcp-metadata@6.1.1:
     dependencies:
       gaxios: 6.7.1
@@ -7615,7 +7697,6 @@ snapshots:
       json-bigint: 1.0.0
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   gensync@1.0.0-beta.2: {}
 
@@ -7671,7 +7752,6 @@ snapshots:
       minipass: 7.1.3
       package-json-from-dist: 1.0.1
       path-scurry: 1.11.1
-    optional: true
 
   google-auth-library@10.5.0:
     dependencies:
@@ -7684,7 +7764,6 @@ snapshots:
       jws: 4.0.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   google-auth-library@10.9.1:
     dependencies:
@@ -7707,7 +7786,6 @@ snapshots:
       jws: 4.0.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   google-auth-library@9.15.1:
     dependencies:
@@ -7756,7 +7834,6 @@ snapshots:
       rimraf: 5.0.10
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   google-gax@6.3.0:
     dependencies:
@@ -7780,8 +7857,18 @@ snapshots:
 
   google-logging-utils@1.1.3: {}
 
-  google-logging-utils@2.0.1:
-    optional: true
+  google-logging-utils@2.0.1: {}
+
+  googleapis-common@9.0.4:
+    dependencies:
+      extend: 3.0.2
+      gaxios: 7.3.1
+      google-auth-library: 11.0.2
+      google-logging-utils: 2.0.1
+      qs: 6.16.0
+      url-template: 2.0.8
+    transitivePeerDependencies:
+      - supports-color
 
   gopd@1.2.0: {}
 
@@ -7802,7 +7889,6 @@ snapshots:
       jws: 4.0.1
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   has-symbols@1.1.0: {}
 
@@ -7873,7 +7959,6 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   https-proxy-agent@5.0.1:
     dependencies:
@@ -7957,7 +8042,6 @@ snapshots:
       '@isaacs/cliui': 8.0.2
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
-    optional: true
 
   jiti@2.7.0: {}
 
@@ -8096,8 +8180,7 @@ snapshots:
     dependencies:
       js-tokens: 4.0.0
 
-  lru-cache@10.4.3:
-    optional: true
+  lru-cache@10.4.3: {}
 
   lru-cache@11.5.2: {}
 
@@ -8527,12 +8610,10 @@ snapshots:
   minimatch@9.0.9:
     dependencies:
       brace-expansion: 2.1.4
-    optional: true
 
   minimist@1.2.8: {}
 
-  minipass@7.1.3:
-    optional: true
+  minipass@7.1.3: {}
 
   modern-screenshot@4.7.0: {}
 
@@ -8618,8 +8699,7 @@ snapshots:
 
   object-assign@4.1.1: {}
 
-  object-hash@3.0.0:
-    optional: true
+  object-hash@3.0.0: {}
 
   object-inspect@1.13.4: {}
 
@@ -8691,8 +8771,9 @@ snapshots:
     dependencies:
       p-limit: 4.0.0
 
-  package-json-from-dist@1.0.1:
-    optional: true
+  p-throttle@8.1.1: {}
+
+  package-json-from-dist@1.0.1: {}
 
   pako@1.0.11: {}
 
@@ -8721,7 +8802,6 @@ snapshots:
     dependencies:
       lru-cache: 10.4.3
       minipass: 7.1.3
-    optional: true
 
   path-to-regexp@8.4.2: {}
 
@@ -8841,6 +8921,8 @@ snapshots:
 
   postgres-array@2.0.0: {}
 
+  postgres-array@3.0.4: {}
+
   postgres-bytea@1.0.1: {}
 
   postgres-date@1.0.7: {}
@@ -8884,7 +8966,6 @@ snapshots:
   proto3-json-serializer@3.0.4:
     dependencies:
       protobufjs: 7.6.6
-    optional: true
 
   proto3-json-serializer@4.0.2:
     dependencies:
@@ -9061,7 +9142,6 @@ snapshots:
       inherits: 2.0.4
       string_decoder: 1.1.1
       util-deprecate: 1.0.2
-    optional: true
 
   readdirp@4.1.2: {}
 
@@ -9144,7 +9224,6 @@ snapshots:
       teeny-request: 10.1.4
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   retry-request@9.0.1:
     dependencies:
@@ -9162,7 +9241,6 @@ snapshots:
   rimraf@5.0.10:
     dependencies:
       glob: 10.5.0
-    optional: true
 
   rollup@4.63.1:
     dependencies:
@@ -9331,10 +9409,8 @@ snapshots:
   stream-events@1.0.5:
     dependencies:
       stubs: 3.0.0
-    optional: true
 
-  stream-shift@1.0.3:
-    optional: true
+  stream-shift@1.0.3: {}
 
   streamsearch@1.1.0: {}
 
@@ -9351,7 +9427,6 @@ snapshots:
       eastasianwidth: 0.2.0
       emoji-regex: 9.2.2
       strip-ansi: 7.2.0
-    optional: true
 
   string_decoder@1.1.1:
     dependencies:
@@ -9369,7 +9444,6 @@ snapshots:
   strip-ansi@7.2.0:
     dependencies:
       ansi-regex: 6.3.0
-    optional: true
 
   strip-final-newline@4.0.0: {}
 
@@ -9380,8 +9454,7 @@ snapshots:
       anynum: 1.0.1
     optional: true
 
-  stubs@3.0.0:
-    optional: true
+  stubs@3.0.0: {}
 
   style-to-js@1.1.21:
     dependencies:
@@ -9414,7 +9487,6 @@ snapshots:
       stream-events: 1.0.5
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   teeny-request@11.0.1:
     dependencies:
@@ -9555,6 +9627,8 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
+  url-template@2.0.8: {}
+
   use-callback-ref@1.3.3(@types/react@19.3.0)(react@19.1.0):
     dependencies:
       react: 19.1.0
@@ -9669,7 +9743,6 @@ snapshots:
       ansi-styles: 6.2.3
       string-width: 5.1.2
       strip-ansi: 7.2.0
-    optional: true
 
   wrappy@1.0.2: {}
 

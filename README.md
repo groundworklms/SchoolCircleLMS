@@ -36,12 +36,19 @@ learns.
 ```bash
 pnpm install
 pnpm run db:generate
+pnpm run db:deploy          # apply committed migrations to the confirmed dev database
+NODE_ENV=development ALLOW_DEMO_SEED=true pnpm run db:seed # isolated demo fixtures only
 pnpm run dev
 ```
 
 The server binds to `0.0.0.0` and uses `$PORT` when supplied (default `3000`). Set
 `DATABASE_URL` for the existing Postgres database. Database migrations are owned by the API/data
 lane; this root app does not replace or push the schema.
+
+**Cloud and edge:** Cloud SQL PostgreSQL in the cloud, local PostgreSQL on the
+hardware, with the same Prisma schema and a `DATABASE_URL` change. Data is not
+automatically synchronized. See [cloud/local database setup](docs/CLOUD_POSTGRES.md)
+for secure credentials, migrations, safe seeding, and the approval/rollout checklist.
 
 ## The learning loop (`/learn`, `/teach`, `/api/learning`)
 
