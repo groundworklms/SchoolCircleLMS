@@ -8,6 +8,7 @@ const REPO = process.env.GITHUB_FEEDBACK_REPO || 'groundworklms/SchoolCircleLMS'
 const TYPES = {
   bug: ['bug', 'qa'],
   enhancement: ['enhancement', 'qa'],
+  idea: ['enhancement', 'qa'],
   question: ['question', 'qa'],
 };
 
@@ -41,6 +42,7 @@ export async function POST(req) {
     '',
     '| | |',
     '|---|---|',
+    `| Where | ${ctx.where || '?'} |`,
     `| URL | ${ctx.url || '?'} |`,
     `| Build | ${ctx.build || 'unknown'} |`,
     `| Viewport | ${ctx.viewport || '?'} |`,
