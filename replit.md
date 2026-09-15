@@ -40,7 +40,7 @@ Imported SchoolCircle learning platform and hackathon planning board.
 ## User preferences
 
 - Git work must stay on `replit/port`. Do not commit or push to the GitHub remote's main branch.
-- Keep this port current with GitHub: fetch and compare the agreed upstream branch before further implementation or preparing a push. Until another branch is confirmed, compare against `origin/main`; do not silently incorporate collaborators' unmerged feature branches. Reconcile source changes into the ported paths rather than blindly pulling the Next.js layout over the workspace.
+- Keep this port current with GitHub `origin/main` (user-confirmed: merged team changes only): fetch and compare before further implementation or preparing a push. Do not incorporate collaborators' unmerged feature branches. Reconcile source changes into the ported paths rather than blindly pulling the Next.js layout over the workspace. This is a development workflow, not automatic background synchronization.
 - Preserve the imported routes, styling, and grounding/citation logic exactly; collaborators are actively editing the hackathon source on GitHub. Limit migration changes to runtime adapters and workspace wiring.
 
 ## Gotchas
