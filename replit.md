@@ -40,6 +40,7 @@ Imported SchoolCircle learning platform and hackathon planning board.
 - `/prototype` and its existing nested routes: student and instructor learning-platform prototype.
 - `/learn` and `/teach`: API-backed learning and instructor workflows; model-backed operations explicitly report unavailable until their providers are configured.
 - Merged Firebase sign-in is preserved, with ID tokens verified server-side and roles read from Prisma. Replit OIDC remains an alternative. Public Firebase client configuration comes from environment settings; no client may assign an instructor role.
+- Temporary hosted-model verification is user-approved for public test material only. Keep it separate from production/self-hosted provider settings and remove temporary verification configuration afterward; hosted evidence does not prove offline Orin operation.
 
 ## User preferences
 

@@ -1,5 +1,14 @@
 # Arsenal verification matrix
 
+## Hosted verification setup blocker
+
+The user approved temporary hosted-model verification with public test material.
+The documented Replit-managed OpenAI provisioning operation was unavailable in
+both the task runner and a delegated setup context. Secure configuration checks
+also confirmed that no managed OpenAI/OpenRouter credentials were provisioned.
+No hosted model requests ran. This is a setup blocker, not model-backed workflow
+evidence; the remaining verification is still incomplete.
+
 ## Latest host verification
 
 After rebasing `replit/port` onto merged `origin/main` and reconciling Firebase
