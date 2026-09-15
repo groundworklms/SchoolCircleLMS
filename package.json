@@ -17,6 +17,7 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.1",
     "@prisma/client": "^6.3.0",
     "firebase": "^12.19.0",
     "firebase-admin": "^14.4.0",
