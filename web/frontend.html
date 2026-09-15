@@ -861,6 +861,76 @@ body{background:var(--p-bg)}
 .btnpair{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.8rem}
 .btnpair .btn{justify-content:center}
 .mc-day.picked{box-shadow:inset 0 0 0 1.5px var(--p-accent)}
+
+/* ===== instructor Assignments: class groups + grading drawer ===== */
+.asg-class{margin-bottom:1rem;overflow:hidden}
+.asg-class>.disc-h{padding:1rem 1.2rem}
+.asg-class>.disc-h>.cwho{flex:1}
+.asg-meter{width:9rem;display:flex;flex-direction:column;gap:.3rem;flex:none}
+.asg-meter small{font-size:.74rem;color:var(--p-faint)}
+.asg-item{border-top:.5px solid var(--p-border)}
+.asg-ih{display:flex;align-items:center;gap:.75rem;padding:.75rem 1.2rem;flex-wrap:wrap;background:var(--p-bg)}
+.asg-ih>.cwho{flex:1;min-width:12rem}
+.asg-ih>.cwho b{white-space:normal}
+.asg-actions{display:flex;gap:.4rem;flex-wrap:wrap}
+.asg-row{display:flex;align-items:center;gap:.75rem;width:100%;border:none;border-top:.5px solid var(--p-border-soft);background:none;font:inherit;color:inherit;text-align:left;padding:.6rem 1.2rem .6rem 1.35rem;cursor:pointer;transition:background-color var(--dur) var(--ease)}
+.asg-row:hover,.asg-row:focus-visible{background:var(--acc-50);outline:none}
+.asg-row>.cwho{flex:1}
+.asg-row.done>.cwho b{color:var(--p-dim)}
+.asg-score{font-weight:700;font-size:.9em;min-width:3.4rem;text-align:right}
+.asg-go{display:inline-flex;align-items:center;justify-content:flex-end;gap:.3rem;min-width:4.4rem;font-size:.82em;font-weight:600;color:var(--p-accent);opacity:0;transform:translateX(-4px);transition:opacity var(--dur) var(--ease),transform var(--dur) var(--ease)}
+.asg-row:hover .asg-go,.asg-row:focus-visible .asg-go{opacity:1;transform:none}
+.av.solo{margin-left:0;flex:none;box-shadow:none}
+
+/* grading drawer: slides in from the right on the modal token (400ms in-out), exits faster */
+.drawer-bg{position:fixed;inset:0;z-index:94;background:rgba(20,8,12,.28);animation:fadein var(--dur) var(--ease) both}
+.drawer-bg.closing{animation:fadeout var(--dur-exit) var(--ease) both}
+@keyframes fadeout{to{opacity:0}}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:min(34rem,100vw);background:var(--p-surface);box-shadow:-18px 0 44px rgba(0,0,0,.14);animation:drawin var(--dur-modal) var(--ease-io) both}
+.drawer-bg.closing .drawer{animation:drawout var(--dur-exit) var(--ease) both}
+@keyframes drawin{from{transform:translateX(100%)}}
+@keyframes drawout{to{transform:translateX(100%)}}
+.dr-body{height:100%;display:flex;flex-direction:column}
+.dr-h{display:flex;align-items:center;gap:.6rem;padding:.9rem 1.2rem .4rem}
+.dr-crumb{flex:1;min-width:0;font-size:.8rem;color:var(--p-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-crumb b{color:var(--p-dim);font-weight:600}
+.dr-who{display:flex;align-items:center;gap:.7rem;padding:.3rem 1.2rem .95rem;border-bottom:.5px solid var(--p-border)}
+.dr-who .av.solo{width:2.5rem;height:2.5rem;font-size:.72rem}
+.dr-who>.cwho{flex:1}.dr-who>.cwho b{font-size:1.02rem}
+.dr-scroll{flex:1;min-height:0;overflow-y:auto;padding:0 1.2rem 1rem}
+.dr-sec{padding:1rem 0;border-bottom:.5px solid var(--p-border)}
+.dr-sec:last-child{border-bottom:none}
+.dr-sec h4{margin:0 0 .65rem;font-size:.85rem;font-weight:600;color:var(--p-dim)}
+.subfile{display:flex;align-items:center;gap:.6rem;padding:.5rem .5rem .5rem .75rem;border-radius:11px;background:var(--p-bg)}
+.subfile>.cwho{flex:1}.subfile>.i{color:var(--p-dim)}
+.subprev{margin-top:.6rem;border-radius:10px;box-shadow:inset 0 0 0 .5px var(--p-border);padding:1rem 1.1rem .8rem;display:flex;flex-direction:column;gap:.5rem;background:#fff}
+.subprev i{display:block;height:.45rem;border-radius:4px;background:var(--p-surface-2)}
+.subprev .cap{font-size:.74rem;color:var(--p-faint);margin-top:.35rem}
+.crit{padding:.6rem 0}
+.crit+.crit{border-top:.5px dashed var(--p-border)}
+.crit-h{display:flex;justify-content:space-between;gap:.8rem;font-size:.9rem;margin-bottom:.45rem}
+.crit-h b{font-weight:600}.crit-h span{color:var(--p-faint);font-weight:600;white-space:nowrap}
+.lvls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:3px;border-radius:12px;background:rgba(0,0,0,.05)}
+.lvl{border:none;background:none;border-radius:9px;padding:.42rem .25rem;font:inherit;font-size:.78rem;font-weight:600;color:var(--p-dim);cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.2;transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease),box-shadow var(--dur) var(--ease),transform var(--dur-press) var(--ease)}
+.lvl small{font-weight:500;color:var(--p-faint);font-size:.7rem}
+.lvl:hover{color:var(--p-text)}.lvl:active{transform:scale(.96)}
+.lvl.on{background:var(--p-surface);color:var(--p-accent);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.lvl.on small{color:var(--p-accent)}
+.crit-d{margin:.45rem .1rem 0;font-size:.8rem;color:var(--p-dim);line-height:1.45;animation:xfade var(--dur) var(--ease) both}
+.dr-sec textarea{min-height:6rem;font-family:var(--sans);font-size:.9rem}
+.dr-sec .chips{margin-bottom:.55rem}
+.dr-f{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;padding:.75rem 1.2rem calc(.8rem + env(safe-area-inset-bottom,0px));border-top:.5px solid var(--p-border);background:var(--p-surface)}
+.dr-score{display:flex;flex-direction:column;gap:.1rem}
+.dr-score>small{font-size:.72rem;color:var(--p-faint)}
+.dr-score .row{display:flex;align-items:baseline;gap:.35rem}
+.dr-score input{width:4.8rem;height:2.3rem;font-size:1.05rem;font-weight:700;text-align:right;padding:0 .5rem}
+.dr-nav{display:flex;align-items:center;gap:.3rem}
+.iconbtn:disabled{opacity:.4;cursor:default;transform:none}
+@media(max-width:760px){.asg-meter{display:none}.asg-row .tag.w,.asg-go{display:none}.drawer{width:100vw}.dr-f .btn{flex:1;justify-content:center}}
+
+/* notifications move out from under the drawer's footer while grading */
+body:has(#drawer:not([hidden])) .ntf-stack{right:calc(min(34rem,100vw) + 1.3rem)}
+@media(max-width:900px){body:has(#drawer:not([hidden])) .ntf-stack{right:.8rem;left:.8rem;top:.8rem;bottom:auto;align-items:stretch}body:has(#drawer:not([hidden])) .ntf{width:auto}}
 </style>
 </head>
 <body>
@@ -1031,7 +1101,7 @@ const MATERIALS = [
 ];
 
 /* recent instructor activity */
-const FEED = [['g', 'Generated MCPP questions: 7 pending review', '2m'], ['', 'PFC Nguyen submitted Grouping analysis', '1h'], ['w', '3 students below 70% in Marksmanship', '3h'], ['g', 'SCORM package exported to MarineNet', 'yesterday']];
+const FEED = [['g', 'Generated MCPP questions: 7 pending in the Test Bank', '2m'], ['', 'PFC Nguyen submitted Grouping analysis', '1h'], ['w', '3 students below 70% in Marksmanship', '3h'], ['g', 'SCORM package exported to MarineNet', 'yesterday']];
 
 /* ---------- derived helpers ---------- */
 const TYPE_LABEL = { assignment: 'Assignment', quiz: 'Quiz', exam: 'Exam' };
@@ -1068,14 +1138,16 @@ const letter = p => LETTERS.find(l => p >= l[0]);
 function hash(s) { let h = 2166136261; for (const ch of s) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967295; }
 const LAST = ['Rivera', 'Nguyen', 'Doe', 'Ahmadi', 'Boyd', 'Castillo', 'Okafor', 'Brennan', 'Tran', 'Walsh', 'Delgado', 'Kim', 'Harper', 'Yazzie', 'Morales', 'Singh', 'Foster', 'Novak', 'Reyes', 'Obi', 'Lindqvist', 'Park', 'Mendez', 'Chavez', 'Duarte', 'Hollis'];
 const RANKS = ['Cpl', 'LCpl', 'LCpl', 'PFC', 'PFC', 'Pvt', 'Sgt'];
+const GRADES = {};   // grades returned from the instructor Assignments tab, key "itemId|student"
 const ROSTERS = {};
 function roster(c) {
   if (ROSTERS[c.id]) return ROSTERS[c.id];
   const list = [];
   for (let i = 0; i < c.students; i++) {
-    const name = i === 0 ? 'Cpl Rivera' : RANKS[Math.floor(hash(c.id + i + 'r') * RANKS.length)] + ' ' + LAST[(i * 7 + (c.id === 'mcpp' ? 5 : 0)) % LAST.length];
+    const name = i === 0 ? 'Cpl Rivera' : RANKS[Math.floor(hash(c.id + i + 'r') * RANKS.length)] + ' ' + LAST.filter(n => n !== 'Rivera')[(i * 7 + (c.id === 'mcpp' ? 5 : 0)) % (LAST.length - 1)];   // only the real student is a Rivera
     const ability = i === 0 ? null : .55 + hash(c.id + name) * .42;
     const scoreOf = it => {
+      const g = GRADES[it.id + '|' + name]; if (g) return g.score;
       if (i === 0) return it.score;                       // Rivera = the student view's own scores
       if (it.issued > 0 || it.due > 0) return null;       // not graded yet
       if (hash(name + it.id + 'm') < .06) return null;     // a few pieces of missing work
@@ -1136,10 +1208,10 @@ const tag = (tone, label) => `<span class="tag ${tone}"><i class="tdot"></i>${es
 /* ---------- state + routing ---------- */
 const NAV = {
   student: [{ id: 'sdash', label: 'Dashboard', ico: 'dash' }, { id: 'scourse', label: 'Course', ico: 'book' }, { id: 'scal', label: 'Calendar', ico: 'cal' }, { id: 'sassist', label: 'Study Assistant', ico: 'assist' }],
-  instructor: [{ id: 'dash', label: 'Dashboard', ico: 'dash' }, { id: 'build', label: 'Course Builder', ico: 'build' }, { id: 'review', label: 'Review', ico: 'review', badge: () => REVQ.filter(q => !q.done).length || null }, { id: 'rubrics', label: 'Rubrics', ico: 'rubric' }, { id: 'progress', label: 'Class Progress', ico: 'chart' }, { id: 'aar', label: 'Course AAR', ico: 'aar' }],
+  instructor: [{ id: 'dash', label: 'Dashboard', ico: 'dash' }, { id: 'assign', label: 'Assignments', ico: 'inbox', badge: () => toGradeCount() || null }, { id: 'build', label: 'Course Builder', ico: 'build' }, { id: 'testbank', label: 'Test Bank', ico: 'review', badge: () => REVQ.filter(q => !q.done).length || null }, { id: 'rubrics', label: 'Rubrics', ico: 'rubric' }, { id: 'progress', label: 'Class Progress', ico: 'chart' }, { id: 'aar', label: 'Course AAR', ico: 'aar' }],
 };
 const USER = { instructor: { av: 'SW', name: 'SSgt White', role: 'Instructor' }, student: { av: 'CR', name: 'Cpl Rivera', role: 'Student' } };
-const USES = { build: 'Quarry · Anchor · Coursewright · HHEM', review: 'Coursewright · Cartridge · human review', rubrics: 'Rubricon · Anchor', progress: 'Sextant', aar: 'Hotwash · Sextant', scourse: 'Coursewright · Sextant', sassist: 'Sourcerer · Anchor · Understudy', scal: 'Cadence' };
+const USES = { build: 'Quarry · Anchor · Coursewright · HHEM', testbank: 'Coursewright · Cartridge · human review', assign: 'Rubricon · Sextant', rubrics: 'Rubricon · Anchor', progress: 'Sextant', aar: 'Hotwash · Sextant', scourse: 'Coursewright · Sextant', sassist: 'Sourcerer · Anchor · Understudy', scal: 'Cadence' };
 
 const state = {
   role: 'student', view: 'sdash', course: { student: 'tc322', instructor: 'tc322' },
@@ -1316,7 +1388,7 @@ function searchIndex() {
   const courses = stu ? COURSES.filter(c => state.enrolled.includes(c.id)) : COURSES;
   for (const c of courses) {
     for (const a of c.annexes) {
-      out.push({ kind: 'Annex', label: `Annex ${a.l}: ${a.title}`, sub: c.code, go: () => stu ? goItem(c.id, null, a.l) : setView('review', { patch: { rev: { ...state.rev, course: c.id, annex: a.l } } }) });
+      out.push({ kind: 'Annex', label: `Annex ${a.l}: ${a.title}`, sub: c.code, go: () => stu ? goItem(c.id, null, a.l) : setView('testbank', { patch: { rev: { ...state.rev, course: c.id, annex: a.l } } }) });
       for (const it of a.items) out.push({ kind: TYPE_LABEL[it.type], label: it.title, sub: `${c.code} · Annex ${a.l} · ${dueWord(it)} ${fmtDate(it.due)}`, extra: it.docs.join(' '), go: () => stu ? goItem(c.id, it.id, a.l) : goRubric(c.id, a.l, it.id) });
     }
     if (!stu) for (const s of roster(c)) out.push({ kind: 'Student', label: s.name, sub: `${c.code} · ${pct(s.pct)}`, go: () => { state.course.instructor = c.id; state.prog.open = new Set([s.name]); setView('progress'); } });
@@ -1439,7 +1511,7 @@ function runGen(){const btn=document.getElementById('genBtn'),steps=document.get
   const els=[...steps.querySelectorAll('.step')];let i=0;
   const tick=()=>{if(i>0)els[i-1].classList.replace('run','done');if(i<els.length){els[i].classList.add('run');i++;setTimeout(tick,850);}
     else{document.getElementById('genNote').textContent='Done — 6 items, pending your review.';btn.disabled=false;btn.textContent='Regenerate';
-      out.innerHTML='<div class="covsum"><span><b>4 / 4</b> objectives grounded</span><span><b>1</b> claim dropped (unsupported)</span><span>every item cited</span></div><div class="label">Generated course — all pending review</div><div class="tree">'+TREE.map(mo=>`<div class="mod"><div class="mod-h"><span class="mod-letter">${mo.m}</span>${esc(mo.title)}</div><div class="mod-items">${mo.items.map(it=>`<div class="li"><span class="ik">${esc(it.k)}</span><span>${esc(it.h)}</span><span class="cite">${esc(it.cite)}</span></div>`).join('')}</div></div>`).join('')+'</div><div class="btnrow"><button class="btn" onclick="setView(\'review\')">Send to review →</button><span class="note">Nothing publishes until you ratify it.</span></div>';}};
+      out.innerHTML='<div class="covsum"><span><b>4 / 4</b> objectives grounded</span><span><b>1</b> claim dropped (unsupported)</span><span>every item cited</span></div><div class="label">Generated course — all pending review</div><div class="tree">'+TREE.map(mo=>`<div class="mod"><div class="mod-h"><span class="mod-letter">${mo.m}</span>${esc(mo.title)}</div><div class="mod-items">${mo.items.map(it=>`<div class="li"><span class="ik">${esc(it.k)}</span><span>${esc(it.h)}</span><span class="cite">${esc(it.cite)}</span></div>`).join('')}</div></div>`).join('')+'</div><div class="btnrow"><button class="btn" onclick="setView(\'testbank\')">Send to Test Bank →</button><span class="note">Nothing publishes until you ratify it.</span></div>';}};
   tick();}
 
 const ASK={
@@ -1735,7 +1807,7 @@ function itemDisc(c, a, it) {
     <button class="disc-h" aria-expanded="${open}" onclick="toggleDisc('${key}',this)">${kico(it.type)}<span class="it-t"><b>${esc(it.title)}</b><small>${TYPE_LABEL[it.type]} · ${dueWord(it)} ${fmtDate(it.due)} · ${it.pts} pts</small></span>
       ${it.score != null ? `<span class="tnum" style="font-weight:700;color:${toneFor(it.score / it.pts * 100)}">${it.score}/${it.pts}</span>` : ''}${tag(s.tone, s.label)}${ic('chev', 'chev')}</button>
     <div class="disc-b"><div><div class="it-body">
-      <div><p>${esc(it.desc)}</p>
+      <div><p>${esc(it.desc)}</p>${it.feedback ? `<div class="qa" style="margin:0 0 .75rem"><b>Feedback from ${esc(c.instructor)}</b>${esc(it.feedback)}</div>` : ''}
         <dl class="kv"><dt>Issued</dt><dd>${fmtDate(it.issued)}</dd><dt>${dueWord(it)}</dt><dd>${fmtDate(it.due)} (${rel(it.due).toLowerCase()})</dd><dt>Points</dt><dd>${it.pts}</dd><dt>Graded on</dt><dd>${it.crit.map(esc).join(' · ')}</dd></dl>
         <div class="btnrow" style="margin-top:.85rem">${actions}</div></div>
       <div><div class="docs-h">Documents required</div>${it.docs.map(d => `<div class="doc">${ic('file')}<span>${esc(d)}</span><button onclick="openDocByName('${jsq(d)}')" title="Open" aria-label="Open ${esc(d)}">${ic('arrow', 'sm')}</button><button onclick="toast('Downloaded ${jsq(d)}')" title="Download" aria-label="Download ${esc(d)}">${ic('download', 'sm')}</button></div>`).join('')}</div>
@@ -1926,12 +1998,12 @@ V.dash = () => {
   const below = R.filter(s => s.pct != null && s.pct < 70).length;
   const w = n => (n / R.length * 100).toFixed(1) + '%';
   return `
-  <div class="pagehead"><h1>${greeting()}, SSgt White</h1><p>${esc(c.name)} · ${esc(c.section)} · week ${c.week} of ${c.weeks}${pending ? ` · <b style="color:var(--p-critical)">${pending} questions</b> waiting on your review` : ''}</p></div>
+  <div class="pagehead"><h1>${greeting()}, SSgt White</h1><p>${esc(c.name)} · ${esc(c.section)} · week ${c.week} of ${c.weeks}${pending ? ` · <b style="color:var(--p-critical)">${pending} questions</b> waiting in the Test Bank` : ''}</p></div>
   <section class="lead major" aria-label="Current assignment">
     <div class="lead-top">
       <div style="flex:1;min-width:14rem"><div class="lead-k">Current assignment · Annex ${a.l}: ${esc(a.title)}</div><h2>${esc(cur.title)}</h2>
         <div class="sub">${TYPE_LABEL[cur.type]} · issued ${fmtDate(cur.issued)} · ${dueWord(cur).toLowerCase()} ${fmtDate(cur.due)} (${rel(cur.due).toLowerCase()}) · ${cur.pts} pts</div></div>
-      <div class="btnrow" style="margin:0"><button class="btn sm ghost press" onclick="goRubric('${c.id}','${a.l}','${cur.id}')">${ic('rubric')} Rubric</button><button class="btn sm press" onclick="toast('Reminder sent to ${notStarted} students who haven\\'t started')" ${notStarted ? '' : 'disabled'}>Nudge ${notStarted} not started</button></div>
+      <div class="btnrow" style="margin:0">${sub ? `<button class="btn sm ghost press" onclick="goGradeItem('${c.id}','${cur.id}')">${ic('inbox')} Grade submissions</button>` : ''}<button class="btn sm ghost press" onclick="goRubric('${c.id}','${a.l}','${cur.id}')">${ic('rubric')} Rubric</button><button class="btn sm press" onclick="toast('Reminder sent to ${notStarted} students who haven\\'t started')" ${notStarted ? '' : 'disabled'}>Nudge ${notStarted} not started</button></div>
     </div>
     <div class="stack" role="img" aria-label="${sub} submitted, ${started} in progress, ${notStarted} not started"><span style="width:${w(sub)};background:var(--p-good)"></span><span style="width:${w(started)};background:var(--p-warning)"></span><span style="width:${w(notStarted)};background:rgba(0,0,0,.14)"></span></div>
     <div class="slegend"><span><i style="background:var(--p-good)"></i>${sub} submitted</span><span><i style="background:var(--p-warning)"></i>${started} in progress</span><span><i style="background:rgba(0,0,0,.2)"></i>${notStarted} not started</span></div>
@@ -1940,7 +2012,7 @@ V.dash = () => {
   <div class="bento">
     <div class="itile"><div class="tilelab">Students on assignment</div><div class="tileval tnum">${sub + started}<small>of ${R.length}</small></div><div class="tilenote">${sub} submitted · ${started} working</div></div>
     <div class="itile"><div class="tilelab">Class average</div><div class="tileval tnum" style="color:${toneFor(avg)}">${pct(avg)}</div><div class="tilenote">${lastGraded ? `${esc(lastGraded.title)}: ${pct(itemAvg(R, lastGraded))}` : 'no grades yet'}</div></div>
-    <button class="itile" onclick="state.rev.course='${c.id}';state.rev.annex=null;setView('review')"><div class="tilelab">Pending review</div><div class="tileval warn tnum">${pending}</div><div class="tilenote">AI-drafted questions</div></button>
+    <button class="itile" onclick="state.rev.course='${c.id}';state.rev.annex=null;setView('testbank')"><div class="tilelab">Test Bank · pending</div><div class="tileval warn tnum">${pending}</div><div class="tilenote">AI-drafted questions</div></button>
     <button class="itile" onclick="state.prog.sort='low';setView('progress')"><div class="tilelab">Below 70%</div><div class="tileval crit tnum">${below}</div><div class="tilenote">open Class Progress</div></button>
   </div>
   <div class="dash-charts">${trendCard(c)}${rankCard(c)}</div>
@@ -1961,7 +2033,7 @@ V.dash = () => {
   </aside></div>`;
 };
 
-/* ---------- Review ---------- */
+/* ---------- Test Bank (AI-drafted questions awaiting approval) ---------- */
 const pendingIn = (cid, l) => REVQ.filter(q => !q.done && q.course === cid && (!l || q.annex === l)).length;
 function revSelection() {
   const r = state.rev;
@@ -1971,10 +2043,10 @@ function revSelection() {
   }
   return r;
 }
-V.review = () => {
+V.testbank = () => {
   revSelection();
   const total = REVQ.filter(q => !q.done).length;
-  return `<div class="pagehead"><h1>Review</h1><p>AI drafted it; you ratify it. Pick a course, then an annex. The counters under each course show how many questions are still pending.</p></div>
+  return `<div class="pagehead"><h1>Test Bank</h1><p>Every AI-drafted quiz and exam question, by course and annex. Nothing enters the bank until you approve it. The counters under each course show how many are still pending.</p></div>
   <div class="sectionbar"><span class="note"><b>${total}</b> pending across ${COURSES.length} courses</span><span class="grow"></span>
     <label class="note" for="revSort">Sort courses</label><select id="revSort" class="sel" style="width:auto;height:2.2rem;font-size:.85rem" onchange="state.rev.sort=this.value;swap('revGroups',revGroups())">
       <option value="course" ${state.rev.sort === 'course' ? 'selected' : ''}>By course name</option><option value="pending" ${state.rev.sort === 'pending' ? 'selected' : ''}>Most pending first</option></select></div>
@@ -2375,6 +2447,193 @@ function polishBoot() {
 }
 AFTER.sdash = () => annBind();
 AFTER.dash = () => trendBind();
+
+/* ============ instructor: Assignments — submissions grouped by class, graded in a side drawer ============ */
+IC.inbox = '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>';
+const GR_COMMENTS = ['Clear and well cited.', 'Cite the manual for each claim.', 'Good diagnosis; expand on the correction.', 'Let\'s talk before you resubmit.'];
+const asg = { status: 'todo', sort: 'oldest', q: '', closed: new Set() };
+const DRAFTS = {};
+let grading = null, gradingShown = null;
+
+/* submissions are derived from the rosters, so a student's own submit shows up here */
+function submissionsFor(c) {
+  const R = roster(c), out = [];
+  for (const it of allItems(c)) {
+    if (it.type !== 'assignment' || it.issued > 0) continue;
+    for (const s of R) {
+      const key = it.id + '|' + s.name, g = GRADES[key], closed = it.due < 0;
+      const genScore = closed ? s.scoreOf(it) : null;
+      const submitted = closed ? genScore != null : s.submittedNow(it);
+      if (!submitted && !g) continue;
+      const span = Math.max(1, Math.min(it.due, 0) - it.issued);
+      const at = s.name === 'Cpl Rivera' && !closed ? 0 : it.issued + Math.floor(hash(key + 'at') * (span + (closed ? 1.45 : 1)));
+      out.push({ key, c, it, s, at: Math.min(at, 0), late: at > it.due, graded: !!g || closed, score: g ? g.score : genScore, feedback: g ? g.feedback : '' });
+    }
+  }
+  return out;
+}
+const allSubs = () => COURSES.flatMap(submissionsFor);
+const toGradeCount = () => allSubs().filter(x => !x.graded).length;
+const findSub = key => { for (const c of COURSES) { const x = submissionsFor(c).find(y => y.key === key); if (x) return x; } return null; };
+const subFile = x => `${slug(x.it.title)}_${x.s.name.split(' ').pop()}.pdf`;
+const avatar1 = n => `<span class="av solo" style="--h:${Math.round(hash(n) * 360)}" aria-hidden="true">${esc(n.split(' ').pop().slice(0, 2).toUpperCase())}</span>`;
+
+function asgFiltered(c) {
+  let xs = submissionsFor(c).filter(x => asg.status === 'all' || (asg.status === 'todo' ? !x.graded : x.graded));
+  if (asg.q) xs = xs.filter(x => x.s.name.toLowerCase().includes(asg.q.toLowerCase()));
+  const last = x => x.s.name.split(' ').pop();
+  return xs.sort(asg.sort === 'newest' ? (p, q) => q.at - p.at : asg.sort === 'name' ? (p, q) => last(p).localeCompare(last(q)) : (p, q) => p.at - q.at);
+}
+/* assignment groups inside a class: most recently due first */
+function classGroups(c) {
+  const xs = asgFiltered(c);
+  return allItems(c).filter(it => it.type === 'assignment' && it.issued <= 0).sort((p, q) => q.due - p.due)
+    .map(it => ({ it, rows: xs.filter(x => x.it.id === it.id) })).filter(g => g.rows.length);
+}
+
+V.assign = () => {
+  const subs = allSubs(), todo = subs.filter(x => !x.graded).length, late = subs.filter(x => !x.graded && x.late).length;
+  return `<div class="pagehead"><h1>Assignments</h1><p>Every submitted assignment, grouped by the classes you teach. Open a submission to grade it against its rubric and return feedback.</p></div>
+  <div class="sectionbar">${pillHtml([['todo', `To grade · ${todo}`], ['graded', 'Graded'], ['all', 'All']], asg.status, 'setAsgStatus')}
+    ${late ? `<span class="note">${tag('c', `${late} late`)}</span>` : ''}<span class="grow"></span>
+    <label class="note" for="asgSort">Sort</label><select id="asgSort" class="sel" style="width:auto;height:2.3rem;font-size:.85rem" onchange="asg.sort=this.value;swap('asgList',asgList())">${[['oldest', 'Oldest submission first'], ['newest', 'Newest first'], ['name', 'Student A–Z']].map(([v, l]) => `<option value="${v}" ${asg.sort === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+    <input class="ti" style="width:12rem;height:2.3rem" placeholder="Filter students" aria-label="Filter students" value="${esc(asg.q)}" oninput="asg.q=this.value;document.getElementById('asgList').innerHTML=asgList()">
+  </div>
+  <div id="asgList">${asgList()}</div>`;
+};
+function asgList() {
+  return [...COURSES].sort((x, y) => x.name.localeCompare(y.name)).map(c => {
+    const all = submissionsFor(c), graded = all.filter(x => x.graded).length, todo = all.length - graded, open = !asg.closed.has(c.id), R = roster(c), groups = classGroups(c);
+    return `<section class="panel flush asg-class disc ${open ? 'open' : ''}" id="asg-${c.id}">
+      <button class="disc-h" aria-expanded="${open}" onclick="asgToggle('${c.id}',this)">${courseTile(c)}<span class="cwho"><b>${esc(c.name)}</b><small>${esc(c.code)} · ${esc(c.section)} · ${c.students} students</small></span>
+        <span class="asg-meter">${bar(all.length ? graded / all.length * 100 : 0, 'var(--p-good)')}<small class="tnum">${graded} of ${all.length} graded</small></span>${tag(todo ? 'w' : 'g', todo ? `${todo} to grade` : 'All graded')}${ic('chev', 'chev')}</button>
+      <div class="disc-b"><div>${groups.length ? groups.map(({ it, rows }) => {
+        const itSubs = all.filter(x => x.it.id === it.id), itTodo = itSubs.filter(x => !x.graded).sort((p, q) => p.at - q.at), notIn = R.length - itSubs.length;
+        return `<div class="asg-item" id="asgi-${it.id}">
+          <div class="asg-ih">${kico(it.type)}<span class="cwho"><b>${esc(it.title)}</b><small>Annex ${it.annex} · ${dueWord(it)} ${fmtDate(it.due)} (${rel(it.due).toLowerCase()}) · ${it.pts} pts · ${itSubs.length} of ${R.length} submitted</small></span>
+            <span class="asg-actions">${notIn > 0 && it.due >= 0 ? `<button class="btn sm ghost press" onclick="toast('Reminder sent to ${notIn} students who haven\\'t submitted')">Nudge ${notIn}</button>` : ''}<button class="btn sm ghost press" onclick="goRubric('${c.id}','${it.annex}','${it.id}')">${ic('rubric')} Rubric</button>${itTodo.length ? `<button class="btn sm press" onclick="openGrader('${itTodo[0].key}')">Grade ${itTodo.length}</button>` : ''}</span></div>
+          ${rows.map(asgRow).join('')}</div>`;
+      }).join('') : `<div class="empty">${asg.q ? 'No students match that filter.' : asg.status === 'todo' ? 'Nothing waiting to be graded in this class.' : 'No submissions here yet.'}</div>`}</div></div></section>`;
+  }).join('');
+}
+function asgRow(x) {
+  const p = x.score != null ? x.score / x.it.pts * 100 : null;
+  return `<button class="asg-row ${x.graded ? 'done' : ''}" onclick="openGrader('${x.key}')">${avatar1(x.s.name)}<span class="cwho"><b>${esc(x.s.name)}</b><small>Submitted ${rel(x.at).toLowerCase()} · ${esc(subFile(x))}</small></span>
+    ${x.late ? tag('c', 'Late') : ''}${x.graded ? `<span class="asg-score tnum" style="color:${toneFor(p)}">${x.score}/${x.it.pts}</span>` : ''}${tag(x.graded ? 'g' : 'w', x.graded ? 'Graded' : 'To grade')}<span class="asg-go">${x.graded ? 'Review' : 'Grade'}${ic('arrow', 'sm')}</span></button>`;
+}
+function setAsgStatus(btn, v) { slide(btn); asg.status = v; swap('asgList', asgList()); }
+function asgToggle(cid, btn) { const d = btn.closest('.disc'), open = !d.classList.contains('open'); d.classList.toggle('open', open); btn.setAttribute('aria-expanded', open); open ? asg.closed.delete(cid) : asg.closed.add(cid); }
+function goGradeItem(cid, itemId) {
+  asg.status = 'todo'; asg.q = ''; asg.closed.delete(cid); setView('assign');
+  setTimeout(() => { const el = document.getElementById('asgi-' + itemId); if (el) { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); el.classList.add('flash'); } }, 80);
+}
+function refreshAsg() {
+  renderNav();
+  if (state.view !== 'assign') return;
+  const y = window.scrollY, el = document.getElementById('asgList'); if (el) el.innerHTML = asgList();
+  const pb = document.querySelector('.sectionbar .spill button'); if (pb) pb.textContent = `To grade · ${toGradeCount()}`;
+  placePills(false); window.scrollTo(0, y);
+}
+
+/* ---------- grading drawer ---------- */
+function ensureDrawer() {
+  if (document.getElementById('drawer')) return;
+  document.body.insertAdjacentHTML('beforeend', `<div class="drawer-bg" id="drawer" hidden onclick="if(event.target===this)closeGrader()"><aside class="drawer" role="dialog" aria-modal="true" aria-label="Grade submission"><div id="grBody" class="dr-body"></div></aside></div>`);
+}
+function graderQueue(x) {
+  const q = classGroups(x.c).flatMap(g => g.rows);
+  return q.some(y => y.key === x.key) ? q : submissionsFor(x.c).sort((p, r) => p.at - r.at);
+}
+function draftOf(x) {
+  if (!DRAFTS[x.key]) { const g = GRADES[x.key]; DRAFTS[x.key] = { levels: g ? [...g.levels] : x.it.crit.map(() => null), fb: g ? g.feedback : '', score: x.graded ? x.score : null, manual: x.graded }; }
+  return DRAFTS[x.key];
+}
+const autoScore = (x, d) => d.levels.every(l => l != null) ? Math.min(x.it.pts, Math.round(d.levels.reduce((t, l) => t + rubricFor(x.it).levels[l][1], 0))) : null;
+function openGrader(key) {
+  ensureDrawer(); grading = key; renderGrader();
+  const d = document.getElementById('drawer'); d.hidden = false; d.classList.remove('closing');
+  setTimeout(() => { const f = document.querySelector('#grBody .lvl'); if (f) f.focus({ preventScroll: true }); }, 60);
+}
+function closeGrader() {
+  const d = document.getElementById('drawer'); if (!d || d.hidden) return;
+  saveDraftFields(); d.classList.add('closing'); grading = null; gradingShown = null;
+  setTimeout(() => { d.hidden = true; d.classList.remove('closing'); }, 240);
+}
+function saveDraftFields() {
+  if (!grading) return; const x = findSub(grading); if (!x) return; const d = draftOf(x);
+  const fb = document.getElementById('grFb'); if (fb) d.fb = fb.value;
+}
+function renderGrader() {
+  const x = findSub(grading); if (!x) { closeGrader(); return; }
+  const d = draftOf(x), r = rubricFor(x.it), q = graderQueue(x), idx = q.findIndex(y => y.key === x.key);
+  const score = d.manual ? d.score : autoScore(x, d), p = score != null && score !== '' ? score / x.it.pts * 100 : null;
+  const body = document.getElementById('grBody'), sc = body.querySelector('.dr-scroll'), keep = gradingShown === x.key && sc ? sc.scrollTop : 0;
+  const lines = [92, 100, 84, 96, 70, 100, 88, 60].map(w => `<i style="width:${w}%"></i>`).join('');
+  body.innerHTML = `
+    <div class="dr-h"><div class="dr-crumb">Assignments › ${esc(x.c.short)} › <b>${esc(x.it.title)}</b></div><button class="modal-x" onclick="closeGrader()" aria-label="Close">&times;</button></div>
+    <div class="dr-who">${avatar1(x.s.name)}<span class="cwho"><b>${esc(x.s.name)}</b><small>Submitted ${fmtDate(x.at)} (${rel(x.at).toLowerCase()})${x.late ? ' · late' : ''} · ${x.it.pts} pts</small></span>${x.late ? tag('c', 'Late') : ''}${tag(x.graded ? 'g' : 'w', x.graded ? 'Graded' : 'To grade')}</div>
+    <div class="dr-scroll">
+      <section class="dr-sec"><h4>Submission</h4>
+        <div class="subfile">${ic('file')}<span class="cwho"><b>${esc(subFile(x))}</b><small>PDF · 2 pages · ${esc(x.it.docs[0])}</small></span><button class="iconbtn press" onclick="toast('Downloaded ${jsq(subFile(x))}')" aria-label="Download submission">${ic('download')}</button></div>
+        <div class="subprev" aria-hidden="true"><i style="width:45%;height:.7rem;background:var(--acc-100)"></i>${lines}<span class="cap">Mock preview · the student's file opens here in the live platform</span></div>
+      </section>
+      <section class="dr-sec"><h4>Rubric <span class="muted" style="font-weight:400">· ${r.per} pts per criterion · pick a level</span></h4>
+        ${r.rows.map((row, ci) => { const lv = d.levels[ci]; return `<div class="crit"><div class="crit-h"><b>${esc(row.crit)}</b><span class="tnum">${lv != null ? r.levels[lv][1] : '—'} / ${r.levels[0][1]}</span></div>
+          <div class="lvls" role="radiogroup" aria-label="${esc(row.crit)}">${r.levels.map(([n, pts], li) => `<button role="radio" aria-checked="${lv === li}" class="lvl ${lv === li ? 'on' : ''}" onclick="setLevel(${ci},${li})">${n}<small>${pts}</small></button>`).join('')}</div>
+          ${lv != null ? `<p class="crit-d">${esc(row.cells[lv])}</p>` : ''}</div>`; }).join('')}
+      </section>
+      <section class="dr-sec"><h4>Feedback to ${esc(x.s.name)}</h4>
+        <div class="chips">${GR_COMMENTS.map((t, i) => `<span class="chip" role="button" tabindex="0" onclick="addComment(${i})">${esc(t)}</span>`).join('')}</div>
+        <textarea id="grFb" placeholder="Write feedback the student will see with their grade">${esc(d.fb)}</textarea>
+      </section>
+    </div>
+    <div class="dr-f">
+      <div class="dr-score"><small>Score</small><div class="row"><input id="grScore" class="ti tnum" type="number" min="0" max="${x.it.pts}" value="${score ?? ''}" aria-label="Score out of ${x.it.pts}" oninput="scoreInput(this.value)"><span class="note">/ ${x.it.pts}</span></div><small id="grPct" style="color:${toneFor(p)}">${p != null ? `${pct(p)} · ${letter(p)[1]}` : 'pick levels or type a score'}</small></div>
+      <span class="grow" style="flex:1"></span>
+      <div class="dr-nav"><button class="iconbtn press" onclick="grStep(-1)" aria-label="Previous submission" ${idx > 0 ? '' : 'disabled'}><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(90deg)">${IC.chev}</svg></button><span class="note tnum">${idx + 1} of ${q.length}</span><button class="iconbtn press" onclick="grStep(1)" aria-label="Next submission" ${idx < q.length - 1 ? '' : 'disabled'}><svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(-90deg)">${IC.chev}</svg></button></div>
+      <button class="btn press" onclick="returnGrade()">${x.graded ? 'Update grade' : 'Return to student'}</button>
+    </div>`;
+  const ns = body.querySelector('.dr-scroll'); ns.scrollTop = keep; gradingShown = x.key;
+}
+function setLevel(ci, li) {
+  saveDraftFields(); const x = findSub(grading), d = draftOf(x);
+  d.levels[ci] = d.levels[ci] === li ? null : li; d.manual = false; renderGrader();
+}
+function scoreInput(v) {
+  const x = findSub(grading), d = draftOf(x); d.manual = v !== ''; d.score = v === '' ? null : +v;
+  const p = v === '' ? null : +v / x.it.pts * 100, el = document.getElementById('grPct');
+  el.style.color = toneFor(p); el.textContent = p != null ? `${pct(p)} · ${letter(Math.max(0, p))[1]}` : 'pick levels or type a score';
+}
+function addComment(i) { const t = document.getElementById('grFb'); t.value = (t.value.trim() ? t.value.trim() + ' ' : '') + GR_COMMENTS[i]; t.focus(); saveDraftFields(); }
+function grStep(dir) {
+  saveDraftFields(); const x = findSub(grading), q = graderQueue(x), i = q.findIndex(y => y.key === x.key), n = q[i + dir];
+  if (n) { grading = n.key; renderGrader(); }
+}
+function returnGrade() {
+  saveDraftFields();
+  const x = findSub(grading), d = draftOf(x), raw = d.manual ? d.score : autoScore(x, d);
+  if (raw == null || isNaN(raw)) { notify({ tone: 'warning', title: 'Score needed', desc: 'Pick a level for every criterion, or type a score.', duration: 3200 }); return; }
+  const score = Math.max(0, Math.min(x.it.pts, Math.round(raw))), q = graderQueue(x), idx = q.findIndex(y => y.key === x.key);
+  const real = findItem(x.it.id).it;   // allItems() hands out copies; the student view reads the real item
+  const prev = GRADES[x.key] ? { ...GRADES[x.key] } : null, wasGraded = x.graded, origScore = real.score, origFb = real.feedback;
+  GRADES[x.key] = { score, feedback: d.fb.trim(), levels: [...d.levels] };
+  if (x.s.name === 'Cpl Rivera') { real.score = score; real.feedback = d.fb.trim(); }
+  delete ROSTERS[x.c.id]; delete DRAFTS[x.key];
+  refreshAsg();
+  notify({ tone: 'success', title: wasGraded ? 'Grade updated' : 'Grade returned', meta: x.s.name, desc: `${x.it.title}: ${score}/${x.it.pts} (${pct(score / x.it.pts * 100)})`, duration: 4200,
+    actions: [{ label: 'Undo', run: () => { if (prev) GRADES[x.key] = prev; else delete GRADES[x.key]; if (x.s.name === 'Cpl Rivera') { real.score = origScore; real.feedback = origFb; } delete ROSTERS[x.c.id]; refreshAsg(); if (grading) renderGrader(); toast('Grade undone'); } }] });
+  const next = [...q.slice(idx + 1), ...q.slice(0, idx)].map(y => findSub(y.key)).find(y => y && !y.graded);
+  if (next) { grading = next.key; renderGrader(); return; }
+  closeGrader();
+  if (!submissionsFor(x.c).some(y => !y.graded)) notify({ tone: 'success', title: `All caught up in ${x.c.short}`, desc: 'Every submitted assignment in this class has a grade.', burst: true, duration: 5200 });
+}
+document.addEventListener('keydown', e => {
+  const dr = document.getElementById('drawer'); if (!dr || dr.hidden) return;
+  if (e.key === 'Escape') { closeGrader(); return; }
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight' || e.key === 'j') grStep(1);
+  if (e.key === 'ArrowLeft' || e.key === 'k') grStep(-1);
+});
 
 
 /* ---- QA issue widget ---- */
