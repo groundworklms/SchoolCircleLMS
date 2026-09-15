@@ -999,6 +999,85 @@ button.av.more[aria-expanded="true"]{background:var(--p-accent);color:#fff}
 .csearch-opts{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap}
 @media(max-width:900px){.asg-sticky{margin-left:-1.1rem;margin-right:-1.1rem;padding-left:1.1rem;padding-right:1.1rem}}
 @media(max-width:760px){.asg-sticky{position:static;background:none;-webkit-backdrop-filter:none;backdrop-filter:none;border-bottom:none;margin:-.3rem 0 1rem;padding:0}.cb-label{min-width:0}.minisearch{min-width:0}.asg-sticky .classbar+.classbar{margin-top:.7rem}}
+
+/* ===== Assignments view modes: List (Display menu) · Queue · Gradebook ===== */
+.asg-toolbar{gap:.6rem}
+.spill.modes button{display:inline-flex;align-items:center;gap:.4rem}
+.spill.modes .i{width:.95rem;height:.95rem}
+.asg-q{width:12rem;height:2.3rem}
+#popDisplay{width:min(33rem,calc(100vw - 2rem));max-width:none}
+.disp-cols{display:grid;grid-template-columns:1fr 1fr;gap:0 .4rem}
+.disp-opt{justify-content:space-between}
+.disp-opt[aria-checked="true"] b{color:var(--p-accent)}
+.disp-dens{display:flex;align-items:center;justify-content:space-between;gap:.8rem;padding:.35rem .7rem .45rem}
+.dens{display:inline-flex;padding:3px;border-radius:980px;background:rgba(0,0,0,.055)}
+.dens button{border:none;background:none;font:inherit;font-size:.8rem;font-weight:600;color:var(--p-dim);padding:.3rem .85rem;border-radius:980px;cursor:pointer;transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+.dens button.on{background:var(--p-surface);color:var(--p-text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+/* compact density: more rows per screen */
+#asgList.compact .asg-row{padding-top:.3rem;padding-bottom:.3rem}
+#asgList.compact .asg-row .av.solo,#asgList.compact .asg-row .kico{width:1.45rem;height:1.45rem;font-size:.5rem;border-radius:7px}
+#asgList.compact .asg-row .av.solo{border-radius:50%}
+#asgList.compact .asg-row .kico .i{width:.75rem;height:.75rem}
+#asgList.compact .asg-row>.cwho small{display:none}
+#asgList.compact .asg-ih{padding-top:.45rem;padding-bottom:.45rem}
+#asgList.compact .asg-row .tag{font-size:.66rem}
+#asgList.compact .gb-cell{min-height:2rem}
+#asgList.compact table.gb .gb-stu{padding-top:.15rem;padding-bottom:.15rem}
+#asgList.compact .gb-stu-in .av.solo{width:1.3rem;height:1.3rem}
+.asg-flat>.asg-item:first-child{border-top:none}
+
+/* queue */
+.queue-hero{margin-bottom:1rem}
+.qh{display:flex;align-items:center;gap:.95rem;margin:.6rem 0 .95rem;flex-wrap:wrap}
+.qh .av.solo{width:3.1rem;height:3.1rem;font-size:.85rem}
+.qh>.cwho{flex:1;min-width:12rem}
+.qh>.cwho b{font-size:1.4rem;letter-spacing:-.02em;white-space:normal}
+.qh>.cwho small{font-size:.88rem;white-space:normal}
+.qwait{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.qwait b{font-size:1.55rem;letter-spacing:-.02em}.qwait small{font-size:.74rem;color:var(--p-faint)}
+.qprog{display:flex;flex-direction:column;gap:.35rem;margin-bottom:.95rem}
+.queue-hero .kbd{margin-left:.2rem}
+.qn{width:1.6rem;text-align:right;font-size:.8rem;font-weight:600;color:var(--p-faint);flex:none}
+.qempty{display:flex;flex-direction:column;align-items:center;gap:.35rem;padding:2.6rem 1.4rem;text-align:center}
+.qdone{width:3rem;height:3rem;border-radius:12px;background:var(--p-good);color:#fff;display:grid;place-items:center;animation:pop var(--dur-spring) var(--spring-tag) both}
+.qdone .i{width:1.5rem;height:1.5rem}
+
+/* gradebook */
+.gb-tools{display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;margin-bottom:.7rem}
+.gb-legend{display:flex;gap:1rem;flex-wrap:wrap;align-items:center;font-size:.8rem;color:var(--p-dim)}
+.gb-legend>span{display:inline-flex;align-items:center;gap:.35rem}
+.gb-legend small{color:var(--p-faint);font-size:.72rem}
+.gb-chip{font-size:.72rem;font-weight:600;border-radius:980px;padding:.12rem .52rem}
+.gb-chip.todo,.gb-cell.todo span{color:var(--p-accent);background:var(--p-accent-tint)}
+.gb-chip.miss,.gb-cell.miss span{color:var(--p-critical);background:var(--p-critical-tint)}
+.gb-wrap{overflow:auto;max-height:calc(100vh - var(--tb-h,3.95rem) - 10.5rem);min-height:18rem;background:var(--p-surface);border-radius:var(--p-radius);box-shadow:var(--p-shadow);overscroll-behavior:contain}
+table.gb{border-collapse:separate;border-spacing:0;font-size:.84rem;min-width:100%}
+table.gb th,table.gb td{border-bottom:.5px solid var(--p-border);border-right:.5px solid var(--p-border-soft);padding:0;white-space:nowrap}
+table.gb thead th{position:sticky;top:0;z-index:2;background:var(--p-surface);vertical-align:bottom;text-align:left;padding:.65rem .6rem .55rem;min-width:7.6rem;max-width:9.5rem;font-weight:500;box-shadow:0 .5px 0 var(--p-border)}
+table.gb thead th b{display:block;font-size:.8rem;font-weight:600;white-space:normal;line-height:1.25;max-height:2.55em;overflow:hidden}
+table.gb thead th small{display:block;font-size:.7rem;color:var(--p-faint);margin-top:.12rem}
+table.gb thead th .kico{width:1.45rem;height:1.45rem;border-radius:6px;margin-bottom:.35rem}
+table.gb thead th .kico .i{width:.75rem;height:.75rem}
+table.gb .gb-stu{position:sticky;left:0;z-index:1;background:var(--p-surface);text-align:left;min-width:12.5rem;max-width:12.5rem;padding:.35rem .7rem;box-shadow:.5px 0 0 var(--p-border)}
+table.gb thead .gb-stu{z-index:3;vertical-align:bottom;font-weight:600}
+table.gb thead .gb-stu small{font-weight:500}
+.gb-stu-in{display:flex;align-items:center;gap:.55rem;min-width:0}
+.gb-stu-in .av.solo{width:1.7rem;height:1.7rem;font-size:.55rem}
+.gb-stu-in .cwho b{font-size:.84rem}
+table.gb .hl{background:var(--acc-50)}
+table.gb thead th.hl{background:var(--acc-50);box-shadow:inset 0 -2px 0 var(--p-accent)}
+table.gb tbody tr:hover td,table.gb tbody tr:hover .gb-stu{background:#fbfafb}
+table.gb tbody tr:hover td.hl{background:var(--acc-100)}
+.gb-cell{display:flex;align-items:center;justify-content:center;gap:.05rem;width:100%;min-height:2.65rem;border:none;background:none;font:inherit;font-size:.84rem;color:inherit;padding:.2rem .4rem;font-variant-numeric:tabular-nums}
+.gb-cell small{color:var(--p-faint);font-size:.7rem}
+button.gb-cell{cursor:pointer;transition:background-color var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+button.gb-cell:hover,button.gb-cell:focus-visible{background:var(--acc-50);outline:none;box-shadow:inset 0 0 0 1.5px var(--p-accent)}
+.gb-cell.todo span,.gb-cell.miss span{font-size:.72rem;font-weight:600;border-radius:980px;padding:.12rem .52rem}
+.gb-cell.none{color:var(--p-faint)}
+.gb-card .card-head{align-items:center}
+@media(max-width:900px){.asg-q{width:100%;order:9}}
+@media(max-width:760px){.disp-cols{grid-template-columns:1fr}.gb-wrap{max-height:70vh}.qh>.cwho b{font-size:1.15rem}.spill.modes .i{display:none}table.gb .gb-stu{min-width:9.5rem;max-width:9.5rem}}
 </style>
 </head>
 <body>
@@ -2881,7 +2960,8 @@ function pickClass(id) {
   closeDialog();
   if (state.view !== 'assign') { asg.cls = id; setView('assign'); return; }
   const btn = [...document.querySelectorAll('#cbTrack .spill button')].find(b => b.querySelector(`.cb-ct[data-c="${id}"]`));
-  if (btn && !btn.classList.contains('on')) setAsgClass(btn, id); else cbReveal(btn, true);
+  // choosing a class always shows the whole class, even if it was already selected with an assignment filter on
+  if (btn && (!btn.classList.contains('on') || asg.item !== 'all')) setAsgClass(btn, id); else cbReveal(btn, true);
 }
 
 /* ---------- assignment search dialog ---------- */
@@ -2932,6 +3012,271 @@ function pickItem(id) {
   const btn = [...document.querySelectorAll('#ibTrack .spill button')].find(b => b.querySelector(`.ib-ct[data-i="${id}"]`));
   if (btn && !btn.classList.contains('on')) setAsgItem(btn, id); else cbReveal(btn, true);
 }
+
+/* ============ Assignments: view modes (List · Queue · Gradebook) + Display menu ============
+   Loaded after assign.js; the handlers redefined here make every filter change render the active view. */
+IC.list = '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>';
+IC.queue = '<path d="M3 6h11M3 12h7M3 18h5"/><path d="M17 8v11M13.5 15.5 17 19l3.5-3.5"/>';
+IC.grid = '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>';
+IC.sliders = '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>';
+Object.assign(asg, { mode: 'list', group: 'class', density: 'comfortable', gsort: 'name', session: 0, skip: new Set() });
+
+const SORTS = [['oldest', 'Oldest submission first'], ['newest', 'Newest first'], ['due', 'Due soonest'], ['waiting', 'Waiting longest'], ['most', 'Most to grade'], ['lowest', 'Lowest score first'], ['name', 'Student A–Z']];
+const GROUPS = [['class', 'Class › assignment'], ['assignment', 'Assignment'], ['student', 'Student'], ['due', 'Due date'], ['annex', 'Annex'], ['none', 'No grouping']];
+const GSORTS = [['name', 'Last name'], ['low', 'Lowest grade first'], ['missing', 'Most missing work']];
+const lastOf = x => x.s.name.split(' ').pop();
+
+function rowCmp() {
+  switch (asg.sort) {
+    case 'newest': return (p, q) => q.at - p.at;
+    case 'name': return (p, q) => lastOf(p).localeCompare(lastOf(q)) || p.it.due - q.it.due;
+    case 'due': return (p, q) => p.it.due - q.it.due || p.at - q.at;
+    case 'waiting': return (p, q) => (p.graded - q.graded) || (q.late - p.late) || p.at - q.at;
+    case 'lowest': return (p, q) => (p.score == null ? 9 : p.score / p.it.pts) - (q.score == null ? 9 : q.score / q.it.pts);
+    default: return (p, q) => p.at - q.at;
+  }
+}
+/* submissions inside the current class / assignment / status / student filters, in the chosen sort */
+function scopedSubs({ status = asg.status } = {}) {
+  let xs = COURSES.filter(c => asg.cls === 'all' || c.id === asg.cls).flatMap(submissionsFor);
+  if (asg.item !== 'all') xs = xs.filter(x => x.it.id === asg.item);
+  if (status !== 'all') xs = xs.filter(x => status === 'todo' ? !x.graded : x.graded);
+  if (asg.q) xs = xs.filter(x => x.s.name.toLowerCase().includes(asg.q.toLowerCase()));
+  return xs.sort(rowCmp());
+}
+function asgFiltered(c) { return scopedSubs().filter(x => x.c.id === c.id); }
+function classGroups(c) {
+  const xs = asgFiltered(c), todo = g => g.rows.filter(x => !x.graded).length;
+  const groups = allItems(c).filter(it => it.type === 'assignment' && it.issued <= 0 && (asg.item === 'all' || it.id === asg.item))
+    .map(it => ({ it, rows: xs.filter(x => x.it.id === it.id) })).filter(g => g.rows.length);
+  return groups.sort(asg.sort === 'due' ? (a, b) => a.it.due - b.it.due
+    : asg.sort === 'most' ? (a, b) => todo(b) - todo(a) || a.it.due - b.it.due
+    : asg.sort === 'waiting' ? (a, b) => Math.min(...a.rows.map(x => x.at)) - Math.min(...b.rows.map(x => x.at))
+    : (a, b) => b.it.due - a.it.due);
+}
+const asgBody = () => asg.mode === 'queue' ? queueView() : asg.mode === 'grid' ? gridView() : asgList();
+function asgList() { return asg.group === 'class' ? classList() : flatList(); }
+
+V.assign = () => {
+  const subs = allSubs(), todo = subs.filter(x => !x.graded).length, late = subs.filter(x => !x.graded && x.late).length;
+  const chev = r => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(${r}deg)">${IC.chev}</svg>`;
+  return `<div class="pagehead"><h1>Assignments</h1><p>Every submitted assignment from the classes you teach. Work through it as a list, a priority queue, or a gradebook grid, then grade against the rubric.</p></div>
+  <div class="sectionbar asg-toolbar">
+    ${pillHtml([['list', `${ic('list')}List`], ['queue', `${ic('queue')}Queue`], ['grid', `${ic('grid')}Gradebook`]], asg.mode, 'setAsgMode', 'modes')}
+    <span id="asgStatusWrap" ${asg.mode === 'list' ? '' : 'hidden'}>${pillHtml([['todo', `To grade · ${todo}`], ['graded', 'Graded'], ['all', 'All']], asg.status, 'setAsgStatus')}</span>
+    ${late ? `<span class="note">${tag('c', `${late} late`)}</span>` : ''}<span class="grow"></span>
+    <div class="tb-wrap" id="displayWrap" ${asg.mode === 'queue' ? 'hidden' : ''}><button class="tb-btn press" aria-haspopup="true" aria-expanded="false" aria-controls="popDisplay" onclick="togglePop('popDisplay',event)">${ic('sliders')}<span class="lab">Display</span>${ic('chev', 'dim sm')}</button><div class="pop" id="popDisplay" hidden>${displayPop()}</div></div>
+    <input class="ti asg-q" placeholder="Filter students" aria-label="Filter students" value="${esc(asg.q)}" oninput="asg.q=this.value;document.getElementById('asgList').innerHTML=asgBody()">
+  </div>
+  <div class="asg-sticky">
+  <div class="classbar" role="group" aria-label="Class">
+    <span class="cb-label">Class</span>
+    <button class="iconbtn sm cb-arrow press" id="cbPrev" onclick="cbScroll(-1)" aria-label="Previous classes">${chev(90)}</button>
+    <div class="cb-track" id="cbTrack">${classPill()}</div>
+    <button class="iconbtn sm cb-arrow press" id="cbNext" onclick="cbScroll(1)" aria-label="More classes">${chev(-90)}</button>
+    <button class="minisearch press" onclick="openClassSearch()" aria-haspopup="dialog" title="Search your classes">${ic('search')}<span>Find a class</span></button>
+  </div>
+  <div class="classbar itembar" role="group" aria-label="Assignment">
+    <span class="cb-label">Assignment</span>
+    <button class="iconbtn sm cb-arrow press" id="ibPrev" onclick="cbScroll(-1,'ib')" aria-label="Previous assignments">${chev(90)}</button>
+    <div class="cb-track" id="ibTrack">${itemPill()}</div>
+    <button class="iconbtn sm cb-arrow press" id="ibNext" onclick="cbScroll(1,'ib')" aria-label="More assignments">${chev(-90)}</button>
+    <button class="minisearch press" onclick="openItemSearch()" aria-haspopup="dialog" title="Search assignments">${ic('search')}<span>Find an assignment</span></button>
+  </div>
+  </div>
+  <div id="asgList" class="${asg.density === 'compact' ? 'compact' : ''}">${asgBody()}</div>`;
+};
+
+/* ---------- Display menu ---------- */
+const popRadio = (k, v, l) => `<button class="pop-row slim press disp-opt" role="menuitemradio" aria-checked="${asg[k] === v}" onclick="setDisplay('${k}','${v}')"><span><b>${l}</b></span>${asg[k] === v ? ic('check', 'acc') : ''}</button>`;
+const densityRow = () => `<div class="disp-dens"><span class="pop-h" style="padding:0">Density</span><div class="dens" role="radiogroup" aria-label="Density">${[['comfortable', 'Comfortable'], ['compact', 'Compact']].map(([v, l]) => `<button role="radio" aria-checked="${asg.density === v}" class="${asg.density === v ? 'on' : ''}" onclick="setDisplay('density','${v}')">${l}</button>`).join('')}</div></div>`;
+function displayPop() {
+  if (asg.mode === 'grid') return `<div class="pop-h">Sort students</div>${GSORTS.map(([v, l]) => popRadio('gsort', v, l)).join('')}<div class="pop-sep"></div>${densityRow()}`;
+  return `<div class="disp-cols"><div><div class="pop-h">Sort</div>${SORTS.map(([v, l]) => popRadio('sort', v, l)).join('')}</div><div><div class="pop-h">Group by</div>${GROUPS.map(([v, l]) => popRadio('group', v, l)).join('')}</div></div><div class="pop-sep"></div>${densityRow()}`;
+}
+function setDisplay(k, v) {
+  asg[k] = v;
+  document.getElementById('popDisplay').innerHTML = displayPop();
+  const L = document.getElementById('asgList'); L.classList.toggle('compact', asg.density === 'compact');
+  if (k !== 'density') { swap('asgList', asgBody()); if (asg.mode === 'grid') gridFocusCol(); }
+}
+
+/* ---------- mode + filter handlers (redefined to render the active view) ---------- */
+function setAsgMode(btn, v) {
+  slide(btn); asg.mode = v; closePops();
+  document.getElementById('asgStatusWrap').hidden = v !== 'list';
+  document.getElementById('displayWrap').hidden = v === 'queue';
+  document.getElementById('popDisplay').innerHTML = displayPop();
+  placePills(false); swap('asgList', asgBody()); if (v === 'grid') gridFocusCol();
+}
+function setAsgStatus(btn, v) { slide(btn); asg.status = v; swap('asgList', asgBody()); }
+function setAsgClass(btn, v) {
+  slide(btn); asg.cls = v;
+  if (v === 'all' || (asg.item !== 'all' && findItem(asg.item).c.id !== v)) asg.item = 'all';
+  cbReveal(btn, true); renderItemBar(); swap('asgList', asgBody()); if (asg.mode === 'grid') gridFocusCol();
+}
+function setAsgItem(btn, v) { slide(btn); asg.item = v; cbReveal(btn, true); swap('asgList', asgBody()); if (asg.mode === 'grid') gridFocusCol(); }
+function goGradeItem(cid, itemId) {
+  Object.assign(asg, { status: 'todo', q: '', cls: cid, item: itemId, mode: 'list' }); asg.closed.delete(cid); setView('assign');
+  setTimeout(() => { const el = document.getElementById('asgi-' + itemId); if (el) { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); el.classList.add('flash'); } }, 80);
+}
+function refreshAsg() {
+  renderNav();
+  if (state.view === 'dash') { const box = document.querySelector('#subList .disc-b > div'); if (box) box.innerHTML = submittedList(curCourse(), dashCur(curCourse())); }
+  if (state.view !== 'assign') return;
+  const y = window.scrollY, gw = document.getElementById('gbWrap'), gx = gw ? [gw.scrollLeft, gw.scrollTop] : null;
+  const el = document.getElementById('asgList'); if (el) el.innerHTML = asgBody();
+  const ngw = document.getElementById('gbWrap'); if (ngw && gx) { ngw.scrollLeft = gx[0]; ngw.scrollTop = gx[1]; }
+  const pb = document.querySelector('#asgStatusWrap .spill button'); if (pb) pb.textContent = `To grade · ${toGradeCount()}`;
+  const subs = allSubs();
+  document.querySelectorAll('.cb-ct[data-c]').forEach(e => { const n = subs.filter(x => !x.graded && (e.dataset.c === 'all' || x.c.id === e.dataset.c)).length; e.textContent = n; e.classList.toggle('zero', !n); });
+  document.querySelectorAll('.ib-ct[data-i]').forEach(e => { const id = e.dataset.i, n = subs.filter(x => !x.graded && (id === 'all' ? (asg.cls === 'all' || x.c.id === asg.cls) : x.it.id === id)).length; e.textContent = n; e.classList.toggle('zero', !n); });
+  placePills(false); window.scrollTo(0, y);
+}
+/* next/previous in the grading drawer follows whatever the instructor is looking at */
+function graderQueue(x) {
+  let order;
+  if (asg.mode === 'queue') order = queueSubs();
+  else if (asg.mode === 'grid') { const m = gridState(x.c), cols = gridCols(x.c).filter(it => it.type === 'assignment'); order = gridRows(x.c).flatMap(s => cols.map(it => m.get(it.id + '|' + s.name)).filter(Boolean)); }
+  else order = asg.group === 'class' ? classGroups(x.c).flatMap(g => g.rows) : buildFlatGroups().flatMap(g => g.rows);
+  return order.some(y => y.key === x.key) ? order : submissionsFor(x.c).sort((p, r) => p.at - r.at);
+}
+const returnGradeBase = returnGrade;
+returnGrade = function () {
+  const before = toGradeCount(); returnGradeBase();
+  if (toGradeCount() < before) { asg.session++; if (state.view === 'assign' && asg.mode === 'queue') { const el = document.getElementById('asgList'); if (el) el.innerHTML = asgBody(); } }
+};
+
+/* ---------- List: class › assignment, or a flat grouping ---------- */
+const soonestDue = c => Math.min(999, ...submissionsFor(c).filter(x => !x.graded).map(x => x.it.due));
+function classList() {
+  const todoOf = c => submissionsFor(c).filter(x => !x.graded).length;
+  const courses = COURSES.filter(c => (asg.cls === 'all' || c.id === asg.cls) && (asg.item === 'all' || allItems(c).some(it => it.id === asg.item)))
+    .sort(asg.sort === 'most' ? (a, b) => todoOf(b) - todoOf(a) : asg.sort === 'due' ? (a, b) => soonestDue(a) - soonestDue(b) : (a, b) => a.name.localeCompare(b.name));
+  return courses.map(c => {
+    const all = submissionsFor(c), graded = all.filter(x => x.graded).length, todo = all.length - graded, R = roster(c), groups = classGroups(c);
+    const open = asg.cls !== 'all' || asg.item !== 'all' || !asg.closed.has(c.id);
+    return `<section class="panel flush asg-class disc ${open ? 'open' : ''}" id="asg-${c.id}">
+      <button class="disc-h" aria-expanded="${open}" onclick="asgToggle('${c.id}',this)">${courseTile(c)}<span class="cwho"><b>${esc(c.name)}</b><small>${esc(c.code)} · ${esc(c.section)} · ${c.students} students</small></span>
+        <span class="asg-meter">${bar(all.length ? graded / all.length * 100 : 0, 'var(--p-good)')}<small class="tnum">${graded} of ${all.length} graded</small></span>${tag(todo ? 'w' : 'g', todo ? `${todo} to grade` : 'All graded')}${ic('chev', 'chev')}</button>
+      <div class="disc-b"><div>${groups.length ? groups.map(({ it, rows }) => {
+        const itSubs = all.filter(x => x.it.id === it.id), itTodo = itSubs.filter(x => !x.graded).sort((p, q) => p.at - q.at), notIn = R.length - itSubs.length;
+        return `<div class="asg-item" id="asgi-${it.id}">
+          <div class="asg-ih">${kico(it.type)}<span class="cwho"><b>${esc(it.title)}</b><small>Annex ${it.annex} · ${dueWord(it)} ${fmtDate(it.due)} (${rel(it.due).toLowerCase()}) · ${it.pts} pts · ${itSubs.length} of ${R.length} submitted</small></span>
+            <span class="asg-actions">${notIn > 0 && it.due >= 0 ? `<button class="btn sm ghost press" onclick="toast('Reminder sent to ${notIn} students who haven\\'t submitted')">Nudge ${notIn}</button>` : ''}<button class="btn sm ghost press" onclick="goRubric('${c.id}','${it.annex}','${it.id}')">${ic('rubric')} Rubric</button>${itTodo.length ? `<button class="btn sm press" onclick="openGrader('${itTodo[0].key}')">Grade ${itTodo.length}</button>` : ''}</span></div>
+          ${rows.map(asgRow).join('')}</div>`;
+      }).join('') : `<div class="empty">${asg.q ? 'No students match that filter.' : asg.status === 'todo' ? 'Nothing waiting to be graded in this class.' : 'No submissions here yet.'}</div>`}</div></div></section>`;
+  }).join('') || '<div class="panel empty">No submissions match these filters.</div>';
+}
+function buildFlatGroups() {
+  const map = new Map(), put = (k, meta, x) => { if (!map.has(k)) map.set(k, { ...meta, rows: [] }); map.get(k).rows.push(x); };
+  const BUCKET = { past: ['Past the due date', 0], week: ['Due within 7 days', 1], later: ['Due later', 2] };
+  for (const x of scopedSubs()) {
+    if (asg.group === 'assignment') put(x.it.id, { title: x.it.title, sub: `${x.c.short} · Annex ${x.it.annex} · ${dueWord(x.it)} ${fmtDate(x.it.due)} · ${x.it.pts} pts`, icon: kico(x.it.type), due: x.it.due }, x);
+    else if (asg.group === 'student') put(x.c.id + '|' + x.s.name, { title: x.s.name, sub: `${x.c.short} · ${pct(x.s.pct)} current grade`, icon: avatar1(x.s.name), order: lastOf(x) + x.c.short }, x);
+    else if (asg.group === 'due') { const b = x.it.due < 0 ? 'past' : x.it.due <= 7 ? 'week' : 'later'; put(b, { title: BUCKET[b][0], sub: b === 'past' ? 'Due date has passed' : b === 'week' ? `Due by ${fmtDate(7)}` : `Due after ${fmtDate(7)}`, icon: `<span class="kico assignment">${ic('cal')}</span>`, order: BUCKET[b][1] }, x); }
+    else if (asg.group === 'annex') { const an = findItem(x.it.id).a; put(x.c.id + an.l, { title: `Annex ${an.l}: ${an.title}`, sub: `${x.c.short} · ${fmtDate(an.start)} – ${fmtDate(an.end)}`, icon: `<span class="mod-letter">${an.l}</span>`, order: x.c.name + an.l }, x); }
+    else put('all', { title: 'All submissions', sub: SORTS.find(s => s[0] === asg.sort)[1], icon: `<span class="kico assignment">${ic('list')}</span>` }, x);
+  }
+  const groups = [...map.values()], todo = g => g.rows.filter(r => !r.graded).length;
+  const by = { assignment: asg.sort === 'due' ? (a, b) => a.due - b.due : (a, b) => b.due - a.due, student: (a, b) => a.order.localeCompare(b.order), due: (a, b) => a.order - b.order, annex: (a, b) => a.order.localeCompare(b.order), none: () => 0 }[asg.group];
+  return groups.sort(asg.sort === 'most' && !['due', 'none'].includes(asg.group) ? (a, b) => todo(b) - todo(a) : by);
+}
+function rowHtml(x, primary) {
+  const p = x.score != null ? x.score / x.it.pts * 100 : null, bits = [`Submitted ${rel(x.at).toLowerCase()}`];
+  if (primary === 'student' && asg.group !== 'assignment') bits.push(esc(x.it.title));
+  if (asg.cls === 'all' && !['student', 'annex', 'assignment'].includes(asg.group)) bits.push(esc(x.c.short));
+  if (asg.group === 'due') bits.push(`${dueWord(x.it)} ${fmtDate(x.it.due)}`);
+  return `<button class="asg-row ${x.graded ? 'done' : ''}" onclick="openGrader('${x.key}')">${primary === 'item' ? kico(x.it.type) : avatar1(x.s.name)}<span class="cwho"><b>${esc(primary === 'item' ? x.it.title : x.s.name)}</b><small>${bits.join(' · ')}</small></span>
+    ${x.late ? tag('c', 'Late') : ''}${x.graded ? `<span class="asg-score tnum" style="color:${toneFor(p)}">${x.score}/${x.it.pts}</span>` : ''}${tag(x.graded ? 'g' : 'w', x.graded ? 'Graded' : 'To grade')}<span class="asg-go">${x.graded ? 'Review' : 'Grade'}${ic('arrow', 'sm')}</span></button>`;
+}
+function flatList() {
+  const groups = buildFlatGroups();
+  if (!groups.length) return '<div class="panel empty">No submissions match these filters.</div>';
+  const primary = asg.group === 'student' ? 'item' : 'student';
+  return `<section class="panel flush asg-flat">${groups.map(g => {
+    const t = g.rows.filter(r => !r.graded);
+    return `<div class="asg-item"><div class="asg-ih">${g.icon}<span class="cwho"><b>${esc(g.title)}</b><small>${esc(g.sub)} · ${g.rows.length} submission${g.rows.length === 1 ? '' : 's'}</small></span><span class="asg-actions">${t.length ? `<button class="btn sm ghost press" onclick="openGrader('${t[0].key}')">Grade ${t.length}</button>` : tag('g', 'All graded')}</span></div>${g.rows.map(x => rowHtml(x, primary)).join('')}</div>`;
+  }).join('')}</section>`;
+}
+
+/* ---------- Queue: one priority-ordered list of everything waiting ---------- */
+function queueSubs() { return scopedSubs({ status: 'todo' }).sort((p, q) => (asg.skip.has(p.key) - asg.skip.has(q.key)) || (q.late - p.late) || p.at - q.at || p.it.due - q.it.due); }
+function queueView() {
+  const q = queueSubs(), done = asg.session;
+  if (!q.length) return `<div class="panel qempty"><span class="qdone">${ic('check')}</span><b>Queue clear</b><p class="note">Nothing waiting to be graded${asg.cls !== 'all' || asg.item !== 'all' || asg.q ? ' in this filter' : ''}. ${done ? `You graded ${done} this session.` : ''}</p></div>`;
+  const x = q[0], waited = -x.at;
+  return `<section class="lead queue-hero" aria-label="Next submission to grade">
+    <div class="lead-k">Next up · 1 of ${q.length}${asg.skip.has(x.key) ? ' · skipped earlier' : ''}</div>
+    <div class="qh">${avatar1(x.s.name)}<div class="cwho"><b>${esc(x.s.name)}</b><small>${esc(x.it.title)} · ${esc(x.c.short)} · Annex ${x.it.annex} · ${dueWord(x.it)} ${fmtDate(x.it.due)}</small></div>${x.late ? tag('c', 'Late') : ''}<span class="qwait"><b class="tnum">${waited ? `${waited}d` : 'Today'}</b><small>${waited ? 'waiting' : 'submitted'}</small></span></div>
+    <div class="qprog">${bar(done / (done + q.length) * 100, 'var(--p-good)')}<span class="note">${done} graded this session · ${q.length} left in the queue</span></div>
+    <div class="btnrow"><button class="btn press" onclick="openGrader('${x.key}')">${ic('inbox')} Grade next</button><button class="btn ghost press" onclick="asg.skip.add('${x.key}');swap('asgList',asgBody())">Skip for now</button><span class="note">or press <span class="kbd">N</span></span></div>
+  </section>
+  <div class="label">Up next <span style="color:var(--p-faint);font-weight:400">· late first, then whoever has waited longest</span></div>
+  ${q.length > 1 ? `<section class="panel flush asg-flat qlist">${q.slice(1, 41).map((y, i) => `<button class="asg-row" onclick="openGrader('${y.key}')"><span class="qn tnum">${i + 2}</span>${avatar1(y.s.name)}<span class="cwho"><b>${esc(y.s.name)}</b><small>${esc(y.it.title)} · ${esc(y.c.short)} · submitted ${rel(y.at).toLowerCase()}</small></span>${y.late ? tag('c', 'Late') : ''}${tag('w', 'To grade')}<span class="asg-go">Grade${ic('arrow', 'sm')}</span></button>`).join('')}${q.length > 41 ? `<div class="empty">+ ${q.length - 41} more after these</div>` : ''}</section>` : '<div class="panel empty">This is the last one.</div>'}`;
+}
+document.addEventListener('keydown', e => {
+  if (state.view !== 'assign' || asg.mode !== 'queue' || (e.key !== 'n' && e.key !== 'N') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+  const d = document.getElementById('drawer'); if ((d && !d.hidden) || !document.getElementById('dialog').hidden) return;
+  const q = queueSubs(); if (q.length) { e.preventDefault(); openGrader(q[0].key); }
+});
+
+/* ---------- Gradebook: students × graded items for one class ---------- */
+const gridCols = c => allItems(c).filter(it => it.issued <= 0).sort((p, q) => p.due - q.due);
+const gridState = c => new Map(submissionsFor(c).map(x => [x.key, x]));
+function cellInfo(s, it, m) {
+  if (it.type === 'assignment') {
+    const x = m.get(it.id + '|' + s.name);
+    if (x) return x.graded ? { k: 'done', x, score: x.score } : { k: 'todo', x };
+    return { k: it.due < 0 ? 'miss' : 'none' };
+  }
+  const sc = s.scoreOf(it);
+  return sc != null ? { k: 'done', score: sc } : { k: it.due < 0 ? 'miss' : 'none' };
+}
+function gridRows(c) {
+  const cols = gridCols(c), m = gridState(c), lastN = s => s.name.split(' ').pop();
+  const missing = s => cols.filter(it => cellInfo(s, it, m).k === 'miss').length;
+  return roster(c).filter(s => !asg.q || s.name.toLowerCase().includes(asg.q.toLowerCase()))
+    .sort(asg.gsort === 'low' ? (a, b) => (a.pct ?? 999) - (b.pct ?? 999) : asg.gsort === 'missing' ? (a, b) => missing(b) - missing(a) || lastN(a).localeCompare(lastN(b)) : (a, b) => lastN(a).localeCompare(lastN(b)));
+}
+function gridView() {
+  if (asg.cls === 'all') return `<p class="note" style="margin:0 0 .8rem">The gradebook shows one class at a time. Choose a class here or in the class pill above.</p>
+    <div class="cards">${[...COURSES].sort((a, b) => a.name.localeCompare(b.name)).map(c => { const t = submissionsFor(c).filter(x => !x.graded).length; return `<button class="card click gb-card" onclick="pickClass('${c.id}')"><div class="card-head"><div><div class="card-title">${esc(c.name)}</div><div class="card-sub">${esc(c.code)} · ${esc(c.section)} · ${c.students} students</div></div>${courseTile(c)}</div><div class="card-foot" style="align-items:center">${t ? tag('w', `${t} to grade`) : tag('g', 'All graded')}<span class="linkbtn">Open gradebook →</span></div></button>`; }).join('')}</div>`;
+  const c = courseById(asg.cls), cols = gridCols(c), m = gridState(c), rows = gridRows(c), R = roster(c);
+  const cell = (s, it) => {
+    const ci = cellInfo(s, it, m), hl = asg.item === it.id ? 'hl' : '';
+    if (ci.k === 'done') {
+      const inner = `<b style="color:${toneFor(ci.score / it.pts * 100)}">${ci.score}</b><small>/${it.pts}</small>`;
+      return `<td class="${hl}">${ci.x ? `<button class="gb-cell done" onclick="openGrader('${ci.x.key}')" title="${esc(s.name)} · ${esc(it.title)} · review grade">${inner}</button>` : `<span class="gb-cell done" title="${esc(s.name)} · ${esc(it.title)}">${inner}</span>`}</td>`;
+    }
+    if (ci.k === 'todo') return `<td class="${hl}"><button class="gb-cell todo" onclick="openGrader('${ci.x.key}')" title="Grade ${esc(s.name)} · ${esc(it.title)}"><span>Grade</span></button></td>`;
+    if (ci.k === 'miss') return `<td class="${hl}"><span class="gb-cell miss" title="${esc(s.name)} · nothing turned in"><span>Missing</span></span></td>`;
+    return `<td class="${hl}"><span class="gb-cell none" title="Not submitted yet">–</span></td>`;
+  };
+  return `<div class="gb-tools"><div class="gb-legend"><span><b style="color:var(--p-good)">46</b><small>/50</small> graded</span><span><span class="gb-chip todo">Grade</span> submitted, waiting</span><span><span class="gb-chip miss">Missing</span> past due</span><span><b class="muted">–</b> not in yet</span></div><span style="flex:1"></span>
+      <button class="btn sm ghost press" onclick="exportGradebook()">${ic('download')} Export CSV</button></div>
+    <div class="gb-wrap" id="gbWrap"><table class="gb" aria-label="${esc(c.name)} gradebook">
+      <thead><tr><th class="gb-stu" scope="col">Student<small>${rows.length} of ${R.length} · current grade</small></th>${cols.map(it => `<th class="${asg.item === it.id ? 'hl' : ''}" id="gbc-${it.id}" scope="col">${kico(it.type)}<b title="${esc(it.title)}">${esc(it.title)}</b><small>${TYPE_LABEL[it.type]} · ${fmtDate(it.due)}</small><small>${it.pts} pts · avg ${pct(itemAvg(R, it))}</small></th>`).join('')}</tr></thead>
+      <tbody>${rows.map(s => { const miss = cols.filter(it => cellInfo(s, it, m).k === 'miss').length; return `<tr><th class="gb-stu" scope="row"><span class="gb-stu-in">${avatar1(s.name)}<span class="cwho"><b>${esc(s.name)}</b><small style="color:${toneFor(s.pct)}">${pct(s.pct)}${miss ? ` · ${miss} missing` : ''}</small></span></span></th>${cols.map(it => cell(s, it)).join('')}</tr>`; }).join('') || `<tr><td class="empty" colspan="${cols.length + 1}">No students match that filter.</td></tr>`}</tbody>
+    </table></div>`;
+}
+function gridFocusCol() {
+  const w = document.getElementById('gbWrap'), th = asg.item !== 'all' && document.getElementById('gbc-' + asg.item); if (!w || !th) return;
+  const d = th.getBoundingClientRect().left - w.getBoundingClientRect().left;
+  w.scrollTo({ left: w.scrollLeft + d - (w.clientWidth - th.offsetWidth) / 2 + 100, behavior: 'smooth' });
+}
+function exportGradebook() {
+  const c = courseById(asg.cls), cols = gridCols(c), m = gridState(c), q = v => `"${String(v).replace(/"/g, '""')}"`;
+  const lines = [['Student', 'Current grade', ...cols.map(it => `${it.title} (${it.pts})`)].map(q).join(',')]
+    .concat(gridRows(c).map(s => [s.name, pct(s.pct), ...cols.map(it => { const ci = cellInfo(s, it, m); return ci.k === 'done' ? ci.score : ci.k === 'todo' ? 'To grade' : ci.k === 'miss' ? 'Missing' : ''; })].map(q).join(',')));
+  const url = URL.createObjectURL(new Blob([lines.join('\r\n')], { type: 'text/csv' }));
+  const a = document.createElement('a'); a.href = url; a.download = `${slug(c.code)}_${slug(c.short)}_gradebook.csv`; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  window.__lastCsv = lines.join('\n');
+  notify({ tone: 'success', title: 'Gradebook exported', meta: `${c.short} · CSV`, desc: `${a.download} · ${gridRows(c).length} students × ${cols.length} items`, duration: 4000 });
+}
+AFTER.assign = () => { cbBind(); if (asg.mode === 'grid') gridFocusCol(); };
 
 
 /* ---- QA issue widget ---- */
