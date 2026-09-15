@@ -4,6 +4,7 @@ Imported SchoolCircle learning platform and hackathon planning board.
 
 ## Run & Operate
 
+- User-provided preview address: `https://schoolcircle.tannerwhite.net`. Its routing to this workspace has not been verified; do not assume it reflects local changes automatically.
 - Use managed workflows `artifacts/schoolcircle: web` and `artifacts/api-server: API Server` for preview; they provide the required ports and routing.
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
