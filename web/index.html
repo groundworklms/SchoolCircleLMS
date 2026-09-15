@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SchoolCircle — Grounded AI Training</title>
+<meta name="description" content="An AI-native LMS built to the schoolhouse brief: cited courses, a doctrine tutor, adaptive study plans, and provable mastery — every claim traced to the manual, verified on-device, or refused. The instructor ratifies everything. Runs offline on a Jetson.">
+<style>
+:root{
+  --bg:#f5f5f7;--surface:#fff;--surface-2:#ececef;
+  --border:rgba(0,0,0,.08);--border-soft:rgba(0,0,0,.06);
+  --text:#1d1d1f;--dim:#6e6e73;--faint:#86868b;
+  --accent:#b3122e;--accent-bright:#e0334f;--accent-tint:rgba(179,18,46,.10);
+  --good:#1e7a3c;--warning:#b0731a;--critical:#c2410c;--critical-tint:#fff5f0;
+  --seq:#8a95a3;
+  --shadow:0 2px 12px rgba(0,0,0,.06),0 0 0 .5px rgba(0,0,0,.04);
+  --lift:0 10px 28px rgba(0,0,0,.10),0 0 0 .5px rgba(0,0,0,.04);
+  --radius:18px;
+  --sans:-apple-system,"SF Pro Text","Segoe UI Variable Text","Segoe UI",system-ui,sans-serif;
+  --mono:"SF Mono","Cascadia Code",Consolas,ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+img{max-width:100%}
+a{color:var(--accent);text-decoration:none}
+h1,h2,h3,h4{margin:0;letter-spacing:-.02em;text-wrap:balance}
+.wrap{max-width:1080px;margin:0 auto;padding:0 22px}
+
+/* ---------- frosted top bar ---------- */
+.top{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.72);backdrop-filter:blur(24px) saturate(180%);border-bottom:.5px solid var(--border)}
+.topin{max-width:1080px;margin:0 auto;padding:.7rem 22px;display:flex;align-items:center;gap:1rem}
+.brand{font-weight:700;font-size:1.12rem;letter-spacing:-.02em}
+.brand span{color:var(--accent)}
+.by{font-size:.78rem;color:var(--dim);border-left:1px solid var(--border);padding-left:1rem}
+.top nav{margin-left:auto;display:flex;gap:.2rem;align-items:center}
+.top nav a{font-size:.85rem;font-weight:500;color:var(--dim);padding:.4rem .7rem;border-radius:8px}
+.top nav a:hover{color:var(--text);background:rgba(0,0,0,.05)}
+.top nav a.cta{background:var(--accent);color:#fff;font-weight:600;padding:.42rem .95rem;border-radius:980px}
+.top nav a.cta:hover{filter:brightness(1.12);background:var(--accent)}
+@media(max-width:720px){.by{display:none}.top nav a:not(.cta){display:none}}
+
+/* ---------- hero ---------- */
+.hero{padding:5rem 0 2.5rem;text-align:center}
+.kick{font-size:.8rem;font-weight:600;letter-spacing:.02em;color:var(--accent)}
+.hero h1{font-size:clamp(2.3rem,6vw,4rem);font-weight:700;line-height:1.04;margin:.7rem auto 0;max-width:15ch}
+.hero h1 .g{color:var(--accent)}
+.hero p{font-size:1.12rem;color:var(--dim);max-width:60ch;margin:1.2rem auto 0}
+.btns{display:flex;gap:.7rem;justify-content:center;flex-wrap:wrap;margin-top:1.8rem}
+.btn{font-weight:600;font-size:.98rem;padding:0 1.4rem;height:2.9rem;border-radius:980px;display:inline-flex;align-items:center;gap:.5rem}
+.btn.p{background:var(--accent);color:#fff}
+.btn.p:hover{filter:brightness(1.12)}
+.btn.s{background:rgba(0,0,0,.05);color:var(--text)}
+.btn.s:hover{background:rgba(0,0,0,.09)}
+
+/* ---------- guardrail chips ---------- */
+.rails{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin:2.4rem 0 0}
+.rail{background:var(--surface);box-shadow:var(--shadow);border-radius:14px;padding:1rem 1.15rem;text-align:left}
+.rail .rl{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent)}
+.rail h4{font-size:1rem;font-weight:600;margin:.35rem 0 .25rem}
+.rail p{font-size:.85rem;color:var(--dim);margin:0}
+@media(max-width:720px){.rails{grid-template-columns:1fr}}
+
+/* ---------- sections ---------- */
+.sec{margin:5rem 0 0}
+.sec-h{max-width:64ch}
+.sec .lbl{font-size:.78rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.sec h2{font-size:clamp(1.6rem,3.6vw,2.2rem);font-weight:700;margin:.5rem 0 .5rem;letter-spacing:-.028em}
+.sec .sub{color:var(--dim);font-size:1.05rem;margin:0}
+
+/* ---------- brief coverage table ---------- */
+.cov{margin-top:1.8rem;background:var(--surface);box-shadow:var(--shadow);border-radius:var(--radius);overflow:hidden}
+.covrow{display:grid;grid-template-columns:1.35fr 1fr auto;gap:1rem;align-items:center;padding:.85rem 1.4rem;border-bottom:.5px solid var(--border)}
+.covrow:last-child{border-bottom:none}
+.covrow.head{background:var(--surface-2);padding-top:.6rem;padding-bottom:.6rem}
+.covrow.head span{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.covwant{font-size:.94rem;font-weight:500}
+.covwant small{display:block;color:var(--faint);font-size:.78rem;font-weight:400;margin-top:.1rem}
+.covcap{font-size:.9rem;color:var(--dim)}
+.covcap b{color:var(--accent);font-weight:600}
+.pill{font-size:.72rem;font-weight:700;letter-spacing:.02em;padding:.2rem .6rem;border-radius:980px;white-space:nowrap}
+.pill.ship{background:rgba(30,122,60,.12);color:var(--good)}
+.pill.build{background:rgba(176,115,26,.14);color:var(--warning)}
+@media(max-width:720px){.covrow{grid-template-columns:1fr auto;gap:.5rem}.covcap{grid-column:1;font-size:.82rem}.covrow.head span:nth-child(2){display:none}}
+
+/* ---------- two seats ---------- */
+.seats{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.8rem}
+.seat{background:var(--surface);box-shadow:var(--shadow);border-radius:var(--radius);padding:1.4rem 1.5rem}
+.seat .st{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.seat h3{font-size:1.25rem;font-weight:700;margin:.25rem 0 1rem}
+.seat ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.7rem}
+.seat li{font-size:.92rem;display:flex;gap:.6rem;align-items:flex-start}
+.seat li .d{flex:none;width:1.5rem;height:1.5rem;border-radius:7px;display:grid;place-items:center;background:var(--accent-tint);color:var(--accent);font-size:.8rem;margin-top:.05rem}
+.seat li b{font-weight:600}
+.seat li span{color:var(--dim)}
+@media(max-width:720px){.seats{grid-template-columns:1fr}}
+
+/* ---------- real output samples ---------- */
+.samples{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1.8rem}
+.sample{background:var(--surface);box-shadow:var(--shadow);border-radius:var(--radius);padding:1.2rem 1.35rem}
+.sample .h{font-size:.72rem;font-weight:600;letter-spacing:.02em;text-transform:uppercase;color:var(--faint);margin-bottom:.6rem}
+.sample .txt{font-size:.92rem;line-height:1.55;color:var(--text)}
+.sample .q{font-weight:600;font-size:.98rem;margin-bottom:.35rem}
+.cite{display:inline-block;font-family:var(--mono);font-size:.74rem;color:var(--dim);background:rgba(0,0,0,.05);border-radius:6px;padding:.12em .5em;margin-top:.7rem}
+.badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.74rem;font-weight:700;border-radius:980px;padding:.2rem .6rem;margin-bottom:.6rem}
+.badge.ok{background:rgba(30,122,60,.12);color:var(--good)}
+.badge.no{background:var(--critical-tint);color:var(--critical);box-shadow:inset 0 0 0 1px rgba(194,65,12,.25)}
+.tier{display:grid;grid-template-columns:5rem 1fr;gap:.6rem;font-size:.85rem;padding:.4rem 0;border-top:.5px solid var(--border)}
+.tier .t{font-family:var(--mono);font-size:.68rem;font-weight:700;text-transform:uppercase;padding-top:.1rem}
+.tier.u .t{color:var(--critical)}.tier.s .t{color:var(--warning)}.tier.p .t{color:var(--good)}
+.tier span{color:var(--dim)}
+@media(max-width:720px){.samples{grid-template-columns:1fr}}
+
+/* ---------- spine pipeline ---------- */
+.spine{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-top:1.8rem}
+.node{background:var(--surface);box-shadow:var(--shadow);border-radius:14px;padding:1.15rem 1.2rem;position:relative}
+.node .n{font-family:var(--mono);font-size:.72rem;font-weight:700;color:var(--accent)}
+.node h4{font-size:1rem;font-weight:600;margin:.4rem 0 .3rem}
+.node p{font-size:.82rem;color:var(--dim);margin:0}
+@media(max-width:720px){.spine{grid-template-columns:1fr 1fr}}
+
+/* ---------- arsenal ---------- */
+.arsenal{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-top:1.8rem}
+.repo{display:block;background:var(--surface);box-shadow:var(--shadow);border-radius:14px;padding:1.05rem 1.2rem;transition:box-shadow .15s,transform .15s}
+.repo:hover{box-shadow:var(--lift);transform:translateY(-2px)}
+.repo .rn{font-weight:700;font-size:1rem;color:var(--text);display:flex;align-items:center;gap:.5rem;justify-content:space-between}
+.repo .rn .tg{font-size:.64rem;font-weight:700;letter-spacing:.03em;padding:.12rem .45rem;border-radius:980px}
+.repo .rn .tg.ship{background:rgba(30,122,60,.12);color:var(--good)}
+.repo .rn .tg.build{background:rgba(176,115,26,.14);color:var(--warning)}
+.repo .rr{font-size:.83rem;color:var(--dim);margin-top:.35rem;line-height:1.45}
+@media(max-width:720px){.arsenal{grid-template-columns:1fr}}
+
+/* ---------- offline callout ---------- */
+.edge{margin-top:1.8rem;background:var(--surface);box-shadow:var(--shadow);border-radius:var(--radius);padding:1.6rem 1.7rem;display:grid;grid-template-columns:auto 1fr;gap:1.4rem;align-items:center}
+.edge .big{font-size:2.6rem}
+.edge h3{font-size:1.3rem;font-weight:700;margin:0 0 .4rem}
+.edge p{font-size:.95rem;color:var(--dim);margin:0}
+.edge code{font-family:var(--mono);font-size:.85em;background:var(--surface-2);border-radius:5px;padding:.05em .35em;color:var(--accent)}
+@media(max-width:600px){.edge{grid-template-columns:1fr;text-align:center}}
+
+/* ---------- foot ---------- */
+.foot{margin:5rem 0 3rem;padding-top:1.4rem;border-top:.5px solid var(--border);font-size:.82rem;color:var(--faint);text-align:center;line-height:1.7}
+.foot .dot{color:var(--border)}
+</style>
+</head>
+<body>
+
+<div class="top"><div class="topin">
+  <span class="brand">School<span>Circle</span></span>
+  <span class="by">grounded by Anchor</span>
+  <nav>
+    <a href="#brief">The brief</a>
+    <a href="#experience">Experience</a>
+    <a href="#arsenal">Open source</a>
+    <a class="cta" href="app.html">Walk a course →</a>
+  </nav>
+</div></div>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="kick">For the schoolhouse · grounded in doctrine · runs on the edge</div>
+    <h1>The LMS that <span class="g">won't make things up.</span></h1>
+    <p>An AI-native learning platform built to the brief: cited courses, a doctrine tutor, adaptive study plans, and mastery you can prove. Every AI claim traces to the manual, is verified on-device, or is <b>refused</b>. The instructor ratifies everything — and the whole loop runs offline on a Jetson.</p>
+    <div class="btns">
+      <a class="btn p" href="app.html">Walk a generated course →</a>
+      <a class="btn s" href="#brief">See how it maps to the brief</a>
+    </div>
+
+    <div class="rails">
+      <div class="rail">
+        <div class="rl">Guardrail</div>
+        <h4>AI drafts, humans ratify</h4>
+        <p>An instructor reviews and approves every AI-generated assessment before a Marine ever sees it.</p>
+      </div>
+      <div class="rail">
+        <div class="rl">Guardrail</div>
+        <h4>No AI in proctoring</h4>
+        <p>Human input only, by design. The AI never touches proctoring or proctor-code creation.</p>
+      </div>
+      <div class="rail">
+        <div class="rl">Guardrail</div>
+        <h4>Instructor owns the truth</h4>
+        <p>Authoritative training content stays instructor-owned. The AI drafts around it; it never overwrites it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- BRIEF COVERAGE -->
+  <section class="sec" id="brief">
+    <div class="sec-h">
+      <div class="lbl">Built to the brief</div>
+      <h2>Every ask on the board, answered</h2>
+      <p class="sub">The chief instructor's wishlist, mapped to what the platform does today. Shipped pieces are standalone, open-source, and tested; the rest are in build for the event.</p>
+    </div>
+    <div class="cov">
+      <div class="covrow head"><span>The ask</span><span>What answers it</span><span>Status</span></div>
+      <div class="covrow"><div class="covwant">Doctrine-grounded interactive lessons<small>Chatbot on doctrine, open sources, and student outlines</small></div><div class="covcap"><b>Ask the doctrine</b> — Sourcerer + Anchor</div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">PDF drop → study guide + practice<small>Adjustable difficulty, MC + written, with rationale</small></div><div class="covcap"><b>Quarry</b> + <b>Coursewright</b></div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">Reference generation from POIs</div><div class="covcap"><b>Quarry</b> — tasks &amp; references from the POI</div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">Mastery visualization vs the question bank</div><div class="covcap"><b>Whetstone</b> + <b>Sextant</b></div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">Instructor insight loop<small>Where students missed and why → a lesson review</small></div><div class="covcap"><b>Sextant</b> — class gaps, competency evidence</div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">SCORM / LMS interoperability</div><div class="covcap"><b>Cartridge</b> — loads into MarineNet / Moodle</div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">Rubrics from standards<small>Behaviorally-anchored, with rater reliability</small></div><div class="covcap"><b>Rubricon</b> — T&amp;R standard → BARS</div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">Adaptive study-plan generator<small>Syllabus + calendar → 3 COAs, with reminders</small></div><div class="covcap"><b>Cadence</b> — behind / on track / ahead + .ics</div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">Automated AARs<small>Course-level shortcomings across class iterations</small></div><div class="covcap"><b>Hotwash</b> — grades the curriculum, not the student</div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">"How do I learn?" learner profile<small>Survey → shapes each course's lesson plan</small></div><div class="covcap"><b>Waypoint</b> — learner-profile → planning</div><span class="pill ship">Shipped</span></div>
+      <div class="covrow"><div class="covwant">Certificates &amp; graduation packages</div><div class="covcap"><b>Cartridge+</b> — grad package as course output</div><span class="pill build">Building</span></div>
+      <div class="covrow"><div class="covwant">Auto-enrollment for CY/FY + EPME</div><div class="covcap"><b>Requirements homepage</b> — no manual roster entry</div><span class="pill build">Building</span></div>
+    </div>
+  </section>
+
+  <!-- TWO SEATS -->
+  <section class="sec" id="experience">
+    <div class="sec-h">
+      <div class="lbl">One platform, two seats</div>
+      <h2>What the Marine sees. What the instructor keeps.</h2>
+      <p class="sub">Students get a clean path to mastery. Instructors stay in command of the course — the AI only ever hands them a draft.</p>
+    </div>
+    <div class="seats">
+      <div class="seat">
+        <div class="st">The student</div>
+        <h3>A clear path to mastery</h3>
+        <ul>
+          <li><span class="d">◆</span><span><b>Ask the doctrine.</b> A tutor that answers from the source with a citation — or an honest "not in the source."</span></li>
+          <li><span class="d">◆</span><span><b>Adaptive study plan.</b> Your week in three courses of action — behind, on track, or ahead — synced to the calendar.</span></li>
+          <li><span class="d">◆</span><span><b>Discuss to mastery.</b> A conversational check that scores each answer, coaches the gap, and records the score.</span></li>
+          <li><span class="d">◆</span><span><b>Practice with rationale.</b> Questions that tell you <i>why</i> an answer is right or wrong, at the difficulty you need.</span></li>
+          <li><span class="d">◆</span><span><b>See your own mastery.</b> A bar per topic against the question bank. Yours only.</span></li>
+        </ul>
+      </div>
+      <div class="seat">
+        <div class="st">The instructor</div>
+        <h3>Command of the course</h3>
+        <ul>
+          <li><span class="d">◆</span><span><b>Generate a course.</b> A POI + the manual → cited lessons, tests, a scenario, and discussion prompts — left pending your review.</span></li>
+          <li><span class="d">◆</span><span><b>Rubrics from standards.</b> A T&amp;R standard → a behaviorally-anchored rating scale, traceable, with reliability math.</span></li>
+          <li><span class="d">◆</span><span><b>Run it live.</b> A competitive in-class quiz off the generated bank — a live read on where the class actually is.</span></li>
+          <li><span class="d">◆</span><span><b>Insight loop.</b> Where the class missed and why, drafted into a short lesson review to get them back on track.</span></li>
+          <li><span class="d">◆</span><span><b>Course AAR.</b> End-of-course critiques, sorted into short- and long-term fixes — sharper every iteration.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- REAL OUTPUT -->
+  <section class="sec">
+    <div class="sec-h">
+      <div class="lbl">Real output</div>
+      <h2>Not mockups — actual grounded output</h2>
+      <p class="sub">Generated from real doctrine (TC 3-22.9, NAVMC 3500.44E, MCWP 5-10) and left pending instructor review.</p>
+    </div>
+    <div class="samples">
+      <div class="sample">
+        <div class="h">Generated micro-lesson · trigger control</div>
+        <div class="txt">Trigger control and follow-through minimize your arc of movement so the round leaves the muzzle while the sights are still on target. It takes a smooth, consistent rearward squeeze, finger where it naturally lays for the best mechanical advantage. <b>The most common error is dropping control after the shot</b> — keep your head on the stock, eye open, and hold the trigger to the rear through recoil until the sear resets.</div>
+        <span class="cite">TC 3-22.9, Ch 8 · p.8-2</span>
+      </div>
+      <div class="sample">
+        <div class="h">Generated BARS rubric · "Defend a Position"</div>
+        <div class="tier u"><span class="t">Unsat</span><span>Leaves the position visible to the front for lack of camouflage.</span></div>
+        <div class="tier s"><span class="t">Satisf.</span><span>Completes the fighting position and applies camouflage that breaks up its outline.</span></div>
+        <div class="tier p"><span class="t">Prof.</span><span>Renders the position indistinguishable from surrounding terrain; assists on alternates.</span></div>
+        <span class="cite">traced to NAVMC 3500.44E task</span>
+      </div>
+      <div class="sample">
+        <span class="badge ok">✓ Grounded · HHEM verified</span>
+        <div class="q">What is sight alignment?</div>
+        <div class="txt">Sight alignment is the relationship between the rear aperture, the front sight post, and the aiming eye — the post centered and level in the aperture.</div>
+        <span class="cite">TC 3-22.9, Ch 7 · p.7-3</span>
+      </div>
+      <div class="sample">
+        <span class="badge no">⛔ Refused</span>
+        <div class="q">What's the max range of a Javelin missile?</div>
+        <div class="txt">"I can't answer that from the doctrine on this device. Nothing in the indexed corpus supports an answer." <b>It won't invent what the source doesn't contain.</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SPINE -->
+  <section class="sec">
+    <div class="sec-h">
+      <div class="lbl">How it stays honest</div>
+      <h2>The same spine under every feature</h2>
+      <p class="sub">Course, tutor, rubric, quiz — all of it runs the same four steps. That's why the guarantee holds everywhere.</p>
+    </div>
+    <div class="spine">
+      <div class="node"><div class="n">01</div><h4>Ground</h4><p>Retrieve and re-rank the exact passages from the indexed corpus for the task at hand.</p></div>
+      <div class="node"><div class="n">02</div><h4>Cite or refuse</h4><p>Answer only from those passages, with a citation — or abstain when they don't support one.</p></div>
+      <div class="node"><div class="n">03</div><h4>Verify</h4><p>An on-device HHEM check scores faithfulness before anything is shown. Low score, no show.</p></div>
+      <div class="node"><div class="n">04</div><h4>Human review</h4><p>The instructor approves, edits, or rejects. Nothing unreviewed reaches a Marine.</p></div>
+    </div>
+  </section>
+
+  <!-- ARSENAL -->
+  <section class="sec" id="arsenal">
+    <div class="sec-h">
+      <div class="lbl">Open source</div>
+      <h2>Built from standalone, Apache-2.0 parts</h2>
+      <p class="sub">Each is a real library you can use on its own; together they are the platform. All eleven are public, Apache-2.0, and tested — including the study-plan and after-action gap-fills.</p>
+    </div>
+    <div class="arsenal">
+      <a class="repo" href="https://github.com/groundworklms/anchor"><div class="rn">Anchor<span class="tg ship">shipped</span></div><div class="rr">Offline grounding engine — retrieval · cite-or-refuse · HHEM, on the edge.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/quarry"><div class="rn">Quarry<span class="tg ship">shipped</span></div><div class="rr">Dense PDFs → clean text, chunks, and structured tasks.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/rubricon"><div class="rn">Rubricon<span class="tg ship">shipped</span></div><div class="rr">Standards → BARS rubrics; verifies grounding + rater reliability.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/coursewright"><div class="rn">Coursewright<span class="tg ship">shipped</span></div><div class="rr">Objectives + sources → a full cited course as JSON.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/sourcerer"><div class="rn">Sourcerer<span class="tg ship">shipped</span></div><div class="rr">Cite-or-refuse Q&amp;A with a faithfulness check.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/whetstone"><div class="rn">Whetstone<span class="tg ship">shipped</span></div><div class="rr">Conversational discuss-to-mastery, grounded.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/sextant"><div class="rn">Sextant<span class="tg ship">shipped</span></div><div class="rr">Learning gain, class gaps, competency evidence.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/understudy"><div class="rn">Understudy<span class="tg ship">shipped</span></div><div class="rr">A doctrine-bound agent + a fidelity benchmark.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/cartridge"><div class="rn">Cartridge<span class="tg ship">shipped</span></div><div class="rr">Course JSON → a SCORM cartridge for any LMS.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/cadence"><div class="rn">Cadence<span class="tg ship">shipped</span></div><div class="rr">Syllabus + calendar → a 3-COA study plan with .ics export and reminders.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/hotwash"><div class="rn">Hotwash<span class="tg ship">shipped</span></div><div class="rr">End-of-course critiques → a ranked AAR worklist across class iterations.</div></a>
+      <a class="repo" href="https://github.com/groundworklms/waypoint"><div class="rn">Waypoint<span class="tg ship">shipped</span></div><div class="rr">"How do I learn?" survey → per-learner and per-class lesson-planning guidance.</div></a>
+    </div>
+  </section>
+
+  <!-- OFFLINE -->
+  <section class="sec">
+    <div class="edge">
+      <div class="big">📡</div>
+      <div>
+        <h3>Runs offline. Swaps models in one file.</h3>
+        <p>The whole delivery loop runs on a Jetson Orin with the network pulled — built for the schoolhouse and the field. Every model call sits behind a single adapter, so if the compute at the event turns out to be something else, or shows up late, we change <code>one file</code> — not the app. There's a local path that works regardless of what allocation lands.</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    Unclassified · releasable · built on public doctrine<br>
+    <span class="dot">— </span>a grounded AI training platform for the schoolhouse<span class="dot"> —</span>
+  </div>
+
+</div>
+
+<!-- QA / dev issue-reporter widget -->
+<style>
+.qa-fab{position:fixed;left:1.3rem;bottom:1.3rem;width:3.4rem;height:3.4rem;border-radius:50%;border:none;cursor:pointer;display:grid;place-items:center;background:#1d1d1f;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.28);z-index:70;transition:transform .15s,filter .15s}
+.qa-fab:hover{transform:translateY(-2px);filter:brightness(1.15)}
+.qa-fab svg{width:1.5rem;height:1.5rem;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.qa-flab{position:absolute;bottom:calc(100% + .4rem);left:0;background:#1d1d1f;color:#fff;font-size:.7rem;padding:.2rem .5rem;border-radius:6px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s}
+.qa-fab:hover .qa-flab{opacity:1}
+.qa-panel{position:fixed;left:1.3rem;bottom:5.4rem;width:22rem;max-width:calc(100vw - 1.6rem);background:var(--surface,#fff);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.3),0 0 0 .5px rgba(0,0,0,.08);z-index:71;overflow:hidden;font-family:var(--sans);animation:qafade .18s both}
+@keyframes qafade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.qa-head{display:flex;align-items:center;gap:.7rem;padding:.85rem 1.1rem;border-bottom:.5px solid var(--border,rgba(0,0,0,.08))}
+.qa-wi{width:2rem;height:2rem;border-radius:9px;background:#1d1d1f;color:#fff;display:grid;place-items:center;flex:none}
+.qa-t{font-weight:700;font-size:.92rem;color:var(--text,#1d1d1f)}
+.qa-s{font-size:.7rem;color:var(--dim,#6e6e73)}
+.qa-x{margin-left:auto;background:rgba(0,0,0,.05);border:none;border-radius:8px;width:1.8rem;height:1.8rem;font-size:1em;cursor:pointer;color:var(--dim,#6e6e73)}
+.qa-body{padding:.9rem 1.1rem}
+.qa-ctx{font-size:.72rem;color:var(--dim,#6e6e73);background:var(--bg,#f5f5f7);border-radius:8px;padding:.5rem .7rem;margin-bottom:.7rem;line-height:1.45}
+.qa-ctx b{color:var(--text,#1d1d1f)}
+.qa-body select,.qa-body textarea{width:100%;font:inherit;font-size:.9rem;border:none;box-shadow:0 0 0 .5px rgba(0,0,0,.14);border-radius:9px;padding:.55rem .7rem;margin-bottom:.6rem;background:#fff;color:var(--text,#1d1d1f)}
+.qa-body textarea{min-height:5rem;resize:vertical;font-family:var(--sans)}
+.qa-body select:focus,.qa-body textarea:focus{outline:none;box-shadow:0 0 0 1.5px #1d1d1f}
+.qa-submit{width:100%;height:2.4rem;border:none;border-radius:980px;background:var(--accent,#b3122e);color:#fff;font:inherit;font-size:.92rem;font-weight:600;cursor:pointer}
+.qa-submit:hover{filter:brightness(1.1)}
+.qa-note{font-size:.72rem;color:var(--dim,#6e6e73);margin:.5rem 0 0;line-height:1.4}
+@media(max-width:520px){.qa-panel{left:.8rem}.qa-fab{left:.9rem}}
+</style>
+<button class="qa-fab" id="qaFab" onclick="qaToggle()" title="Report an issue (QA)"><span class="qa-flab">Report an issue (QA)</span><svg viewBox="0 0 24 24"><path d="M8 2l1.5 2h5L16 2M12 8v13M5 10a7 7 0 0 1 14 0v4a7 7 0 0 1-14 0zM3 13h2m14 0h2M4.5 7L6 8m12-1l-1.5 1"/></svg></button>
+<div class="qa-panel" id="qaPanel" hidden>
+  <div class="qa-head"><span class="qa-wi"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v13M5 10a7 7 0 0 1 14 0v4a7 7 0 0 1-14 0z"/></svg></span><div><div class="qa-t">Report an issue</div><div class="qa-s">files a GitHub issue with your location</div></div><button class="qa-x" onclick="qaToggle()">×</button></div>
+  <div class="qa-body">
+    <div class="qa-ctx" id="qaCtx">capturing…</div>
+    <select id="qaType"><option value="bug">🐞 Bug</option><option value="idea">💡 Idea</option><option value="question">❓ Question</option></select>
+    <textarea id="qaText" placeholder="What did you find, or what needs fixing?"></textarea>
+    <button class="qa-submit" onclick="qaSubmit()">Submit to repo →</button>
+    <p class="qa-note">Auto-captures the page, section, URL, screen &amp; time, then opens a prefilled GitHub issue for you to send.</p>
+  </div>
+</div>
+<script>
+function qaSection(){
+  const hs=[...document.querySelectorAll('h1, .sec h2, section h2')];
+  let cur='Top of page';
+  for(const h of hs){ if(h.getBoundingClientRect().top < 140) cur=h.textContent.trim().replace(/\s+/g,' '); }
+  return cur;
+}
+function qaContext(){ return { page:'Landing', section:qaSection(), url:location.href, viewport:innerWidth+'×'+innerHeight, time:new Date().toISOString() }; }
+function qaToggle(){ const p=document.getElementById('qaPanel'); const show=p.hidden; if(show){ const c=qaContext(); document.getElementById('qaCtx').innerHTML=`<b>Where:</b> Landing → ${c.section}<br><b>Screen:</b> ${c.viewport} · captured ${c.time.slice(11,16)} UTC`; } p.hidden=!show; }
+function qaSubmit(){ const t=document.getElementById('qaType').value; const body=document.getElementById('qaText').value.trim(); const c=qaContext();
+  const title=`[QA·${t}] ${(body.slice(0,60)||'report from the landing')}`;
+  const md=`**Type:** ${t}\n\n${body||'_(describe the issue)_'}\n\n---\n**Where:** Landing → ${c.section}\n**URL:** ${c.url}\n**Screen:** ${c.viewport}\n**Time:** ${c.time}\n\n_Filed via the landing QA widget._`;
+  const url=`https://github.com/groundworklms/SchoolCircleLMS/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(md)}&labels=${encodeURIComponent('qa,'+t)}`;
+  window.open(url,'_blank','noopener'); document.getElementById('qaText').value=''; document.getElementById('qaPanel').hidden=true;
+}
+document.addEventListener('keydown',(e)=>{ if(e.key==='Escape') document.getElementById('qaPanel').hidden=true; });
+</script>
+</body>
+</html>
