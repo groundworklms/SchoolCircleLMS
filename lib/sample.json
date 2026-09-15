@@ -1,0 +1,100 @@
+{
+  "id": "course-tc32209",
+  "title": "Fundamentals of Marksmanship",
+  "sourceId": "TC 3-22.9",
+  "sections": [
+    {
+      "id": "sec-safety",
+      "title": "Safety & Weapon Handling",
+      "order": 0,
+      "items": [
+        {
+          "id": "it-safety-1",
+          "kind": "LESSON",
+          "status": "APPROVED",
+          "stem": "The four weapons safety rules are always in effect: treat every weapon as if it were loaded; never point the weapon at anything you do not intend to shoot; keep your finger straight and off the trigger until you are ready to fire; keep the weapon on safe until you intend to fire.",
+          "citation": { "citation": "TC 3-22.9, Ch 2, Weapons Safety Rules, para 2-1, p.2-1", "pubId": "TC 3-22.9", "section": "2", "para": "2-1", "page": "2-1" },
+          "support": 0.96
+        },
+        {
+          "id": "it-safety-2",
+          "kind": "QUESTION",
+          "status": "APPROVED",
+          "stem": "When is the weapon taken off safe?",
+          "options": ["Immediately upon picking it up", "Only when you intend to fire", "After loading a magazine", "When moving to a firing position"],
+          "answer": { "correct": 1 },
+          "citation": { "citation": "TC 3-22.9, Ch 2, Weapons Safety Rules, para 2-1, p.2-1", "pubId": "TC 3-22.9", "section": "2", "para": "2-1", "page": "2-1" },
+          "support": 0.93
+        }
+      ]
+    },
+    {
+      "id": "sec-fundamentals",
+      "title": "Fundamentals of Marksmanship",
+      "order": 1,
+      "items": [
+        {
+          "id": "it-fund-1",
+          "kind": "LESSON",
+          "status": "APPROVED",
+          "stem": "Trigger control is the independent movement of the trigger to the rear without disturbing sight alignment or sight picture. Apply steady, increasing pressure straight to the rear until the shot breaks.",
+          "citation": { "citation": "TC 3-22.9, Ch 3, Trigger Control, para 3-24, p.3-8", "pubId": "TC 3-22.9", "section": "3", "para": "3-24", "page": "3-8" },
+          "support": 0.95
+        },
+        {
+          "id": "it-fund-2",
+          "kind": "LESSON",
+          "status": "APPROVED",
+          "stem": "Sight alignment is the relationship between the aiming eye, the rear sight, and the front sight. Sight picture adds the target to that alignment.",
+          "citation": { "citation": "TC 3-22.9, Ch 3, Aiming, para 3-18, p.3-6", "pubId": "TC 3-22.9", "section": "3", "para": "3-18", "page": "3-6" },
+          "support": 0.94
+        },
+        {
+          "id": "it-fund-3",
+          "kind": "QUESTION",
+          "status": "APPROVED",
+          "stem": "Which best describes correct trigger control?",
+          "options": ["A quick slap as the sights settle", "Steady increasing pressure straight to the rear", "Pressure applied only during exhale", "Holding then releasing rapidly"],
+          "answer": { "correct": 1 },
+          "citation": { "citation": "TC 3-22.9, Ch 3, Trigger Control, para 3-24, p.3-8", "pubId": "TC 3-22.9", "section": "3", "para": "3-24", "page": "3-8" },
+          "support": 0.92
+        },
+        {
+          "id": "it-fund-4",
+          "kind": "QUESTION",
+          "status": "PENDING",
+          "stem": "During the integrated act of firing, when should the natural respiratory pause be used to break the shot?",
+          "options": ["At full inhale", "During the natural respiratory pause after exhale", "While actively exhaling", "It does not matter"],
+          "answer": { "correct": 1 },
+          "citation": { "citation": "TC 3-22.9, Ch 3, Breathing, para 3-27, p.3-9", "pubId": "TC 3-22.9", "section": "3", "para": "3-27", "page": "3-9" },
+          "support": 0.9
+        }
+      ]
+    },
+    {
+      "id": "sec-zero",
+      "title": "Zeroing & Ballistics",
+      "order": 2,
+      "items": [
+        {
+          "id": "it-zero-1",
+          "kind": "LESSON",
+          "status": "APPROVED",
+          "stem": "A zero is the alignment of the weapon's sights with the point of impact at a known distance under known conditions. It gives the shooter a reliable aiming reference.",
+          "citation": { "citation": "TC 3-22.9, Ch 5, Zeroing, para 5-2, p.5-1", "pubId": "TC 3-22.9", "section": "5", "para": "5-2", "page": "5-1" },
+          "support": 0.93
+        },
+        {
+          "id": "it-zero-2",
+          "kind": "QUESTION",
+          "status": "PENDING",
+          "stem": "What does establishing a zero accomplish?",
+          "options": ["It cleans the barrel", "It aligns the sights with the point of impact at a known distance", "It reduces recoil", "It sets the rate of fire"],
+          "answer": { "correct": 1 },
+          "citation": { "citation": "TC 3-22.9, Ch 5, Zeroing, para 5-2, p.5-1", "pubId": "TC 3-22.9", "section": "5", "para": "5-2", "page": "5-1" },
+          "support": 0.9
+        }
+      ]
+    }
+  ]
+}
