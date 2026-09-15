@@ -98,7 +98,12 @@ export default function QaWidget() {
 
   async function submit() {
     const body = (text || '').trim();
+    const who = (reporter || '').trim();
     if (!body || busy) return;
+    if (!who) {
+      setError('Please add your name so we know who to follow up with.');
+      return;
+    }
     const c = ctx || {
       where: viewLabel(pathname), url: (typeof window !== 'undefined' ? window.location.href : ''),
       viewport: '', time: new Date().toISOString(),
@@ -122,7 +127,7 @@ export default function QaWidget() {
             viewport: c.viewport,
             userAgent: navigator.userAgent,
             build: process.env.NEXT_PUBLIC_GIT_SHA || 'unknown',
-            reporter,
+            reporter: who,
           },
         }),
       });
@@ -184,7 +189,8 @@ export default function QaWidget() {
             <div className="scw-row">
               <input
                 className="scw-field"
-                placeholder="Your name"
+                placeholder="Your name (required)"
+                required
                 value={reporter}
                 onChange={(e) => setReporter(e.target.value)}
               />
@@ -198,7 +204,7 @@ export default function QaWidget() {
               />
             </div>
             {error && <p className="scw-err">{error}</p>}
-            <button className="scw-btn full" onClick={submit} disabled={!text.trim() || busy}>
+            <button className="scw-btn full" onClick={submit} disabled={!text.trim() || !reporter.trim() || busy}>
               {busy ? 'Filing…' : 'Submit to repo →'}
             </button>
             <p className="scw-note">Files the issue directly — no GitHub account needed. Your view, screen, URL, build &amp; time are attached.</p>
