@@ -1,13 +1,21 @@
 import './globals.css';
+import './_components/widgets.css';
+import AskWidget from './_components/AskWidget';
+import QaWidget from './_components/QaWidget';
 
 export const metadata = {
-  title: 'Hackathon Planning Board',
+  title: 'SchoolCircle',
+  description: 'Grounded, offline, human-led training — every answer cites the manual or refuses.',
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <AskWidget />
+        <QaWidget />
+      </body>
     </html>
   );
 }
