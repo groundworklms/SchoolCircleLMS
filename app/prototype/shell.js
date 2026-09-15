@@ -52,7 +52,7 @@ function RailButton({ icon, label, on, onClick, badge, sub }) {
 
 
 /* User block at the top of the rail. Click opens a small menu. */
-function UserMenu({ name, role, initials, inst, items }) {
+function UserMenu({ name, role, rank, initials, inst, items }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -76,7 +76,7 @@ function UserMenu({ name, role, initials, inst, items }) {
         <div className={`s-avatar${inst ? ' inst' : ''}`}>{initials}</div>
         <div className="s-rail-who">
           <div className="s-rail-name">{name}</div>
-          <div className="s-rail-role">{role}</div>
+          <div className="s-rail-role">{rank ? `${rank} · ` : ''}{role}</div>
         </div>
         <span className="s-rail-chev">{open ? '▴' : '▾'}</span>
       </button>
@@ -84,7 +84,7 @@ function UserMenu({ name, role, initials, inst, items }) {
         <div className="s-menu" role="menu">
           <div className="s-menu-head">
             <div className="s-menu-name">{name}</div>
-            <div className="s-menu-sub">Signed in via MCeLE</div>
+            <div className="s-menu-sub">Signed in via MCeLE{rank ? ` · ${rank}` : ''}</div>
           </div>
           {items.map((it, i) =>
             it === 'divider' ? (

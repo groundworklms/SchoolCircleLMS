@@ -4,15 +4,19 @@
 import { resolveIdentity } from '../../../../lib/auth';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+const headers = { 'Cache-Control': 'private, no-store', Vary: 'Authorization' };
 
 export async function GET(request) {
   try {
     const user = await resolveIdentity(request);
-    if (!user) return Response.json({ user: null });
+    if (!user) return Response.json({ user: null }, { headers });
     return Response.json({
       user: {
         id: user.id,
         name: user.name,
+        rank: user.rank || null,
+        profileCompletedAt: user.profileCompletedAt || null,
         role: user.role,
         externalId: user.externalId,
         email: user.email || null,
@@ -20,11 +24,11 @@ export async function GET(request) {
         lastName: user.lastName || null,
         profileImageUrl: user.profileImageUrl || null,
       },
-    });
+    }, { headers });
   } catch (error) {
     return Response.json(
       { error: 'Identity service unavailable', code: 'AUTH_UNAVAILABLE' },
-      { status: 503 },
+      { status: 503, headers },
     );
   }
 }
