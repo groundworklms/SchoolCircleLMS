@@ -1,13 +1,10 @@
 # Firebase App Hosting runtime config.
 # https://firebase.google.com/docs/app-hosting/configure
-#
-# DOCTRINE_BASE_URL points the cloud app's grounding (server-side /api/doctrine)
-# at the offline Anchor engine on the Orin, exposed over a tunnel.
-#
-# NOTE: the value below is a TEMPORARY Cloudflare quick-tunnel URL — it changes
-# whenever the tunnel restarts. For a stable setup use a named Cloudflare tunnel
-# or a console-set secret. Update this value if the tunnel is restarted.
 env:
+  # --- Grounding: point the cloud app's server-side /api/doctrine at the Orin's
+  # Anchor engine, exposed over a tunnel.
+  # NOTE: this is a TEMPORARY Cloudflare quick-tunnel URL — it changes whenever the
+  # tunnel restarts. For a stable setup use a named Cloudflare tunnel. Update if restarted.
   - variable: DOCTRINE_BASE_URL
     value: https://calculations-probability-dozens-recommended.trycloudflare.com
     availability:
@@ -15,4 +12,37 @@ env:
   - variable: DOCTRINE_TIMEOUT_MS
     value: "30000"
     availability:
+      - RUNTIME
+
+  # --- Firebase Authentication (login). PUBLIC client config, inlined into the
+  # browser bundle at build time -> must be available at BUILD (and RUNTIME).
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyDNULW649liOlpJEuIfKc5fGrsAjmrOF1g
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: schoolcircle-ae29a.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: schoolcircle-ae29a
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: schoolcircle-ae29a.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "770710930289"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:770710930289:web:cda5d4e9c6ea74742cecd0"
+    availability:
+      - BUILD
       - RUNTIME
