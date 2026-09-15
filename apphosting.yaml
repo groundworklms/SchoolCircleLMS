@@ -1,5 +1,9 @@
 # Firebase App Hosting runtime config.
 # https://firebase.google.com/docs/app-hosting/configure
+# Database integration is intentionally staged, not active:
+# see docs/apphosting.cloud-sql.example.yaml and docs/CLOUD_POSTGRES.md.
+# Provision the instance/network/secret and migrate BEFORE an approved rollout.
+# Do not run migrations or demo seeding in the build/start commands.
 env:
   # --- Grounding: point the cloud app's server-side /api/doctrine at the Orin's
   # Anchor engine, exposed over a tunnel.

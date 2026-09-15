@@ -1,0 +1,24 @@
+# REVIEW TEMPLATE ONLY — merge into apphosting.yaml after provisioning, granting
+# secret access and testing. Never deploy these placeholder network identifiers.
+# Preserve existing Firebase/grounding env entries when merging.
+# Replace NETWORK_ID/SUBNET_ID after confirming the backend region.
+runConfig:
+  maxInstances: 2
+  vpcAccess:
+    egress: PRIVATE_RANGES_ONLY
+    networkInterfaces:
+      - network: NETWORK_ID
+        subnetwork: SUBNET_ID
+env:
+  - variable: DATABASE_URL
+    secret: schoolcircle-dev-database-url
+    availability:
+      - RUNTIME
+  - variable: SCHOOLCIRCLE_DB_ENV
+    value: demo
+    availability:
+      - RUNTIME
+  - variable: ALLOW_DEMO_SEED
+    value: "false"
+    availability:
+      - RUNTIME
