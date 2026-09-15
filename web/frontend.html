@@ -913,7 +913,7 @@ html,body{overflow-x:clip}
 .crit+.crit{border-top:.5px dashed var(--p-border)}
 .crit-h{display:flex;justify-content:space-between;gap:.8rem;font-size:.9rem;margin-bottom:.45rem}
 .crit-h b{font-weight:600}.crit-h span{color:var(--p-faint);font-weight:600;white-space:nowrap}
-.lvls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:3px;padding:3px;border-radius:12px;background:rgba(0,0,0,.05)}
+.lvls{display:grid;grid-template-columns:repeat(var(--n,4),minmax(0,1fr));gap:3px;padding:3px;border-radius:12px;background:rgba(0,0,0,.05)}
 .lvl{border:none;background:none;border-radius:9px;padding:.42rem .25rem;font:inherit;font-size:.78rem;font-weight:600;color:var(--p-dim);cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.2;transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease),box-shadow var(--dur) var(--ease),transform var(--dur-press) var(--ease)}
 .lvl small{font-weight:500;color:var(--p-faint);font-size:.7rem}
 .lvl:hover{color:var(--p-text)}.lvl:active{transform:scale(.96)}
@@ -1078,6 +1078,19 @@ button.gb-cell:hover,button.gb-cell:focus-visible{background:var(--acc-50);outli
 .gb-card .card-head{align-items:center}
 @media(max-width:900px){.asg-q{width:100%;order:9}}
 @media(max-width:760px){.disp-cols{grid-template-columns:1fr}.gb-wrap{max-height:70vh}.qh>.cwho b{font-size:1.15rem}.spill.modes .i{display:none}table.gb .gb-stu{min-width:9.5rem;max-width:9.5rem}}
+
+/* Queue + Gradebook: searches instead of pill carousels */
+.scopebar{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem .6rem}
+.scope-find{display:inline-flex;align-items:center;gap:.65rem;min-width:0;max-width:22rem;height:2.9rem;padding:0 1.05rem 0 .85rem;border:none;border-radius:14px;background:var(--p-surface);box-shadow:0 0 0 .5px rgba(0,0,0,.12);font:inherit;color:var(--p-text);text-align:left;cursor:pointer;transition:box-shadow 150ms var(--ease)}
+.scope-find:hover,.scope-find:focus-visible{box-shadow:0 0 0 1.5px var(--p-accent);outline:none}
+.scope-find>.i{flex:none;width:1rem;height:1rem;color:var(--p-dim)}
+.scope-find .cwho{min-width:0}
+.scope-find small{font-size:.72rem;color:var(--p-faint)}
+.scope-find b{display:block;font-size:.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scope-clear{font-size:.84rem;padding:0 .3rem}
+.scope-n{margin-left:auto;font-size:.84rem}
+.qempty>.btn{margin-top:.4rem}
+@media(max-width:760px){.scope-find{flex:1 1 100%;max-width:none}.scope-n{margin-left:0}}
 
 /* ===== Test Bank: mega search + question generation ===== */
 .mega{position:relative;height:3.35rem;margin:0 0 1.2rem;z-index:36}
@@ -1427,6 +1440,182 @@ body:has(.cb-bar) .ntf-stack{bottom:5.9rem}
 @media(max-width:760px){.cb-ref>.ti.ed,.cb-ref>.cb-ref-ed{flex:1 1 6rem}.ref-row{flex-wrap:wrap}.ref-old{align-items:flex-start;text-align:left}}
 .cb-ref-ed-m{display:none}
 @media(max-width:760px){#dFoot .dfoot-hint{display:none}.cb-ref>.cb-ref-ed{display:none}.cb-ref-ed-m{display:inline}}
+
+/* ============ Rubrics tab: bar, paper, editor, history, print ============ */
+.dk-bar{display:flex;align-items:center;gap:.6rem 1rem;flex-wrap:wrap;margin:0 0 1rem;padding:.55rem .65rem;border-radius:16px;background:var(--p-surface);box-shadow:0 0 0 .5px var(--p-border),0 1px 2px rgba(0,0,0,.04)}
+.dk-pills{display:flex;gap:.5rem;flex-wrap:wrap}
+.dk-pills .spill button{display:inline-flex;align-items:center;gap:.35rem}
+.dk-pills .spill .i{width:.95rem;height:.95rem}
+.dk-info{display:flex;align-items:center;gap:.55rem;flex:1;flex-wrap:wrap;min-width:0}
+.dk-ver{display:inline-flex;align-items:center;gap:.5rem;font-size:.84rem;color:var(--p-dim);min-width:0;flex-wrap:wrap}
+.dk-ver>b{font-size:.78rem;padding:.12rem .5rem;border-radius:980px;background:var(--p-accent-tint);color:var(--p-accent)}
+.dk-sp{flex:1}
+.dk-tools{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin-bottom:.7rem}
+.dk-note{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;padding:.7rem .9rem;border-radius:12px;background:var(--p-warn-tint);color:#654009;font-size:.88rem;margin-bottom:.8rem}
+.dk-note>span{flex:1;min-width:12rem}
+.dk-note .i{flex:none}
+.dk-note.rm{background:var(--p-critical-tint);color:#8a2a09}
+
+/* paper: every size is in inches (--u) */
+.sheetscroll{overflow-x:auto;padding:6px 10px 22px;margin:0 -10px}
+.ppwrap{container-type:inline-size;max-width:52rem}
+.ppwrap.actual{width:8.5in;max-width:none}
+.pp{--u:calc(100cqw / 8.5);position:relative;isolation:isolate;box-sizing:border-box;padding:var(--u);min-height:calc(var(--u) * 11);background:#fff;border-radius:3px;box-shadow:0 2px 14px rgba(0,0,0,.08),0 0 0 .5px rgba(0,0,0,.06);font-family:Helvetica,Arial,var(--sans);font-size:calc(var(--u) * .1462);line-height:1.35;color:#1d1d1f;text-align:left}
+.pp.laid{background:transparent;box-shadow:none;border-radius:0}
+.pp-body{display:flex;flex-direction:column}
+.pp .blk{flex:none}
+.pp-page{position:absolute;left:0;right:0;z-index:-1;background:#fff;border-radius:3px;box-shadow:0 2px 14px rgba(0,0,0,.08),0 0 0 .5px rgba(0,0,0,.06)}
+.pp-guide{position:absolute;outline:1px dashed rgba(179,18,46,.2);pointer-events:none}
+.pp-foot{position:absolute;display:flex;justify-content:space-between;gap:1em;border-top:.5px solid #d1d1d6;padding-top:.3em;font-size:.72em;color:#8e8e93;pointer-events:none}
+.pp-foot span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pp-rephead{pointer-events:none}
+.pp-top{display:flex;justify-content:space-between;gap:1em;font-size:.82em;color:#6e6e73}
+.pp-title{margin-top:.55em}
+.pp-title h2{font-size:1.64em;margin:0;line-height:1.15;letter-spacing:-.01em;font-weight:700}
+.pp-meta{margin-top:.2em;font-size:.9em;color:#48484a}
+.pp-desc{margin-top:.45em;font-size:.9em;color:#48484a;white-space:pre-wrap}
+.pp-dim{color:#6e6e73}
+.pp-lines{display:flex;gap:1.4em;margin-top:1em;font-size:.9em}
+.pp-lines span{flex:1;display:flex;justify-content:space-between;border-bottom:1px solid #8e8e93;padding-bottom:.15em;white-space:nowrap}
+.pp-lines em{font-style:normal;color:#48484a}
+.rb-row{display:grid;grid-template-columns:25.6% repeat(var(--n),minmax(0,1fr));border-left:1px solid #c7c7cc;font-size:.8em}
+.rb-head{margin-top:1.1em;border-top:1px solid #c7c7cc;background:#f2f2f4;font-weight:700}
+.rb-row.pg-first{border-top:1px solid #c7c7cc}
+.rb-c{border-right:1px solid #c7c7cc;border-bottom:1px solid #c7c7cc;padding:.5em .55em;min-width:0;overflow-wrap:anywhere;white-space:pre-wrap}
+.rb-c small{display:block;font-weight:500;color:#6e6e73}
+.rb-c>b{display:block;font-weight:700}
+.pp-total{margin-top:1.2em;display:flex;justify-content:space-between;flex-wrap:wrap;gap:.3em 1em;font-size:.9em}
+.pp-comments{margin-top:1em;display:grid;grid-template-columns:auto 1fr;align-items:end;gap:1.3em .5em;font-size:.9em}
+.pp-comments i{border-bottom:1px solid #8e8e93;height:1em}
+.pp-comments i:last-child{grid-column:1 / -1}
+.q{margin-top:1em;font-size:.95em}
+.q-h{display:flex;align-items:baseline;gap:.45em}
+.q-n{font-weight:700;min-width:1.4em}
+.q-p{flex:1;min-width:0;white-space:pre-wrap}
+.q-pts{color:#6e6e73;font-size:.85em;white-space:nowrap}
+.q-opts{list-style:none;margin:.35em 0 0 1.85em;padding:0;display:grid;gap:.2em}
+.q-opts li{display:flex;gap:.55em}
+.q-opts li>span:last-child{flex:1;min-width:0}
+.q-l{font-weight:700;min-width:1.1em}
+.q-opts li.ok{color:#b3122e;font-weight:700}
+.q-lines{margin:.35em 0 0 1.85em;height:calc(var(--l) * 2em);background:repeating-linear-gradient(to bottom,transparent 0 calc(2em - 1px),#aeaeb2 calc(2em - 1px) 2em)}
+.q-check{margin:.45em 0 0 1.85em;display:flex;gap:1.8em}
+.q-check .bx{display:inline-block;width:.85em;height:.85em;border:1px solid #6e6e73;margin-right:.45em;vertical-align:-.1em}
+.q-key{margin:.4em 0 0 1.85em;color:#b3122e;font-size:.9em;white-space:pre-wrap}
+.pp .t{margin-top:1em;font-size:.9em;white-space:pre-wrap}
+
+/* editing on the page */
+.pp.edit [contenteditable]{border-radius:2px;outline:1px dashed transparent;outline-offset:1px;cursor:text;transition:outline-color 150ms var(--ease),background-color 150ms var(--ease)}
+.pp.edit [contenteditable]:hover{outline-color:rgba(179,18,46,.35)}
+.pp.edit [contenteditable]:focus{outline:2px solid var(--p-accent);background:rgba(179,18,46,.04)}
+.pp.edit .rb-c[contenteditable]{outline-offset:-2px}
+.pp.edit [contenteditable]:empty::before{content:attr(data-ph);color:#aeaeb2;font-weight:400}
+.pp .picked{box-shadow:0 0 0 2px rgba(179,18,46,.28);border-radius:2px}
+.pp.marks .chg{background:rgba(30,122,60,.13);box-shadow:inset 2px 0 0 #1e7a3c}
+.pp.marks .added{background:rgba(30,122,60,.07);box-shadow:inset 3px 0 0 #1e7a3c}
+.pp .flash{animation:flash 1.8s var(--ease) both}
+
+/* editor layout + inspector */
+.dk-edit{display:grid;grid-template-columns:minmax(0,1fr) 19rem;gap:1.2rem;align-items:start}
+.dk-edit>*,.dk-hist>*{min-width:0}
+.dk-insp{position:sticky;top:calc(var(--tb-h,4rem) + 1rem);display:flex;flex-direction:column;gap:.8rem;max-height:calc(100vh - var(--tb-h,4rem) - 7.5rem);overflow:auto;padding:2px}
+.dk-card{padding:1rem 1.05rem;display:flex;flex-direction:column;gap:.7rem}
+.dk-card-h{display:flex;align-items:baseline;justify-content:space-between;gap:.6rem}
+.dk-card-h h4{margin:0;font-size:.98rem}
+.dk-card-sub{margin:0;font-size:.84rem;color:var(--p-dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dk-total{display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;padding:.6rem .75rem;border-radius:11px;background:var(--p-good-tint);color:#1e5e32;font-size:.86rem}
+.dk-total b{font-size:1.05rem}
+.dk-total.bad{background:var(--p-critical-tint);color:#8a2a09}
+.dk-acts,.dk-add,.dk-fields{display:flex;flex-wrap:wrap;gap:.4rem}
+.dk-del{color:var(--p-critical)}
+.dk-ai .i{color:var(--p-accent)}
+.dk-levels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem}
+.dk-levels span{display:flex;justify-content:space-between;gap:.4rem;padding:.35rem .55rem;border-radius:8px;background:rgba(0,0,0,.035);font-size:.8rem;min-width:0}
+.dk-levels b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dk-levels i{font-style:normal;color:var(--p-dim);white-space:nowrap}
+.dk-step input{width:3.6rem;height:1.9rem;border:none;border-radius:8px;background:var(--p-surface);text-align:center;font:inherit;font-weight:600;color:var(--p-text)}
+.dk-opts{display:flex;flex-direction:column;gap:.3rem}
+.dk-opt{display:flex;align-items:center;gap:.5rem;padding:.25rem .35rem;border-radius:10px;font-size:.84rem}
+.dk-opt>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dk-opt.on{background:var(--p-good-tint)}
+.dk-radio{flex:none;width:1.8rem;height:1.8rem;border-radius:50%;border:1px solid var(--p-border);background:var(--p-surface);font:inherit;font-size:.78rem;font-weight:700;color:var(--p-dim);cursor:pointer}
+.dk-opt.on .dk-radio{background:var(--p-good);border-color:var(--p-good);color:#fff}
+.dk-iss{gap:.4rem}
+.dk-iss .cb-issue{width:100%;border:none;font:inherit;text-align:left;cursor:pointer}
+.dk-iss.ok{flex-direction:row;align-items:center;gap:.55rem;color:#1e5e32;font-size:.86rem}
+.dk-iss.ok .i{flex:none;color:var(--p-good)}
+
+/* history */
+.dk-hist{display:grid;grid-template-columns:19rem minmax(0,1fr);gap:1.2rem;align-items:start}
+.dk-vers{padding:.8rem .6rem;position:sticky;top:calc(var(--tb-h,4rem) + 1rem)}
+.dk-vers-h{display:flex;align-items:baseline;justify-content:space-between;gap:.5rem;padding:0 .45rem .5rem}
+.dk-vers-h h4{margin:0}
+.dk-vlist{display:flex;flex-direction:column;gap:.2rem;max-height:calc(100vh - var(--tb-h,4rem) - 8rem);overflow:auto;padding:2px}
+.dk-vrow{display:flex;align-items:flex-start;gap:.65rem;padding:.65rem .55rem;border:none;border-radius:12px;background:none;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:background-color 150ms var(--ease)}
+.dk-vrow:hover{background:rgba(0,0,0,.035)}
+.dk-vrow.on{background:var(--p-accent-tint)}
+.dk-vrow:focus-visible{outline:2px solid var(--p-accent);outline-offset:-2px}
+.dk-vrow .cwho{flex:1;min-width:0}
+.dk-vrow .cwho b{white-space:normal;font-size:.86rem;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dk-vn{flex:none;min-width:2.6rem;text-align:center;padding:.15rem .4rem;border-radius:980px;background:rgba(0,0,0,.06);font-size:.76rem;font-weight:700}
+.dk-vrow.on .dk-vn{background:var(--p-accent);color:#fff}
+.dk-vrow.draft .dk-vn{background:var(--p-warn-tint);color:var(--p-warning)}
+.dk-cts{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.3rem}
+.dk-cts i{font-style:normal;font-size:.72rem;font-weight:600;padding:.08rem .42rem;border-radius:980px;background:rgba(0,0,0,.05);color:var(--p-dim)}
+.dk-cts i.add{background:var(--p-good-tint);color:#1e5e32}
+.dk-cts i.del{background:var(--p-critical-tint);color:var(--p-critical)}
+.dk-cts i.ed{background:var(--p-info-tint);color:var(--p-info)}
+.dk-hmain{display:flex;flex-direction:column;gap:1rem}
+.dk-vhead{padding:1rem 1.2rem;display:flex;flex-direction:column;gap:.6rem}
+.dk-vtitle{display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap}
+.dk-vtitle h3{margin:0;display:flex;align-items:center;gap:.5rem;font-size:1.15rem;color:var(--p-text)}
+.dk-vtitle .note{margin:.15rem 0 0}
+.dk-vnote{margin:0;font-size:.92rem;line-height:1.5}
+.dk-vctl{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.dk-cmp{display:inline-flex;align-items:center;gap:.5rem;font-size:.84rem;color:var(--p-dim)}
+.dk-cmp .sel{width:auto}
+.dk-sum{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.7rem}
+.dk-sum .dk-cts{margin:0}
+.dk-changes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.55rem}
+.dk-ch{padding:.8rem .95rem;border-radius:14px;background:var(--p-surface);box-shadow:0 0 0 .5px var(--p-border)}
+.dk-ch-h{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.dk-ch-h b{flex:1;min-width:10rem;font-size:.9rem}
+.dk-ch-h .linkbtn{font-size:.8rem}
+.dk-ch-k{flex:none;font-size:.72rem;font-weight:600;padding:.1rem .5rem;border-radius:980px;background:var(--p-info-tint);color:var(--p-info)}
+.dk-ch.add .dk-ch-k,.dk-ch-k.add{background:var(--p-good-tint);color:#1e5e32}
+.dk-ch.remove .dk-ch-k,.dk-ch-k.remove{background:var(--p-critical-tint);color:var(--p-critical)}
+.dk-ch.pts .dk-ch-k,.dk-ch-k.pts,.dk-ch.move .dk-ch-k,.dk-ch-k.move{background:var(--p-warn-tint);color:var(--p-warning)}
+.dk-diff{margin:.5rem 0 0;font-size:.9rem;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.dk-diff del,.dk-diff ins{border-radius:4px;padding:.05em .15em}
+.dk-diff del{background:var(--p-critical-tint);color:#8a2a09;text-decoration:line-through;text-decoration-color:rgba(138,42,9,.5)}
+.dk-diff ins{background:var(--p-good-tint);color:#1e5e32;text-decoration:none}
+.dk-diff del+ins{margin-left:.3em}
+.dk-arrow{color:var(--p-faint)}
+.dk-detail{display:grid;grid-template-columns:auto minmax(0,1fr);gap:.25rem .8rem;margin:.5rem 0 0;font-size:.84rem}
+.dk-detail dt{font-weight:600}
+.dk-detail dd{margin:0;color:var(--p-dim)}
+.dk-first{margin:0 0 .6rem}
+.dk-publist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.35rem;font-size:.88rem}
+.dk-publist li{display:flex;align-items:center;gap:.5rem}
+.gr-ver{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;margin:0 0 .6rem;padding:.5rem .7rem;border-radius:10px;background:var(--p-warn-tint);color:#654009}
+.gr-ver .i{width:.95rem;height:.95rem}
+
+/* print: only the sheet, on Letter with 1 inch margins */
+#printRoot{position:absolute;left:-10000px;top:0;width:8.5in;pointer-events:none}
+#printRoot:empty{display:none}
+@media print{
+  body>*:not(#printRoot){display:none!important}
+  html,body{background:#fff!important}
+  #printRoot{position:static;width:auto}
+  #printRoot .ppwrap{max-width:none}
+  #printRoot .pp{--u:1in;padding:0;height:auto!important;min-height:0;box-shadow:none;background:#fff}
+  #printRoot .pp-body{display:block}
+  #printRoot .blk{break-inside:avoid}
+  #printRoot .brk{break-before:page}
+}
+
+@media(max-width:1100px){.dk-edit,.dk-hist{grid-template-columns:minmax(0,1fr)}.dk-insp,.dk-vers{position:static;max-height:none}.dk-vlist{max-height:22rem}}
+@media(max-width:760px){.dk-bar{padding:.5rem}.dk-info .btn{flex:1;justify-content:center}.dk-vtitle .btnrow{width:100%}.dk-ch-h b{min-width:0}.dk-levels{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -1760,7 +1949,7 @@ const state = {
   sub: 'syllabus', open: new Set(), enrolled: ['tc322', 'mcpp'], pending: [],
   next: { open: false, f: 'all' }, cal: { m: 0, day: null, f: { issued: true, due: true, test: true, annex: true } },
   assist: { active: false, q: '', annex: 'all', type: 'all' },
-  rev: { course: null, annex: null, sort: 'course' }, rub: { course: null, annex: null, item: null },
+  rev: { course: null, annex: null, sort: 'course' }, rub: { course: null, annex: null, item: null, doc: 'rubric', mode: 'preview', ver: null, cmp: null, hv: 'changes', key: false, zoom: 'fit', sel: null, marks: true },
   prog: { open: new Set(), q: '', sort: 'name' },
 };
 const curCourse = () => courseById(state.course[state.role]);
@@ -1959,7 +2148,7 @@ function searchKey(e) {
 function pickSearch(i) { const h = searchHits[i]; const inp = document.getElementById('searchIn'); inp.value = ''; inp.blur(); hideSearch(); if (h) h.go(); }
 function hideSearch() { const b = document.getElementById('searchRes'); if (b) b.hidden = true; }
 document.addEventListener('keydown', e => {
-  if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); document.getElementById('searchIn').focus(); }
+  if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.activeElement.isContentEditable) { e.preventDefault(); document.getElementById('searchIn').focus(); }
   if (e.key === 'Escape') { closePops(); closeDialog(); }
 });
 
@@ -1972,7 +2161,7 @@ function goItem(courseId, itemId, annexL) {
   if (itemId) setTimeout(() => { const el = document.getElementById('row-' + itemId); if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('flash'); } }, 60);
 }
 function goGrades(courseId) { state.course.student = courseId; state.sub = 'grades'; setView('scourse'); }
-function goRubric(courseId, annexL, itemId) { state.course.instructor = courseId; state.rub = { course: courseId, annex: annexL, item: itemId }; setView('rubrics'); }
+function goRubric(courseId, annexL, itemId, doc) { state.course.instructor = courseId; Object.assign(state.rub, { course: courseId, annex: annexL, item: itemId, doc: doc || state.rub.doc, mode: 'preview', ver: null, cmp: null, sel: null }); setView('rubrics'); }
 function openDoc(m) {
   document.getElementById('mTitle').textContent = m.title; document.getElementById('mText').textContent = m.text;
   document.getElementById('mSrc').textContent = m.loc; document.getElementById('modal').hidden = false;
@@ -2083,22 +2272,7 @@ document.addEventListener('keydown',(e)=>{ if(e.key==='Escape'){ document.getEle
 
 /* ============ rubrics: shared model + dependency-free PDF writer ============
    PDFs are US Letter (612 x 792 pt) with 1 inch (72 pt) margins on every side. */
-const LEVELS = [['Exceeds', 4], ['Meets', 3], ['Approaching', 2], ['Beginning', 1]];
 const VERB = /^(Identifies|Sequences|Explains|Describes|Diagnoses|Prescribes|Measures|Links|Proposes|Covers|Cites|Names|Establishes|Controls|Moves|Follows|Selects|Plots|Reads|Isolates|Documents|Uses|Applies|Sets|Plans)\b/;
-function rubricFor(it) {
-  const per = Math.round(it.pts / it.crit.length * 2) / 2;
-  const rows = it.crit.map(cr => {
-    const m = cr.match(VERB);
-    if (m) {
-      const base = (m[1].endsWith('ies') ? m[1].slice(0, -3) + 'y' : /(sh|ch|ss|x|z)es$/.test(m[1]) ? m[1].slice(0, -2) : m[1].slice(0, -1)).toLowerCase() + cr.slice(m[1].length);
-      const lower = cr[0].toLowerCase() + cr.slice(1);
-      return { crit: cr, cells: [`${cr} completely and precisely, citing the source; could teach it to a peer.`, `${cr} correctly, with only minor omissions.`, `Partially ${lower}; key parts are missing or unclear.`, `Does not yet ${base}; major errors or missing.`] };
-    }
-    return { crit: cr, cells: [`${cr}: consistently accurate and complete, with no errors.`, `${cr}: accurate, with minor errors that don't change the result.`, `${cr}: several errors or gaps.`, `${cr}: not demonstrated, or mostly incorrect.`] };
-  });
-  return { per, rows, levels: LEVELS.map(([n, s]) => [n, Math.round(per * s / 4 * 2) / 2]) };
-}
-
 /* Helvetica / Helvetica-Bold advance widths for ASCII 32..126 (per 1000 em) */
 const HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584];
 const HELVB = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584];
@@ -2167,59 +2341,6 @@ class PdfDoc {
   }
 }
 
-/* lay out one or more rubrics; each rubric starts on a new page */
-function rubricPdf(entries) {
-  const M = 72, W = 612 - 2 * M, TOP = M, BOTTOM = 792 - M;
-  const colC = 120, colL = (W - colC) / 4;
-  const doc = new PdfDoc(entries.length === 1 ? entries[0].it.title + ' rubric' : 'Rubrics');
-  const pageStarts = [];
-  entries.forEach(({ c, a, it }, idx) => {
-    if (idx) doc.addPage();
-    pageStarts.push(doc.pages.length - 1);
-    const r = rubricFor(it);
-    let y = TOP + 10;
-    doc.text(M, y, `SchoolCircle · Rubric`, 8.5, false, '#6e6e73');
-    doc.textRight(M + W, y, `${c.code} · Annex ${a.l}: ${a.title}`, 8.5, false, '#6e6e73');
-    y += 26;
-    for (const ln of wrapText(it.title, 17, true, W)) { doc.text(M, y, ln, 17, true); y += 20; }
-    doc.text(M, y, `${TYPE_LABEL[it.type]} · ${it.pts} points · ${dueWord(it)} ${fmtDate(it.due)} · ${c.name}, ${c.section.split(' · ').pop()}`, 9.5, false, '#48484a'); y += 14;
-    for (const ln of wrapText(it.desc, 9.5, false, W)) { doc.text(M, y, ln, 9.5, false, '#48484a'); y += 12.5; }
-    y += 16;
-    [['Student', 0, 200], ['Evaluator', 214, 160], ['Date', 388, 80]].forEach(([lab, dx, w]) => { doc.text(M + dx, y, lab + ':', 9.5); doc.line(M + dx + pdfWidth(lab + ':', 9.5) + 4, y + 2, M + dx + w, y + 2); });
-    y += 18;
-    const header = () => {
-      const h = 30; doc.rect(M, y, W, h, '#f2f2f4', '#c7c7cc');
-      doc.text(M + 6, y + 13, 'Criterion', 9, true); doc.text(M + 6, y + 24, `${r.per} pts each`, 7.5, false, '#6e6e73');
-      r.levels.forEach(([name, pts], i) => { const x = M + colC + i * colL; doc.line(x, y, x, y + h, '#c7c7cc'); doc.text(x + 6, y + 13, name, 9, true); doc.text(x + 6, y + 24, `${pts} pts`, 7.5, false, '#6e6e73'); });
-      y += h;
-    };
-    header();
-    for (const row of r.rows) {
-      const cl = wrapText(row.crit, 9, true, colC - 12), cells = row.cells.map(t => wrapText(t, 8.5, false, colL - 12));
-      const h = Math.max(cl.length, ...cells.map(x => x.length)) * 11 + 12;
-      if (y + h > BOTTOM - 40) { doc.addPage(); y = TOP; header(); }
-      doc.rect(M, y, W, h, null, '#c7c7cc');
-      cl.forEach((ln, i) => doc.text(M + 6, y + 14 + i * 11, ln, 9, true));
-      cells.forEach((lines, ci) => { const x = M + colC + ci * colL; doc.line(x, y, x, y + h, '#c7c7cc'); lines.forEach((ln, i) => doc.text(x + 6, y + 14 + i * 11, ln, 8.5, false, '#1d1d1f')); });
-      y += h;
-    }
-    if (y + 46 > BOTTOM - 20) { doc.addPage(); y = TOP; }
-    y += 22;
-    doc.text(M, y, 'Total score:', 10, true); doc.line(M + 64, y + 2, M + 130, y + 2); doc.text(M + 134, y, `/ ${it.pts}`, 10);
-    doc.textRight(M + W, y, 'Exceeds = full points · Meets = 75% · Approaching = 50% · Beginning = 25%', 8, false, '#6e6e73');
-    y += 20;
-    doc.text(M, y, 'Comments:', 10, true); doc.line(M + 58, y + 2, M + W, y + 2); doc.line(M, y + 20, M + W, y + 20);
-  });
-  /* footers, inside the bottom margin box */
-  doc.pages.forEach((ops, i) => {
-    doc.ops = ops;
-    const entry = entries[pageStarts.filter(p => p <= i).length - 1];
-    doc.line(M, BOTTOM - 15, M + W, BOTTOM - 15, '#d1d1d6', .5);
-    doc.text(M, BOTTOM - 3, `${entry.c.code} · ${entry.it.title}`, 7.5, false, '#8e8e93');
-    doc.textRight(M + W, BOTTOM - 3, `Page ${i + 1} of ${doc.pages.length}`, 7.5, false, '#8e8e93');
-  });
-  return doc.output();
-}
 function savePdf(pdf, filename) {
   const bytes = new Uint8Array(pdf.length); for (let i = 0; i < pdf.length; i++) bytes[i] = pdf.charCodeAt(i) & 255;
   const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
@@ -2228,20 +2349,9 @@ function savePdf(pdf, filename) {
   window.__lastPdf = pdf;
 }
 const slug = s => s.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
-function downloadRubric(itemId) {
-  const f = findItem(itemId); if (!f) return;
-  const name = `${slug(f.c.code)}_Annex-${f.a.l}_${slug(f.it.title)}_rubric.pdf`;
-  pdfNotify(f.it.title, 1, () => savePdf(rubricPdf([f]), name), name);
-}
-function downloadAnnexRubrics(courseId, annexL) {
-  const c = courseById(courseId), a = c.annexes.find(x => x.l === annexL);
-  const name = `${slug(c.code)}_Annex-${a.l}_rubrics.pdf`;
-  pdfNotify(`Annex ${a.l}: ${a.items.length} rubrics in one file`, a.items.length, () => savePdf(rubricPdf(a.items.map(it => ({ c, a, it }))), name), name);
-}
-
 /* download feedback uses the update-toast lifecycle: preparing (progress) -> downloaded (success burst) */
 function pdfNotify(title, count, make, name) {
-  const h = notify({ tone: 'info', icon: 'file', title: 'Preparing PDF', meta: count > 1 ? `${count} rubrics` : 'Letter · 1 in margins', desc: title, progress: 0, duration: 0 });
+  const h = notify({ tone: 'info', icon: 'file', title: 'Preparing PDF', meta: count > 1 ? `${count} documents` : 'Letter · 1 in margins', desc: title, progress: 0, duration: 0 });
   requestAnimationFrame(() => requestAnimationFrame(() => h.progress(.9)));
   setTimeout(() => { make(); h.update({ tone: 'success', icon: 'check', title: 'PDF downloaded', meta: 'Letter · 1 in margins', desc: name, progress: null, burst: true, duration: 5000, actions: [{ label: 'Download again', run: () => make() }, { label: 'Done', primary: true }] }); }, 700);
 }
@@ -2646,50 +2756,6 @@ function refreshReview() {
   document.getElementById('revGroups').innerHTML = revGroups(); document.getElementById('revList').innerHTML = revList();
   document.querySelectorAll('#revList .item').forEach(el => el.style.animation = 'none');
   renderNav(); window.scrollTo(0, y);
-}
-
-/* ---------- Rubrics ---------- */
-V.rubrics = () => {
-  const c = curCourse(), r = state.rub;
-  if (r.course !== c.id || !c.annexes.some(a => a.l === r.annex)) { r.course = c.id; r.annex = currentAnnex(c).l; r.item = null; }
-  const a = c.annexes.find(x => x.l === r.annex);
-  if (!a.items.some(it => it.id === r.item)) r.item = a.items[0].id;
-  const it = a.items.find(x => x.id === r.item);
-  return `<div class="pagehead"><h1>Rubrics</h1><p>Break rubrics down by course, annex, and assignment, quiz or exam. Each one downloads as a print-ready PDF on US Letter (8.5 × 11 in) with 1 inch margins on every side. Powered by <b>Rubricon</b>.</p></div>
-  <div class="rsel">
-    <label class="fl">Course<select class="sel" onchange="rubPick('course',this.value)">${COURSES.map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.code)} · ${esc(x.name)}</option>`).join('')}</select></label>
-    <label class="fl">Annex<select class="sel" onchange="rubPick('annex',this.value)">${c.annexes.map(x => `<option value="${x.l}" ${x.l === a.l ? 'selected' : ''}>Annex ${x.l}: ${esc(x.title)}</option>`).join('')}</select></label>
-    <label class="fl">Assignment, quiz or exam<select class="sel" onchange="rubPick('item',this.value)">${['assignment', 'quiz', 'exam'].map(t => { const xs = a.items.filter(x => x.type === t); return xs.length ? `<optgroup label="${TYPE_LABEL[t]}s">${xs.map(x => `<option value="${x.id}" ${x.id === it.id ? 'selected' : ''}>${esc(x.title)}</option>`).join('')}</optgroup>` : ''; }).join('')}</select></label>
-  </div>
-  <div class="rgrid"><div>
-    <div class="sheetbar"><b style="flex:1;min-width:10rem">${esc(it.title)}</b><span class="note">Letter · 8.5 × 11 in · 1 in margins</span><button class="btn sm press" onclick="downloadRubric('${it.id}')">${ic('download')} Download PDF</button></div>
-    <div class="sheetwrap"><div class="sheet" aria-label="Rubric preview at Letter proportions">${sheetHtml(c, a, it)}</div></div>
-    <p class="note" style="margin-top:.6rem">The dashed line marks the 1 inch margin. The PDF uses the same layout; long rubrics continue onto a second page with the header row repeated.</p>
-  </div>
-  <aside class="agenda" style="padding-top:0">
-    <div class="box"><h4>Annex ${a.l} rubrics</h4>${a.items.map(x => `<div class="rl-row ${x.id === it.id ? 'on' : ''}">${kico(x.type)}<button class="cwho linkish" onclick="rubPick('item','${x.id}')"><b>${esc(x.title)}</b><small>${TYPE_LABEL[x.type]} · ${x.pts} pts · ${x.crit.length} criteria</small></button><button class="iconbtn press" title="Download PDF" aria-label="Download PDF: ${esc(x.title)}" onclick="downloadRubric('${x.id}')">${ic('download')}</button></div>`).join('')}
-      <div class="btnrow" style="margin-top:.7rem"><button class="btn sm ghost press" onclick="downloadAnnexRubrics('${c.id}','${a.l}')">${ic('download')} All ${a.items.length} as one PDF</button></div></div>
-    <div class="box"><h4>Reliability</h4><div class="chart"><div class="crow"><span class="cl">Cohen's κ</span>${bar(84, 'var(--p-good)')}<span class="cv">0.84</span></div><div class="crow"><span class="cl">Fleiss' κ</span>${bar(79, 'var(--p-good)')}<span class="cv">0.79</span></div></div></div>
-    <div class="box"><h4>Flag-ambiguous</h4><p class="note">A standard too vague to anchor, like "understands the fundamentals", is <b>flagged for the SME</b> to define, not guessed. Rubricon abstains rather than invent criteria.</p></div>
-  </aside></div>`;
-};
-function sheetHtml(c, a, it) {
-  const r = rubricFor(it);
-  return `<div class="sh-top"><span>SchoolCircle · Rubric</span><span>${esc(c.code)} · Annex ${a.l}: ${esc(a.title)}</span></div>
-  <h2>${esc(it.title)}</h2>
-  <div class="sh-meta">${TYPE_LABEL[it.type]} · ${it.pts} points · ${dueWord(it)} ${fmtDate(it.due)} · ${esc(c.name)}, ${esc(c.section.split(' · ').pop())}</div>
-  <p class="sh-desc">${esc(it.desc)}</p>
-  <div class="sh-lines"><span>Student:</span><span>Evaluator:</span><span style="flex:.45">Date:</span></div>
-  <table class="rt"><tr><th>Criterion<small>${r.per} pts each</small></th>${r.levels.map(([n, p]) => `<th>${n}<small>${p} pts</small></th>`).join('')}</tr>
-  ${r.rows.map(row => `<tr><td>${esc(row.crit)}</td>${row.cells.map(x => `<td>${esc(x)}</td>`).join('')}</tr>`).join('')}</table>
-  <div class="sh-total"><span><b>Total score:</b> ______ / ${it.pts}</span><span style="color:#6e6e73">Exceeds = full · Meets = 75% · Approaching = 50% · Beginning = 25%</span></div>`;
-}
-function rubPick(k, v) {
-  const r = state.rub;
-  if (k === 'course') { state.course.instructor = v; r.course = v; r.annex = currentAnnex(courseById(v)).l; r.item = null; }
-  if (k === 'annex') { r.annex = v; r.item = null; }
-  if (k === 'item') r.item = v;
-  rerender();
 }
 
 /* ---------- Class Progress ---------- */
@@ -3126,10 +3192,10 @@ function graderQueue(x) {
   return q.some(y => y.key === x.key) ? q : submissionsFor(x.c).sort((p, r) => p.at - r.at);
 }
 function draftOf(x) {
-  if (!DRAFTS[x.key]) { const g = GRADES[x.key]; DRAFTS[x.key] = { levels: g ? [...g.levels] : x.it.crit.map(() => null), fb: g ? g.feedback : '', score: x.graded ? x.score : null, manual: x.graded }; }
+  if (!DRAFTS[x.key]) { const g = GRADES[x.key]; DRAFTS[x.key] = { levels: g ? [...g.levels] : rubricFor(x.it).rows.map(() => null), fb: g ? g.feedback : '', score: x.graded ? x.score : null, manual: x.graded }; }
   return DRAFTS[x.key];
 }
-const autoScore = (x, d) => d.levels.every(l => l != null) ? Math.min(x.it.pts, Math.round(d.levels.reduce((t, l) => t + rubricFor(x.it).levels[l][1], 0))) : null;
+const autoScore = (x, d) => { const r = rubricFor(x.it); return r.rows.every((row, i) => row.lv[d.levels[i]]) ? Math.min(x.it.pts, Math.round(r.rows.reduce((t, row, i) => t + row.lv[d.levels[i]][1], 0))) : null; };
 function openGrader(key) {
   ensureDrawer(); grading = key; renderGrader();
   const d = document.getElementById('drawer'); d.hidden = false; d.classList.remove('closing');
@@ -3147,6 +3213,8 @@ function saveDraftFields() {
 function renderGrader() {
   const x = findSub(grading); if (!x) { closeGrader(); return; }
   const d = draftOf(x), r = rubricFor(x.it), q = graderQueue(x), idx = q.findIndex(y => y.key === x.key);
+  const rdoc = docOf('rubric', x.it.id), rv = { cur: docCur(rdoc).n, old: 0 };
+  if (x.graded) { const gv = GRADES[x.key]?.rubricV ?? rdoc.loadN; if (gv < rv.cur) rv.old = gv; }
   const score = d.manual ? d.score : autoScore(x, d), p = score != null && score !== '' ? score / x.it.pts * 100 : null;
   const body = document.getElementById('grBody'), sc = body.querySelector('.dr-scroll'), keep = gradingShown === x.key && sc ? sc.scrollTop : 0;
   const lines = [92, 100, 84, 96, 70, 100, 88, 60].map(w => `<i style="width:${w}%"></i>`).join('');
@@ -3158,9 +3226,10 @@ function renderGrader() {
         <div class="subfile">${ic('file')}<span class="cwho"><b>${esc(subFile(x))}</b><small>PDF · 2 pages · ${esc(x.it.docs[0])}</small></span><button class="iconbtn press" onclick="toast('Downloaded ${jsq(subFile(x))}')" aria-label="Download submission">${ic('download')}</button></div>
         <div class="subprev" aria-hidden="true"><i style="width:45%;height:.7rem;background:var(--acc-100)"></i>${lines}<span class="cap">Mock preview · the student's file opens here in the live platform</span></div>
       </section>
-      <section class="dr-sec"><h4>Rubric <span class="muted" style="font-weight:400">· ${r.per} pts per criterion · pick a level</span></h4>
-        ${r.rows.map((row, ci) => { const lv = d.levels[ci]; return `<div class="crit"><div class="crit-h"><b>${esc(row.crit)}</b><span class="tnum">${lv != null ? r.levels[lv][1] : '—'} / ${r.levels[0][1]}</span></div>
-          <div class="lvls" role="radiogroup" aria-label="${esc(row.crit)}">${r.levels.map(([n, pts], li) => `<button role="radio" aria-checked="${lv === li}" class="lvl ${lv === li ? 'on' : ''}" onclick="setLevel(${ci},${li})">${n}<small>${pts}</small></button>`).join('')}</div>
+      <section class="dr-sec"><h4>Rubric <span class="muted" style="font-weight:400">· v${rv.cur} · ${r.uniform ? `${r.per} pts per criterion` : `${r.total} pts across ${r.rows.length} criteria`} · pick a level</span></h4>
+        ${rv.old ? `<p class="note gr-ver">${ic('history')}<span>Graded with rubric v${rv.old}. The rubric is now v${rv.cur}.</span><button class="linkbtn" onclick="goDocHistory('rubric','${x.it.id}',${rv.cur},${rv.old})">See what changed</button></p>` : ''}
+        ${r.rows.map((row, ci) => { const lv = row.lv[d.levels[ci]] ? d.levels[ci] : null; return `<div class="crit"><div class="crit-h"><b>${esc(row.crit)}</b><span class="tnum">${lv != null ? row.lv[lv][1] : '—'} / ${row.pts}</span></div>
+          <div class="lvls" role="radiogroup" aria-label="${esc(row.crit)}" style="--n:${row.lv.length}">${row.lv.map(([n, pts], li) => `<button role="radio" aria-checked="${lv === li}" class="lvl ${lv === li ? 'on' : ''}" onclick="setLevel(${ci},${li})">${esc(n)}<small>${pts}</small></button>`).join('')}</div>
           ${lv != null ? `<p class="crit-d">${esc(row.cells[lv])}</p>` : ''}</div>`; }).join('')}
       </section>
       <section class="dr-sec"><h4>Feedback to ${esc(x.s.name)}</h4>
@@ -3197,7 +3266,7 @@ function returnGrade() {
   const score = Math.max(0, Math.min(x.it.pts, Math.round(raw))), q = graderQueue(x), idx = q.findIndex(y => y.key === x.key);
   const real = findItem(x.it.id).it;   // allItems() hands out copies; the student view reads the real item
   const prev = GRADES[x.key] ? { ...GRADES[x.key] } : null, wasGraded = x.graded, origScore = real.score, origFb = real.feedback;
-  GRADES[x.key] = { score, feedback: d.fb.trim(), levels: [...d.levels] };
+  GRADES[x.key] = { score, feedback: d.fb.trim(), levels: [...d.levels], rubricV: docCur(docOf('rubric', x.it.id)).n };
   if (x.s.name === 'Cpl Rivera') { real.score = score; real.feedback = d.fb.trim(); }
   delete ROSTERS[x.c.id]; delete DRAFTS[x.key];
   refreshAsg();
@@ -3369,7 +3438,7 @@ IC.list = '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>';
 IC.queue = '<path d="M3 6h11M3 12h7M3 18h5"/><path d="M17 8v11M13.5 15.5 17 19l3.5-3.5"/>';
 IC.grid = '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>';
 IC.sliders = '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>';
-Object.assign(asg, { mode: 'list', group: 'class', density: 'comfortable', gsort: 'name', session: 0, skip: new Set() });
+Object.assign(asg, { mode: 'grid', group: 'class', density: 'comfortable', gsort: 'name', session: 0, skip: new Set() });
 
 const SORTS = [['oldest', 'Oldest submission first'], ['newest', 'Newest first'], ['due', 'Due soonest'], ['waiting', 'Waiting longest'], ['most', 'Most to grade'], ['lowest', 'Lowest score first'], ['name', 'Student A–Z']];
 const GROUPS = [['class', 'Class › assignment'], ['assignment', 'Assignment'], ['student', 'Student'], ['due', 'Due date'], ['annex', 'Annex'], ['none', 'No grouping']];
@@ -3409,17 +3478,23 @@ function asgList() { return asg.group === 'class' ? classList() : flatList(); }
 
 V.assign = () => {
   const subs = allSubs(), todo = subs.filter(x => !x.graded).length, late = subs.filter(x => !x.graded && x.late).length;
-  const chev = r => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(${r}deg)">${IC.chev}</svg>`;
-  return `<div class="pagehead"><h1>Assignments</h1><p>Every submitted assignment from the classes you teach. Work through it as a list, a priority queue, or a gradebook grid, then grade against the rubric.</p></div>
+  return `<div class="pagehead"><h1>Assignments</h1><p>Every submitted assignment from the classes you teach. Work through it as a gradebook grid, a priority queue, or a list, then grade against the rubric.</p></div>
   <div class="sectionbar asg-toolbar">
-    ${pillHtml([['list', `${ic('list')}List`], ['queue', `${ic('queue')}Queue`], ['grid', `${ic('grid')}Gradebook`]], asg.mode, 'setAsgMode', 'modes')}
+    ${pillHtml([['grid', `${ic('grid')}Gradebook`], ['queue', `${ic('queue')}Queue`], ['list', `${ic('list')}List`]], asg.mode, 'setAsgMode', 'modes')}
     <span id="asgStatusWrap" ${asg.mode === 'list' ? '' : 'hidden'}>${pillHtml([['todo', `To grade · ${todo}`], ['graded', 'Graded'], ['all', 'All']], asg.status, 'setAsgStatus')}</span>
     ${late ? `<span class="note">${tag('c', `${late} late`)}</span>` : ''}<span class="grow"></span>
     <div class="tb-wrap" id="displayWrap" ${asg.mode === 'queue' ? 'hidden' : ''}><button class="tb-btn press" aria-haspopup="true" aria-expanded="false" aria-controls="popDisplay" onclick="togglePop('popDisplay',event)">${ic('sliders')}<span class="lab">Display</span>${ic('chev', 'dim sm')}</button><div class="pop" id="popDisplay" hidden>${displayPop()}</div></div>
     <input class="ti asg-q" placeholder="Filter students" aria-label="Filter students" value="${esc(asg.q)}" oninput="asg.q=this.value;document.getElementById('asgList').innerHTML=asgBody()">
   </div>
-  <div class="asg-sticky">
-  <div class="classbar" role="group" aria-label="Class">
+  <div class="asg-sticky${asg.mode === 'list' ? '' : ' scoped'}" id="asgScope">${asgScopeHtml()}</div>
+  <div id="asgList" class="${asg.density === 'compact' ? 'compact' : ''}">${asgBody()}</div>`;
+};
+
+/* ---------- class + assignment scope: pill carousels in List; Queue and Gradebook keep only the searches ---------- */
+function asgScopeHtml() {
+  if (asg.mode === 'list') {
+    const chev = r => `<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="transform:rotate(${r}deg)">${IC.chev}</svg>`;
+    return `  <div class="classbar" role="group" aria-label="Class">
     <span class="cb-label">Class</span>
     <button class="iconbtn sm cb-arrow press" id="cbPrev" onclick="cbScroll(-1)" aria-label="Previous classes">${chev(90)}</button>
     <div class="cb-track" id="cbTrack">${classPill()}</div>
@@ -3432,10 +3507,32 @@ V.assign = () => {
     <div class="cb-track" id="ibTrack">${itemPill()}</div>
     <button class="iconbtn sm cb-arrow press" id="ibNext" onclick="cbScroll(1,'ib')" aria-label="More assignments">${chev(-90)}</button>
     <button class="minisearch press" onclick="openItemSearch()" aria-haspopup="dialog" title="Search assignments">${ic('search')}<span>Find an assignment</span></button>
-  </div>
-  </div>
-  <div id="asgList" class="${asg.density === 'compact' ? 'compact' : ''}">${asgBody()}</div>`;
-};
+  </div>`;
+  }
+  const c = asg.cls === 'all' ? null : courseById(asg.cls), f = asg.item === 'all' ? null : findItem(asg.item);
+  const note = asg.mode === 'queue' ? `${scopedSubs({ status: 'todo' }).length} waiting in this queue` : c ? `${roster(c).length} students in this gradebook` : 'Find a class to open its gradebook';
+  return `<div class="scopebar" role="group" aria-label="Class and assignment">
+    <button class="scope-find press" onclick="openClassSearch()" aria-haspopup="dialog">${ic('search')}<span class="cwho"><small>Class</small><b>${c ? esc(c.name) : 'All classes'}</b></span></button>
+    <button class="scope-find press" onclick="openItemSearch()" aria-haspopup="dialog">${ic('search')}<span class="cwho"><small>Assignment${f && !c ? '' : ''}</small><b>${f ? esc(f.it.title) : c ? `All ${esc(c.short)} assignments` : 'All assignments'}</b></span></button>
+    ${c || f ? `<button class="linkbtn scope-clear" onclick="asgScope('all','all')">Clear</button>` : ''}
+    <span class="note scope-n">${note}</span>
+  </div>`;
+}
+/* jump straight to a search result: the gradebook opens the class and centers the assignment's column; the queue narrows so Next up comes from it */
+function asgScope(cls, item) {
+  asg.cls = cls; asg.item = item;
+  const sc = document.getElementById('asgScope'); if (sc) sc.innerHTML = asgScopeHtml();
+  swap('asgList', asgBody()); placePills(false);
+  const L = document.getElementById('asgList'); if (!L) return;
+  const pin = (sc && getComputedStyle(sc).position === 'sticky' ? sc.offsetHeight : 0) + (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tb-h')) || 64), top = L.getBoundingClientRect().top;
+  if (top < pin || top > innerHeight * .5) window.scrollTo({ top: scrollY + top - pin - 12, behavior: 'smooth' });
+  if (asg.mode === 'grid') gridFocusCol();
+  const target = asg.mode === 'grid' ? (item !== 'all' && document.getElementById('gbc-' + item)) || document.getElementById('gbWrap') : document.querySelector('.queue-hero, .qempty');
+  if (target) { target.classList.remove('flash'); void target.offsetWidth; target.classList.add('flash'); }
+}
+const pickClassPill = pickClass, pickItemPill = pickItem;
+pickClass = function (id) { if (state.view === 'assign' && asg.mode !== 'list') { closeDialog(); return asgScope(id, 'all'); } return pickClassPill(id); };
+pickItem = function (id) { if (state.view === 'assign' && asg.mode !== 'list') { closeDialog(); return asgScope(findItem(id).c.id, id); } return pickItemPill(id); };
 
 /* ---------- Display menu ---------- */
 const popRadio = (k, v, l) => `<button class="pop-row slim press disp-opt" role="menuitemradio" aria-checked="${asg[k] === v}" onclick="setDisplay('${k}','${v}')"><span><b>${l}</b></span>${asg[k] === v ? ic('check', 'acc') : ''}</button>`;
@@ -3457,7 +3554,8 @@ function setAsgMode(btn, v) {
   document.getElementById('asgStatusWrap').hidden = v !== 'list';
   document.getElementById('displayWrap').hidden = v === 'queue';
   document.getElementById('popDisplay').innerHTML = displayPop();
-  placePills(false); swap('asgList', asgBody()); if (v === 'grid') gridFocusCol();
+  const sc = document.getElementById('asgScope'); sc.className = `asg-sticky${v === 'list' ? '' : ' scoped'}`; sc.innerHTML = asgScopeHtml();
+  placePills(false); swap('asgList', asgBody()); if (v === 'list') cbBind(); if (v === 'grid') gridFocusCol();
 }
 function setAsgStatus(btn, v) { slide(btn); asg.status = v; swap('asgList', asgBody()); }
 function setAsgClass(btn, v) {
@@ -3476,6 +3574,7 @@ function refreshAsg() {
   if (state.view !== 'assign') return;
   const y = window.scrollY, gw = document.getElementById('gbWrap'), gx = gw ? [gw.scrollLeft, gw.scrollTop] : null;
   const el = document.getElementById('asgList'); if (el) el.innerHTML = asgBody();
+  const sc = document.getElementById('asgScope'); if (sc && asg.mode !== 'list') sc.innerHTML = asgScopeHtml();
   const ngw = document.getElementById('gbWrap'); if (ngw && gx) { ngw.scrollLeft = gx[0]; ngw.scrollTop = gx[1]; }
   const pb = document.querySelector('#asgStatusWrap .spill button'); if (pb) pb.textContent = `To grade · ${toGradeCount()}`;
   const subs = allSubs();
@@ -3554,7 +3653,7 @@ function flatList() {
 function queueSubs() { return scopedSubs({ status: 'todo' }).sort((p, q) => (asg.skip.has(p.key) - asg.skip.has(q.key)) || (q.late - p.late) || p.at - q.at || p.it.due - q.it.due); }
 function queueView() {
   const q = queueSubs(), done = asg.session;
-  if (!q.length) return `<div class="panel qempty"><span class="qdone">${ic('check')}</span><b>Queue clear</b><p class="note">Nothing waiting to be graded${asg.cls !== 'all' || asg.item !== 'all' || asg.q ? ' in this filter' : ''}. ${done ? `You graded ${done} this session.` : ''}</p></div>`;
+  if (!q.length) return `<div class="panel qempty"><span class="qdone">${ic('check')}</span><b>Queue clear</b><p class="note">Nothing waiting to be graded${asg.cls !== 'all' || asg.item !== 'all' || asg.q ? ' in this filter' : ''}. ${done ? `You graded ${done} this session.` : ''}</p>${asg.cls !== 'all' || asg.item !== 'all' ? `<button class="btn sm ghost press" onclick="asgScope('all','all')">Show every class</button>` : ''}</div>`;
   const x = q[0], waited = -x.at;
   return `<section class="lead queue-hero" aria-label="Next submission to grade">
     <div class="lead-k">Next up · 1 of ${q.length}${asg.skip.has(x.key) ? ' · skipped earlier' : ''}</div>
@@ -3591,7 +3690,7 @@ function gridRows(c) {
     .sort(asg.gsort === 'low' ? (a, b) => (a.pct ?? 999) - (b.pct ?? 999) : asg.gsort === 'missing' ? (a, b) => missing(b) - missing(a) || lastN(a).localeCompare(lastN(b)) : (a, b) => lastN(a).localeCompare(lastN(b)));
 }
 function gridView() {
-  if (asg.cls === 'all') return `<p class="note" style="margin:0 0 .8rem">The gradebook shows one class at a time. Choose a class here or in the class pill above.</p>
+  if (asg.cls === 'all') return `<p class="note" style="margin:0 0 .8rem">The gradebook shows one class at a time. Pick one here, or use Find a class above.</p>
     <div class="cards">${[...COURSES].sort((a, b) => a.name.localeCompare(b.name)).map(c => { const t = submissionsFor(c).filter(x => !x.graded).length; return `<button class="card click gb-card" onclick="pickClass('${c.id}')"><div class="card-head"><div><div class="card-title">${esc(c.name)}</div><div class="card-sub">${esc(c.code)} · ${esc(c.section)} · ${c.students} students</div></div>${courseTile(c)}</div><div class="card-foot" style="align-items:center">${t ? tag('w', `${t} to grade`) : tag('g', 'All graded')}<span class="linkbtn">Open gradebook →</span></div></button>`; }).join('')}</div>`;
   const c = courseById(asg.cls), cols = gridCols(c), m = gridState(c), rows = gridRows(c), R = roster(c);
   const cell = (s, it) => {
@@ -4911,6 +5010,1064 @@ function upRun() {
     }, 700);
   }, 70);
 }
+
+/* ============ Rubrics + printable sheets: versioned documents ============
+   Every assignment, quiz and exam has two documents: its rubric and its printable sheet.
+   Publishing appends a version (history is never rewritten); edits live in a draft until then. */
+IC.print = '<path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/>';
+IC.history = '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>';
+IC.redo = '<path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/>';
+const DOCS = {};
+let docSeq = 0;
+const docNewId = () => `x${++docSeq}`;
+const half = v => Math.round(v * 2) / 2;
+const DOC_ME = 'SSgt White';
+const docClone = o => JSON.parse(JSON.stringify(o));
+const docLabel = (kind, it) => kind === 'rubric' ? 'Rubric' : `${TYPE_LABEL[it.type]} sheet`;
+const Q_KINDS = { mc: 'Multiple choice', blank: 'Fill in the blank', short: 'Short answer', long: 'Written response', check: 'Checklist item' };
+const Q_LINES = { mc: 0, blank: 0, short: 3, long: 8, check: 0 };
+const VAGUE = /\b(understands?|knows?|is aware of|appreciates?|familiar with|good|properly|adequate(ly)?|satisfactor(y|ily))\b/i;
+
+function spreadPts(total, n) {   // half-point shares that add up exactly
+  if (!n) return [];
+  const base = Math.floor(total / n * 2) / 2, out = Array(n).fill(base);
+  out[n - 1] = half(total - base * (n - 1));
+  return out;
+}
+const VERB_WORDS = VERB.source.match(/\(([^)]*)\)/)[1].split('|');
+const toBase = w => (w.endsWith('ies') ? w.slice(0, -3) + 'y' : /(sh|ch|ss|x|z)es$/.test(w) ? w.slice(0, -2) : w.slice(0, -1));
+function imperative(cr) {   // "Identifies and sequences the elements" -> "Identify and sequence the elements."
+  if (!VERB.test(cr)) return `${cr}: show your work.`;
+  const s = cr.split(' ').map((w, i) => i === 0 || VERB_WORDS.includes(w[0].toUpperCase() + w.slice(1)) ? (i ? toBase(w) : toBase(w)) : w).join(' ');
+  return s.replace(/[.]?$/, '.');
+}
+
+/* ---------- rubric seeds ---------- */
+const RUB_LEVELS = [['Exceeds', 100], ['Meets', 75], ['Approaching', 50], ['Beginning', 25]];
+function descriptors(cr, style) {
+  const m = cr.match(VERB), lower = cr[0].toLowerCase() + cr.slice(1);
+  if (style === 'terse') return [`${cr}: excellent.`, `${cr}: good.`, `${cr}: fair.`, `${cr}: poor.`];
+  if (style === 'anchored' && m) {
+    const base = toBase(m[1]).toLowerCase() + cr.slice(m[1].length);
+    return [`${cr} completely and precisely, citing the source; could teach it to a peer.`, `${cr} correctly, with only minor omissions.`, `Partially ${lower}; key parts are missing or unclear.`, `Does not yet ${base}; major errors or missing.`];
+  }
+  return [`${cr}: consistently accurate and complete, with no errors.`, `${cr}: accurate, with minor errors that don't change the result.`, `${cr}: several errors or gaps.`, `${cr}: not demonstrated, or mostly incorrect.`];
+}
+function rubricContent(it, crits, style, names = []) {
+  const pts = spreadPts(it.pts, crits.length);
+  return {
+    levels: RUB_LEVELS.map(([name, pct], i) => ({ id: 'L' + (i + 1), name: names[i] || name, pct })),
+    rows: crits.map((c, i) => ({ id: 'c' + (i + 1), crit: c, pts: pts[i], cells: Object.fromEntries(descriptors(c, style).map((d, j) => ['L' + (j + 1), d])) })),
+  };
+}
+const fromBuilder = id => /^crs\d+-/.test(id);
+function seedRubric(it) {
+  const cr = it.crit, n = cr.length, t0 = Math.min(it.issued, 0);
+  if (fromBuilder(it.id)) return [{ n: 1, at: 0, by: DOC_ME, note: 'Created in the Course Builder after a line-by-line review.', content: rubricContent(it, cr, 'anchored') }];
+  const V = [{ n: 1, at: t0 - 20, by: 'Rubricon', note: 'Generated from the program of instruction criteria.', content: rubricContent(it, n >= 3 ? cr.slice(0, -1) : cr, 'terse', [, , 'Developing']) }];
+  const v2 = rubricContent(it, cr, 'generic');
+  V.push({ n: 2, at: t0 - 12, by: DOC_ME, note: `${n >= 3 ? `Added “${cr[n - 1]}”, renamed` : 'Renamed'} Developing to Approaching, and replaced the one-word descriptors.`, content: v2 });
+  const v3 = rubricContent(it, cr, 'anchored');
+  if (JSON.stringify(v3) !== JSON.stringify(v2)) V.push({ n: 3, at: t0 - 6, by: 'GySgt Hale', note: 'Anchored each descriptor to what an evaluator can observe, after the calibration session.', content: v3 });
+  return V;
+}
+
+/* ---------- sheet seeds: questions from the Test Bank, the course materials, then the criteria ---------- */
+const firstSentence = s => (String(s).match(/^.*?[.!?](\s|$)/) || [s])[0].trim().replace(/^"|"$/g, '').replace(/^“|”$/g, '');
+function mkQ(kind, prompt, extra = {}) { return { id: extra.id || docNewId(), t: 'q', kind, prompt, options: [], answer: '', pts: null, lines: Q_LINES[kind], cite: '', ...extra }; }
+function sheetQuestions(c, a, it, want) {
+  const covered = it.type === 'exam' ? c.annexes.slice(0, c.annexes.indexOf(a) + 1).map(x => x.l) : [a.l];
+  const bank = REVQ.filter(q => q.course === c.id && q.done !== 'rejected' && covered.includes(q.annex))
+    .sort((p, q) => (q.item === it.id) - (p.item === it.id));
+  const answers = REVQ.filter(q => q.course === c.id).map(q => firstSentence(q.a));
+  const out = [], seen = new Set();
+  for (const q of bank) {
+    if (out.length >= want || seen.has(q.q)) continue; seen.add(q.q);
+    const id = 'q' + (out.length + 1);
+    if (q.kind === 'Multiple choice') {
+      const right = firstSentence(q.a), wrong = answers.filter(x => x !== right).sort((x, y) => hash(q.q + x) - hash(q.q + y)).slice(0, 3);
+      const opts = [right, ...wrong].sort((x, y) => hash(it.id + x) - hash(it.id + y)).map((t, i) => ({ id: `${id}o${i + 1}`, text: t }));
+      out.push(mkQ('mc', q.q, { id, options: opts, answer: opts.find(o => o.text === right).id, cite: q.cite }));
+    } else out.push(mkQ(q.kind === 'Scenario' ? 'long' : q.kind === 'Checklist item' ? 'check' : 'short', q.q, { id, answer: q.a, cite: q.cite }));
+  }
+  const blankCap = out.length + Math.ceil(want * .4);   // keep fill-in-the-blank to a share of the sheet
+  for (const m of MATERIALS.filter(m => m.course === c.id && covered.includes(m.annex))) {
+    for (const s of m.text.match(/[^.]+\./g) || []) {
+      if (out.length >= want || out.length >= blankCap) break;
+      const words = s.trim().split(' '), pick = words.slice(1).filter(w => /^[a-z]{6,}$/.test(w)).sort((x, y) => y.length - x.length)[0];
+      if (!pick) continue;
+      out.push(mkQ('blank', words.map(w => w === pick ? '________' : w).join(' '), { id: 'q' + (out.length + 1), answer: pick, cite: m.loc }));
+    }
+  }
+  const doc = it.docs[0] || 'the reference', T = a.title.toLowerCase();
+  const gen = [
+    cr => mkQ('short', `${cr}: define the key terms from Annex ${a.l}, ${a.title}, in the wording of ${doc}.`, { answer: `See ${doc}.`, cite: doc }),
+    cr => mkQ('short', `${cr}: describe how you would apply ${T} in the field.`, { answer: `Applies ${T} as written in ${doc}.`, cite: doc }),
+    cr => mkQ('long', `${cr}: a Marine gets ${T} wrong under time pressure. What do you check first, and why?`, { answer: 'Checks the fundamentals in order and names the correction, citing the reference.', cite: doc }),
+  ];
+  for (let i = 0; out.length < want && i < 30; i++) { const q = gen[i % gen.length](it.crit[i % it.crit.length]); q.id = 'q' + (out.length + 1); out.push(q); }
+  return out;
+}
+function sheetContent(c, a, it, variant) {
+  const early = variant === 'v1';
+  if (it.type === 'assignment') {
+    const tasks = (early && it.crit.length > 2 ? it.crit.slice(0, -1) : it.crit).map((cr, i) => mkQ('long', imperative(cr), { id: 'q' + (i + 1), lines: early ? 5 : 6, answer: '' }));
+    const blocks = [...(early ? [] : [{ id: 't1', t: 'text', text: `References: ${it.docs.join('; ')}.` }]), ...tasks, { id: 't2', t: 'text', text: 'Attach extra pages if you need them. This assignment is graded with its rubric.' }];
+    return { title: it.title, instructions: it.desc, fields: ['Name', 'Date'], blocks };
+  }
+  const n = +(it.desc.match(/(\d+) items/) || [])[1] || (it.type === 'exam' ? 10 : 6), want = Math.min(n, it.type === 'exam' ? 12 : 10);
+  let qs = sheetQuestions(c, a, it, want);
+  const written = it.type === 'exam' && /written/i.test(it.desc + it.crit.join(' '));
+  if (written) qs.push(mkQ('long', `Written response: explain how the annexes covered by this exam build on each other. Cite ${it.docs[0] || 'the reference'} at least twice.`, { id: 'qw', lines: 12, answer: 'Connects each annex to the next and cites the reference correctly.', cite: it.docs[0] || '' }));
+  if (early && qs.length > 2) qs = qs.filter((q, i) => i !== qs.length - (written ? 2 : 1));
+  const wPts = written ? Math.round(it.pts * .2) : 0, shares = spreadPts(it.pts - wPts, qs.length - (written ? 1 : 0));
+  qs.forEach((q, i) => { q.pts = q.id === 'qw' ? wPts : shares[i]; if (early && q.kind === 'short') q.lines = 2; });
+  const count = qs.length - (written ? 1 : 0);
+  const instructions = `${it.desc.replace(/(\d+) items/, `${count} items`)}${early ? '' : ' Answer every question in the space provided.'}`;
+  return { title: it.title, instructions, fields: ['Name', 'Date', 'Score'], blocks: qs };
+}
+function seedSheet(c, a, it) {
+  const t0 = Math.min(it.issued, 0), who = it.type === 'assignment' ? 'Coursewright' : 'Coursewright + Test Bank';
+  if (fromBuilder(it.id)) return [{ n: 1, at: 0, by: DOC_ME, note: 'Created in the Course Builder after a line-by-line review.', content: sheetContent(c, a, it) }];
+  return [
+    { n: 1, at: t0 - 18, by: who, note: 'Drafted from the annex objectives and the approved Test Bank questions.', content: sheetContent(c, a, it, 'v1') },
+    { n: 2, at: t0 - 9, by: DOC_ME, note: it.type === 'assignment' ? 'Added the references and the last task, and gave each task more writing space.' : 'Added a question, gave short answers more room, and rebalanced the points.', content: sheetContent(c, a, it) },
+  ];
+}
+
+/* ---------- store ---------- */
+function docOf(kind, itemId) {
+  const k = `${kind}:${itemId}`; if (DOCS[k]) return DOCS[k];
+  const f = findItem(itemId); if (!f) return null;
+  const versions = kind === 'rubric' ? seedRubric(f.it) : seedSheet(f.c, f.a, f.it);
+  return DOCS[k] = { kind, itemId, versions, draft: null, loadN: versions.length };
+}
+const docCur = d => d.versions[d.versions.length - 1];
+const docVer = (d, n) => n === 'draft' ? (d.draft ? { n: 'draft', by: 'You', at: 0, note: 'Unpublished draft', content: d.draft.content } : null) : d.versions.find(v => v.n === +n);
+const docContent = d => d.draft ? d.draft.content : docCur(d).content;
+const docChanges = d => d.draft ? docDiff(d.kind, docCur(d).content, d.draft.content) : [];
+
+/* the grading drawer and PDFs read the published rubric through this shape */
+function rubricView(k) {
+  const L = k.levels, p0 = k.rows[0]?.pts || 0;
+  return {
+    per: p0, uniform: k.rows.every(r => r.pts === p0), total: half(k.rows.reduce((s, r) => s + (+r.pts || 0), 0)), pcts: L.map(l => l.pct),
+    levels: L.map(l => [l.name, half(p0 * l.pct / 100)]),
+    rows: k.rows.map(r => ({ id: r.id, crit: r.crit, pts: r.pts, cells: L.map(l => r.cells[l.id] || ''), lv: L.map(l => [l.name, half(r.pts * l.pct / 100)]) })),
+  };
+}
+function rubricFor(it) { return rubricView(docCur(docOf('rubric', it.id)).content); }
+
+/* ---------- field paths shared by the editor, the diff and the change highlights ---------- */
+function docGet(k, f) {
+  const [t, id, key, sub] = f.split(':');
+  if (t === 'title' || t === 'instructions') return k[t];
+  if (t === 'l') return k.levels.find(x => x.id === id)?.name;
+  if (t === 'r') { const r = k.rows.find(x => x.id === id); return !r ? undefined : key === 'crit' ? r.crit : r.cells[sub]; }
+  if (t === 'b') { const b = k.blocks.find(x => x.id === id); return !b ? undefined : key === 'opt' ? b.options.find(o => o.id === sub)?.text : b[key]; }
+}
+function docSetField(k, f, v) {
+  const [t, id, key, sub] = f.split(':');
+  if (t === 'title' || t === 'instructions') k[t] = v;
+  else if (t === 'l') k.levels.find(x => x.id === id).name = v;
+  else if (t === 'r') { const r = k.rows.find(x => x.id === id); if (key === 'crit') r.crit = v; else r.cells[sub] = v; }
+  else if (t === 'b') { const b = k.blocks.find(x => x.id === id); if (key === 'opt') b.options.find(o => o.id === sub).text = v; else b[key] = v; }
+}
+
+/* ---------- word-level diff ---------- */
+function wordDiff(a, b) {
+  const A = String(a || '').split(/(\s+)/).filter(Boolean), B = String(b || '').split(/(\s+)/).filter(Boolean);
+  if (A.length * B.length > 60000) return [['-', a], ['+', b]];
+  const T = Array.from({ length: A.length + 1 }, () => new Uint16Array(B.length + 1));
+  for (let i = A.length - 1; i >= 0; i--) for (let j = B.length - 1; j >= 0; j--) T[i][j] = A[i] === B[j] ? T[i + 1][j + 1] + 1 : Math.max(T[i + 1][j], T[i][j + 1]);
+  const raw = [];
+  let i = 0, j = 0;
+  while (i < A.length && j < B.length) { if (A[i] === B[j]) { raw.push(['=', A[i]]); i++; j++; } else if (T[i + 1][j] >= T[i][j + 1]) raw.push(['-', A[i++]]); else raw.push(['+', B[j++]]); }
+  while (i < A.length) raw.push(['-', A[i++]]); while (j < B.length) raw.push(['+', B[j++]]);
+  /* regions of equal text and of changes; a space or a short word stranded between two changes joins them, so a rewrite reads as one before/after pair */
+  const reg = [];
+  for (const [o, s] of raw) {
+    const last = reg[reg.length - 1];
+    if (o === '=') { if (last && 'eq' in last) last.eq += s; else reg.push({ eq: s }); }
+    else { if (!last || 'eq' in last) reg.push({ del: '', ins: '' }); reg[reg.length - 1][o === '-' ? 'del' : 'ins'] += s; }
+  }
+  for (let k = 1; k < reg.length - 1; k++) {
+    const r = reg[k], p = reg[k - 1], n = reg[k + 1];
+    if ('eq' in r && !('eq' in p) && !('eq' in n) && /^\s*(\S{1,3}\s*)?$/.test(r.eq)) { p.del += r.eq + n.del; p.ins += r.eq + n.ins; reg.splice(k, 2); k--; }
+  }
+  return reg.flatMap(r => 'eq' in r ? [['=', r.eq]] : [...(r.del.trim() ? [['-', r.del]] : []), ...(r.ins.trim() ? [['+', r.ins]] : [])]);
+}
+const diffHtml = (a, b) => wordDiff(a, b).map(([o, s]) => {
+  if (o === '=') return esc(s);
+  const [, lead, core, tail] = s.match(/^(\s*)([\s\S]*?)(\s*)$/);
+  return `${lead}<${o === '-' ? 'del' : 'ins'}>${esc(core)}</${o === '-' ? 'del' : 'ins'}>${tail}`;
+}).join('');
+
+/* ---------- structural diff: a readable list of changes from A (older) to B (newer) ---------- */
+function docDiff(kind, A, B) { return kind === 'rubric' ? diffRubric(A, B) : diffSheet(A, B); }
+function movedIds(A, B) {
+  const common = B.filter(x => A.some(y => y.id === x.id)).map(x => x.id), inA = A.filter(x => common.includes(x.id)).map(x => x.id);
+  return new Set(common.filter((id, i) => inA[i] !== id));
+}
+function diffRubric(A, B) {
+  const out = [], add = o => out.push(o);
+  B.levels.forEach(l => {
+    const o = A.levels.find(x => x.id === l.id);
+    if (!o) return add({ kind: 'add', label: `Level added: ${l.name}`, after: `${l.name} · ${l.pct}% of the points`, f: `l:${l.id}:name` });
+    if (o.name !== l.name) add({ kind: 'edit', label: 'Level renamed', before: o.name, after: l.name, f: `l:${l.id}:name` });
+    if (o.pct !== l.pct) add({ kind: 'pts', label: `${l.name} · share of points`, before: `${o.pct}%`, after: `${l.pct}%`, f: `l:${l.id}:pct` });
+  });
+  A.levels.forEach(o => { if (!B.levels.some(l => l.id === o.id)) add({ kind: 'remove', label: `Level removed: ${o.name}`, before: `${o.name} · ${o.pct}% of the points` }); });
+  const moved = movedIds(A.rows, B.rows);
+  B.rows.forEach((r, i) => {
+    const o = A.rows.find(x => x.id === r.id), lab = `Criterion ${i + 1}`;
+    if (!o) return add({ kind: 'add', label: `${lab} added`, after: r.crit, detail: B.levels.map(l => [l.name, r.cells[l.id] || '']), f: `r:${r.id}:row` });
+    if (moved.has(r.id)) add({ kind: 'move', label: `${lab} moved`, before: `Position ${A.rows.indexOf(o) + 1}`, after: `Position ${i + 1}`, f: `r:${r.id}:row` });
+    if (o.crit !== r.crit) add({ kind: 'edit', label: `${lab} · criterion`, before: o.crit, after: r.crit, f: `r:${r.id}:crit` });
+    if (o.pts !== r.pts) add({ kind: 'pts', label: `${lab} · points`, before: `${o.pts} pts`, after: `${r.pts} pts`, f: `r:${r.id}:pts` });
+    B.levels.forEach(l => { if (A.levels.some(x => x.id === l.id) && (o.cells[l.id] || '') !== (r.cells[l.id] || '')) add({ kind: 'edit', label: `${lab} · ${l.name}`, before: o.cells[l.id] || '', after: r.cells[l.id] || '', f: `r:${r.id}:cell:${l.id}` }); });
+  });
+  A.rows.forEach(o => { if (!B.rows.some(r => r.id === o.id)) add({ kind: 'remove', label: 'Criterion removed', before: o.crit }); });
+  return out;
+}
+const qLabel = (k, b) => b.t === 'text' ? 'Text' : `Question ${k.blocks.filter(x => x.t === 'q').indexOf(b) + 1}`;
+function diffSheet(A, B) {
+  const out = [], add = o => out.push(o);
+  if (A.title !== B.title) add({ kind: 'edit', label: 'Title', before: A.title, after: B.title, f: 'title' });
+  if (A.instructions !== B.instructions) add({ kind: 'edit', label: 'Instructions', before: A.instructions, after: B.instructions, f: 'instructions' });
+  if (A.fields.join() !== B.fields.join()) add({ kind: 'edit', label: 'Lines at the top', before: A.fields.join(', ') || 'None', after: B.fields.join(', ') || 'None', f: 'fields' });
+  const moved = movedIds(A.blocks, B.blocks);
+  B.blocks.forEach(b => {
+    const o = A.blocks.find(x => x.id === b.id), lab = qLabel(B, b);
+    if (!o) return add({ kind: 'add', label: `${lab} added${b.t === 'q' ? ` · ${Q_KINDS[b.kind]}` : ''}`, after: b.t === 'q' ? b.prompt : b.text, detail: b.t === 'q' && b.kind === 'mc' ? b.options.map((x, i) => [cbL(i), x.text + (x.id === b.answer ? ' (answer)' : '')]) : null, f: `b:${b.id}:block` });
+    if (moved.has(b.id)) add({ kind: 'move', label: `${lab} moved`, before: `Was ${qLabel(A, o).toLowerCase()}`, after: `Now ${lab.toLowerCase()}`, f: `b:${b.id}:block` });
+    if (b.t === 'text') { if (o.text !== b.text) add({ kind: 'edit', label: lab, before: o.text, after: b.text, f: `b:${b.id}:text` }); return; }
+    if (o.kind !== b.kind) add({ kind: 'edit', label: `${lab} · type`, before: Q_KINDS[o.kind], after: Q_KINDS[b.kind], f: `b:${b.id}:kind` });
+    if (o.prompt !== b.prompt) add({ kind: 'edit', label: `${lab} · question`, before: o.prompt, after: b.prompt, f: `b:${b.id}:prompt` });
+    if (o.pts !== b.pts) add({ kind: 'pts', label: `${lab} · points`, before: `${o.pts ?? 0} pts`, after: `${b.pts ?? 0} pts`, f: `b:${b.id}:pts` });
+    if (o.lines !== b.lines && b.kind !== 'mc') add({ kind: 'pts', label: `${lab} · answer space`, before: `${o.lines} lines`, after: `${b.lines} lines`, f: `b:${b.id}:lines` });
+    b.options.forEach((x, i) => { const ox = o.options.find(y => y.id === x.id); if (!ox) add({ kind: 'add', label: `${lab} · option ${cbL(i)} added`, after: x.text, f: `b:${b.id}:opt:${x.id}` }); else if (ox.text !== x.text) add({ kind: 'edit', label: `${lab} · option ${cbL(i)}`, before: ox.text, after: x.text, f: `b:${b.id}:opt:${x.id}` }); });
+    o.options.forEach(ox => { if (!b.options.some(x => x.id === ox.id)) add({ kind: 'remove', label: `${lab} · option removed`, before: ox.text }); });
+    const ans = (k, q) => q.kind === 'mc' ? (q.options.find(x => x.id === q.answer)?.text || 'None') : q.answer;
+    if (ans(A, o) !== ans(B, b)) add({ kind: 'edit', label: `${lab} · answer key`, before: ans(A, o), after: ans(B, b), f: `b:${b.id}:key` });
+    if ((o.cite || '') !== (b.cite || '')) add({ kind: 'edit', label: `${lab} · source`, before: o.cite, after: b.cite, f: `b:${b.id}:key` });
+  });
+  A.blocks.forEach(o => { if (!B.blocks.some(b => b.id === o.id)) add({ kind: 'remove', label: `${qLabel(A, o)} removed`, before: o.t === 'q' ? o.prompt : o.text }); });
+  return out;
+}
+const changedFields = ch => new Set(ch.map(c => c.f).filter(Boolean));
+function diffCounts(ch) {
+  const n = k => ch.filter(c => c.kind === k).length;
+  return { add: n('add'), remove: n('remove'), edit: n('edit') + n('pts') + n('move'), total: ch.length };
+}
+
+/* ---------- validation ---------- */
+function docIssues(kind, it, k) {
+  const out = [], block = (text, f, sel) => out.push({ sev: 'block', text, f, sel }), warn = (text, f, sel) => out.push({ sev: 'warn', text, f, sel });
+  if (kind === 'rubric') {
+    if (!k.rows.length) block('Add at least one criterion');
+    if (k.levels.length < 2) block('A rubric needs at least two levels');
+    k.levels.forEach((l, i) => {
+      if (!l.name.trim()) block(`Level ${i + 1} needs a name`, `l:${l.id}:name`, `level:${l.id}`);
+      else if (k.levels.findIndex(x => x.name.trim().toLowerCase() === l.name.trim().toLowerCase()) !== i) block(`Two levels are named “${l.name}”`, `l:${l.id}:name`, `level:${l.id}`);
+      if (i && l.pct >= k.levels[i - 1].pct) block(`${l.name || `Level ${i + 1}`} must earn less than ${k.levels[i - 1].name || `level ${i}`}`, null, `level:${l.id}`);
+    });
+    if (k.levels.length && k.levels[0].pct !== 100) block(`The top level earns ${k.levels[0].pct}% of the points; it must earn 100%`, null, `level:${k.levels[0].id}`);
+    k.rows.forEach((r, i) => {
+      if (!r.crit.trim()) block(`Criterion ${i + 1} needs a name`, `r:${r.id}:crit`, `row:${r.id}`);
+      else if (VAGUE.test(r.crit)) warn(`Criterion ${i + 1} is too vague to anchor (“${r.crit.match(VAGUE)[0]}”). Say what the evaluator can observe.`, `r:${r.id}:crit`, `row:${r.id}`);
+      if (!(r.pts > 0)) block(`Criterion ${i + 1} needs points`, null, `row:${r.id}`);
+      k.levels.forEach(l => { if (!(r.cells[l.id] || '').trim()) block(`Criterion ${i + 1} · ${l.name || 'a level'} has no descriptor`, `r:${r.id}:cell:${l.id}`, `row:${r.id}`); });
+    });
+    const tot = half(k.rows.reduce((s, r) => s + (+r.pts || 0), 0));
+    if (k.rows.length && tot !== it.pts) block(`Criteria add up to ${tot} of the ${it.pts} points`, null, 'doc:');
+  } else {
+    if (!k.title.trim()) block('The sheet needs a title', 'title', 'doc:');
+    const qs = k.blocks.filter(b => b.t === 'q');
+    if (!qs.length) block(it.type === 'assignment' ? 'Add at least one task' : 'Add at least one question', null, 'doc:');
+    k.blocks.forEach(b => {
+      const lab = qLabel(k, b), sel = `${b.t}:${b.id}`;
+      if (b.t === 'text') { if (!b.text.trim()) block(`${lab} block is empty`, `b:${b.id}:text`, sel); return; }
+      if (!b.prompt.trim()) block(`${lab} has no question text`, `b:${b.id}:prompt`, sel);
+      if (b.kind === 'mc') {
+        if (b.options.length < 2) block(`${lab} needs at least two options`, null, sel);
+        b.options.forEach((o, i) => { if (!o.text.trim()) block(`${lab} · option ${cbL(i)} is empty`, `b:${b.id}:opt:${o.id}`, sel); });
+        if (!b.options.some(o => o.id === b.answer)) block(`${lab} has no correct option marked`, null, sel);
+      }
+      if (b.kind === 'blank' && !/_{3,}/.test(b.prompt)) block(`${lab} needs a blank (type ___ where it goes)`, `b:${b.id}:prompt`, sel);
+      if (it.type !== 'assignment' && !(b.pts > 0)) block(`${lab} needs points`, null, sel);
+      if (it.type !== 'assignment' && b.kind !== 'mc' && !String(b.answer || '').trim()) warn(`${lab} has no answer key`, null, sel);
+    });
+    if (it.type !== 'assignment' && qs.length) { const tot = half(qs.reduce((s, q) => s + (+q.pts || 0), 0)); if (tot !== it.pts) block(`Questions add up to ${tot} of the ${it.pts} points`, null, 'doc:'); }
+  }
+  return out;
+}
+
+/* ---------- drafts, undo, publish, restore ---------- */
+function docDraft(d) {
+  if (!d.draft) d.draft = { base: docCur(d).n, content: docClone(docCur(d).content), undo: [], redo: [], key: null, at: 0 };
+  return d.draft;
+}
+function docSnap(d, key) {   // typing in one field within a second is one undo step
+  const dr = docDraft(d), now = Date.now();
+  if (key && dr.key === key && now - dr.at < 1000) { dr.at = now; return; }
+  dr.undo.push(JSON.stringify(dr.content)); if (dr.undo.length > 150) dr.undo.shift();
+  dr.redo = []; dr.key = key || null; dr.at = now;
+}
+function docUndo(d) { const dr = d.draft; if (!dr || !dr.undo.length) return false; dr.redo.push(JSON.stringify(dr.content)); dr.content = JSON.parse(dr.undo.pop()); dr.key = null; return true; }
+function docRedo(d) { const dr = d.draft; if (!dr || !dr.redo.length) return false; dr.undo.push(JSON.stringify(dr.content)); dr.content = JSON.parse(dr.redo.pop()); dr.key = null; return true; }
+function docRestore(d, n) {
+  const v = d.versions.find(x => x.n === n), prev = d.draft;
+  d.draft = { base: docCur(d).n, content: docClone(v.content), undo: prev ? [JSON.stringify(prev.content)] : [], redo: [], key: null, at: 0, restoredFrom: n };
+}
+function docPublish(d, note) {
+  const dr = d.draft, n = docCur(d).n + 1;
+  d.versions.push({ n, at: 0, by: DOC_ME, note, content: docClone(dr.content), restoredFrom: dr.restoredFrom });
+  d.draft = null;
+  if (d.kind === 'rubric') {   // grading reads the item's criteria; drop half-finished grading drafts built on the old rubric
+    findItem(d.itemId).it.crit = docCur(d).content.rows.map(r => r.crit);
+    Object.keys(DRAFTS).forEach(k => { if (k.startsWith(d.itemId + '|')) delete DRAFTS[k]; });
+  }
+  return n;
+}
+
+/* ============ Paper: US Letter pages with 1 inch margins. Render, paginate, print, PDF ============
+   Sizes on the page are in inches (--u), so the screen, the print path and the PDF break pages in the same places. */
+const paperMeta = (c, a, it) => `${TYPE_LABEL[it.type]} · ${it.pts} points · ${dueWord(it)} ${fmtDate(it.due)} · ${c.name}, ${c.section.split(' · ').pop()}`;
+const docFoot = (kind, it, n, key) => `${findItem(it.id)?.c.code || ''} · ${it.title} · ${docLabel(kind, it)} ${n === 'draft' ? 'draft (unpublished)' : 'v' + n}${key ? ' · answer key' : ''}`;
+
+/* opt: { edit, key, base (older content: marks what changed), sel, foot, marks } */
+function paperHtml(kind, f, k, opt = {}) {
+  const { c, a, it } = f, E = !!opt.edit, base = opt.base;
+  const changed = base ? changedFields(docDiff(kind, base, k)) : new Set();
+  const ce = (fld, ph, multi) => E ? ` contenteditable="plaintext-only" spellcheck="true" data-f="${fld}" data-ph="${esc(ph)}"${multi ? ' data-multi="1"' : ''}` : ` data-f="${fld}"`;
+  const mk = fld => changed.has(fld) ? ' chg' : '', dm = fld => ` data-m="${fld}"`;   // data-m: non-editable spots that can show a change
+  const isNew = (list, id) => base && !list.some(x => x.id === id) ? ' added' : '';
+  const selc = s => opt.sel === s ? ' picked' : '';
+  let h = `<div class="blk pp-top"><span>SchoolCircle · ${esc(docLabel(kind, it))}${opt.key ? ' · Answer key' : ''}</span><span>${esc(c.code)} · Annex ${a.l}: ${esc(a.title)}</span></div>`;
+  if (kind === 'rubric') {
+    const R = rubricView(k), n = k.levels.length;
+    h += `<div class="blk pp-title"><h2>${esc(it.title)}</h2></div><div class="blk pp-meta">${esc(paperMeta(c, a, it))}</div><div class="blk pp-desc">${esc(it.desc)}</div>
+      <div class="blk pp-lines keep"><span>Student:</span><span>Evaluator:</span><span style="flex:.45">Date:</span></div>
+      <div class="blk rb-row rb-head keep" style="--n:${n}"><div class="rb-c">Criterion<small>${R.uniform ? `${R.per} pts each` : 'points per criterion'}</small></div>${k.levels.map((l, i) =>
+        `<div class="rb-c${selc('level:' + l.id)}${isNew(base?.levels || [], l.id)}" data-sel="level:${l.id}"><b class="${mk(`l:${l.id}:name`)}"${ce(`l:${l.id}:name`, 'Level name')}>${esc(l.name)}</b><small class="${mk(`l:${l.id}:pct`)}"${dm(`l:${l.id}:pct`)}>${R.uniform ? `${R.levels[i][1]} pts` : `${l.pct}%`}</small></div>`).join('')}</div>`;
+    k.rows.forEach(r => {
+      h += `<div class="blk rb-row${selc('row:' + r.id)}${isNew(base?.rows || [], r.id)}${mk(`r:${r.id}:row`)}" style="--n:${n}" data-sel="row:${r.id}"${dm(`r:${r.id}:row`)}><div class="rb-c rb-crit${mk(`r:${r.id}:pts`)}"${dm(`r:${r.id}:pts`)}><b class="${mk(`r:${r.id}:crit`)}"${ce(`r:${r.id}:crit`, 'Criterion', true)}>${esc(r.crit)}</b>${R.uniform ? '' : `<small>${r.pts} pts</small>`}</div>${k.levels.map(l =>
+        `<div class="rb-c${mk(`r:${r.id}:cell:${l.id}`)}"${ce(`r:${r.id}:cell:${l.id}`, 'Describe this level', true)}>${esc(r.cells[l.id] || '')}</div>`).join('')}</div>`;
+    });
+    const scale = k.levels.map((l, i) => i ? `${l.name} = ${l.pct}%` : `${l.name} = full points`).join(' · ');
+    h += `<div class="blk pp-total"><span><b>Total score:</b> ______ / ${it.pts}</span><span class="pp-dim">${esc(scale)}</span></div><div class="blk pp-comments"><b>Comments:</b><i></i><i></i></div>`;
+  } else {
+    h += `<div class="blk pp-title" data-sel="doc:"><h2 class="${mk('title')}"${ce('title', 'Title')}>${esc(k.title)}</h2></div><div class="blk pp-meta">${esc(paperMeta(c, a, it))}</div>
+      <div class="blk pp-desc${mk('instructions')}" data-sel="doc:"${ce('instructions', 'Instructions for students', true)}>${esc(k.instructions)}</div>`;
+    if (k.fields.length) h += `<div class="blk pp-lines keep${mk('fields')}"${dm('fields')}>${k.fields.map(x => x === 'Score' ? `<span style="flex:.55">Score:<em>/ ${it.pts}</em></span>` : `<span${x === 'Date' ? ' style="flex:.5"' : ''}>${x}:</span>`).join('')}</div>`;
+    let qn = 0;
+    k.blocks.forEach(b => {
+      const cls = `${selc(`${b.t}:${b.id}`)}${isNew(base?.blocks || [], b.id)}`;
+      if (b.t === 'text') { h += `<div class="blk t${cls}${mk(`b:${b.id}:block`)}" data-sel="text:${b.id}"${dm(`b:${b.id}:block`)}><div class="${mk(`b:${b.id}:text`)}"${ce(`b:${b.id}:text`, 'Text', true)}>${esc(b.text)}</div></div>`; return; }
+      qn++;
+      const pts = it.type !== 'assignment' && b.pts != null ? `<span class="q-pts${mk(`b:${b.id}:pts`)}"${dm(`b:${b.id}:pts`)}>(${b.pts} pt${b.pts === 1 ? '' : 's'})</span>` : '';
+      let inner = '';
+      if (b.kind === 'mc') inner = `<ol class="q-opts${mk(`b:${b.id}:key`)}"${dm(`b:${b.id}:key`)}>${b.options.map((o, i) => `<li class="${opt.key && o.id === b.answer ? 'ok' : ''}"><span class="q-l">${cbL(i)}.</span><span class="${mk(`b:${b.id}:opt:${o.id}`)}"${ce(`b:${b.id}:opt:${o.id}`, 'Option')}>${esc(o.text)}</span></li>`).join('')}</ol>`;
+      if (b.kind === 'check') inner += `<div class="q-check"><span><i class="bx"></i>Observed</span><span><i class="bx"></i>Not observed</span></div>`;
+      if (b.lines > 0 && b.kind !== 'mc') inner += `<div class="q-lines${mk(`b:${b.id}:lines`)}"${dm(`b:${b.id}:lines`)} style="--l:${b.lines}"></div>`;
+      if (opt.key && b.kind !== 'mc' && String(b.answer || '').trim()) inner += `<div class="q-key${mk(`b:${b.id}:key`)}"${dm(`b:${b.id}:key`)}><b>${b.kind === 'check' ? 'Look for' : 'Answer'}:</b> ${esc(b.answer)}${b.cite ? ` <span class="pp-dim">(${esc(b.cite)})</span>` : ''}</div>`;
+      h += `<div class="blk q${cls}${mk(`b:${b.id}:block`)}" data-sel="q:${b.id}"${dm(`b:${b.id}:block`)}><div class="q-h"><span class="q-n${mk(`b:${b.id}:kind`)}"${dm(`b:${b.id}:kind`)}>${qn}.</span><div class="q-p${mk(`b:${b.id}:prompt`)}"${ce(`b:${b.id}:prompt`, it.type === 'assignment' ? 'Task' : 'Question', true)}>${esc(b.prompt)}</div>${pts}</div>${inner}</div>`;
+    });
+  }
+  return `<div class="pp${E ? ' edit' : ''}${opt.marks ? ' marks' : ''}" data-foot="${esc(opt.foot || '')}" data-kind="${kind}"><div class="pp-body">${h}</div></div>`;
+}
+
+/* paginate without moving nodes (a caret inside the page survives): blocks that would cross a page's bottom margin get pushed
+   to the next page's top margin, and the page gaps, margin guides, footers and repeated rubric headers are overlays */
+function paperLayout(pp) {
+  if (!pp || !pp.isConnected || !pp.offsetWidth) return 0;
+  const W = pp.offsetWidth, u = W / 8.5, pageH = u * 11, gap = Math.max(18, u * .3), foot = u * .34;
+  const body = pp.querySelector('.pp-body'), blocks = [...body.children].filter(b => b.classList.contains('blk'));
+  pp.querySelectorAll('.pp-ov').forEach(x => x.remove());
+  pp.style.height = '';
+  blocks.forEach(b => { b.style.marginTop = ''; b.classList.remove('brk', 'pg-first'); });
+  const head = body.querySelector('.rb-head'), headH = head ? head.offsetHeight : 0;
+  const isRow = b => b.classList.contains('rb-row') && !b.classList.contains('rb-head');
+  const topOf = p => p * (pageH + gap) + u, botOf = p => p * (pageH + gap) + pageH - u - foot;
+  const starts = [];
+  const push = (b, p) => {
+    const target = topOf(p) + (isRow(b) ? headH : 0);
+    b.style.marginTop = (parseFloat(getComputedStyle(b).marginTop) + target - b.offsetTop) + 'px';
+    b.classList.add('brk'); if (isRow(b)) { b.classList.add('pg-first'); starts.push(p); }
+  };
+  let page = 0;
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i], y = b.offsetTop, hgt = b.offsetHeight;
+    while (y > botOf(page) + .5) page++;                      // after a block taller than a page
+    const minTop = topOf(page) + (page && isRow(b) ? headH : 0);
+    if (y < minTop - .5) { push(b, page); continue; }         // landed in a gap or a top margin
+    if (y + hgt <= botOf(page) + .5 || y <= minTop + 1) continue;   // fits, or already first on its page
+    let s = i; while (s > 0 && blocks[s - 1].classList.contains('keep') && blocks[s - 1].offsetTop > topOf(page) + 1) s--;
+    page++; push(blocks[s], page); i = s;
+  }
+  const last = blocks[blocks.length - 1];
+  while (last && last.offsetTop + last.offsetHeight > botOf(page) + .5 && page < 60) page++;
+  const pages = page + 1;
+  pp.style.height = (pages * pageH + (pages - 1) * gap) + 'px';
+  const ov = (cls, css, html = '') => { const e = document.createElement('div'); e.className = 'pp-ov ' + cls; e.style.cssText = css; e.innerHTML = html; e.setAttribute('aria-hidden', 'true'); pp.appendChild(e); };
+  for (let p = 0; p < pages; p++) {
+    const y0 = p * (pageH + gap);
+    ov('pp-page', `top:${y0}px;height:${pageH}px`);
+    ov('pp-guide', `top:${y0 + u}px;left:${u}px;right:${u}px;height:${pageH - 2 * u}px`);
+    ov('pp-foot', `top:${botOf(p) + foot * .28}px;left:${u}px;right:${u}px`, `<span>${esc(pp.dataset.foot || '')}</span><span>Page ${p + 1} of ${pages}</span>`);
+  }
+  if (head) [...new Set(starts)].forEach(p => {
+    const cl = head.cloneNode(true);
+    cl.classList.remove('blk', 'keep', 'brk'); cl.removeAttribute('data-sel');
+    cl.querySelectorAll('[contenteditable],[data-f],[data-sel]').forEach(e => { e.removeAttribute('contenteditable'); e.removeAttribute('data-f'); e.removeAttribute('data-sel'); e.classList.remove('picked', 'chg', 'added'); });
+    cl.classList.add('pp-ov', 'pp-rephead'); cl.setAttribute('aria-hidden', 'true');
+    cl.style.cssText += `;position:absolute;top:${topOf(p)}px;left:${u}px;width:${body.offsetWidth}px;margin:0`;
+    pp.appendChild(cl);
+  });
+  pp.dataset.pages = pages; pp.classList.add('laid');
+  return pages;
+}
+let paperTimer;
+function layoutSoon(ms = 180) { clearTimeout(paperTimer); paperTimer = setTimeout(() => { document.querySelectorAll('#stage .pp').forEach(paperLayout); if (typeof dkPagesChanged === 'function') dkPagesChanged(); }, ms); }
+window.addEventListener('resize', () => layoutSoon(120));
+
+/* ---------- print: the same pagination, turned into real page breaks ---------- */
+function docPrint(kind, itemId, content, opt = {}) {
+  const f = findItem(itemId); if (!f) return 0;
+  let root = document.getElementById('printRoot');
+  if (!root) { root = document.createElement('div'); root.id = 'printRoot'; document.body.appendChild(root); }
+  root.innerHTML = `<div class="ppwrap">${paperHtml(kind, f, content, { key: opt.key, foot: opt.foot })}</div>`;
+  const pp = root.querySelector('.pp'), pages = paperLayout(pp), head = pp.querySelector('.rb-head');
+  pp.querySelectorAll('.blk.brk').forEach(b => {
+    b.style.marginTop = '';
+    if (b.classList.contains('pg-first') && head) { const cl = head.cloneNode(true); cl.classList.remove('keep'); cl.classList.add('brk'); b.classList.remove('brk', 'pg-first'); b.before(cl); }
+  });
+  pp.querySelectorAll('.pp-ov').forEach(x => x.remove()); pp.classList.remove('laid');
+  let st = document.getElementById('printPage');
+  if (!st) { st = document.createElement('style'); st.id = 'printPage'; document.head.appendChild(st); }
+  const q = s => '"' + String(s).replace(/["\\]/g, '\\$&') + '"', mb = 'font:7.5pt Helvetica,Arial,sans-serif;color:#8e8e93;vertical-align:top;padding-top:.1in';
+  st.textContent = `@page{size:letter;margin:1in;@bottom-left{content:${q(opt.foot || '')};${mb}}@bottom-right{content:"Page " counter(page) " of " counter(pages);${mb}}}`;
+  const done = () => { root.innerHTML = ''; window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  window.__lastPrint = { pages, blocks: pp.querySelectorAll('.blk').length, breaks: pp.querySelectorAll('.brk').length, foot: opt.foot, key: !!opt.key };
+  window.print();
+  return pages;
+}
+
+/* ---------- PDF: same content, laid out in points ---------- */
+function docPdf(entries) {
+  const M = 72, W = 612 - 2 * M, TOP = M, BOTTOM = 792 - M, LIM = BOTTOM - 26;
+  const doc = new PdfDoc(entries.length === 1 ? `${entries[0].it.title} ${docLabel(entries[0].kind, entries[0].it).toLowerCase()}` : 'SchoolCircle documents');
+  const starts = [];
+  entries.forEach((e, idx) => {
+    if (idx) doc.addPage();
+    starts.push(doc.pages.length - 1);
+    const { c, a, it, kind, content: k } = e;
+    let y = TOP + 10;
+    doc.text(M, y, `SchoolCircle · ${docLabel(kind, it)}${e.key ? ' · Answer key' : ''}`, 8.5, false, '#6e6e73');
+    doc.textRight(M + W, y, `${c.code} · Annex ${a.l}: ${a.title}`, 8.5, false, '#6e6e73');
+    y += 26;
+    for (const ln of wrapText(kind === 'rubric' ? it.title : k.title, 17, true, W)) { doc.text(M, y, ln, 17, true); y += 20; }
+    doc.text(M, y, paperMeta(c, a, it), 9.5, false, '#48484a'); y += 14;
+    for (const ln of wrapText(kind === 'rubric' ? it.desc : k.instructions, 9.5, false, W)) { doc.text(M, y, ln, 9.5, false, '#48484a'); y += 12.5; }
+    y += 16;
+    const fields = kind === 'rubric' ? [['Student', 200], ['Evaluator', 160], ['Date', 80]] : k.fields.map(x => [x, x === 'Name' ? 200 : x === 'Date' ? 110 : 90]);
+    let fx = 0;
+    fields.forEach(([lab, w]) => {
+      const t = lab + ':'; doc.text(M + fx, y, t, 9.5); doc.line(M + fx + pdfWidth(t, 9.5) + 4, y + 2, M + fx + w - (lab === 'Score' ? 26 : 0), y + 2);
+      if (lab === 'Score') doc.text(M + fx + w - 22, y, `/ ${it.pts}`, 9.5);
+      fx += w + 14;
+    });
+    if (fields.length) y += 18;
+    if (kind === 'rubric') {
+      const R = rubricView(k), colC = 120, colL = (W - colC) / Math.max(1, k.levels.length);
+      const header = () => {
+        const h = 30; doc.rect(M, y, W, h, '#f2f2f4', '#c7c7cc');
+        doc.text(M + 6, y + 13, 'Criterion', 9, true); doc.text(M + 6, y + 24, R.uniform ? `${R.per} pts each` : 'points per criterion', 7.5, false, '#6e6e73');
+        k.levels.forEach((l, i) => { const x = M + colC + i * colL; doc.line(x, y, x, y + h, '#c7c7cc'); doc.text(x + 5, y + 13, wrapText(l.name, 9, true, colL - 10)[0] || '', 9, true); doc.text(x + 5, y + 24, R.uniform ? `${R.levels[i][1]} pts` : `${l.pct}%`, 7.5, false, '#6e6e73'); });
+        y += h;
+      };
+      header();
+      R.rows.forEach(row => {
+        const cl = wrapText(row.crit, 9, true, colC - 12), cells = row.cells.map(t => wrapText(t, 8.5, false, colL - 10));
+        const h = Math.max(cl.length + (R.uniform ? 0 : 1), ...cells.map(x => x.length), 1) * 11 + 12;
+        if (y + h > LIM) { doc.addPage(); y = TOP; header(); }
+        doc.rect(M, y, W, h, null, '#c7c7cc');
+        cl.forEach((ln, i) => doc.text(M + 6, y + 14 + i * 11, ln, 9, true));
+        if (!R.uniform) doc.text(M + 6, y + 14 + cl.length * 11, `${row.pts} pts`, 7.5, false, '#6e6e73');
+        cells.forEach((lines, ci) => { const x = M + colC + ci * colL; doc.line(x, y, x, y + h, '#c7c7cc'); lines.forEach((ln, i) => doc.text(x + 5, y + 14 + i * 11, ln, 8.5)); });
+        y += h;
+      });
+      if (y + 70 > LIM) { doc.addPage(); y = TOP; }
+      y += 22;
+      doc.text(M, y, 'Total score:', 10, true); doc.line(M + 64, y + 2, M + 130, y + 2); doc.text(M + 134, y, `/ ${it.pts}`, 10);
+      const scale = k.levels.map((l, i) => i ? `${l.name} = ${l.pct}%` : `${l.name} = full points`).join(' · ');
+      if (pdfWidth(scale, 8) < W - 180) doc.textRight(M + W, y, scale, 8, false, '#6e6e73');
+      else for (const ln of wrapText(scale, 8, false, W)) { y += 11; doc.text(M, y, ln, 8, false, '#6e6e73'); }
+      y += 20;
+      doc.text(M, y, 'Comments:', 10, true); doc.line(M + 58, y + 2, M + W, y + 2); doc.line(M, y + 20, M + W, y + 20);
+    } else {
+      let qn = 0;
+      for (const b of k.blocks) {
+        if (b.t === 'text') {
+          const lines = wrapText(b.text, 9.5, false, W);
+          if (y + 10 + lines.length * 12.5 > LIM) { doc.addPage(); y = TOP; }
+          y += 4; lines.forEach(ln => { y += 12.5; doc.text(M, y, ln, 9.5); });
+          continue;
+        }
+        qn++;
+        const IND = 18, ok = o => e.key && o.id === b.answer;
+        const ptsTxt = it.type !== 'assignment' && b.pts != null ? `(${b.pts} pt${b.pts === 1 ? '' : 's'})` : '';
+        const pl = wrapText(b.prompt, 10, false, W - IND - (ptsTxt ? pdfWidth(ptsTxt, 8.5) + 10 : 0));
+        const opts = b.kind === 'mc' ? b.options.map((o, i) => ({ o, i, lines: wrapText(o.text + (ok(o) ? '  (answer)' : ''), 9.5, ok(o), W - IND - 18) })) : [];
+        const keyL = e.key && b.kind !== 'mc' && String(b.answer || '').trim() ? wrapText(`${b.kind === 'check' ? 'Look for' : 'Answer'}: ${b.answer}`, 9, false, W - IND) : [];
+        const lines = b.kind !== 'mc' ? (b.lines || 0) : 0;
+        const h = 16 + (pl.length - 1) * 13 + opts.reduce((s, x) => s + 14 + (x.lines.length - 1) * 12, 0) + (b.kind === 'check' ? 18 : 0) + lines * 20 + (keyL.length ? 4 + keyL.length * 11.5 : 0) + 4;
+        if (y + h > LIM && y > TOP + 60) { doc.addPage(); y = TOP; }   // keep each question together
+        y += 16;
+        doc.text(M, y, `${qn}.`, 10, true);
+        if (ptsTxt) doc.textRight(M + W, y, ptsTxt, 8.5, false, '#6e6e73');
+        pl.forEach((ln, i) => doc.text(M + IND, y + i * 13, ln, 10));
+        y += (pl.length - 1) * 13;
+        opts.forEach(({ o, i, lines: ol }) => {
+          y += 14; const col = ok(o) ? '#b3122e' : '#1d1d1f';
+          doc.text(M + IND, y, `${cbL(i)}.`, 9.5, true, col);
+          ol.forEach((ln, j) => doc.text(M + IND + 18, y + j * 12, ln, 9.5, ok(o), col));
+          y += (ol.length - 1) * 12;
+        });
+        if (b.kind === 'check') { y += 18; ['Observed', 'Not observed'].forEach((t, i) => { const x = M + IND + i * 110; doc.rect(x, y - 8, 9, 9, null, '#6e6e73'); doc.text(x + 14, y, t, 9.5); }); }
+        for (let l = 0; l < lines; l++) { y += 20; doc.line(M + IND, y, M + W, y, '#aeaeb2', .5); }
+        if (keyL.length) { y += 4; keyL.forEach(ln => { y += 11.5; doc.text(M + IND, y, ln, 9, false, '#b3122e'); }); }
+      }
+    }
+  });
+  doc.pages.forEach((ops, i) => {
+    doc.ops = ops;
+    const e = entries[starts.filter(p => p <= i).length - 1], pageTxt = `Page ${i + 1} of ${doc.pages.length}`;
+    let ft = e.foot || '';
+    while (ft.length > 8 && pdfWidth(ft, 7.5) > W - pdfWidth(pageTxt, 7.5) - 16) ft = ft.slice(0, -2).trimEnd() + '…';
+    doc.line(M, BOTTOM - 15, M + W, BOTTOM - 15, '#d1d1d6', .5);
+    doc.text(M, BOTTOM - 3, ft.replace(/……$/, '…'), 7.5, false, '#8e8e93');
+    doc.textRight(M + W, BOTTOM - 3, pageTxt, 7.5, false, '#8e8e93');
+  });
+  return doc.output();
+}
+const docEntry = (kind, it, v, key) => ({ ...findItem(it.id), kind, content: v.content, key, foot: docFoot(kind, it, v.n, key) });
+function rubricPdf(entries) { return docPdf(entries.map(e => docEntry('rubric', e.it, docCur(docOf('rubric', e.it.id))))); }
+function docDownload(kind, itemId, n = 'cur', key = false) {
+  const f = findItem(itemId), d = docOf(kind, itemId), v = n === 'cur' ? docCur(d) : docVer(d, n); if (!v) return;
+  const tagN = v.n === 'draft' ? 'draft' : 'v' + v.n;
+  const name = `${slug(f.c.code)}_Annex-${f.a.l}_${slug(f.it.title)}_${kind === 'rubric' ? 'rubric' : 'sheet'}_${tagN}${key ? '_answer-key' : ''}.pdf`;
+  pdfNotify(`${f.it.title} · ${docLabel(kind, f.it)} ${tagN}${key ? ' · answer key' : ''}`, 1, () => savePdf(docPdf([docEntry(kind, f.it, v, key)]), name), name);
+}
+function downloadAnnexDocs(kind, courseId, annexL, key = false) {
+  const c = courseById(courseId), a = c.annexes.find(x => x.l === annexL);
+  const name = `${slug(c.code)}_Annex-${a.l}_${kind === 'rubric' ? 'rubrics' : 'sheets'}${key ? '_answer-keys' : ''}.pdf`;
+  pdfNotify(`Annex ${a.l}: ${a.items.length} ${kind === 'rubric' ? 'rubrics' : 'sheets'} in one file`, a.items.length, () => savePdf(docPdf(a.items.map(it => docEntry(kind, it, docCur(docOf(kind, it.id)), key))), name), name);
+}
+const downloadRubric = itemId => docDownload('rubric', itemId);
+const downloadAnnexRubrics = (courseId, annexL) => downloadAnnexDocs('rubric', courseId, annexL);
+
+/* ============ Rubrics tab: the rubric and the printable sheet for every item, with Preview / Edit / History ============ */
+function dkCtx() {
+  const c = curCourse(), r = state.rub;
+  if (r.course !== c.id || !c.annexes.some(a => a.l === r.annex)) { r.course = c.id; r.annex = currentAnnex(c).l; r.item = null; }
+  const a = c.annexes.find(x => x.l === r.annex);
+  if (!a.items.some(it => it.id === r.item)) r.item = a.items[0].id;
+  const it = a.items.find(x => x.id === r.item);
+  return { c, a, it, r, d: docOf(r.doc, it.id), f: { c, a, it } };
+}
+const dkHasKey = it => state.rub.doc === 'sheet' && it.type !== 'assignment';
+V.rubrics = () => {
+  const { c, a, it } = dkCtx(), drafted = x => docChanges(docOf('rubric', x.id)).length + docChanges(docOf('sheet', x.id)).length;
+  return `<div class="pagehead"><h1>Rubrics</h1><p>Edit the rubric and the printable sheet for every assignment, quiz and exam, right on the page. Each publish is kept as a version you can compare or restore. Everything prints on US Letter (8.5 × 11 in) with 1 inch margins. Powered by <b>Rubricon</b>.</p></div>
+  <div class="rsel">
+    <label class="fl">Course<select class="sel" onchange="rubPick('course',this.value)">${COURSES.map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.code)} · ${esc(x.name)}</option>`).join('')}</select></label>
+    <label class="fl">Annex<select class="sel" onchange="rubPick('annex',this.value)">${c.annexes.map(x => `<option value="${x.l}" ${x.l === a.l ? 'selected' : ''}>Annex ${x.l}: ${esc(x.title)}</option>`).join('')}</select></label>
+    <label class="fl">Assignment, quiz or exam<select class="sel" onchange="rubPick('item',this.value)">${['assignment', 'quiz', 'exam'].map(t => { const xs = a.items.filter(x => x.type === t); return xs.length ? `<optgroup label="${TYPE_LABEL[t]}s">${xs.map(x => `<option value="${x.id}" ${x.id === it.id ? 'selected' : ''}>${esc(x.title)}${drafted(x) ? ' · draft' : ''}</option>`).join('')}</optgroup>` : ''; }).join('')}</select></label>
+  </div>
+  <div class="dk-bar" id="dkBar"><div class="dk-pills">${pillHtml([['rubric', 'Rubric'], ['sheet', `${TYPE_LABEL[it.type]} sheet`]], state.rub.doc, 'dkDoc', 'sm dk-doc')}${pillHtml([['preview', `${ic('eye')}Preview`], ['edit', `${ic('edit')}Edit`], ['history', `${ic('history')}History`]], state.rub.mode, 'dkMode', 'sm dk-mode')}</div>
+    <div class="dk-info" id="dkInfo">${dkInfoHtml()}</div></div>
+  <div id="dkStage">${dkStageHtml()}</div>`;
+};
+AFTER.rubrics = () => dkAfter();
+function dkInfoHtml() {
+  const { it, d, r } = dkCtx(), cur = docCur(d), n = docChanges(d).length;
+  return `<span class="dk-ver"><b>v${cur.n}</b><span>${esc(cur.by)} · ${fmtDate(cur.at)}</span>${n ? tag('w', `Draft · ${plural(n, 'change')}`) : ''}</span><span class="dk-sp"></span>
+    ${dkHasKey(it) ? `<button class="switch" role="switch" aria-checked="${r.key}" onclick="dkKey()"><span class="trk"></span>Answer key</button>` : ''}
+    <button class="btn sm ghost press" onclick="dkPrint()">${ic('print')} Print</button><button class="btn sm press" onclick="dkDownload()">${ic('download')} Download PDF</button>`;
+}
+const dkStageHtml = () => state.rub.mode === 'edit' ? dkEditHtml() : state.rub.mode === 'history' ? dkHistHtml() : dkPreviewHtml();
+function dkAfter() {
+  document.querySelectorAll('#stage .pp').forEach(paperLayout); dkPagesChanged();
+  if (state.rub.mode === 'edit') dkBindEdit();
+}
+function dkPagesChanged() {
+  const n = +document.querySelector('#dkStage .pp')?.dataset.pages || 0;
+  document.querySelectorAll('[data-pages-label]').forEach(e => e.textContent = n ? `${plural(n, 'page')} · Letter` : '');
+}
+function dkRefresh() {
+  const info = document.getElementById('dkInfo'); if (!info) return rerender();
+  info.innerHTML = dkInfoHtml(); swap('dkStage', dkStageHtml()); dkAfter();
+}
+function dkRefreshStage(still) {
+  const st = document.getElementById('dkStage'), y = scrollY; if (!st) return rerender();
+  if (still) { st.innerHTML = dkStageHtml(); placePills(false); } else swap('dkStage', dkStageHtml());
+  document.getElementById('dkInfo').innerHTML = dkInfoHtml(); dkAfter(); window.scrollTo(0, y);
+}
+const dkSlideTo = (cls, v) => { const b = document.querySelector(`.${cls} button[onclick*="'${v}'"]`); if (b && !b.classList.contains('on')) slide(b); };
+function rubPick(k, v) {
+  const r = state.rub;
+  if (k === 'course') { state.course.instructor = v; r.course = v; r.annex = currentAnnex(courseById(v)).l; r.item = null; }
+  if (k === 'annex') { r.annex = v; r.item = null; }
+  if (k === 'item') r.item = v;
+  Object.assign(r, { ver: null, cmp: null, sel: null });
+  rerender();
+}
+function dkDoc(btn, v) { btn ? slide(btn) : dkSlideTo('dk-doc', v); Object.assign(state.rub, { doc: v, sel: null, ver: null, cmp: null }); dkRefresh(); }
+function dkMode(btn, m) {
+  btn ? slide(btn) : dkSlideTo('dk-mode', m);
+  Object.assign(state.rub, { mode: m, sel: null }); if (m === 'edit' && innerWidth < 760) state.rub.zoom = 'actual';
+  dkRefresh();
+}
+function dkZoom(btn, v) {
+  slide(btn); state.rub.zoom = v;
+  document.querySelectorAll('#dkStage .ppwrap').forEach(w => { w.classList.remove('fit', 'actual'); w.classList.add(v); });
+  layoutSoon(0);
+}
+function dkKey() { state.rub.key = !state.rub.key; dkRefreshStage(true); }
+function dkPaperTools(extra = '') {
+  return `<div class="dk-tools">${extra}<span class="dk-sp"></span><span class="note tnum" data-pages-label></span>${pillHtml([['fit', 'Fit'], ['actual', 'Actual size']], state.rub.zoom, 'dkZoom', 'sm')}</div>`;
+}
+
+/* ---------- print + PDF follow what's on screen: the published version, the draft being edited, or the version picked in History ---------- */
+function dkTarget() {
+  const { d, r } = dkCtx();
+  if (r.mode === 'history') return docVer(d, r.ver ?? docCur(d).n) || docCur(d);
+  if (r.mode === 'edit' && d.draft) return docVer(d, 'draft');
+  return docCur(d);
+}
+function dkPrint() {
+  const { it, r } = dkCtx(), v = dkTarget(), key = r.key && dkHasKey(it);
+  const pages = docPrint(r.doc, it.id, v.content, { key, foot: docFoot(r.doc, it, v.n, key) });
+  notify({ tone: 'info', icon: 'print', title: 'Opening the print dialog', meta: `${plural(pages, 'page')} · Letter · 1 in margins`, desc: `${it.title} · ${docLabel(r.doc, it)} ${v.n === 'draft' ? 'draft' : 'v' + v.n}${key ? ' · answer key' : ''}`, duration: 3400 });
+}
+function dkDownload() { const { it, r } = dkCtx(), v = dkTarget(); docDownload(r.doc, it.id, v.n, r.key && dkHasKey(it)); }
+
+/* ---------- Preview ---------- */
+function dkPreviewHtml() {
+  const { c, a, it, d, r, f } = dkCtx(), cur = docCur(d), n = docChanges(d).length, key = r.key && dkHasKey(it);
+  const vague = docCur(docOf('rubric', it.id)).content.rows.filter(x => VAGUE.test(x.crit));
+  return `<div class="rgrid"><div>
+    ${n ? `<div class="dk-note">${ic('edit')}<span>You have ${plural(n, 'unpublished change')} in a draft. This preview shows the published v${cur.n}.</span><button class="btn sm ghost press" onclick="dkMode(null,'edit')">Continue editing</button></div>` : ''}
+    ${dkPaperTools()}
+    <div class="sheetscroll"><div class="ppwrap ${r.zoom}">${paperHtml(r.doc, f, cur.content, { key, foot: docFoot(r.doc, it, cur.n, key) })}</div></div>
+    <p class="note" style="margin-top:.6rem">The dashed line marks the 1 inch margin. Printing and the PDF break pages in the same places.</p>
+  </div>
+  <aside class="agenda" style="padding-top:0">
+    <div class="box"><h4>Annex ${a.l}</h4>${a.items.map(x => { const R = docOf('rubric', x.id), S = docOf('sheet', x.id), dr = docChanges(R).length + docChanges(S).length;
+      return `<div class="rl-row ${x.id === it.id ? 'on' : ''}">${kico(x.type)}<button class="cwho linkish" onclick="rubPick('item','${x.id}')"><b>${esc(x.title)}</b><small>Rubric v${docCur(R).n} · sheet v${docCur(S).n}${dr ? ' · draft' : ''}</small></button><button class="iconbtn press" title="Download PDF" aria-label="Download ${esc(docLabel(r.doc, x))} PDF: ${esc(x.title)}" onclick="docDownload('${r.doc}','${x.id}')">${ic('download')}</button></div>`; }).join('')}
+      <div class="btnrow" style="margin-top:.7rem"><button class="btn sm ghost press" onclick="downloadAnnexDocs('rubric','${c.id}','${a.l}')">${ic('download')} All rubrics</button><button class="btn sm ghost press" onclick="downloadAnnexDocs('sheet','${c.id}','${a.l}')">${ic('download')} All sheets</button></div></div>
+    <div class="box"><h4>Reliability</h4><div class="chart"><div class="crow"><span class="cl">Cohen's κ</span>${bar(84, 'var(--p-good)')}<span class="cv">0.84</span></div><div class="crow"><span class="cl">Fleiss' κ</span>${bar(79, 'var(--p-good)')}<span class="cv">0.79</span></div></div></div>
+    <div class="box"><h4>Flag-ambiguous</h4>${vague.length ? `<p class="note">${vague.map(v => `“${esc(v.crit)}”`).join(', ')} ${vague.length === 1 ? 'is' : 'are'} too vague to anchor, so ${vague.length === 1 ? "it's" : "they're"} <b>flagged for the SME</b> to define, not guessed.</p><button class="btn sm ghost press" onclick="dkDoc(null,'rubric');dkMode(null,'edit')">Define it in the editor</button>`
+      : `<p class="note">No vague criteria in this rubric. A standard like "understands the fundamentals" gets <b>flagged for the SME</b> to define, not guessed. Rubricon abstains rather than invent criteria.</p>`}</div>
+  </aside></div>`;
+}
+
+/* ---------- History ---------- */
+const DK_WORD = { add: 'Added', remove: 'Removed', edit: 'Edited', pts: 'Changed', move: 'Moved' };
+const dkCountChips = t => [t.add ? `<i class="add">+${t.add}</i>` : '', t.remove ? `<i class="del">−${t.remove}</i>` : '', t.edit ? `<i class="ed">${plural(t.edit, 'edit')}</i>` : ''].join('') || '<i>No changes</i>';
+function dkHistHtml() {
+  const { it, d, r, f } = dkCtx(), cur = docCur(d), draftN = docChanges(d).length;
+  if (r.ver == null || !docVer(d, r.ver) || (r.ver === 'draft' && !draftN)) r.ver = draftN ? 'draft' : cur.n;
+  const sel = docVer(d, r.ver), prevN = sel.n === 'draft' ? cur.n : sel.n - 1;
+  const cmpN = r.cmp != null && docVer(d, r.cmp) && String(r.cmp) !== String(sel.n) ? +r.cmp : prevN >= 1 ? prevN : null;
+  const cmp = cmpN ? docVer(d, cmpN) : null, ch = cmp ? docDiff(r.doc, cmp.content, sel.content) : [];
+  const rows = [...(draftN ? [docVer(d, 'draft')] : []), ...[...d.versions].reverse()];
+  const list = rows.map(v => {
+    const pv = v.n === 'draft' ? cur : docVer(d, v.n - 1), on = String(v.n) === String(sel.n);
+    return `<button class="dk-vrow${on ? ' on' : ''}${v.n === 'draft' ? ' draft' : ''}" role="option" aria-selected="${on}" data-v="${v.n}" onclick="dkVer('${v.n}')" onkeydown="dkVerKey(event)">
+      <span class="dk-vn">${v.n === 'draft' ? 'Draft' : 'v' + v.n}</span>
+      <span class="cwho"><b>${esc(v.note)}</b><small>${esc(v.by)} · ${v.n === 'draft' ? 'not published' : fmtDate(v.at)}${v.restoredFrom ? ` · restored v${v.restoredFrom}` : ''}</small>
+        <span class="dk-cts">${pv ? dkCountChips(diffCounts(docDiff(r.doc, pv.content, v.content))) : '<i>First version</i>'}</span></span>
+      ${v.n === cur.n ? tag('g', 'Current') : ''}</button>`;
+  }).join('');
+  const isCur = sel.n === cur.n;
+  const actions = sel.n === 'draft' ? `<button class="btn sm press" onclick="dkMode(null,'edit')">${ic('edit')} Continue editing</button><button class="btn sm ghost press" onclick="dkDiscard()">Discard draft</button>`
+    : isCur ? `<button class="btn sm press" onclick="dkMode(null,'edit')">${ic('edit')} Edit this version</button>`
+    : `<button class="btn sm press" onclick="dkRestore(${sel.n})">${ic('undo')} Restore as a draft</button>`;
+  const cmpOpts = d.versions.filter(v => v.n !== sel.n).map(v => `<option value="${v.n}" ${v.n === cmpN ? 'selected' : ''}>v${v.n}${v.n === prevN ? ' (previous)' : ''}${v.n === cur.n ? ' (current)' : ''}</option>`).join('');
+  const showSheet = r.hv === 'sheet' || !cmp, key = r.key && dkHasKey(it);
+  const body = showSheet
+    ? `${cmp ? dkRemovedNote(ch) : `<p class="note dk-first">${sel.n === 1 ? "This is the first version, so there's nothing earlier to compare it with." : 'Pick a version to compare with.'}</p>`}
+       ${dkPaperTools(cmp ? `<button class="switch" role="switch" aria-checked="${r.marks}" onclick="dkMarks()"><span class="trk"></span>Highlight changes</button>` : '')}
+       <div class="sheetscroll"><div class="ppwrap ${r.zoom}">${paperHtml(r.doc, f, sel.content, { base: cmp && r.marks ? cmp.content : null, marks: !!cmp && r.marks, key, foot: docFoot(r.doc, it, sel.n, key) })}</div></div>`
+    : dkChangeList(ch, cmpN, sel);
+  return `<div class="dk-hist">
+    <section class="panel dk-vers"><div class="dk-vers-h"><h4>${plural(d.versions.length, 'version')}</h4><span class="note">Newest first · ↑ ↓ to move</span></div><div class="dk-vlist" role="listbox" aria-label="Versions">${list}</div></section>
+    <div class="dk-hmain">
+      <section class="panel dk-vhead">
+        <div class="dk-vtitle"><div><h3>${sel.n === 'draft' ? 'Unpublished draft' : `Version ${sel.n}`} ${isCur ? tag('g', 'Current') : ''}</h3><p class="note">${esc(sel.by)} · ${sel.n === 'draft' ? `based on v${cur.n}` : fmtDate(sel.at)}${sel.restoredFrom ? ` · restored from v${sel.restoredFrom}` : ''}</p></div><div class="btnrow" style="margin:0">${actions}</div></div>
+        <p class="dk-vnote">${esc(sel.note)}</p>
+        <div class="dk-vctl">${cmp ? pillHtml([['changes', 'What changed'], ['sheet', 'Full page']], r.hv, 'dkHv', 'sm') : ''}<span class="dk-sp"></span>
+          ${cmpOpts ? `<label class="dk-cmp">Compared with<select class="sel sm" onchange="dkCmp(this.value)">${cmp ? '' : '<option value="" selected>Nothing</option>'}${cmpOpts}</select></label>` : ''}</div>
+      </section>
+      <div class="dk-hbody">${body}</div>
+    </div></div>`;
+}
+function dkChangeList(ch, cmpN, sel) {
+  const to = sel.n === 'draft' ? 'the draft' : `v${sel.n}`;
+  if (!ch.length) return `<div class="pv-empty"><b>No differences</b><p class="note">${to[0].toUpperCase() + to.slice(1)} matches v${cmpN}.</p></div>`;
+  return `<div class="dk-sum"><b>${plural(ch.length, 'change')}</b><span class="note">from v${cmpN} to ${to}</span><span class="dk-cts">${dkCountChips(diffCounts(ch))}</span></div>
+  <ol class="dk-changes">${ch.map(x => `<li class="dk-ch ${x.kind}"><div class="dk-ch-h"><span class="dk-ch-k">${DK_WORD[x.kind]}</span><b>${esc(x.label)}</b>${x.f ? `<button class="linkbtn" onclick="dkShowOnPage('${x.f}')">Show on the page</button>` : ''}</div>
+    ${x.kind === 'edit' ? `<p class="dk-diff">${diffHtml(x.before, x.after)}</p>`
+      : x.kind === 'pts' || x.kind === 'move' ? `<p class="dk-diff"><del>${esc(x.before)}</del> <span class="dk-arrow">→</span> <ins>${esc(x.after)}</ins></p>`
+      : x.kind === 'add' ? `<p class="dk-diff"><ins>${esc(x.after)}</ins></p>${x.detail ? `<dl class="dk-detail">${x.detail.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}`
+      : `<p class="dk-diff"><del>${esc(x.before)}</del></p>`}</li>`).join('')}</ol>`;
+}
+function dkRemovedNote(ch) {
+  const rm = ch.filter(x => x.kind === 'remove');
+  return rm.length ? `<div class="dk-note rm">${ic('trash')}<span>Removed in this version: ${rm.map(x => `“${esc(x.before)}”`).join(', ')}</span></div>` : '';
+}
+function dkVer(n) {
+  Object.assign(state.rub, { ver: n === 'draft' ? 'draft' : +n, cmp: null });
+  const list = document.querySelector('.dk-vlist'), ls = list ? list.scrollTop : 0;
+  dkRefreshStage(true);
+  const nl = document.querySelector('.dk-vlist'); if (nl) nl.scrollTop = ls;
+  document.querySelector(`.dk-vrow[data-v="${n}"]`)?.focus({ preventScroll: true });
+}
+function dkVerKey(e) {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  e.preventDefault();
+  const rows = [...document.querySelectorAll('.dk-vrow')], nx = rows[rows.indexOf(e.currentTarget) + (e.key === 'ArrowDown' ? 1 : -1)];
+  if (nx) dkVer(nx.dataset.v);
+}
+function dkCmp(v) { state.rub.cmp = v === '' ? null : +v; dkRefreshStage(true); }
+function dkHv(btn, v) { slide(btn); state.rub.hv = v; setTimeout(() => dkRefreshStage(true), 150); }
+function dkMarks() { state.rub.marks = !state.rub.marks; dkRefreshStage(true); }
+function dkShowOnPage(f) {
+  state.rub.hv = 'sheet'; dkRefreshStage(true);
+  const el = document.querySelector(`#dkStage .pp [data-f="${f}"], #dkStage .pp [data-m="${f}"]`); if (!el) return;
+  el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+}
+function goDocHistory(kind, itemId, n, cmp) {
+  const f = findItem(itemId); if (!f) return;
+  closeGrader();
+  state.course.instructor = f.c.id;
+  Object.assign(state.rub, { course: f.c.id, annex: f.a.l, item: itemId, doc: kind, mode: 'history', ver: n, cmp: cmp ?? null, hv: 'changes', sel: null });
+  setView('rubrics');
+}
+
+/* ---------- restore, discard, publish ---------- */
+function dkRestore(n) {
+  const { d, r } = dkCtx(), pending = docChanges(d).length;
+  const go = () => {
+    docRestore(d, n); closeDialog();
+    Object.assign(r, { mode: 'edit', sel: null }); dkSlideTo('dk-mode', 'edit'); dkRefresh();
+    notify({ tone: 'info', icon: 'undo', title: `v${n} restored as a draft`, desc: `Nothing changes until you publish it as v${docCur(d).n + 1}. Every earlier version stays in History.`, duration: 4600 });
+  };
+  if (!pending) return go();
+  openDialog('Replace your draft?', `<p class="note">Your unpublished draft has ${plural(pending, 'change')}. Restoring v${n} replaces it; Undo in the editor brings it back.</p>`,
+    `<button class="btn ghost press" onclick="closeDialog()">Keep my draft</button><button class="btn press" id="dkRestoreGo">Restore v${n}</button>`);
+  document.getElementById('dkRestoreGo').onclick = go;
+}
+function dkDiscard() {
+  const { d, r } = dkCtx(), n = docChanges(d).length;
+  const go = () => { d.draft = null; closeDialog(); if (r.ver === 'draft') r.ver = null; r.sel = null; dkRefresh(); toast('Draft discarded'); };
+  if (!n) return go();
+  openDialog('Discard this draft?', `<p class="note">${plural(n, 'unpublished change')} will be lost. Published versions stay as they are.</p>`,
+    `<button class="btn ghost press" onclick="closeDialog()">Keep editing</button><button class="btn danger press" id="dkDiscardGo">Discard</button>`);
+  document.getElementById('dkDiscardGo').onclick = go;
+}
+function dkSuggest(ch) {
+  const n = fn => ch.filter(fn).length, bits = [];
+  const cells = n(x => x.kind === 'edit' && /^Criterion \d+ · (?!criterion$)/.test(x.label)), crit = n(x => x.kind === 'edit' && / · criterion$/.test(x.label));
+  const qAdd = n(x => x.kind === 'add' && /^Question \d+ added/.test(x.label)), qEd = n(x => x.kind === 'edit' && /^Question/.test(x.label));
+  const add = n(x => x.kind === 'add'), rm = n(x => x.kind === 'remove'), pts = n(x => x.kind === 'pts');
+  if (cells) bits.push(`reworded ${plural(cells, 'descriptor')}`);
+  if (crit) bits.push(`renamed ${crit === 1 ? 'a criterion' : `${crit} criteria`}`);
+  if (qAdd) bits.push(`added ${plural(qAdd, 'question')}`); else if (add) bits.push(`added ${add} item${add === 1 ? '' : 's'}`);
+  if (qEd) bits.push(`revised ${plural(qEd, 'question')}`);
+  if (rm) bits.push(`removed ${rm} item${rm === 1 ? '' : 's'}`);
+  if (pts) bits.push('adjusted points and spacing');
+  return [...(bits.length ? [bits.join(', ').replace(/^./, s => s.toUpperCase()) + '.'] : []), 'Clarified the wording after the calibration session.', 'Fixed typos.'];
+}
+function dkPublishDialog() {
+  const { it, d, r } = dkCtx(), ch = docChanges(d), cur = docCur(d), next = cur.n + 1;
+  if (!ch.length) return toast('Nothing to publish yet');
+  if (docIssues(r.doc, it, d.draft.content).some(x => x.sev === 'block')) return dkShowIssues();
+  const graded = r.doc === 'rubric' ? allSubs().filter(x => x.it.id === it.id && x.graded).length : 0;
+  window.__dkSugg = dkSuggest(ch);
+  const impact = r.doc === 'rubric'
+    ? graded ? `${graded} submission${graded === 1 ? ' was' : 's were'} graded with v${cur.n}. Their scores stay. Anything graded from now on uses v${next}.` : `Nothing has been graded with v${cur.n} yet. Grading uses v${next} as soon as you publish.`
+    : `Copies of v${cur.n} that were already printed stay valid. Print again to hand out v${next}.`;
+  openDialog(`Publish ${docLabel(r.doc, it).toLowerCase()} v${next}`, `
+    <div class="dk-sum"><b>${plural(ch.length, 'change')}</b><span class="note">from v${cur.n}</span><span class="dk-cts">${dkCountChips(diffCounts(ch))}</span></div>
+    <ul class="dk-publist">${ch.slice(0, 6).map(x => `<li><span class="dk-ch-k ${x.kind}">${DK_WORD[x.kind]}</span><span>${esc(x.label)}</span></li>`).join('')}${ch.length > 6 ? `<li class="note">and ${ch.length - 6} more in History</li>` : ''}</ul>
+    <label class="cb-field"><span class="cb-lab">What changed and why</span><textarea class="ti" id="dkNote" rows="3" placeholder="e.g. Reworded the Meets descriptors after the calibration session" oninput="dkPubFoot()"></textarea></label>
+    <div class="chips">${window.__dkSugg.map((s, i) => `<span class="chip" role="button" tabindex="0" onclick="dkUseSugg(${i})">${esc(s)}</span>`).join('')}</div>
+    <div class="sub-warn">${ic('info')}<span>${impact}</span></div>`,
+    `<span class="note dfoot-hint" style="margin-right:auto">The note is saved with the version</span><button class="btn ghost press" onclick="closeDialog()">Cancel</button><button class="btn press" id="dkPubGo" disabled onclick="dkPublish()">${ic('send')} Publish v${next}</button>`);
+}
+function dkUseSugg(i) { const t = document.getElementById('dkNote'); t.value = window.__dkSugg[i]; dkPubFoot(); t.focus(); }
+function dkPubFoot() { const b = document.getElementById('dkPubGo'); if (b) b.disabled = document.getElementById('dkNote').value.trim().length < 4; }
+function dkPublish() {
+  const { it, d, r } = dkCtx(), note = document.getElementById('dkNote')?.value.trim() || '';
+  if (note.length < 4 || !d.draft) return;
+  if (docIssues(r.doc, it, d.draft.content).some(x => x.sev === 'block')) { closeDialog(); return dkShowIssues(); }
+  const n = docPublish(d, note);
+  closeDialog();
+  Object.assign(r, { mode: 'history', ver: n, cmp: null, hv: 'changes', sel: null });
+  dkSlideTo('dk-mode', 'history'); dkRefresh();
+  notify({ tone: 'success', title: `Published v${n}`, meta: docLabel(r.doc, it), desc: `${it.title}: ${note}`, burst: true, duration: 5200, actions: [{ label: 'Print it', run: () => dkPrint() }, { label: 'Done', primary: true }] });
+}
+
+/* ============ Rubrics tab: editing on the page, the inspector, undo ============ */
+const critN = n => n === 1 ? '1 criterion' : `${n} criteria`;
+function dkEditHtml() {
+  const { d, r } = dkCtx();
+  return `<div class="dk-edit">
+    <div class="dk-paper">
+      ${dkPaperTools(`<button class="iconbtn press" id="dkUndo" onclick="dkUndo()" aria-label="Undo" title="Undo (Ctrl+Z)" ${d.draft?.undo.length ? '' : 'disabled'}>${ic('undo')}</button><button class="iconbtn press" id="dkRedo" onclick="dkRedo()" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" ${d.draft?.redo.length ? '' : 'disabled'}>${ic('redo')}</button><button class="switch" role="switch" id="dkMarksSw" aria-checked="${r.marks}" onclick="dkEditMarks()"><span class="trk"></span>Highlight my changes</button>`)}
+      <div class="sheetscroll"><div class="ppwrap ${r.zoom}" id="dkPaper">${dkPaperEdit()}</div></div>
+      <p class="note" style="margin-top:.6rem">Click any text on the page to edit it. Select a ${r.doc === 'rubric' ? 'criterion or a level name' : 'question'} to change its settings on the right. Enter moves to the next field; Shift+Enter adds a line.</p>
+    </div>
+    <aside class="dk-insp" id="dkInsp" aria-label="Settings">${dkInspHtml()}</aside>
+  </div>
+  <div class="cb-bar dk-pub" id="dkPub">${dkPubHtml()}</div>`;
+}
+function dkPaperEdit() {
+  const { it, d, r, f } = dkCtx(), key = r.key && dkHasKey(it);
+  return paperHtml(r.doc, f, docContent(d), { edit: true, base: r.marks ? docCur(d).content : null, marks: r.marks, sel: r.sel, key, foot: docFoot(r.doc, it, d.draft ? 'draft' : docCur(d).n, key) });
+}
+function dkPubHtml() {
+  const { it, d, r } = dkCtx(), ch = docChanges(d), cur = docCur(d), blocks = docIssues(r.doc, it, docContent(d)).filter(x => x.sev === 'block').length;
+  return `<div class="cb-meter"><span class="cwho"><b>${ch.length ? plural(ch.length, 'unpublished change') : 'No changes yet'}</b><small>${d.draft ? `Draft for v${cur.n + 1}${d.draft.restoredFrom ? ` · restored from v${d.draft.restoredFrom}` : ''}` : `Editing v${cur.n}`} · <span data-pages-label></span></small></span></div>
+    <span class="dk-sp"></span>
+    ${blocks ? `<button class="cb-issues press" onclick="dkShowIssues()">${ic('alert')}${blocks} blocking</button>` : ch.length ? `<span class="cb-ok">${ic('check')}Ready to publish</span>` : ''}
+    <button class="btn ghost press" onclick="dkDiscard()" ${d.draft ? '' : 'disabled'}>Discard</button>
+    <button class="btn ghost press" onclick="dkReview()" ${ch.length ? '' : 'disabled'}>Review changes</button>
+    <button class="btn press" onclick="dkPublishDialog()" ${ch.length && !blocks ? '' : 'disabled'}>${ic('send')} Publish v${cur.n + 1}</button>`;
+}
+function dkReview() { Object.assign(state.rub, { mode: 'history', ver: 'draft', cmp: null, hv: 'changes', sel: null }); dkSlideTo('dk-mode', 'history'); dkRefresh(); }
+
+/* ---------- inspector ---------- */
+function dkInspHtml() {
+  const { it, d, r } = dkCtx(), k = docContent(d), [t, id] = (r.sel || 'doc:').split(':');
+  let card;
+  if (r.doc === 'rubric') card = t === 'row' && k.rows.some(x => x.id === id) ? dkRowCard(k, id) : t === 'level' && k.levels.some(x => x.id === id) ? dkLevelCard(k, id) : dkRubricCard(it, k);
+  else card = (t === 'q' || t === 'text') && k.blocks.some(x => x.id === id) ? dkBlockCard(it, k, id) : dkSheetCard(it, k);
+  return card + dkIssuesCard(docIssues(r.doc, it, k));
+}
+const dkStepper = (minus, val, plus, unit, onset, step = .5) => `<div class="stepper dk-step"><button type="button" class="iconbtn sm press" onclick="${minus}" aria-label="Less">${ic('minus')}</button><input class="tnum" type="number" step="${step}" min="0" value="${val ?? 0}" aria-label="${unit}" onchange="${onset}"><button type="button" class="iconbtn sm press" onclick="${plus}" aria-label="More">${ic('plus')}</button><small>${unit}</small></div>`;
+const dkDone = `<button class="linkbtn" onclick="dkSel(null)">Done</button>`;
+function dkRubricCard(it, k) {
+  const tot = half(k.rows.reduce((s, x) => s + (+x.pts || 0), 0)), ok = tot === it.pts;
+  return `<section class="panel dk-card"><div class="dk-card-h"><h4>Rubric</h4><span class="note">${critN(k.rows.length)} · ${plural(k.levels.length, 'level')}</span></div>
+    <div class="dk-total ${ok ? 'ok' : 'bad'}"><b class="tnum">${tot} of ${it.pts}</b><span>points across the criteria</span></div>
+    ${ok ? '' : `<button class="btn sm ghost press" onclick="dkSpread()">Spread ${it.pts} points evenly</button>`}
+    <div class="dk-acts"><button class="btn sm press" onclick="dkAddRow()">${ic('plus')} Add criterion</button><button class="btn sm ghost press" onclick="dkAddLevel()">${ic('plus')} Add level</button></div>
+    <p class="note">Click a criterion to set its points, reorder it, or have Rubricon draft its descriptors. Click a level name to change its share of the points.</p></section>`;
+}
+function dkRowCard(k, id) {
+  const i = k.rows.findIndex(x => x.id === id), row = k.rows[i];
+  return `<section class="panel dk-card"><div class="dk-card-h"><h4>Criterion ${i + 1}</h4>${dkDone}</div>
+    <p class="dk-card-sub">${esc(row.crit || 'Untitled criterion')}</p>
+    <div class="cb-field"><span class="cb-lab">Points</span>${dkStepper(`dkRowPts('${id}',-.5)`, row.pts, `dkRowPts('${id}',.5)`, 'pts', `dkRowPtsSet('${id}',this.value)`)}</div>
+    <div class="dk-levels">${k.levels.map(l => `<span><b>${esc(l.name || 'Untitled')}</b><i class="tnum">${half((+row.pts || 0) * l.pct / 100)} pts</i></span>`).join('')}</div>
+    <div class="dk-acts"><button class="btn sm ghost press" onclick="dkMoveRow('${id}',-1)" ${i ? '' : 'disabled'}>${ic('up')} Up</button><button class="btn sm ghost press" onclick="dkMoveRow('${id}',1)" ${i < k.rows.length - 1 ? '' : 'disabled'}>${ic('down')} Down</button><button class="btn sm ghost press" onclick="dkDupRow('${id}')">${ic('copy')} Duplicate</button><button class="btn sm ghost press dk-del" onclick="dkDelRow('${id}')">${ic('trash')} Delete</button></div>
+    <button class="btn sm ghost press dk-ai" onclick="dkDraftRow('${id}')">${ic('sparkle')} Draft descriptors with Rubricon</button>
+    <p class="note">Rewrites all ${k.levels.length} descriptors from the criterion text. Undo brings yours back.</p></section>`;
+}
+function dkLevelCard(k, id) {
+  const i = k.levels.findIndex(x => x.id === id), l = k.levels[i];
+  return `<section class="panel dk-card"><div class="dk-card-h"><h4>Level: ${esc(l.name || 'Untitled')}</h4>${dkDone}</div>
+    <div class="cb-field"><span class="cb-lab">Share of each criterion's points</span>${dkStepper(`dkLevelPct('${id}',-5)`, l.pct, `dkLevelPct('${id}',5)`, '%', `dkLevelPctSet('${id}',this.value)`, 1)}</div>
+    <p class="note">${i === 0 ? 'The top level has to earn 100%.' : `Has to be less than ${esc(k.levels[i - 1].name || 'the level above')} (${k.levels[i - 1].pct}%).`}</p>
+    <div class="dk-acts"><button class="btn sm ghost press" onclick="dkAddLevel('${id}')">${ic('plus')} Add a level after</button><button class="btn sm ghost press dk-del" onclick="dkDelLevel('${id}')" ${k.levels.length > 2 ? '' : 'disabled'}>${ic('trash')} Delete level</button></div></section>`;
+}
+function dkSheetCard(it, k) {
+  const qs = k.blocks.filter(b => b.t === 'q'), tot = half(qs.reduce((s, q) => s + (+q.pts || 0), 0)), graded = it.type !== 'assignment';
+  return `<section class="panel dk-card"><div class="dk-card-h"><h4>${TYPE_LABEL[it.type]} sheet</h4><span class="note">${plural(qs.length, graded ? 'question' : 'task')}</span></div>
+    ${graded ? `<div class="dk-total ${tot === it.pts ? 'ok' : 'bad'}"><b class="tnum">${tot} of ${it.pts}</b><span>points across the questions</span></div>${tot === it.pts ? '' : `<button class="btn sm ghost press" onclick="dkSpread()">Spread ${it.pts} points evenly</button>`}`
+      : `<p class="note">This assignment is graded with its rubric, so tasks don't carry points.</p>`}
+    <div class="cb-lab">Add to the end</div>
+    <div class="dk-add">${Object.entries(Q_KINDS).map(([kd, l]) => `<button class="btn sm ghost press" onclick="dkAddBlock('${kd}')">${ic('plus')} ${l}</button>`).join('')}<button class="btn sm ghost press" onclick="dkAddBlock('text')">${ic('plus')} Text</button></div>
+    <div class="cb-lab">Lines at the top</div>
+    <div class="dk-fields">${['Name', 'Date', 'Score'].filter(x => graded || x !== 'Score').map(x => `<button class="switch" role="switch" aria-checked="${k.fields.includes(x)}" onclick="dkToggleField('${x}')"><span class="trk"></span>${x}</button>`).join('')}</div></section>`;
+}
+function dkBlockCard(it, k, id) {
+  const b = k.blocks.find(x => x.id === id), i = k.blocks.indexOf(b), graded = it.type !== 'assignment';
+  const moves = `<div class="dk-acts"><button class="btn sm ghost press" onclick="dkMoveBlock('${id}',-1)" ${i ? '' : 'disabled'}>${ic('up')} Up</button><button class="btn sm ghost press" onclick="dkMoveBlock('${id}',1)" ${i < k.blocks.length - 1 ? '' : 'disabled'}>${ic('down')} Down</button><button class="btn sm ghost press" onclick="dkDupBlock('${id}')">${ic('copy')} Duplicate</button><button class="btn sm ghost press dk-del" onclick="dkDelBlock('${id}')">${ic('trash')} Delete</button></div>`;
+  if (b.t === 'text') return `<section class="panel dk-card"><div class="dk-card-h"><h4>Text</h4>${dkDone}</div><p class="note">Plain text on the page, like references or a note to students. Edit it on the page.</p>${moves}</section>`;
+  return `<section class="panel dk-card"><div class="dk-card-h"><h4>${qLabel(k, b)}</h4>${dkDone}</div>
+    <label class="cb-field"><span class="cb-lab">Type</span><select class="sel" onchange="dkSetKind('${id}',this.value)">${Object.entries(Q_KINDS).map(([v, l]) => `<option value="${v}" ${b.kind === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    ${graded ? `<div class="cb-field"><span class="cb-lab">Points</span>${dkStepper(`dkQPts('${id}',-.5)`, b.pts, `dkQPts('${id}',.5)`, 'pts', `dkQPtsSet('${id}',this.value)`)}</div>` : ''}
+    ${b.kind === 'mc'
+      ? `<div class="cb-field"><span class="cb-lab">Options · mark the correct one</span><div class="dk-opts" role="radiogroup" aria-label="Correct option">${b.options.map((o, j) => `<div class="dk-opt ${o.id === b.answer ? 'on' : ''}"><button class="dk-radio press" role="radio" aria-checked="${o.id === b.answer}" onclick="dkAnswer('${id}','${o.id}')" aria-label="Mark option ${cbL(j)} correct">${cbL(j)}</button><span>${esc(o.text || 'Empty option')}</span><button class="iconbtn sm press" onclick="dkDelOpt('${id}','${o.id}')" aria-label="Remove option ${cbL(j)}" ${b.options.length > 2 ? '' : 'disabled'}>${ic('x')}</button></div>`).join('')}</div>
+         ${b.options.length < 6 ? `<button class="linkbtn cb-add" onclick="dkAddOpt('${id}')">${ic('plus')} Add an option</button>` : ''}</div>`
+      : `<div class="cb-field"><span class="cb-lab">Answer space</span>${dkStepper(`dkLines('${id}',-1)`, b.lines, `dkLines('${id}',1)`, 'lines', `dkLinesSet('${id}',this.value)`, 1)}</div>
+         <label class="cb-field"><span class="cb-lab">${b.kind === 'check' ? 'What the evaluator looks for' : 'Answer key'}</span><textarea class="ti" id="dkKey-${id}" rows="3" placeholder="${graded ? 'Printed only on the answer key' : 'Optional notes for graders'}" oninput="dkKeyText('${id}',this.value)">${esc(b.answer || '')}</textarea></label>`}
+    <label class="cb-field"><span class="cb-lab">Source</span><input class="ti" id="dkCite-${id}" value="${esc(b.cite || '')}" placeholder="e.g. TC 3-22.9 · Ch 7" oninput="dkCite('${id}',this.value)"></label>
+    ${moves}</section>`;
+}
+function dkIssuesCard(iss) {
+  if (!iss.length) return `<section class="panel dk-card dk-iss ok">${ic('check')}<span>No problems found.</span></section>`;
+  const nb = iss.filter(x => x.sev === 'block').length;
+  return `<section class="panel dk-card dk-iss" id="dkIss"><div class="dk-card-h"><h4>Before you publish</h4><span class="note">${nb ? `${nb} blocking` : 'Suggestions'}</span></div>
+    ${iss.slice(0, 8).map((x, i) => `<button class="cb-issue ${x.sev} press" onclick="dkJump(${i})">${ic(x.sev === 'block' ? 'alert' : 'info')}<span>${esc(x.text)}</span></button>`).join('')}${iss.length > 8 ? `<p class="note">and ${iss.length - 8} more</p>` : ''}</section>`;
+}
+
+/* ---------- typing on the page ---------- */
+function dkBindEdit() {
+  const w = document.getElementById('dkPaper'); if (!w || w.dataset.bound) return;
+  w.dataset.bound = '1';
+  w.addEventListener('input', e => { const el = e.target.closest('[data-f]'); if (el) dkInput(el); });
+  w.addEventListener('focusin', e => { const s = e.target.closest('[data-sel]'); dkSel(s ? s.dataset.sel : null); });
+  w.addEventListener('click', e => { if (e.target.closest('[data-f]')) return; const s = e.target.closest('[data-sel]'); if (s) dkSel(s.dataset.sel); });
+  w.addEventListener('keydown', e => {
+    const el = e.target.closest('[data-f]'); if (!el) return;
+    if (e.key === 'Escape') { e.stopPropagation(); el.blur(); dkSel(null); }
+    else if (e.key === 'Enter' && !(el.dataset.multi && e.shiftKey)) { e.preventDefault(); dkNextField(el, 1); }
+  });
+}
+function dkInput(el) {
+  const { d, r } = dkCtx(), f = el.dataset.f;
+  let v = el.innerText.replace(/ /g, ' ');
+  v = (el.dataset.multi ? v.replace(/\n{3,}/g, '\n\n') : v.replace(/\s*\n\s*/g, ' ')).trim();
+  docSnap(d, f); docSetField(d.draft.content, f, v);
+  if (!v && !el.innerText.trim() && el.innerHTML) el.innerHTML = '';   // lets the placeholder show again
+  el.classList.toggle('chg', r.marks && docGet(docCur(d).content, f) !== v);
+  dkChrome(); layoutSoon(250);
+}
+function dkNextField(el, dir) {
+  const all = [...document.querySelectorAll('#dkPaper [data-f]')], nx = all[all.indexOf(el) + dir];
+  if (nx) dkCaret(nx); else el.blur();
+}
+function dkCaret(el) { el.focus({ preventScroll: true }); const s = getSelection(); s.selectAllChildren(el); s.collapseToEnd(); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+function dkSel(sel) {
+  const r = state.rub; if (sel === 'doc:') sel = null;
+  if (r.sel === sel) return;
+  r.sel = sel;
+  document.querySelectorAll('#dkPaper .picked').forEach(e => e.classList.remove('picked'));
+  if (sel) document.querySelectorAll(`#dkPaper [data-sel="${sel}"]`).forEach(e => e.classList.add('picked'));
+  const insp = document.getElementById('dkInsp'); if (insp) insp.innerHTML = dkInspHtml();
+}
+/* cheap refresh while typing: bar, counts, undo buttons, and the inspector unless you're typing in it */
+function dkChrome() {
+  const { d } = dkCtx();
+  const pub = document.getElementById('dkPub'); if (pub) pub.innerHTML = dkPubHtml();
+  const info = document.getElementById('dkInfo'); if (info) info.innerHTML = dkInfoHtml();
+  const u = document.getElementById('dkUndo'), rd = document.getElementById('dkRedo');
+  if (u) u.disabled = !d.draft?.undo.length; if (rd) rd.disabled = !d.draft?.redo.length;
+  const insp = document.getElementById('dkInsp'); if (insp && !insp.contains(document.activeElement)) insp.innerHTML = dkInspHtml();
+  const pp = document.querySelector('#dkPaper .pp'); if (pp) { const { it, r } = dkCtx(); pp.dataset.foot = docFoot(r.doc, it, d.draft ? 'draft' : docCur(d).n, r.key && dkHasKey(it)); }
+  dkPagesChanged();
+}
+function dkRenderEdit(focusF) {
+  const w = document.getElementById('dkPaper'); if (!w) return dkRefresh();
+  const y = scrollY, ae = document.activeElement, keep = ae && ae.id && document.getElementById('dkInsp')?.contains(ae) ? ae.id : null;
+  w.innerHTML = dkPaperEdit();
+  document.getElementById('dkInsp').innerHTML = dkInspHtml();
+  paperLayout(w.querySelector('.pp')); dkChrome(); placePills(false);
+  window.scrollTo(0, y);
+  if (keep) document.getElementById(keep)?.focus({ preventScroll: true });
+  if (focusF) { const el = w.querySelector(`[data-f="${focusF}"]`); if (el) { dkCaret(el); el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }
+}
+function dkEdit(mutate, focusF) { const { d } = dkCtx(); docSnap(d); mutate(d.draft.content); dkRenderEdit(focusF); }
+function dkUndo() { const { d } = dkCtx(); if (docUndo(d)) dkRenderEdit(); }
+function dkRedo() { const { d } = dkCtx(); if (docRedo(d)) dkRenderEdit(); }
+const dkUndoToast = (title, desc) => notify({ tone: 'info', title, desc, duration: 3600, actions: [{ label: 'Undo', run: () => dkUndo() }] });
+function dkEditMarks() { state.rub.marks = !state.rub.marks; document.getElementById('dkMarksSw')?.setAttribute('aria-checked', state.rub.marks); dkRenderEdit(); }
+function dkShowIssues() {
+  if (state.rub.mode !== 'edit') dkMode(null, 'edit');
+  if (state.rub.sel) { state.rub.sel = null; dkRenderEdit(); }
+  const box = document.getElementById('dkIss'); if (!box) return;
+  box.scrollIntoView({ block: 'center', behavior: 'smooth' }); box.classList.remove('flash'); void box.offsetWidth; box.classList.add('flash');
+}
+function dkJump(i) {
+  const { it, d, r } = dkCtx(), x = docIssues(r.doc, it, docContent(d))[i]; if (!x) return;
+  r.sel = x.sel && x.sel !== 'doc:' ? x.sel : null;
+  dkRenderEdit(x.f);
+  if (!x.f && r.sel) document.querySelector(`#dkPaper [data-sel="${r.sel}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
+/* ---------- rubric edits ---------- */
+const dkRow = (k, id) => k.rows.find(x => x.id === id);
+function dkRowPts(id, dv) { dkEdit(k => { const r = dkRow(k, id); r.pts = Math.max(0, half((+r.pts || 0) + dv)); }); }
+function dkRowPtsSet(id, v) { dkEdit(k => { dkRow(k, id).pts = Math.max(0, half(+v || 0)); }); }
+function dkSpread() {
+  const { it, r } = dkCtx();
+  dkEdit(k => {
+    if (r.doc === 'rubric') { const p = spreadPts(it.pts, k.rows.length); k.rows.forEach((x, i) => x.pts = p[i]); }
+    else { const qs = k.blocks.filter(b => b.t === 'q'), p = spreadPts(it.pts, qs.length); qs.forEach((q, i) => q.pts = p[i]); }
+  });
+}
+function dkAddRow() { const id = docNewId(); state.rub.sel = `row:${id}`; dkEdit(k => k.rows.push({ id, crit: '', pts: 0, cells: Object.fromEntries(k.levels.map(l => [l.id, ''])) }), `r:${id}:crit`); }
+function dkMoveRow(id, dir) { dkEdit(k => { const i = k.rows.findIndex(x => x.id === id), j = i + dir; if (j >= 0 && j < k.rows.length) [k.rows[i], k.rows[j]] = [k.rows[j], k.rows[i]]; }); }
+function dkDupRow(id) { const nid = docNewId(); state.rub.sel = `row:${nid}`; dkEdit(k => { const i = k.rows.findIndex(x => x.id === id); k.rows.splice(i + 1, 0, { ...docClone(k.rows[i]), id: nid }); }, `r:${nid}:crit`); }
+function dkDelRow(id) { state.rub.sel = null; dkEdit(k => { k.rows = k.rows.filter(x => x.id !== id); }); dkUndoToast('Criterion deleted', 'Its descriptors went with it.'); }
+function dkDraftRow(id) {
+  dkEdit(k => { const r = dkRow(k, id), base = descriptors(r.crit || 'The criterion', 'anchored'); k.levels.forEach((l, i) => r.cells[l.id] = base[Math.round(i * (base.length - 1) / Math.max(1, k.levels.length - 1))]); });
+  notify({ tone: 'success', icon: 'sparkle', title: 'Rubricon drafted the descriptors', desc: 'Check each one against what an evaluator can observe.', duration: 4200, actions: [{ label: 'Undo', run: () => dkUndo() }] });
+}
+function dkLevelPct(id, dv) { dkEdit(k => { const l = k.levels.find(x => x.id === id); l.pct = Math.max(0, Math.min(100, l.pct + dv)); }); }
+function dkLevelPctSet(id, v) { dkEdit(k => { k.levels.find(x => x.id === id).pct = Math.max(0, Math.min(100, Math.round(+v || 0))); }); }
+function dkAddLevel(after) {
+  const nid = docNewId(); state.rub.sel = `level:${nid}`;
+  dkEdit(k => {
+    const i = after ? k.levels.findIndex(x => x.id === after) : k.levels.length - 1, hi = k.levels[i]?.pct ?? 100, lo = k.levels[i + 1]?.pct ?? 0;
+    k.levels.splice(i + 1, 0, { id: nid, name: '', pct: Math.max(0, Math.round((hi + lo) / 2 / 5) * 5 === hi ? hi - 5 : Math.round((hi + lo) / 2 / 5) * 5) });
+    k.rows.forEach(r => r.cells[nid] = '');
+  }, `l:${nid}:name`);
+}
+function dkDelLevel(id) { state.rub.sel = null; dkEdit(k => { if (k.levels.length <= 2) return; k.levels = k.levels.filter(x => x.id !== id); k.rows.forEach(r => delete r.cells[id]); }); dkUndoToast('Level deleted', 'Its descriptors were removed from every criterion.'); }
+
+/* ---------- sheet edits ---------- */
+const dkBlk = (k, id) => k.blocks.find(x => x.id === id);
+function dkAddBlock(kind) {
+  const { it } = dkCtx(), nid = docNewId();
+  const b = kind === 'text' ? { id: nid, t: 'text', text: '' } : mkQ(kind, '', { id: nid, pts: it.type === 'assignment' ? null : 0, options: kind === 'mc' ? [0, 1, 2, 3].map(() => ({ id: docNewId(), text: '' })) : [] });
+  state.rub.sel = `${b.t}:${nid}`;
+  dkEdit(k => k.blocks.push(b), `b:${nid}:${kind === 'text' ? 'text' : 'prompt'}`);
+}
+function dkMoveBlock(id, dir) { dkEdit(k => { const i = k.blocks.findIndex(x => x.id === id), j = i + dir; if (j >= 0 && j < k.blocks.length) [k.blocks[i], k.blocks[j]] = [k.blocks[j], k.blocks[i]]; }); }
+function dkDupBlock(id) {
+  const nid = docNewId(), src = dkBlk(docContent(dkCtx().d), id); state.rub.sel = `${src.t}:${nid}`;
+  dkEdit(k => { const i = k.blocks.findIndex(x => x.id === id), c = docClone(k.blocks[i]); c.id = nid; (c.options || []).forEach(o => { const n = docNewId(); if (o.id === c.answer) c.answer = n; o.id = n; }); k.blocks.splice(i + 1, 0, c); });
+}
+function dkDelBlock(id) { state.rub.sel = null; dkEdit(k => { k.blocks = k.blocks.filter(x => x.id !== id); }); dkUndoToast('Removed from the sheet', 'Numbering on the page updated.'); }
+function dkSetKind(id, kind) {
+  dkEdit(k => {
+    const b = dkBlk(k, id);
+    if (kind === 'mc' && b.options.length < 2) { const t = String(b.answer || ''); b.options = [t, '', '', ''].map(x => ({ id: docNewId(), text: x })); b.answer = t ? b.options[0].id : ''; }
+    if (kind !== 'mc' && b.kind === 'mc') { b.answer = b.options.find(o => o.id === b.answer)?.text || ''; b.options = []; }
+    b.kind = kind; b.lines = Q_LINES[kind];
+  });
+}
+function dkQPts(id, dv) { dkEdit(k => { const b = dkBlk(k, id); b.pts = Math.max(0, half((+b.pts || 0) + dv)); }); }
+function dkQPtsSet(id, v) { dkEdit(k => { dkBlk(k, id).pts = Math.max(0, half(+v || 0)); }); }
+function dkLines(id, dv) { dkEdit(k => { const b = dkBlk(k, id); b.lines = Math.max(0, Math.min(30, (+b.lines || 0) + dv)); }); }
+function dkLinesSet(id, v) { dkEdit(k => { dkBlk(k, id).lines = Math.max(0, Math.min(30, Math.round(+v || 0))); }); }
+function dkAnswer(id, oid) { dkEdit(k => { dkBlk(k, id).answer = oid; }); }
+function dkAddOpt(id) { const oid = docNewId(); dkEdit(k => dkBlk(k, id).options.push({ id: oid, text: '' }), `b:${id}:opt:${oid}`); }
+function dkDelOpt(id, oid) { dkEdit(k => { const b = dkBlk(k, id); if (b.options.length <= 2) return; b.options = b.options.filter(o => o.id !== oid); if (b.answer === oid) b.answer = ''; }); }
+function dkTypeSide(id, key, v) {   // inspector text fields: no re-render of the inspector while you type
+  const { d, r } = dkCtx(); docSnap(d, `b:${id}:${key}`); dkBlk(d.draft.content, id)[key] = v;
+  if (r.key) { const w = document.getElementById('dkPaper'); w.innerHTML = dkPaperEdit(); paperLayout(w.querySelector('.pp')); }
+  dkChrome();
+}
+const dkKeyText = (id, v) => dkTypeSide(id, 'answer', v);
+const dkCite = (id, v) => dkTypeSide(id, 'cite', v);
+function dkToggleField(x) { dkEdit(k => { k.fields = k.fields.includes(x) ? k.fields.filter(y => y !== x) : ['Name', 'Date', 'Score'].filter(y => y === x || k.fields.includes(y)); }); }
+
+document.addEventListener('keydown', e => {
+  if (state.view !== 'rubrics' || state.rub.mode !== 'edit' || !(e.ctrlKey || e.metaKey) || e.altKey) return;
+  const k = e.key.toLowerCase(), ae = document.activeElement;
+  if ((k !== 'z' && k !== 'y') || /INPUT|TEXTAREA|SELECT/.test(ae.tagName) || ae.isContentEditable || !document.getElementById('dialog').hidden) return;
+  e.preventDefault(); (k === 'y' || e.shiftKey) ? dkRedo() : dkUndo();
+});
 
 
 /* ---- QA issue widget ---- */
