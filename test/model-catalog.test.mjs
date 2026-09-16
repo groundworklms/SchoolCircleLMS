@@ -177,3 +177,114 @@ test('the connection test refuses to run without a model', async () => {
   );
   assert.equal(calls.length, 0, 'nothing was sent upstream');
 });
+
+test('the catalogue is readable before any model is chosen', async () => {
+  // The intended deployment shape: endpoint and key from configuration, model
+  // left to an instructor. Listing models must work in that state, or picking
+  // a model would require a model to already be picked.
+  delete process.env.MODEL_ID;
+  invalidateModelSettings();
+  await primeModelSettings();
+
+  const status = (await import('../lib/providers.js')).textProvider();
+  assert.equal(status.ready, false, 'not ready without a model');
+  assert.equal(status.baseUrl, 'https://api.openai.com/v1', 'but the endpoint is still reported');
+  assert.equal(status.credential, 'environment');
+
+  stubFetch(() => respond({ data: [{ id: 'gpt-4o' }, { id: 'gpt-4o-mini' }] }));
+  const result = await listModels();
+  assert.deepEqual(result.models.map((m) => m.id), ['gpt-4o', 'gpt-4o-mini']);
+  assert.equal(calls[0].url, 'https://api.openai.com/v1/models');
+  assert.equal(calls[0].init.headers.authorization, 'Bearer sk-catalog-test-4242');
+});
+
+test('with no endpoint at all the catalogue reports no provider, not a bad URL', async () => {
+  delete process.env.MODEL_BASE_URL;
+  delete process.env.MODEL_ID;
+  invalidateModelSettings();
+  await primeModelSettings();
+  stubFetch(() => respond({ data: [] }));
+  await assert.rejects(
+    () => listModels(),
+    (error) => error.code === 'NO_PROVIDER',
+  );
+  assert.equal(calls.length, 0, 'nothing was sent upstream');
+});
+
+/* --------------------------- curation for laymen -------------------------- */
+
+test('code, instruct and realtime models are excluded as unusable for lessons', async () => {
+  stubFetch(() => respond({
+    data: [
+      { id: 'gpt-5.4' }, { id: 'gpt-5.4-mini' },
+      { id: 'gpt-5-codex' }, { id: 'gpt-5.1-codex-max' },  // code models
+      { id: 'gpt-3.5-turbo-instruct' },                     // not a chat model at all
+      { id: 'gpt-live-1' },                                  // realtime
+    ],
+  }));
+  const ids = (await listModels()).models.map((m) => m.id);
+  assert.deepEqual(ids, ['gpt-5.4', 'gpt-5.4-mini']);
+});
+
+test('the shortlist offers one model per tier, newest first, never the oldest', async () => {
+  // Shaped like a real catalogue: the newest family has a single named variant
+  // and no mini/nano of its own.
+  stubFetch(() => respond({
+    data: [
+      { id: 'gpt-3.5-turbo' },
+      { id: 'gpt-4o' }, { id: 'gpt-4o-mini' },
+      { id: 'gpt-5.4' }, { id: 'gpt-5.4-mini' }, { id: 'gpt-5.4-nano' },
+      { id: 'gpt-5.5-pro' },
+      { id: 'gpt-6-astra' },
+    ],
+  }));
+  const { recommended } = await listModels();
+  assert.deepEqual(
+    recommended.map((m) => `${m.tier}:${m.id}`),
+    ['flagship:gpt-6-astra', 'mini:gpt-5.4-mini', 'nano:gpt-5.4-nano', 'pro:gpt-5.5-pro'],
+  );
+  // The oldest model must never be presented as the headline choice.
+  assert.ok(!recommended.some((m) => m.id.startsWith('gpt-3.5')));
+});
+
+test('a single-model family still yields a shortlist rather than nothing', async () => {
+  stubFetch(() => respond({ data: [{ id: 'gpt-6-astra' }] }));
+  const { recommended } = await listModels();
+  assert.deepEqual(recommended.map((m) => m.id), ['gpt-6-astra']);
+});
+
+test('an unfamiliar naming scheme still produces a shortlist', async () => {
+  stubFetch(() => respond({ data: [{ id: 'house-alpha' }, { id: 'house-beta' }] }));
+  const { recommended, models } = await listModels();
+  assert.equal(models.length, 2);
+  assert.deepEqual(recommended.map((m) => m.id), ['house-alpha', 'house-beta']);
+});
+
+test('labels are prettified, and no rule is silently disabled', async () => {
+  stubFetch(() => respond({
+    data: [{ id: 'gpt-3.5-turbo' }, { id: 'gpt-4o-mini' }, { id: 'gpt-5-nano' },
+           { id: 'gpt-5.5-pro' }, { id: 'gpt-5.2-chat-latest' }],
+  }));
+  const labels = Object.fromEntries((await listModels()).models.map((m) => [m.id, m.label]));
+  // A literal backspace byte once replaced the  in these patterns, which
+  // disabled every rule after the first while still reading correctly in a
+  // terminal. Assert on the output, not the source.
+  assert.equal(labels['gpt-3.5-turbo'], 'GPT-3.5 Turbo');
+  assert.equal(labels['gpt-4o-mini'], 'GPT-4o mini');
+  assert.equal(labels['gpt-5-nano'], 'GPT-5 nano');
+  assert.equal(labels['gpt-5.5-pro'], 'GPT-5.5 Pro');
+  assert.equal(labels['gpt-5.2-chat-latest'], 'GPT-5.2 chat (latest)');
+});
+
+test('the connection test asks for enough budget to finish', async () => {
+  // A reasoning model spends its budget before emitting anything, so a limit
+  // of 1 returns HTTP 400 "max_tokens ... was reached" against the real API.
+  let limits = [];
+  stubFetch((url, init) => {
+    const body = JSON.parse(init.body);
+    limits.push(body.max_completion_tokens ?? body.max_tokens);
+    return respond({ model: 'gpt-5.4-mini', usage: { total_tokens: 21 } });
+  });
+  await testConnection({ modelId: 'gpt-5.4-mini' });
+  assert.ok(limits[0] >= 16, `expected a workable budget, got ${limits[0]}`);
+});
