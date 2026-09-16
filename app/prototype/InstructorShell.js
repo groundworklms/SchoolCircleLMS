@@ -261,7 +261,10 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     else {
       body = (
         <CoursesLibrary
-          courses={learning.courses.filter((candidate) => !candidate.manual)}
+          // Legacy manual courses are included so they can be cleared: they
+          // were filtered out here, which left them visible only in the rail
+          // with no way to manage or remove them.
+          courses={learning.courses}
           loading={learning.loading}
           error={learning.error}
           onOpen={openCourse}

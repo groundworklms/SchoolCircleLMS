@@ -59,6 +59,18 @@ jobs:
       - name: Text model transport
         run: npm run test:model
 
+      # The doctrine endpoint is runtime-configurable because the Orin moves
+      # between laptops. These guard the precedence (a stored address beats
+      # DOCTRINE_BASE_URL) and that an unreachable settings store degrades to
+      # the environment instead of taking grounding down.
+      - name: Doctrine endpoint configuration
+        run: npm run test:doctrine
+
+      # Renaming and removing library records. The delete guards decide whether
+      # learner attempts survive, so they gate merges.
+      - name: Library record rename and delete guards
+        run: npm run test:record-admin
+
       # Roster and in-app messaging. These are the delivery-authorization contracts:
       # a message is bound to a User row rather than a token email claim, a
       # recipient needs real participation in the course, a learner can only touch
