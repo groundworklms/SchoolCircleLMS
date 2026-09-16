@@ -132,11 +132,6 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   const courseUnavailable = inCourse && !course && !courseLookupLoading && !courseServiceError && !learning.enabled;
   const courseNotFound = inCourse && !course && !courseLookupLoading && !courseServiceError && !courseUnavailable;
   const unsupportedRealView = Boolean(course?.record && nav.view && !current);
-  const accountSettingsCourse = {
-    id: `instructor-account${profile?.id ? `-${profile.id}` : ''}`,
-    name: 'Instructor account',
-  };
-
   let body;
   if (invalidArea) {
     body = (
@@ -169,9 +164,13 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   } else if (inLibrary && libraryView === 'settings') {
     body = (
       <InstructorSettings
-        course={accountSettingsCourse}
+        course={null}
         account={profile}
         authenticated={authenticated}
+        tab={nav.tab}
+        onTab={(t) => nav.go({
+          role: 'instructor', area: 'library', courseId: null, view: 'settings', tab: t,
+        })}
       />
     );
   } else if (inLibrary && !learning.enabled) {
@@ -217,12 +216,12 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
       );
     } else {
       const Screen = SCREENS[view];
-      body = <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} />;
+      body = <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} courseScoped={view === 'settings'} />;
     }
   } else {
     const Screen = SCREENS[view];
     body = Screen ? (
-      <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} />
+      <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} courseScoped={view === 'settings'} />
     ) : (
       <CourseUnavailable courseId={course.id} title="Course tool not found" />
     );
