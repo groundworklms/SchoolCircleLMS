@@ -263,6 +263,14 @@
 .s-draft-sec summary::-webkit-details-marker { display: none; }
 .s-draft-sec summary::before { content: '▸'; color: var(--p-dim); font-size: 0.8em; }
 .s-draft-sec[open] summary::before { content: '▾'; }
+
+/* The collapsed demo/schedule sections use a bare `summary.s-label`, which
+   otherwise renders a native disclosure triangle and no pointer cursor -- it
+   would not read as clickable or match the drafts section above. */
+summary.s-label { cursor: pointer; list-style: none; display: flex; align-items: center; gap: 0.5rem; }
+summary.s-label::-webkit-details-marker { display: none; }
+summary.s-label::before { content: '▸'; color: var(--p-dim); font-size: 0.8em; }
+details[open] > summary.s-label::before { content: '▾'; }
 .s-draft-n { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5em; height: 1.5em; border-radius: 999px; background: var(--p-surface-2); color: var(--p-dim); font-size: 0.8em; font-weight: 600; }
 .s-draft-sec > p { margin: 0.6rem 0 0; white-space: pre-wrap; }
 .s-draft-opts { margin: 0.3rem 0 0; padding-left: 1.2rem; font-size: 0.92em; color: var(--p-dim); }
