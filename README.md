@@ -53,9 +53,15 @@ npm run dev                   # http://localhost:3111
 ```
 
 Point `DOCTRINE_BASE_URL` at a running **Anchor** instance for grounded answers, and
-`MODEL_BASE_URL` + `MODEL_ID` at a self-hosted OpenAI-compatible model for the generation features
-(both are optional for a first run — see `.env.example`). The product is offline: generation runs
-against self-hosted compute, never a cloud API.
+`MODEL_BASE_URL` + `MODEL_ID` at an OpenAI-compatible model for the generation features
+(both are optional for a first run — see `.env.example`). Unset means generation reports an
+explicit `503 NO_PROVIDER`; there is no mock and no silent fallback.
+
+The product is offline and grounded **by default**: generation runs against self-hosted compute.
+An OpenRouter overlay exists for authorized development and testing only, and is selected solely
+by pointing `MODEL_BASE_URL` at that exact base URL alongside `OPENROUTER_API_KEY` — a key on its
+own never selects a cloud provider. Do not enable it for production or offline deployments. See
+[AI course authoring](docs/ai-course-authoring.md).
 
 **Cloud and edge:** Cloud SQL PostgreSQL in the cloud, local PostgreSQL on the
 hardware, with the same Prisma schema and a `DATABASE_URL` change. Data is not
@@ -66,23 +72,35 @@ for secure credentials, migrations, safe seeding, and the approval/rollout check
 
 One app, two shells: learners at `/prototype`, instructors at `/prototype/instructor` (the
 library — sources, course drafts, rubrics — lives at `/prototype/instructor/{courses,sources,rubrics}`).
-`/learn` and `/teach` redirect there. Approved `LearningRecord` courses appear alongside the mock demo
-courses and get the views the API can back; see `app/prototype/learning.js`.
+The former `/learn` and `/teach` trees are retired — removed outright rather than redirected, so
+those paths now 404 (`tests/legacy-route-removal.mjs` keeps them gone). Approved `LearningRecord`
+courses appear alongside the mock demo courses and get the views the API can back; see
+`app/prototype/learning.js`.
 
-### Manual interactive course creation
+### Course creation
 
-Use **Course builder** in `/teach` (`/teach/courses`) to build a course without
-AI. Drafts support ordered lessons and interactive content blocks, student
-preview, explicit publishing, and archive/restore. Learners open published
-courses through **Interactive courses** in `/learn` (`/learn/library`).
-Draft saves do not change previously published lessons or erase learner history.
+Source-grounded AI generation is the only authoring path. From the instructor
+Courses library, select approved POI, materials or doctrine sources and generate
+a grounded outline and lessons; objectives can be given one per line or left
+blank for AI extraction. Instructors then request question or whole-lesson
+revisions and approve an exact reviewed version. Approval materialises an
+immutable release with its own delivery id — previous releases, learner
+progress, attempts and results are never deleted — and learners receive
+approved content with answer keys and rationales redacted.
 
 The workflow uses the existing PostgreSQL `LearningRecord` table with separate
-manual-course, immutable-release, progress and attempt records. Linked media
-uses HTTPS URLs; this version does not upload files. AI generation, advanced
-branching and export remain separate from this manual authoring workflow.
-See [the authoring contract](docs/MANUAL_AUTHORING_CONTRACT.md) for the API,
-versioning, ownership and assessment rules.
+course-draft, revision, immutable-release, progress and attempt records. Linked
+media uses HTTPS URLs; this version does not upload files.
+See [AI course authoring](docs/ai-course-authoring.md) for the workflow, provider
+and grounding rules.
+
+**Manual authoring is retired.** The interactive Course builder and its editors
+are gone, and the manual create/save/publish/archive endpoints answer
+`410 MANUAL_AUTHORING_RETIRED` so older clients get a deterministic response
+instead of a silent write. Records saved by that workflow, their published
+playback, progress, grading and results are all preserved.
+[The manual authoring contract](docs/MANUAL_AUTHORING_CONTRACT.md) is kept only
+as a historical record of that retired API.
 
 The eleven arsenal packages (Quarry, Coursewright, Rubricon, Sourcerer, Whetstone, Sextant,
 Cadence, Hotwash, Waypoint, Cartridge, Understudy) are pinned by commit in `package.json` and wired
