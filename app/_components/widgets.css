@@ -134,3 +134,8 @@ textarea.scw-field { min-height: 5.5rem; resize: vertical; }
   .scw-fab.ask { right: .9rem; }
   .scw-fab.issue { right: .9rem; }
 }
+
+/* ---- report widget: identity row + inline error ---- */
+.scw-row { display: flex; gap: .5rem; }
+.scw-row .scw-field { min-width: 0; }
+.scw-err { font-size: .8rem; color: var(--scw-critical); margin: 0 0 .6rem; }

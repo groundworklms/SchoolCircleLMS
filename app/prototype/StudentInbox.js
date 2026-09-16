@@ -10,7 +10,7 @@ const ME = 'Cpl Rivera';
    point is what lands in a Marine's inbox: instructor announcements, reminders
    the platform generates from the plan, and requirement notices. */
 
-const MESSAGES = [
+export const MESSAGES = [
   {
     id: 1,
     from: 'SSgt Okafor',

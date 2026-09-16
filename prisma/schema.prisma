@@ -1,8 +1,8 @@
 // Data model for the grounded LMS.
 //
-// Postgres for the real product; the SAME schema runs on SQLite for offline/edge (a Jetson
-// at a schoolhouse) -- change the datasource `provider` + DATABASE_URL, nothing else. That is
-// the edge-to-enterprise story: one schema, connection-string swap.
+// PostgreSQL for both cloud and offline/edge. Use Cloud SQL in the cloud and local
+// PostgreSQL on the hardware; keep this provider/schema and change DATABASE_URL.
+// The two databases have independent data; switching URLs does not synchronize them.
 //
 // One boundary is deliberate and lives HERE, not in the UI: there is no ClassGap table. The
 // instructor's aggregate view is a GROUP BY over Attempt that never SELECTs learnerId (see
@@ -14,13 +14,14 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"          // swap to "sqlite" for offline/edge; see .env.example
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 enum Role {
   INSTRUCTOR
   LEARNER
+  BOTH
 }
 
 enum ItemKind {
@@ -38,6 +39,10 @@ enum ItemStatus {
 model User {
   id        String    @id @default(cuid())
   name      String
+  rank      String?   @db.VarChar(40)
+  branch    String?
+  payGrade  String?
+  profileCompletedAt DateTime?
   role      Role      @default(LEARNER)
   // For MarineNet/LTI later: the LTI `sub` claim maps here, so local accounts and SSO
   // identities share one table without a schema change.
@@ -129,4 +134,22 @@ model Schedule {
 
   @@unique([itemId, learnerId])
   @@index([learnerId, dueAt])
+}
+
+// Additive boundary for integrations that do not have a first-class LMS table yet.
+// The payload is always JSON produced by a reviewed adapter (source, draft, rubric,
+// tutor turn, or mastery session). `ownerId` is the authenticated SchoolCircle User
+// id; no client-provided identity is accepted by the learning routes.
+model LearningRecord {
+  id        String   @id @default(cuid())
+  ownerId   String
+  type      String
+  status    String   @default("PENDING")
+  payload   Json
+  version   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, type])
+  @@index([type, status])
 }

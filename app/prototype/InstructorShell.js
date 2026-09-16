@@ -10,6 +10,8 @@ import LiveControl from './LiveControl';
 import Mastery from './Mastery';
 import AAR from './AAR';
 import Roster from './Roster';
+import { useAuth } from '../_auth/AuthProvider';
+import { accountDisplay } from '../_auth/account-display';
 
 /* Instructor shell. Same rail and content column as the student side; what
    changes is who is signed in and what is in the rail. The four instructor
@@ -29,6 +31,13 @@ const VIEWS = [
 const SCREENS = { builder: Curriculum, roster: Roster, control: LiveControl, mastery: Mastery, aar: AAR, settings: InstructorSettings };
 
 export default function InstructorShell({ nav, onSwitchRole }) {
+  const { ready: authReady, profile, signOut, signOutError } = useAuth();
+  const {
+    authenticated,
+    name: displayName,
+    rank: displayRank,
+    initials,
+  } = accountDisplay({ ready: authReady, profile, demo: INSTRUCTOR });
   const courseId = COURSES[nav.courseId] ? nav.courseId : 'M092721';
   const course = COURSES[courseId];
   const view = VIEWS.find((v) => v.id === nav.view) ? nav.view : 'builder';
@@ -36,20 +45,28 @@ export default function InstructorShell({ nav, onSwitchRole }) {
   const Screen = SCREENS[view];
 
   const go = (patch) => nav.go({ role: 'instructor', courseId, view, ...patch });
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      window.location.href = '/';
+    } catch {
+      // AuthProvider exposes the explicit error in the shell.
+    }
+  };
 
   return (
     <div className="s-root">
       <nav className="s-rail">
         <UserMenu
-          name={INSTRUCTOR.name}
+          name={displayName}
           role={INSTRUCTOR.role}
-          initials={INSTRUCTOR.initials}
+          rank={displayRank}
+          initials={initials}
           inst
           items={[
-            { label: 'Course settings', hint: course.id, onClick: () => go({ view: 'settings' }) },
-            { label: 'View as student', onClick: onSwitchRole },
-            'divider',
-            { label: 'Sign out', danger: true, onClick: () => { window.location.href = '/'; } },
+            { label: 'Settings', hint: course.id, onClick: () => go({ view: 'settings' }) },
+            ...(onSwitchRole ? [{ label: 'View as student', onClick: onSwitchRole }, 'divider'] : ['divider']),
+            { label: 'Sign out', danger: true, onClick: handleSignOut },
           ]}
         />
 
@@ -74,7 +91,9 @@ export default function InstructorShell({ nav, onSwitchRole }) {
         ))}
 
         <div className="s-rail-spacer" />
-        <RailButton icon={I.swap} label="View as student" onClick={onSwitchRole} />
+        {onSwitchRole && (
+          <RailButton icon={I.swap} label="View as student" onClick={onSwitchRole} />
+        )}
         <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/'; }} />
       </nav>
 
@@ -94,7 +113,12 @@ export default function InstructorShell({ nav, onSwitchRole }) {
               <strong>Instructor view</strong>
               <span>Every AI output lands here for review before it reaches a student.</span>
             </div>
-            <Screen key={course.id} course={course} instructorName={INSTRUCTOR.name} />
+            {signOutError && (
+              <div className="s-shell-error" role="alert">
+                {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
+              </div>
+            )}
+            <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} />
           </div>
         </main>
       </div>

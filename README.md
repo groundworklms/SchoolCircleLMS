@@ -47,8 +47,8 @@ thing.
 docker compose up -d          # local Postgres
 cp .env.example .env.local    # set DATABASE_URL + DOCTRINE_BASE_URL (Anchor)
 npm install
-npm run db:migrate            # create the tables
-npm run db:seed               # seed a TC 3-22.9 course + instructor + learner
+npm run db:deploy             # apply committed migrations to the confirmed dev database
+NODE_ENV=development ALLOW_DEMO_SEED=true npm run db:seed # isolated demo fixtures only
 npm run dev                   # http://localhost:3111
 ```
 
@@ -57,8 +57,24 @@ Point `DOCTRINE_BASE_URL` at a running **Anchor** instance for grounded answers,
 (both are optional for a first run — see `.env.example`). The product is offline: generation runs
 against self-hosted compute, never a cloud API.
 
-**Edge build:** switch the Prisma `datasource` to `sqlite` and set
-`DATABASE_URL="file:./schoolcircle.db"` — same schema, same seed, offline on a Jetson.
+**Cloud and edge:** Cloud SQL PostgreSQL in the cloud, local PostgreSQL on the
+hardware, with the same Prisma schema and a `DATABASE_URL` change. Data is not
+automatically synchronized. See [cloud/local database setup](docs/CLOUD_POSTGRES.md)
+for secure credentials, migrations, safe seeding, and the approval/rollout checklist.
+
+## The learning loop (`/learn`, `/teach`, `/api/learning`)
+
+The eleven arsenal packages (Quarry, Coursewright, Rubricon, Sourcerer, Whetstone, Sextant,
+Cadence, Hotwash, Waypoint, Cartridge, Understudy) are pinned by commit in `package.json` and wired
+behind `/api/learning/*` — sources → cited course drafts → rubrics, tutor, mastery sessions, study
+plans, analytics, AARs, SCORM export and fidelity benchmarks, every artifact persisted as a
+`LearningRecord` and every approval a human click. Contracts: [`docs/learning-api.md`](docs/learning-api.md)
+and [`docs/learning-evidence-api.md`](docs/learning-evidence-api.md).
+
+Those routes need a verified identity (the Firebase sign-in, verified server-side with the public
+project id — no service account) and answer `401` until Firebase is configured; the rest of the app
+is unaffected. `npm test` runs the adapter and evidence contract tests against the real packages;
+set `RUN_DB_TESTS=1` with a `DATABASE_URL` to include the Postgres round-trip tests.
 
 ## The one rule that never bends
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { COURSES } from './data';
 import { usePrefs, setPref } from './prefs';
+import AccountProfile from '../_auth/AccountProfile';
 
 /* Settings, both roles. Preferences persist in the browser (prefs.js) so the
    instructor's per-course toggles show up on the student side in a demo. */
@@ -151,15 +152,19 @@ function isValidPhone(phone) {
 
 /* ---------- student ---------- */
 
-export function StudentSettings({ onSignOut }) {
+export function StudentSettings({ onSignOut, account, authenticated = false }) {
   const prefs = usePrefs();
   const r = { ...prefs.reminders, phone: prefs.reminders.phone || '' };
+  const displayName = account?.name || (authenticated ? 'Account' : 'Cpl Rivera');
+  const displayEmail = account?.email || (authenticated ? 'signed-in account' : 'rivera.j@usmc.mil');
 
   return (
     <div className="s-settings">
       <div className="s-pagehead">
         <h1>Settings</h1>
-        <p>Cpl Rivera · signed in via MCeLE · rivera.j@usmc.mil</p>
+        <p>
+          {displayName} · signed in via MCeLE · {displayEmail}
+        </p>
       </div>
 
       <section className="p-panel">
@@ -241,9 +246,13 @@ export function StudentSettings({ onSignOut }) {
 
       <section className="p-panel">
         <h3>Account</h3>
+        {authenticated && <AccountProfile />}
         <div className="s-settings-row">
           <span>Identity</span>
-          <span className="s-settings-val">MCeLE / MarineNet SSO · EDIPI on file</span>
+          <span className="s-settings-val">
+            {account?.name || (authenticated ? 'Account' : 'MCeLE / MarineNet SSO')}
+            {account?.rank ? ` · ${account.rank}` : ''}
+          </span>
         </div>
         <div className="s-settings-row">
           <span>Courses</span>
@@ -259,7 +268,7 @@ export function StudentSettings({ onSignOut }) {
 
 /* ---------- instructor ---------- */
 
-export function InstructorSettings({ course }) {
+export function InstructorSettings({ course, account, authenticated = false }) {
   const prefs = usePrefs();
   const show = !!prefs.showStanding?.[course.id];
 
@@ -267,6 +276,13 @@ export function InstructorSettings({ course }) {
     <div className="s-settings">
       <h2 className="p-h">Course settings</h2>
       <p className="p-sub">{course.name} · {course.id}. These apply to this course only.</p>
+
+      {authenticated && (
+        <section className="p-panel">
+          <h3>Account profile</h3>
+          <AccountProfile />
+        </section>
+      )}
 
       <section className="p-panel">
         <h3>What students see</h3>
