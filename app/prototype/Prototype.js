@@ -7,6 +7,7 @@ import { usePrefs } from './prefs';
 import StudentShell from './StudentShell';
 import InstructorShell from './InstructorShell';
 import { useAuth } from '../_auth/AuthProvider';
+import PrototypeNotFound from './NotFound';
 
 /* Entry. The URL decides the role (see nav.js); each role has a shell built
    from the same rail and content column, so switching roles changes what is
@@ -72,12 +73,7 @@ export default function Prototype() {
   }
 
   if (nav.area === 'not-found') {
-    return (
-      <div className="scl-fullcenter">
-        <h1>Page not found</h1>
-        <p>This prototype route does not exist.</p>
-      </div>
-    );
+    return <PrototypeNotFound />;
   }
 
   return (
