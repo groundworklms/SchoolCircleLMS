@@ -358,7 +358,7 @@ table.t td:first-child{color:var(--p-text);font-weight:500}
 .grid-dash>*,.assist>*,.pgrid>*,.rgrid>*,.calgrid>*,.two>*{min-width:0}
 
 /* top bar */
-.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:.8rem;padding:.65rem 2.4rem;background:rgba(245,245,247,.84);backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border-bottom:.5px solid var(--p-border)}
+.topbar{position:sticky;top:0;z-index:40;display:flex;align-items:center;gap:.8rem;padding:.65rem 2.4rem;background:var(--p-glass,rgba(245,245,247,.84));backdrop-filter:blur(18px) saturate(180%);-webkit-backdrop-filter:blur(18px) saturate(180%);border-bottom:.5px solid var(--p-border)}
 .tcrumbs{display:flex;align-items:center;gap:.45rem;font-size:.82em;color:var(--p-faint);min-width:0;white-space:nowrap}
 .tcrumbs .sep{opacity:.5}.tcrumbs .cur{color:var(--p-dim)}
 .tb-right{display:flex;align-items:center;gap:.5rem;margin-left:auto;min-width:0}
@@ -752,7 +752,7 @@ html,body{overflow-x:clip}
   .search:focus-within{position:absolute;left:1.1rem;right:1.1rem;bottom:.55rem;width:auto;padding:0 .7rem;justify-content:flex-start;z-index:6;animation:sexpand var(--dur) var(--ease) both}
   .search:focus-within input{flex:1;width:auto;opacity:1}
   .search:focus-within .s-clear:not([hidden]){display:grid}
-  .tb-wrap:first-child{flex:1;min-width:0}.coursebtn{max-width:none;width:100%;overflow:hidden}.coursebtn .cwho{flex:1}
+  .tb-wrap:has(.coursebtn){flex:1;min-width:0}.coursebtn{max-width:none;width:100%;overflow:hidden}.coursebtn .cwho{flex:1}
   .coursebtn .cwho small{display:block}
 }
 @keyframes sexpand{from{clip-path:inset(0 0 0 calc(100% - 2.6rem) round 12px)}to{clip-path:inset(0 0 0 0 round 12px)}}
@@ -986,7 +986,7 @@ button.av.more[aria-expanded="true"]{background:var(--p-accent);color:#fff}
 .csearch-box input::-webkit-search-cancel-button{display:none;-webkit-appearance:none}
 
 /* assignment pill (third row) + pinned filter panel so class/assignment switching never needs a scroll back up */
-.asg-sticky{position:sticky;top:var(--tb-h,3.95rem);z-index:30;margin:-.3rem -2.4rem 1rem;padding:.55rem 2.4rem .6rem;background:rgba(246,245,246,.9);-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);border-bottom:.5px solid var(--p-border)}
+.asg-sticky{position:sticky;top:var(--tb-h,3.95rem);z-index:30;margin:-.3rem -2.4rem 1rem;padding:.55rem 2.4rem .6rem;background:var(--p-glass-2,rgba(246,245,246,.9));-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);border-bottom:.5px solid var(--p-border)}
 .asg-sticky .classbar{margin:0}
 .asg-sticky .classbar+.classbar{margin-top:.45rem}
 .cb-label{min-width:5.6rem}
@@ -1194,7 +1194,7 @@ button.gb-cell:hover,button.gb-cell:focus-visible{background:var(--acc-50);outli
 .cb-step:not(:disabled):hover .cb-sl b{color:var(--p-accent)}
 
 /* pinned action bar */
-.cb-bar{position:sticky;bottom:0;z-index:30;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin:1.4rem -2.4rem -3.5rem;padding:.7rem 2.4rem calc(.75rem + env(safe-area-inset-bottom,0px));background:rgba(251,250,251,.9);-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);border-top:.5px solid var(--p-border)}
+.cb-bar{position:sticky;bottom:0;z-index:30;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin:1.4rem -2.4rem -3.5rem;padding:.7rem 2.4rem calc(.75rem + env(safe-area-inset-bottom,0px));background:var(--p-glass-2,rgba(251,250,251,.9));-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%);border-top:.5px solid var(--p-border)}
 .cb-meter{display:flex;align-items:center;gap:.7rem;min-width:0}
 .ring.sm{width:3rem;height:3rem;flex:none}
 .ring.sm>div{width:2.4rem;height:2.4rem}
@@ -1441,6 +1441,37 @@ body:has(.cb-bar) .ntf-stack{bottom:5.9rem}
 .cb-ref-ed-m{display:none}
 @media(max-width:760px){#dFoot .dfoot-hint{display:none}.cb-ref>.cb-ref-ed{display:none}.cb-ref-ed-m{display:inline}}
 
+/* sources step + AI-guided review */
+.cb-src{display:grid;grid-template-columns:minmax(0,1fr) 20rem;gap:1.2rem;align-items:start}
+.cb-src>*{min-width:0}
+.cb-drop{padding:1.1rem}
+.cb-drop .drop-zone{min-height:11rem}
+.cb-srclist{display:flex;flex-direction:column;margin-top:.9rem}
+.cb-srcrow{display:flex;align-items:center;gap:.7rem;padding:.6rem 0;border-top:.5px solid var(--p-border)}
+.cb-srcrow .cwho{flex:1;min-width:0}
+.cb-srcrow .cwho b{white-space:normal}
+.cb-note{padding:1.1rem;display:flex;flex-direction:column;gap:.6rem}
+.cb-note .cb-field{gap:.4rem}
+.cb-note .note{margin:0;line-height:1.5}
+.cb-guide{display:flex;align-items:flex-start;gap:.8rem;padding:.85rem 1rem;margin-bottom:1rem;border-radius:14px;background:var(--p-accent-tint);box-shadow:inset 3px 0 0 var(--p-accent)}
+.cb-guide.block{background:var(--p-critical-tint);box-shadow:inset 3px 0 0 var(--p-critical)}
+.cb-g-ico{flex:none;width:2rem;height:2rem;border-radius:9px;display:grid;place-items:center;background:var(--p-surface);color:var(--p-accent)}
+.cb-guide.block .cb-g-ico{color:var(--p-critical)}
+.cb-g-b{flex:1;min-width:0}
+.cb-g-h{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+.cb-g-h b{font-size:.94rem}
+.cb-g-b .note{margin:.2rem 0 0;line-height:1.5}
+.cb-g-act{display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+.cb-chk-n{flex:none;min-width:1.25rem;height:1.25rem;padding:0 .3rem;border-radius:980px;background:var(--p-accent-tint);color:var(--p-accent);font-size:.72rem;font-weight:700;display:inline-grid;place-items:center}
+.cb-chk-n.block{background:var(--p-critical-tint);color:var(--p-critical)}
+.cb-issues.soft{background:var(--p-accent-tint);color:var(--p-accent)}
+.cb-checklist{display:flex;flex-direction:column;gap:.45rem;max-height:26rem;overflow:auto}
+.cb-checklist .cb-issue{align-items:flex-start}
+.cb-checklist .cb-issue .cwho{flex:1;min-width:0}
+.cb-checklist .cb-issue.done{opacity:.55}
+.ol-course.sel{background:var(--p-accent-tint)}
+@media(max-width:900px){.cb-src{grid-template-columns:minmax(0,1fr)}.cb-guide{flex-wrap:wrap}.cb-g-act{width:100%}}
+
 /* ============ Rubrics tab: bar, paper, editor, history, print ============ */
 .dk-bar{display:flex;align-items:center;gap:.6rem 1rem;flex-wrap:wrap;margin:0 0 1rem;padding:.55rem .65rem;border-radius:16px;background:var(--p-surface);box-shadow:0 0 0 .5px var(--p-border),0 1px 2px rgba(0,0,0,.04)}
 .dk-pills{display:flex;gap:.5rem;flex-wrap:wrap}
@@ -1616,13 +1647,249 @@ body:has(.cb-bar) .ntf-stack{bottom:5.9rem}
 
 @media(max-width:1100px){.dk-edit,.dk-hist{grid-template-columns:minmax(0,1fr)}.dk-insp,.dk-vers{position:static;max-height:none}.dk-vlist{max-height:22rem}}
 @media(max-width:760px){.dk-bar{padding:.5rem}.dk-info .btn{flex:1;justify-content:center}.dk-vtitle .btnrow{width:100%}.dk-ch-h b{min-width:0}.dk-levels{grid-template-columns:minmax(0,1fr)}}
+
+/* ============ Command view + the brief ============ */
+.seg3 button{padding:.4rem .2rem;font-size:.76em}
+.cm-bento{grid-template-columns:repeat(4,minmax(0,1fr))}
+.cm-bento .note{margin:.15rem 0 0;font-size:.78rem}
+.cm-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2rem;margin-bottom:1.2rem}
+.cm-grid>*{min-width:0;margin:0}
+.cm-grid h3{margin:0 0 .8rem}
+.cm-bars{display:flex;flex-direction:column;gap:.55rem}
+.cm-bar{display:grid;grid-template-columns:minmax(6rem,11rem) minmax(0,1fr) 3.4rem;align-items:center;gap:.6rem}
+.cm-bl{font-size:.86rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cm-bt{height:.55rem;border-radius:980px;background:rgba(0,0,0,.07);overflow:hidden}
+.cm-bt i{display:block;height:100%;border-radius:980px}
+.cm-bar b{font-size:.86rem;text-align:right}
+.cm-bar small{grid-column:2 / -1;font-size:.74rem;color:var(--p-faint);margin-top:-.25rem}
+.cm-line{position:relative;padding-left:2.4rem}
+.cm-line svg{width:100%;height:8.5rem;display:block}
+.cm-axis{position:absolute;left:0;top:0;height:8.5rem;display:flex;flex-direction:column;justify-content:space-between;font-size:.72rem;color:var(--p-faint)}
+.cm-ticks{display:flex;justify-content:space-between;font-size:.72rem;color:var(--p-faint);margin-top:.35rem}
+.cm-donut{display:flex;align-items:center;gap:1.2rem;flex-wrap:wrap}
+.cm-dring{position:relative;width:8rem;height:8rem;border-radius:50%;flex:none;display:grid;place-items:center}
+.cm-dring i{width:4.6rem;height:4.6rem;border-radius:50%;background:var(--p-surface)}
+.cm-dleg{display:flex;flex-direction:column;gap:.45rem;font-size:.86rem;min-width:0}
+.cm-dleg span{display:flex;align-items:center;gap:.5rem}
+.cm-dleg i{width:.7rem;height:.7rem;border-radius:3px;flex:none}
+.cm-dleg b{margin-left:auto;padding-left:.6rem}
+.cm-risk{display:flex;align-items:center;gap:.7rem;width:100%;padding:.55rem 0;border:none;border-top:.5px solid var(--p-border);background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.cm-risk:first-of-type{border-top:none}
+.cm-risk .cwho{flex:1;min-width:0}
+.cm-chips{display:flex;flex-wrap:wrap;gap:.4rem}
+.cm-chips .chip{display:inline-flex;align-items:baseline;gap:.4rem}
+.cm-chips small{color:var(--p-faint)}
+.cm-table{width:100%;border-collapse:collapse;font-size:.88rem;min-width:52rem}
+.cm-table th{text-align:left;font-size:.74rem;font-weight:600;color:var(--p-faint);padding:.5rem .6rem;border-bottom:.5px solid var(--p-border);white-space:nowrap}
+.cm-table td{padding:.6rem;border-bottom:.5px solid var(--p-border);vertical-align:middle}
+.cm-table tbody tr:hover{background:rgba(0,0,0,.025)}
+.cm-table small{display:block;font-size:.72rem;color:var(--p-faint)}
+.cm-prog{display:block;width:5rem;height:.4rem;border-radius:980px;background:rgba(0,0,0,.08);overflow:hidden}
+.cm-prog i{display:block;height:100%;background:var(--p-accent)}
+
+/* the brief */
+.cm-export{display:grid;grid-template-columns:20rem minmax(0,1fr);gap:1.2rem;align-items:start}
+.cm-export>*{min-width:0}
+.cm-pick{position:sticky;top:calc(var(--tb-h,4rem) + 1rem);margin:0}
+.cm-slidepick{display:flex;align-items:center;gap:.65rem;width:100%;padding:.55rem .35rem;border:none;border-top:.5px solid var(--p-border);background:none;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.cm-slidepick:first-of-type{border-top:none}
+.cm-slidepick:disabled{opacity:.45;cursor:default}
+.cm-slidepick .cwho{flex:1;min-width:0}
+.cm-check{flex:none;width:1.4rem;height:1.4rem;border-radius:7px;display:grid;place-items:center;background:rgba(0,0,0,.06);color:transparent}
+.cm-slidepick.on .cm-check{background:var(--p-accent);color:var(--p-on-accent,#fff)}
+.cm-check .i{width:.85rem;height:.85rem}
+.cm-slides{display:flex;flex-direction:column;gap:1.1rem}
+.sl{aspect-ratio:16/9;background:#fff;color:#1d1d1f;border-radius:10px;box-shadow:0 2px 16px rgba(0,0,0,.1),0 0 0 .5px rgba(0,0,0,.08);container-type:inline-size;overflow:hidden}
+.sl-in{height:100%;display:flex;flex-direction:column;padding:4.2cqw 5cqw 3cqw;font-size:max(1.55cqw,8px)}
+.sl-h{display:flex;gap:1.2em;align-items:flex-start;padding-bottom:1em;border-bottom:1px solid #dcdade}
+.sl-rule{width:.35em;align-self:stretch;min-height:2.6em;border-radius:2px;background:var(--p-accent)}
+.sl-h h3{margin:0;font-size:2em;letter-spacing:-.01em;line-height:1.1;color:#1d1d1f}
+.sl-h p{margin:.35em 0 0;font-size:.95em;color:#5d5b61}
+.sl-body{flex:1;display:flex;flex-direction:column;gap:1.4em;padding-top:1.2em;min-height:0;overflow:hidden}
+.sl-body>*{min-height:0;overflow:hidden}
+.sl-body>.sl-kpi{flex:none}
+.sl-body>.sl-block{flex:1 1 0;display:flex;flex-direction:column}
+.sl-block>:last-child{min-height:0;overflow:hidden}
+.sl-bt{font-size:.95em;font-weight:600;color:#5d5b61;margin-bottom:.55em}
+.sl-kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:.8em}
+.sl-kpi>div{background:#f6f5f6;border-radius:.6em;padding:.8em .9em;border-left:.3em solid var(--t)}
+.sl-kpi small{display:block;font-size:.88em;color:#5d5b61}
+.sl-kpi b{display:block;font-size:2.1em;line-height:1.1;color:var(--t);margin:.1em 0 .15em}
+.sl-kpi span{font-size:.82em;color:#8a878f}
+.sl .cm-bars{gap:.45em}
+.sl .cm-bar{grid-template-columns:minmax(0,10em) minmax(0,1fr) 3em;gap:.6em;font-size:.95em}
+.sl .cm-bt{height:.7em;background:#e6e4e8}
+.sl .cm-line{padding-left:2.4em}
+.sl .cm-line svg{height:9em}
+.sl .cm-axis{height:9em}
+.sl .cm-dring{width:8em;height:8em}
+.sl .cm-dring i{width:4.6em;height:4.6em;background:#fff}
+.sl-table{width:100%;border-collapse:collapse;font-size:.92em}
+.sl-table th{text-align:left;font-weight:600;color:#5d5b61;padding:.35em .5em;background:#f6f5f6}
+.sl-table td{padding:.38em .5em;border-bottom:1px solid #eceaee;color:#5d5b61}
+.sl-table td:first-child{font-weight:600;color:#1d1d1f;border-left:.3em solid var(--t)}
+.sl-notes{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.55em}
+.sl-notes li{position:relative;padding-left:1.1em;font-size:.95em;line-height:1.45}
+.sl-notes li::before{content:'';position:absolute;left:0;top:.5em;width:.45em;height:.45em;border-radius:50%;background:var(--p-accent)}
+.sl-f{display:flex;justify-content:space-between;font-size:.8em;color:#8a878f;padding-top:.8em}
+.deck-print .sl{border-radius:0;box-shadow:none;break-after:page;width:13.333in;height:7.5in;aspect-ratio:auto}
+.deck-print .sl:last-child{break-after:auto}
+
+@media(max-width:1100px){.cm-grid,.cm-export{grid-template-columns:minmax(0,1fr)}.cm-pick{position:static}.cm-bento{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.cm-bento{grid-template-columns:minmax(0,1fr)}.cm-bar{grid-template-columns:minmax(4.5rem,8rem) minmax(0,1fr) 2.8rem}}
+
+/* ============ Colour themes ============ Default is the base stylesheet; the rest override its tokens. */
+:root{--p-glass:rgba(245,245,247,.84);--p-glass-2:rgba(246,245,246,.9)}
+.no-motion *,.no-motion *::before,.no-motion *::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}
+
+/* Default dark: the same Marine red, lifted so it reads on a dark ground */
+:root[data-theme="dark"]{
+  --acc-50:#2a1419;--acc-100:#3a1a21;--acc-200:#55222d;--acc-300:#7a2c3b;--acc-400:#b2405a;--acc-500:#cf3350;
+  --acc-600:#e2566f;--acc-700:#ef8398;--acc-800:#f4a3b3;--acc-900:#f8c4cf;--acc-950:#fde9ee;
+  --p-accent:#e2566f;--p-accent-bright:#f07a8e;--p-accent-tint:rgba(226,86,111,.18);
+  --p-bg:#141317;--p-surface:#1c1b20;--p-surface-2:#26242b;--p-rail:rgba(24,23,28,.82);
+  --p-glass:rgba(20,19,23,.86);--p-glass-2:rgba(20,19,23,.9);
+  --p-text:#f3f1f5;--p-dim:#bdb9c4;--p-faint:#9c98a5;--p-ink:#0c0b0f;
+  --p-border:rgba(255,255,255,.13);--p-border-soft:rgba(255,255,255,.08);
+  --p-good:#4fc07d;--p-good-tint:rgba(79,192,125,.17);--p-warning:#e0a94a;--p-warn-tint:rgba(224,169,74,.17);
+  --p-critical:#ff7a52;--p-critical-tint:rgba(255,122,82,.17);--p-info:#7aa2ff;--p-info-tint:rgba(122,162,255,.17);
+  --p-shadow:0 1px 2px rgba(0,0,0,.5),0 0 0 .5px rgba(255,255,255,.08);
+  --p-shadow-lift:0 12px 30px rgba(0,0,0,.55),0 0 0 .5px rgba(255,255,255,.08);
+}
+:root[data-dark] .protobar{background:repeating-linear-gradient(45deg,#2a2214,#2a2214 10px,#332a18 10px,#332a18 20px);color:#e6c78a;border-bottom-color:rgba(255,255,255,.1)}
+:root[data-dark] .protobar b{color:#f6dca2}
+:root[data-dark] .pop-row:hover,:root[data-dark] .dk-vrow:hover,:root[data-dark] .ref-row:hover,:root[data-dark] .ol-row:hover,:root[data-dark] .rl-row:hover{background:rgba(255,255,255,.07)}
+:root[data-dark] .stepper,:root[data-dark] .spill,:root[data-dark] .dens,:root[data-dark] .dk-levels span,:root[data-dark] .dk-vn,:root[data-dark] .cb-ct,:root[data-dark] .s-clear,:root[data-dark] .dk-cts i,:root[data-dark] .ctile.off{background:rgba(255,255,255,.09)}
+:root[data-dark] .tb-btn,:root[data-dark] .search,:root[data-dark] .minisearch,:root[data-dark] .scope-find{box-shadow:0 0 0 .5px rgba(255,255,255,.14),0 1px 2px rgba(0,0,0,.5)}
+:root[data-dark] .tb-btn:hover{box-shadow:0 0 0 .5px rgba(255,255,255,.22),0 3px 10px rgba(0,0,0,.5)}
+:root[data-dark] .kbd,:root[data-dark] .kbdrow kbd{box-shadow:0 0 0 .5px rgba(255,255,255,.22)}
+:root[data-dark] .pop,:root[data-dark] .search-res,:root[data-dark] .dialog-card,:root[data-dark] .modal-card{box-shadow:0 18px 44px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.1)}
+:root[data-dark] .pp,:root[data-dark] .pp-page,:root[data-dark] .sheet{box-shadow:0 2px 20px rgba(0,0,0,.6),0 0 0 .5px rgba(255,255,255,.08)}
+:root[data-dark] .gb-cell.done,:root[data-dark] .gb-stu{background:var(--p-surface)}
+
+/* Default blue: the light theme with blue where the red was */
+:root[data-theme="blue"]{
+  --acc-50:#f1f5fd;--acc-100:#dfe8fa;--acc-200:#c3d4f5;--acc-300:#95b3ed;--acc-400:#5c8ae0;--acc-500:#3568d4;
+  --acc-600:#2555c7;--acc-700:#1e45a5;--acc-800:#1b3a86;--acc-900:#1a336d;--acc-950:#111f42;
+  --p-accent:#2555c7;--p-accent-bright:#3568d4;--p-accent-tint:rgba(37,85,199,.09);
+  --p-bg:#f4f5f7;--p-surface:#fff;--p-surface-2:#eceef2;--p-rail:rgba(249,250,252,.8);
+  --p-glass:rgba(244,245,247,.84);--p-glass-2:rgba(244,245,247,.9);
+  --p-text:#1b1d22;--p-dim:#575c66;--p-faint:#696e78;
+  --p-border:rgba(12,22,45,.1);--p-border-soft:rgba(12,22,45,.06);
+}
+
+/* Sakura Script blue */
+:root[data-theme="snowy"]{
+  --acc-50:#f2f7fc;--acc-100:#e2ecf7;--acc-200:#c4d4e8;--acc-300:#9db8da;--acc-400:#6e90c2;--acc-500:#5a7cb4;
+  --acc-600:#4a6fa8;--acc-700:#3d5c8c;--acc-800:#334c73;--acc-900:#2c4160;--acc-950:#1a2438;
+  --p-accent:#4a6fa8;--p-accent-bright:#5f86c2;--p-accent-tint:rgba(74,111,168,.13);
+  --p-bg:#e8f0f8;--p-surface:#f8fbff;--p-surface-2:#d8e4f0;--p-rail:rgba(248,251,255,.82);
+  --p-glass:rgba(232,240,248,.86);--p-glass-2:rgba(232,240,248,.9);
+  --p-text:#1a2438;--p-dim:#4a5878;--p-faint:#5f6d8c;
+  --p-border:rgba(26,36,56,.13);--p-border-soft:rgba(26,36,56,.08);
+}
+/* Sakura Script green */
+:root[data-theme="mint"]{
+  --acc-50:#f0faf5;--acc-100:#dcf2e8;--acc-200:#bce0d0;--acc-300:#8fcbb5;--acc-400:#5fb29a;--acc-500:#52a894;
+  --acc-600:#48a08c;--acc-700:#3a8674;--acc-800:#316e60;--acc-900:#2b5c51;--acc-950:#143028;
+  --p-accent:#2f8a76;--p-accent-bright:#48a08c;--p-accent-tint:rgba(47,138,118,.13);
+  --p-bg:#e8f5ec;--p-surface:#f7fcf9;--p-surface-2:#d4ebe0;--p-rail:rgba(247,252,249,.82);
+  --p-glass:rgba(232,245,236,.86);--p-glass-2:rgba(232,245,236,.9);
+  --p-text:#143028;--p-dim:#3c5848;--p-faint:#4f6b5b;
+  --p-border:rgba(20,48,40,.13);--p-border-soft:rgba(20,48,40,.08);
+}
+
+
+/* Default green: the light theme with green where the red was */
+:root[data-theme="green"]{
+  --acc-50:#f1f8f3;--acc-100:#dcefe2;--acc-200:#bcdfc8;--acc-300:#8bc7a0;--acc-400:#4fa671;--acc-500:#2b8d4f;
+  --acc-600:#1e7a3c;--acc-700:#186331;--acc-800:#17512a;--acc-900:#154425;--acc-950:#0a2614;
+  --p-accent:#1e7a3c;--p-accent-bright:#2b8d4f;--p-accent-tint:rgba(30,122,60,.1);
+  --p-bg:#f4f6f4;--p-surface:#fff;--p-surface-2:#eceeec;--p-rail:rgba(250,252,250,.8);
+  --p-glass:rgba(244,246,244,.84);--p-glass-2:rgba(244,246,244,.9);
+  --p-text:#1c1e1c;--p-dim:#555c56;--p-faint:#68706a;
+  --p-border:rgba(12,45,25,.1);--p-border-soft:rgba(12,45,25,.06);
+}
+/* Default green dark */
+:root[data-theme="greendark"]{
+  --acc-50:#0d1a12;--acc-100:#12251a;--acc-200:#1a3826;--acc-300:#255338;--acc-400:#35875a;--acc-500:#3f9d69;
+  --acc-600:#4bb07c;--acc-700:#6cc796;--acc-800:#95d9b3;--acc-900:#bde9d0;--acc-950:#e6f7ee;
+  --p-accent:#4bb07c;--p-accent-bright:#6cc796;--p-accent-tint:rgba(75,176,124,.18);--p-on-accent:#08150e;
+  --p-bg:#121513;--p-surface:#191d1a;--p-surface-2:#232823;--p-rail:rgba(22,26,23,.82);
+  --p-glass:rgba(17,21,18,.86);--p-glass-2:rgba(17,21,18,.9);
+  --p-text:#eef3ef;--p-dim:#b7c0b9;--p-faint:#98a29a;--p-ink:#0a0d0b;
+  --p-border:rgba(255,255,255,.13);--p-border-soft:rgba(255,255,255,.08);
+  --p-good:#4fc07d;--p-good-tint:rgba(79,192,125,.17);--p-warning:#e0a94a;--p-warn-tint:rgba(224,169,74,.17);
+  --p-critical:#ff7a52;--p-critical-tint:rgba(255,122,82,.17);--p-info:#7aa2ff;--p-info-tint:rgba(122,162,255,.17);
+  --p-shadow:0 1px 2px rgba(0,0,0,.5),0 0 0 .5px rgba(255,255,255,.08);
+  --p-shadow-lift:0 12px 30px rgba(0,0,0,.55),0 0 0 .5px rgba(255,255,255,.08);
+}
+/* Default blue dark */
+:root[data-theme="bluedark"]{
+  --acc-50:#0d1426;--acc-100:#131d36;--acc-200:#1c2c50;--acc-300:#264073;--acc-400:#3d66bd;--acc-500:#5280e0;
+  --acc-600:#6f9bff;--acc-700:#8fb2ff;--acc-800:#b0c9ff;--acc-900:#cfdeff;--acc-950:#eef4ff;
+  --p-accent:#6f9bff;--p-accent-bright:#8fb2ff;--p-accent-tint:rgba(111,155,255,.18);--p-on-accent:#08142e;
+  --p-bg:#131417;--p-surface:#1a1c21;--p-surface-2:#24272e;--p-rail:rgba(23,25,30,.82);
+  --p-glass:rgba(18,20,24,.86);--p-glass-2:rgba(18,20,24,.9);
+  --p-text:#f0f2f6;--p-dim:#b8bec9;--p-faint:#99a0ac;--p-ink:#0a0c10;
+  --p-border:rgba(255,255,255,.13);--p-border-soft:rgba(255,255,255,.08);
+  --p-good:#4fc07d;--p-good-tint:rgba(79,192,125,.17);--p-warning:#e0a94a;--p-warn-tint:rgba(224,169,74,.17);
+  --p-critical:#ff7a52;--p-critical-tint:rgba(255,122,82,.17);--p-info:#7aa2ff;--p-info-tint:rgba(122,162,255,.17);
+  --p-shadow:0 1px 2px rgba(0,0,0,.5),0 0 0 .5px rgba(255,255,255,.08);
+  --p-shadow-lift:0 12px 30px rgba(0,0,0,.55),0 0 0 .5px rgba(255,255,255,.08);
+}
+/* Strawberry */
+:root[data-theme="strawberry"]{
+  --acc-50:#fdf2ef;--acc-100:#fadfd9;--acc-200:#f3bfb6;--acc-300:#e8938a;--acc-400:#d85d5e;--acc-500:#cf414b;
+  --acc-600:#c4323f;--acc-700:#a42834;--acc-800:#87232d;--acc-900:#702029;--acc-950:#3f1015;
+  --p-accent:#c4323f;--p-accent-bright:#d8505c;--p-accent-tint:rgba(196,50,63,.12);
+  --p-bg:#fbf0eb;--p-surface:#fff7f4;--p-surface-2:#f5dfd8;--p-rail:rgba(255,247,244,.82);
+  --p-glass:rgba(251,240,235,.86);--p-glass-2:rgba(251,240,235,.9);
+  --p-text:#3a1719;--p-dim:#6b3a3a;--p-faint:#8a5a54;
+  --p-border:rgba(58,23,25,.13);--p-border-soft:rgba(58,23,25,.08);
+}
+/* text that sits on the accent colour: pale accents need dark ink */
+.btn,.seg button.on,.tb-btn .badge,.pop-row .badge,.navbtn .badge,.bubble.me,.cal-day.today .cn,.mc-day.today .mc-n,
+.mb.has .ct,button.av.more[aria-expanded="true"],.spill.cb button.on .cb-ct:not(.zero),.dk-vrow.on .dk-vn,.dk-opt.on .dk-radio{color:var(--p-on-accent,#fff)}
+.btn.ghost{color:var(--p-text)}
+
+/* the cog, its menu, and the appearance picker */
+.tb-btn.iconish{padding:0 .7rem}
+.tb-btn.iconish .lab{font-size:.9em}
+@media(max-width:1250px){.tb-hide{display:none}}
+.sw-dots{display:inline-flex;gap:.2rem;flex:none}
+.sw-dots i{width:.6rem;height:.6rem;border-radius:50%;box-shadow:0 0 0 .5px rgba(0,0,0,.15)}
+.optdot{flex:none;width:2.1rem;height:1.25rem;border-radius:980px;background:rgba(0,0,0,.12);position:relative;transition:background-color var(--dur) var(--ease)}
+.optdot::after{content:'';position:absolute;top:2px;left:2px;width:calc(1.25rem - 4px);height:calc(1.25rem - 4px);border-radius:50%;background:var(--p-surface);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform var(--dur) var(--ease)}
+.optdot.on{background:var(--p-accent)}
+.optdot.on::after{transform:translateX(.85rem)}
+:root[data-dark] .optdot{background:rgba(255,255,255,.18)}
+.th-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.7rem;align-items:start}
+.th-col{display:flex;flex-direction:column;gap:.5rem;min-width:0}
+.th-col-h{font-size:.76rem;font-weight:600;color:var(--p-faint);padding:0 .15rem}
+.th-card{position:relative;display:flex;flex-direction:column;gap:.4rem;padding:.5rem .55rem .55rem;border:none;border-radius:14px;background:var(--p-bg);box-shadow:0 0 0 .5px var(--p-border);font:inherit;color:inherit;text-align:left;cursor:pointer;transition:box-shadow 150ms var(--ease),transform var(--dur-press) var(--ease)}
+.th-card:hover{box-shadow:0 0 0 1px var(--p-accent)}
+.th-card.on{box-shadow:0 0 0 2px var(--p-accent)}
+.th-card .cwho{min-width:0}
+.th-card .cwho b{white-space:normal;line-height:1.25;font-size:.86rem}
+.th-prev{display:flex;align-items:center;gap:.22rem;width:100%;height:2.2rem;padding:.3rem;border-radius:9px;box-shadow:inset 0 0 0 .5px rgba(0,0,0,.12)}
+.th-prev i{flex:1;height:100%;border-radius:3px}
+.th-prev i.acc{flex:.7}
+.th-on{position:absolute;top:.4rem;right:.4rem;width:1.2rem;height:1.2rem;border-radius:50%;background:var(--p-accent);color:var(--p-on-accent,#fff);display:grid;place-items:center}
+.th-on .i{width:.7rem;height:.7rem}
+
+/* phone: the top-bar menus span the row instead of hanging off their button */
+@media(max-width:900px){
+  .tb-right{position:relative}
+  .tb-right .pop{left:0;right:0;width:auto;max-width:none;transform-origin:top center}
+}
 </style>
 </head>
 <body>
 <div class="root">
   <nav class="rail" aria-label="Primary">
     <div class="rail-user"><div class="avatar" id="avatar">CR</div><div class="rail-who"><span class="rail-name" id="uname">Cpl Rivera</span><span class="rail-role" id="urole">Student</span></div></div>
-    <div class="seg"><button id="segStudent" class="on" onclick="setRole('student')">Student</button><button id="segInstructor" onclick="setRole('instructor')">Instructor</button></div>
+    <div class="seg seg3"><button id="segStudent" class="on" onclick="setRole('student')">Student</button><button id="segInstructor" onclick="setRole('instructor')">Instructor</button><button id="segCommand" onclick="setRole('command')">Command</button></div>
     <div class="navlabel" id="navlabel">Student</div>
     <div id="nav"></div>
     <div class="rail-sp"></div>
@@ -1635,6 +1902,16 @@ body:has(.cb-bar) .ntf-stack{bottom:5.9rem}
     <header class="topbar">
       <div class="tcrumbs"><span id="crumbRole">Student view</span><span class="sep">/</span><span id="crumbView" class="cur">Dashboard</span></div>
       <div class="tb-right">
+        <div class="search" role="search">
+          <svg class="i dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="searchIn" type="search" placeholder="Search anything" aria-label="Search" autocomplete="off" oninput="onSearch(this.value)" onfocus="if(this.value)onSearch(this.value)" onkeydown="searchKey(event)">
+          <span class="kbd" aria-hidden="true">/</span>
+          <div class="search-res" id="searchRes" hidden></div>
+        </div>
+        <div class="tb-wrap">
+          <button class="tb-btn iconish press" id="optBtn" aria-haspopup="true" aria-expanded="false" aria-controls="popOptions" onclick="togglePop('popOptions',event)" title="Options"></button>
+          <div class="pop" id="popOptions" hidden></div>
+        </div>
         <div class="tb-wrap">
           <button class="tb-btn coursebtn press" id="courseBtn" aria-haspopup="true" aria-expanded="false" aria-controls="popCourse" onclick="togglePop('popCourse',event)" title="Course info and selection"></button>
           <div class="pop" id="popCourse" hidden></div>
@@ -1642,12 +1919,6 @@ body:has(.cb-bar) .ntf-stack{bottom:5.9rem}
         <div class="tb-wrap">
           <button class="tb-btn press" id="enrollBtn" aria-haspopup="true" aria-expanded="false" aria-controls="popEnroll" onclick="togglePop('popEnroll',event)" title="Enrollment options"></button>
           <div class="pop" id="popEnroll" hidden></div>
-        </div>
-        <div class="search" role="search">
-          <svg class="i dim" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input id="searchIn" type="search" placeholder="Search anything" aria-label="Search" autocomplete="off" oninput="onSearch(this.value)" onfocus="if(this.value)onSearch(this.value)" onkeydown="searchKey(event)">
-          <span class="kbd" aria-hidden="true">/</span>
-          <div class="search-res" id="searchRes" hidden></div>
         </div>
       </div>
     </header>
@@ -1692,6 +1963,7 @@ const dayAt = o => new Date(TODAY.getTime() + o * DAY);
 const COURSES = [
   { id: 'tc322', code: 'TC 3-22.9', name: 'Rifle & Carbine Marksmanship', short: 'Marksmanship', section: '28xx · Basic · Class 26-04',
     instructor: 'SSgt White', students: 24, week: 6, weeks: 14, enrollCode: 'RCM-26Q4',
+    poi: { id: 'POI 0933-MKS', v: '2024.2', status: 'current', approved: -210, review: 120, owner: 'WTBn S-3' },
     weights: { assignment: .4, quiz: .2, exam: .4 },
     topics: [['Sight alignment & picture', 88], ['Natural point of aim', 81], ['Stable firing positions', 74], ['Trigger control', 61], ['Ballistics & zeroing', 58]],
     annexes: [
@@ -1719,6 +1991,7 @@ const COURSES = [
     ] },
   { id: 'mcpp', code: 'MCWP 5-10', name: 'Marine Corps Planning Process', short: 'MCPP', section: '06xx · MCPP · Class 26-02',
     instructor: 'SSgt White', students: 18, week: 3, weeks: 9, enrollCode: 'MCPP-7KX2',
+    poi: { id: 'POI 06xx-MCPP', v: '2021.1', status: 'superseded', approved: -900, review: -60, owner: 'EWS S-3' },
     weights: { assignment: .4, quiz: .2, exam: .4 },
     topics: [['Planning terms', 82], ['Problem framing', 78], ['Mission analysis', 74], ['COA development', 69], ['Radio net procedures', 55]],
     annexes: [
@@ -1746,7 +2019,7 @@ const COURSES = [
 function mkCourse(o) {
   const n = o.annexes.length, start = -(o.week - 1) * 7 - 2, span = Math.round(o.weeks * 7 / n);
   const c = { id: o.id, code: o.code, name: o.name, short: o.short, section: o.section, instructor: 'SSgt White', students: o.students, week: o.week, weeks: o.weeks,
-    enrollCode: o.enroll, rivera: false, weights: { assignment: .4, quiz: .2, exam: .4 }, topics: o.topics,
+    enrollCode: o.enroll, rivera: false, poi: o.poi || { id: `POI ${o.code.replace(/[^A-Z0-9]/gi, '').slice(0, 6)}`, v: hash(o.id) > .5 ? '2025.1' : '2024.1', status: hash(o.id + 'p') > .18 ? 'current' : 'draft', approved: -Math.round(120 + hash(o.id) * 400), review: Math.round(60 + hash(o.id + 'r') * 200), owner: 'Schoolhouse S-3' }, weights: { assignment: .4, quiz: .2, exam: .4 }, topics: o.topics,
     annexes: o.annexes.map((an, k) => {
       const s = start + k * span, e = s + span - 1, L = 'ABCDEFG'[k];
       const items = [
@@ -1902,6 +2175,8 @@ const IC = {
   assist: '<circle cx="11" cy="11" r="6.5"/><path d="m20.5 20.5-4.9-4.9M8.5 11h5M11 8.5v5"/>',
   build: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
   review: '<path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  cog: '<circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1z"/>',
+  palette: '<circle cx="13.5" cy="6.5" r="1.3"/><circle cx="17.5" cy="10.5" r="1.3"/><circle cx="8.5" cy="7.5" r="1.3"/><circle cx="6.5" cy="12.5" r="1.3"/><path d="M12 2a10 10 0 1 0 0 20c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.5-1.1-.3-.3-.4-.7-.4-1 0-.9.7-1.6 1.6-1.6H16a6 6 0 0 0 6-6c0-5-4.5-8.7-10-8.7z"/>',
   rubric: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
   chart: '<path d="M3 3v18h18"/><rect x="7" y="12" width="3" height="6"/><rect x="12" y="8" width="3" height="10"/><rect x="17" y="4" width="3" height="14"/>',
   aar: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/>',
@@ -1940,12 +2215,13 @@ const tag = (tone, label) => `<span class="tag ${tone}"><i class="tdot"></i>${es
 const NAV = {
   student: [{ id: 'sdash', label: 'Dashboard', ico: 'dash' }, { id: 'scourse', label: 'Course', ico: 'book' }, { id: 'scal', label: 'Calendar', ico: 'cal' }, { id: 'sassist', label: 'Study Assistant', ico: 'assist' }],
   instructor: [{ id: 'dash', label: 'Dashboard', ico: 'dash' }, { id: 'assign', label: 'Assignments', ico: 'inbox', badge: () => toGradeCount() || null }, { id: 'build', label: 'Course Builder', ico: 'build' }, { id: 'testbank', label: 'Test Bank', ico: 'review', badge: () => REVQ.filter(q => !q.done).length || null }, { id: 'rubrics', label: 'Rubrics', ico: 'rubric' }, { id: 'progress', label: 'Class Progress', ico: 'chart' }, { id: 'aar', label: 'Course AAR', ico: 'aar' }],
+  command: [{ id: 'cdash', label: 'Readiness', ico: 'chart' }, { id: 'ccourses', label: 'Courses', ico: 'grid' }, { id: 'ctrends', label: 'Trends', ico: 'prog' }, { id: 'cversions', label: 'POI & versions', ico: 'history' }, { id: 'cexport', label: 'Export brief', ico: 'send' }],
 };
-const USER = { instructor: { av: 'SW', name: 'SSgt White', role: 'Instructor' }, student: { av: 'CR', name: 'Cpl Rivera', role: 'Student' } };
+const USER = { instructor: { av: 'SW', name: 'SSgt White', role: 'Instructor' }, student: { av: 'CR', name: 'Cpl Rivera', role: 'Student' }, command: { av: 'ME', name: 'Maj Ellis', role: 'Command' } };
 const USES = { build: 'Quarry · Anchor · Coursewright · HHEM', testbank: 'Coursewright · Cartridge · human review', assign: 'Rubricon · Sextant', rubrics: 'Rubricon · Anchor', progress: 'Sextant', aar: 'Hotwash · Sextant', scourse: 'Coursewright · Sextant', sassist: 'Sourcerer · Anchor · Understudy', scal: 'Cadence' };
 
 const state = {
-  role: 'student', view: 'sdash', course: { student: 'tc322', instructor: 'tc322' },
+  role: 'student', view: 'sdash', course: { student: 'tc322', instructor: 'tc322', command: 'tc322' },
   sub: 'syllabus', open: new Set(), enrolled: ['tc322', 'mcpp'], pending: [],
   next: { open: false, f: 'all' }, cal: { m: 0, day: null, f: { issued: true, due: true, test: true, annex: true } },
   assist: { active: false, q: '', annex: 'all', type: 'all' },
@@ -1956,8 +2232,7 @@ const curCourse = () => courseById(state.course[state.role]);
 
 function setRole(r) {
   state.role = r; state.view = NAV[r][0].id;
-  document.getElementById('segInstructor').classList.toggle('on', r === 'instructor');
-  document.getElementById('segStudent').classList.toggle('on', r === 'student');
+  ['student', 'instructor', 'command'].forEach(x => document.getElementById('seg' + x[0].toUpperCase() + x.slice(1)).classList.toggle('on', r === x));
   const u = USER[r]; document.getElementById('avatar').textContent = u.av; document.getElementById('uname').textContent = u.name; document.getElementById('urole').textContent = u.role;
   document.getElementById('navlabel').textContent = u.role; render();
 }
@@ -2044,11 +2319,21 @@ function renderTop() {
   const c = curCourse(), stu = state.role === 'student';
   document.getElementById('courseBtn').innerHTML = `${courseTile(c)}<span class="cwho"><b>${esc(c.name)}</b><small>${esc(c.code)} · ${esc(c.section.split(' · ').pop())}</small></span>${ic('updown', 'dim')}`;
   const mine = stu ? COURSES.filter(x => state.enrolled.includes(x.id)) : COURSES;
-  document.getElementById('popCourse').innerHTML = `<div class="pop-h">${stu ? 'Your courses' : 'Courses you teach'}</div>
+  document.getElementById('popCourse').innerHTML = `<div class="pop-h">${stu ? 'Your courses' : state.role === 'command' ? 'Every course' : 'Courses you teach'}</div>
     ${mine.map(x => `<button class="pop-row press" onclick="setCourse('${x.id}')">${courseTile(x)}<span class="cwho"><b>${esc(x.name)}</b><small>${esc(x.code)} · ${esc(x.section)}</small></span>${x.id === c.id ? ic('check', 'acc') : ''}</button>`).join('')}
     ${stu ? state.pending.map(id => { const k = CATALOG.find(x => x.id === id); return `<div class="pop-row off"><span class="ctile off">${esc(ini(k.name))}</span><span class="cwho"><b>${esc(k.name)}</b><small>${esc(k.code)} · awaiting instructor approval</small></span></div>`; }).join('') : ''}
     <div class="pop-sep"></div>
     ${stu ? `<button class="pop-row slim press" onclick="showCatalog()">${ic('plus')} Browse the course catalog</button>` : `<button class="pop-row slim press" onclick="closePops();setView('build')">${ic('plus')} Build a new course</button>`}`;
+  const th = curTheme();
+  document.getElementById('optBtn').innerHTML = `${ic('cog')}<span class="lab tb-hide">Options</span>`;
+  document.getElementById('popOptions').innerHTML = `<div class="pop-h">Options</div>
+    <button class="pop-row slim press" onclick="openAppearance()">${ic('palette')}<span><b>Appearance</b><small>${esc(th.name)}</small></span><span class="sw-dots">${THEMES.slice(0, 4).map(t => `<i style="background:${t.v['--p-accent']}"></i>`).join('')}</span></button>
+    <button class="pop-row slim press" onclick="toggleOpt('motion')">${ic('sparkle')}<span><b>Reduce motion</b><small>${OPTS.motion ? 'Animations are off' : 'Animations play normally'}</small></span><span class="optdot ${OPTS.motion ? 'on' : ''}"></span></button>
+    <button class="pop-row slim press" onclick="toggleOpt('banner')">${ic('info')}<span><b>Hide the demo banner</b><small>${OPTS.banner ? 'Hidden' : 'Shown above the top bar'}</small></span><span class="optdot ${OPTS.banner ? 'on' : ''}"></span></button>
+    <div class="pop-sep"></div>
+    <button class="pop-row slim press" onclick="showShortcuts()">${ic('keyboard')}<span><b>Keyboard shortcuts</b><small>Search, grading, the builder</small></span></button>
+    <button class="pop-row slim press" onclick="closePops();wToggleIssue()">${ic('alert')}<span><b>Report an issue</b><small>Opens a prefilled GitHub issue</small></span></button>
+    <button class="pop-row slim press" onclick="showAbout()">${ic('book')}<span><b>About this demo</b><small>Mock data, nothing is wired up</small></span></button>`;
   const reqs = REQUESTS.filter(r => !r.done).length;
   document.getElementById('enrollBtn').innerHTML = `${ic('users')}<span class="lab">Enrollment</span>${!stu && reqs ? `<span class="badge">${reqs}</span>` : ''}${ic('chev', 'dim sm')}`;
   document.getElementById('popEnroll').innerHTML = stu ? `<div class="pop-h">Enrollment</div>
@@ -2166,6 +2451,67 @@ function openDoc(m) {
   document.getElementById('mTitle').textContent = m.title; document.getElementById('mText').textContent = m.text;
   document.getElementById('mSrc').textContent = m.loc; document.getElementById('modal').hidden = false;
 }
+
+/* ============ Appearance: colour themes, and the rest of the options behind the cog ============
+   The palettes live in theme.css; `v` here is only what the swatches and the popover need to draw. */
+const THEMES = [
+  { id: 'default', hue: 'red', name: 'Default', v: { '--p-bg': '#f6f5f6', '--p-surface': '#ffffff', '--p-text': '#1d1c1e', '--p-accent': '#b3122e' } },
+  { id: 'dark', hue: 'red', name: 'Default dark', dark: true, v: { '--p-bg': '#141317', '--p-surface': '#1c1b20', '--p-text': '#f3f1f5', '--p-accent': '#e2566f' } },
+  { id: 'blue', hue: 'blue', name: 'Default blue', v: { '--p-bg': '#f4f5f7', '--p-surface': '#ffffff', '--p-text': '#1b1d22', '--p-accent': '#2555c7' } },
+  { id: 'green', hue: 'green', name: 'Default green', v: { '--p-bg': '#f4f6f4', '--p-surface': '#ffffff', '--p-text': '#1c1e1c', '--p-accent': '#1e7a3c' } },
+  { id: 'greendark', hue: 'green', name: 'Default green dark', dark: true, v: { '--p-bg': '#121513', '--p-surface': '#191d1a', '--p-text': '#eef3ef', '--p-accent': '#4bb07c' } },
+  { id: 'bluedark', hue: 'blue', name: 'Default blue dark', dark: true, v: { '--p-bg': '#131417', '--p-surface': '#1a1c21', '--p-text': '#f0f2f6', '--p-accent': '#6f9bff' } },
+  { id: 'strawberry', hue: 'red', name: 'Strawberry', v: { '--p-bg': '#fbf0eb', '--p-surface': '#fff7f4', '--p-text': '#3a1719', '--p-accent': '#c4323f' } },
+  { id: 'snowy', hue: 'blue', name: 'Snowy', v: { '--p-bg': '#e8f0f8', '--p-surface': '#f8fbff', '--p-text': '#1a2438', '--p-accent': '#4a6fa8' } },
+  { id: 'mint', hue: 'green', name: 'Mint', v: { '--p-bg': '#e8f5ec', '--p-surface': '#f7fcf9', '--p-text': '#143028', '--p-accent': '#48a08c' } },
+];
+const THEME_KEY = 'scfe.theme', OPT_KEY = 'scfe.opts';
+let OPTS = { motion: false, banner: false };
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { } };
+const curTheme = () => THEMES.find(t => t.id === document.documentElement.dataset.theme) || THEMES[0];
+
+function applyTheme(id, announce) {
+  const t = THEMES.find(x => x.id === id) || THEMES[0];
+  document.documentElement.dataset.theme = t.id;
+  document.documentElement.style.colorScheme = t.dark ? 'dark' : 'light';
+  document.documentElement.toggleAttribute('data-dark', !!t.dark);
+  lsSet(THEME_KEY, t.id);
+  if (announce) {
+    renderTop();
+    notify({ tone: 'success', icon: 'palette', title: `Appearance · ${t.name}`, desc: 'It stays this way on this device.', duration: 2800 });
+  }
+}
+const HUES = [['red', 'Red'], ['blue', 'Blue'], ['green', 'Green']];
+function openAppearance() {
+  closePops();
+  const cur = curTheme().id;
+  const card = t => `<button class="th-card ${t.id === cur ? 'on' : ''}" onclick="pickTheme('${t.id}')" aria-pressed="${t.id === cur}">
+      <span class="th-prev" style="background:${t.v['--p-bg']}"><i style="background:${t.v['--p-surface']}"></i><i class="acc" style="background:${t.v['--p-accent']}"></i><i style="background:${t.v['--p-text']};opacity:.25"></i></span>
+      <span class="cwho"><b>${esc(t.name)}</b></span>${t.id === cur ? `<span class="th-on">${ic('check')}</span>` : ''}</button>`;
+  openDialog('Appearance', `<p class="note">Pick a colour scheme. Every view follows it, and printed sheets stay on white paper.</p>
+    <div class="th-cols">${HUES.map(([h, label]) => `<section class="th-col"><div class="th-col-h">${label}</div>${THEMES.filter(x => x.hue === h).map(card).join('')}</section>`).join('')}</div>`,
+    `<span class="note dfoot-hint" style="margin-right:auto">Saved in this browser only</span><button class="btn press" onclick="closeDialog()">Done</button>`);
+  document.querySelector('#dialog .dialog-card').classList.add('wide');
+}
+function pickTheme(id) { applyTheme(id, true); openAppearance(); }
+function toggleOpt(k) { OPTS[k] = !OPTS[k]; lsSet(OPT_KEY, OPTS); applyOpts(); renderTop(); }
+function applyOpts() {
+  document.documentElement.classList.toggle('no-motion', !!OPTS.motion);
+  const b = document.querySelector('.protobar'); if (b) b.hidden = !!OPTS.banner;
+}
+function showAbout() {
+  closePops();
+  openDialog('About this demo', `<p class="note">An interactive front end for SchoolCircle: the student and instructor views, wired to mock data that lives in the page. Grading, enrollment, grounding and the Test Bank all respond so the flow can be reviewed, but nothing is saved and there is no backend.</p>
+    <div class="kbdrow"><span>Course data</span><kbd>${COURSES.length} courses</kbd></div>
+    <div class="kbdrow"><span>Reference library</span><kbd>${REF_LIBRARY.length} publications</kbd></div>
+    <div class="kbdrow"><span>Appearance</span><kbd>${esc(curTheme().name)}</kbd></div>
+    <p class="note">Anything you change — grades, rubrics, sheets, courses you build — resets when you reload the page.</p>`,
+    `<button class="btn ghost press" onclick="closeDialog();wToggleIssue()">Report an issue</button><button class="btn press" onclick="closeDialog()">Done</button>`);
+}
+applyTheme(lsGet(THEME_KEY, 'default'));
+OPTS = { ...OPTS, ...lsGet(OPT_KEY, {}) };
+applyOpts();
 
 const V={};
 const FINDINGS=[
@@ -2927,7 +3273,7 @@ function coachSuccess() {
 function focusSearch() { const i = document.getElementById('searchIn'); i.focus(); i.select(); }
 function showShortcuts() {
   const mod = IS_MAC ? '⌘' : 'Ctrl';
-  const rows = [['Search anything', [mod, 'K']], ['Search (alternative)', ['/']], ['Move through results', ['↑', '↓']], ['Open a result', ['Enter']], ['Activate the study agent (Study Assistant)', ['A']], ['Close menus and dialogs', ['Esc']]];
+  const rows = [['Search anything', [mod, 'K']], ['Search (alternative)', ['/']], ['Move through results', ['↑', '↓']], ['Open a result', ['Enter']], ['Activate the study agent (Study Assistant)', ['A']], ['Close menus and dialogs', ['Esc']], ['Grade the next submission · Assignments, Queue', ['N']], ['Previous and next submission while grading', ['←', '→']], ['Undo while editing a rubric or a sheet', [mod, 'Z']], ['Next field on a printable sheet · Shift+Enter adds a line', ['Enter']], ['Move through versions in History', ['↑', '↓']]];
   openDialog('Keyboard shortcuts', rows.map(([l, k]) => `<div class="kbdrow"><span>${l}</span><span>${k.map(x => `<kbd>${x}</kbd>`).join('')}</span></div>`).join(''), `<button class="btn press" onclick="closeDialog()">Done</button>`);
 }
 document.addEventListener('keydown', e => {
@@ -4031,26 +4377,38 @@ function genReview(cid, l) {
 }
 
 /* ============ Course Builder: draft model, review lines, validation, AI-assist proposals ============ */
-const cb = { stage: 'params', view: 'edit', sel: null, params: null, draft: null, review: {}, ai: null, hist: [], lastSnap: 0, focus: 0, filter: 'todo', dwell: 0, fromReview: null, done: null };
+const cb = { stage: 'src', view: 'edit', sel: null, params: null, draft: null, ai: null, hist: [], lastSnap: 0, note: '', checked: {}, guide: false, gi: 0, done: null };
 let cbSeq = 0;
 const cbId = p => `${p}${++cbSeq}`;
 const cbT = text => ({ id: cbId('t'), text });
 const cbL = i => 'ABCDEFG'[i];
 const cbLower = s => s ? s[0].toLowerCase() + s.slice(1) : s;
 
+const MARKS_OBJ = ['Explain sight alignment, sight picture, and their relationship.', 'Describe trigger control and follow-through.', 'Explain natural point of aim and how to correct it.', 'Identify stable firing positions and their application.', 'Coach a shooter through a live-fire string using the fundamentals.'];
 function cbReset() {
-  cb.params = {
-    name: 'Marksmanship Coach Course', short: 'Coach Course', code: 'MCC-2701', section: '0933 · Coach · Class 27-01',
-    audience: 'Cpl–Sgt, rifle-qualified Expert', delivery: 'Resident', weeks: 6, hours: 180, start: 21, students: 16,
-    refs: [
-      { id: 'r1', title: 'TC 3-22.9 Rifle and Carbine', ed: '2016', status: 'superseded', update: '2024, Change 1', libId: 'lib-tc322-16', source: 'library' },
-      { id: 'r2', title: 'MCRP 3-01A Rifle Marksmanship', ed: '2012', status: 'current', libId: 'lib-mcrp301a', source: 'library' },
-      { id: 'r3', title: 'MCO 3574.2 Marine Corps Marksmanship Program', ed: '2019', status: 'current', libId: 'lib-mco3574', source: 'library' },
-      { id: 'r4', title: 'NAVMC 3500.63 Marksmanship Training and Readiness Manual', ed: '2021', status: 'current', libId: 'lib-navmc350063', source: 'library' },
-    ],
-    objectives: ['Explain sight alignment, sight picture, and their relationship.', 'Describe trigger control and follow-through.', 'Explain natural point of aim and how to correct it.', 'Identify stable firing positions and their application.', 'Coach a shooter through a live-fire string using the fundamentals.'].map(cbT),
-  };
-  Object.assign(cb, { stage: 'params', view: 'edit', sel: null, draft: null, review: {}, ai: null, hist: [], lastSnap: 0, focus: 0, filter: 'todo', fromReview: null, done: null });
+  cb.params = { name: '', short: '', code: '', section: '', audience: '', delivery: 'Resident', weeks: 6, hours: 180, start: 21, students: 16, refs: [], objectives: [] };
+  Object.assign(cb, { stage: 'src', view: 'edit', sel: null, draft: null, ai: null, hist: [], lastSnap: 0, note: '', checked: {}, guide: false, gi: 0, done: null });
+}
+/* everything the old parameters form asked for, read out of the sources and the one optional note */
+function cbDerive() {
+  const refs = cb.params.refs, note = cb.note.trim(), num = (re, d) => { const m = note.match(re); return m ? +m[1] : d; };
+  const marks = refs.some(r => /marksmanship|rifle|carbine/i.test(r.title));
+  const lib = refs[0] && refs[0].libId && libById(refs[0].libId);
+  const topic = marks ? 'Marksmanship Coach' : lib ? lib.title : (refs[0] && refs[0].title) || 'New';
+  const weeks = Math.min(52, Math.max(1, num(/(\d+)\s*(?:week|wk)/i, 6)));
+  const hours = Math.min(2000, Math.max(10, num(/(\d+)\s*(?:hour|hr)/i, weeks * 30)));
+  const students = Math.min(200, Math.max(1, num(/(\d+)\s*(?:student|marine|seat)/i, 16)));
+  const initials = topic.split(/\s+/).map(w => w[0]).join('').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 3) || 'NEW';
+  Object.assign(cb.params, {
+    name: marks ? 'Marksmanship Coach Course' : `${topic} Course`,
+    short: marks ? 'Coach Course' : topic,
+    code: marks ? 'MCC-2701' : `${initials}-101`,
+    section: marks ? '0933 · Coach · Class 27-01' : `${initials} · Class 27-01`,
+    audience: marks ? 'Cpl–Sgt, rifle-qualified Expert' : 'Unit instructors',
+    delivery: /hybrid/i.test(note) ? 'Hybrid' : /distance|online|remote/i.test(note) ? 'Distance' : 'Resident',
+    weeks, hours, students, start: 21,
+    objectives: (marks ? MARKS_OBJ : refs.slice(0, 4).map(r => `Apply ${r.title} to the unit's mission.`)).map(cbT),
+  });
 }
 
 /* what the generator drafts from the objectives (mock output of Quarry → Anchor → Coursewright → HHEM) */
@@ -4074,6 +4432,12 @@ const CB_BLUEPRINT = [
       ['Scenario', "Your shooter's groups tighten but sit high. What do you do?", 'Confirm sight picture and cheek weld first; if both are consistent, adjust the zero using the holds in the reference.'],
       ['Short answer', 'Name the three qualities of a good coaching cue.', 'Single, specific, and actionable on the very next shot.']] }] },
 ];
+/* the blueprint cites r1..r4; map those onto whatever sources the instructor actually added */
+function cbPickRefs(keys) {
+  const R = cb.params.refs, cur = R.filter(r => r.status === 'current'), pool = cur.length ? cur : R;
+  if (!pool.length) return [];
+  return [...new Set(keys.map(k => pool[(parseInt(String(k).replace(/\D/g, ''), 10) - 1 + pool.length) % pool.length].id))];
+}
 function cbGenerateDraft() {
   const p = cb.params, n = CB_BLUEPRINT.length, bw = Math.max(1, Math.floor(p.weeks / n)), bh = Math.floor(p.hours / n);
   let ws = 1;
@@ -4081,12 +4445,12 @@ function cbGenerateDraft() {
     const last = i === n - 1, weeks = last ? Math.max(1, p.weeks - bw * (n - 1)) : bw, we = ws + weeks - 1;
     const objective = b.obj.map(k => p.objectives[k]?.text).filter(Boolean).join(' ') || p.objectives[0]?.text || b.title;
     const annex = { id: cbId('an'), title: b.title, weeks, hours: last ? p.hours - bh * (n - 1) : bh, objective,
-      items: b.items.map(t => ({ id: cbId('it'), type: t.type, title: t.title, pts: t.pts, dueWeek: we, desc: t.desc, crit: t.crit.map(cbT), refs: [...t.refs],
+      items: b.items.map(t => ({ id: cbId('it'), type: t.type, title: t.title, pts: t.pts, dueWeek: we, desc: t.desc, crit: t.crit.map(cbT), refs: cbPickRefs(t.refs),
         questions: (t.questions || []).map(([kind, q, a]) => ({ id: cbId('q'), kind, q, a })) })) };
     ws = we + 1;
     return annex;
   }) };
-  cb.review = {}; cb.ai = null; cb.hist = []; cb.focus = 0;
+  cb.ai = null; cb.hist = []; cb.checked = {};
   cb.sel = cb.draft.annexes[0].id;
 }
 
@@ -4106,56 +4470,40 @@ function cbRanges() {
   return out;
 }
 
-/* ---------- every reviewable line; a sign-off is tied to the exact text it approved ---------- */
-function cbLines() {
-  const p = cb.params, L = [], add = (id, sec, label, value, jump) => L.push({ id, sec, label, value: String(value), jump });
-  const S0 = 'Course settings';
-  add('p.name', S0, 'Course name', `${p.name} (short name: ${p.short})`, { stage: 'params', field: 'name' });
-  add('p.code', S0, 'Code and class', `${p.code} · ${p.section}`, { stage: 'params', field: 'code' });
-  add('p.audience', S0, 'Audience and delivery', `${p.audience} · ${p.delivery}`, { stage: 'params', field: 'audience' });
-  add('p.length', S0, 'Length and hours of instruction', `${p.weeks} weeks · ${p.hours} hours (${Math.round(p.hours / p.weeks)} per week)`, { stage: 'params', field: 'weeks' });
-  add('p.start', S0, 'Start date and class size', `Starts ${fmtDate(p.start)} · ${p.students} students`, { stage: 'params', field: 'start' });
-  p.refs.forEach((r, i) => add('ref.' + r.id, 'References', `Reference ${i + 1}`, `${r.title} · ${r.ed} edition · ${r.status}${r.source === 'uploaded' ? ' · uploaded' : r.source === 'library' ? '' : ' · entered manually'}`, { stage: 'params', field: 'ref-' + r.id }));
-  p.objectives.forEach((o, i) => add('obj.' + o.id, 'Program of instruction', `Objective ${i + 1}`, o.text, { stage: 'params', field: 'obj-' + o.id }));
-  if (!cb.draft) return L;
-  const R = cbRanges();
+const CB_TYPES = { assignment: 'Assignment', quiz: 'Quiz', exam: 'Exam' };
+/* ---------- what the AI wants you to look at, least confident first ---------- */
+function cbChecks() {
+  const p = cb.params, out = [], add = (id, sev, conf, title, why, jump, fix) => out.push({ id, sev, conf, title, why, jump, fix });
+  cbIssues().forEach((x, i) => add('iss' + i + (x.jump?.node || x.jump?.field || ''), x.sev === 'block' ? 'block' : 'look', x.sev === 'block' ? -1 : .7, x.text,
+    x.sev === 'block' ? 'This keeps the course from going to the Test Bank.' : 'Not blocking, but worth a look.', x.jump));
+  if (!cb.draft) return out;
+  const items = cb.draft.annexes.flatMap(a => a.items);
+  p.refs.forEach(r => { if (!items.some(it => it.refs.includes(r.id))) add('unused' + r.id, 'look', .6, `Nothing cites ${r.title || 'this source'}`, 'You added this source, but no assignment or quiz points at it yet. Cite it, or take it off the course.', { node: 'settings', field: 'ref-' + r.id }); });
   cb.draft.annexes.forEach((a, ai) => {
-    const S = `Annex ${cbL(ai)}: ${a.title}`;
-    add(`an.${a.id}.title`, S, 'Annex title', a.title, { node: a.id, field: 'title' });
-    add(`an.${a.id}.span`, S, 'Length and hours', `${a.weeks} week${a.weeks === 1 ? '' : 's'} (weeks ${R[a.id][0]}–${R[a.id][1]}) · ${a.hours} hours`, { node: a.id, field: 'weeks' });
-    add(`an.${a.id}.obj`, S, 'Objective', a.objective, { node: a.id, field: 'objective' });
+    if (a.items.length === 1) add('thin' + a.id, 'look', .45, `Annex ${cbL(ai)} has one graded item`, 'Most annexes carry an assignment and a check on learning, so a weak week shows up early.', { node: a.id }, { scope: 'annex', id: a.id, action: 'objective' });
     a.items.forEach(it => {
-      const T = it.title || 'Untitled';
-      add(`it.${it.id}.title`, S, `${CB_TYPES[it.type]} title`, it.title, { node: it.id, field: 'title' });
-      add(`it.${it.id}.meta`, S, `${T} · type, points, due`, `${CB_TYPES[it.type]} · ${it.pts} points · due week ${it.dueWeek}`, { node: it.id, field: 'pts' });
-      add(`it.${it.id}.desc`, S, `${T} · instructions`, it.desc, { node: it.id, field: 'desc' });
-      it.crit.forEach((c, k) => add(`it.${it.id}.crit.${c.id}`, S, `${T} · criterion ${k + 1}`, c.text, { node: it.id, field: 'crit-' + c.id }));
-      add(`it.${it.id}.refs`, S, `${T} · references`, it.refs.map(id => cbRefLabel(cbRef(id))).join('; ') || 'None', { node: it.id, field: 'refs' });
-      (it.questions || []).forEach((q, k) => add(`q.${q.id}`, S, `${T} · question ${k + 1} · ${q.kind}`, `Q: ${q.q}\nA: ${q.a}`, { node: it.id, field: 'q-' + q.id }));
+      const T = it.title || 'Untitled item';
+      it.crit.forEach(c => { if (VAGUE.test(c.text)) add('vague' + c.id, 'look', .3, `“${c.text}” is hard to grade`, `Rubricon can't anchor a standard like this to what an evaluator sees. Say what the Marine does.`, { node: it.id, field: 'crit-' + c.id }, { scope: 'item', id: it.id, action: 'tighten' }); });
+      (it.questions || []).forEach((q, k) => { if (!q.a.trim()) add('noans' + q.id, 'look', .35, `${T} · question ${k + 1} has no answer key`, 'The Test Bank needs the answer and the rationale before anyone can approve the question.', { node: it.id, field: 'q-' + q.id }); });
+      if (it.type !== 'assignment' && it.questions.length < 3) add('fewq' + it.id, 'look', .5, `${T} has ${it.questions.length} question${it.questions.length === 1 ? '' : 's'}`, 'A short check on learning is easy to pass by guessing. Three is the usual floor.', { node: it.id }, { scope: 'item', id: it.id, action: 'question' });
+      if (it.desc.trim().length < 60) add('thindesc' + it.id, 'look', .4, `${T} has short instructions`, 'Students see only this text. Say what to turn in and how it gets judged.', { node: it.id, field: 'desc' }, { scope: 'item', id: it.id, action: 'rigor' });
     });
   });
-  return L;
+  const seen = {};
+  items.forEach(it => (it.questions || []).forEach(q => { const k = q.q.trim().toLowerCase(); if (k) (seen[k] = seen[k] || []).push({ it, q }); }));
+  Object.values(seen).filter(v => v.length > 1).forEach(v => add('dup' + v[1].q.id, 'look', .55, 'The same question is in two places', `“${v[0].q.q}” appears in ${[...new Set(v.map(x => x.it.title))].join(' and ')}. Keep one of them.`, { node: v[1].it.id, field: 'q-' + v[1].q.id }));
+  return out.sort((x, y) => x.conf - y.conf);
 }
-const CB_TYPES = { assignment: 'Assignment', quiz: 'Quiz', exam: 'Exam' };
-function cbStatus(l) { const r = cb.review[l.id]; return !r ? 'todo' : r.sig !== l.value ? 'changed' : r.st; }
-function cbProgress() {
-  const c = { total: 0, ok: 0, flag: 0, changed: 0, todo: 0 };
-  cbLines().forEach(l => { c.total++; c[cbStatus(l)]++; });
-  c.left = c.total - c.ok; return c;
-}
-/* line counts for an outline node (annex or item) */
-function cbNodeProgress(id) {
-  const ls = cbLines().filter(l => l.jump && l.jump.node && (l.jump.node === id || cbFind(l.jump.node)?.a?.id === id));
-  return { total: ls.length, ok: ls.filter(l => cbStatus(l) === 'ok').length, flag: ls.filter(l => cbStatus(l) === 'flag').length };
-}
+const cbOpen = () => cbChecks().filter(c => !cb.checked[c.id]);
+const cbLooked = () => { const all = cbChecks(); return { total: all.length, left: all.filter(c => !cb.checked[c.id]).length, blocks: all.filter(c => c.sev === 'block').length }; };
 
 /* ---------- blocking checks ---------- */
 function cbIssues() {
   const p = cb.params, out = [], block = (text, jump) => out.push({ sev: 'block', text, jump }), warn = (text, jump) => out.push({ sev: 'warn', text, jump });
-  if (!p.name.trim() || !p.code.trim()) block('The course needs a name and a code', { stage: 'params', field: 'name' });
-  if (!p.objectives.length) block('Add at least one objective', { stage: 'params' });
-  p.refs.filter(r => r.status === 'superseded').forEach(r => block(`${r.title} (${r.ed}) is superseded${r.update ? `: ${r.update} is current` : ''}`, { stage: 'params', field: 'ref-' + r.id }));
-  if (p.hours / p.weeks > 40) warn(`${Math.round(p.hours / p.weeks)} hours per week is more than a 40-hour training week`, { stage: 'params', field: 'hours' });
+  if (!p.name.trim() || !p.code.trim()) block('The course needs a name and a code', { node: 'settings', field: 'name' });
+  if (!p.objectives.length) block('Add at least one objective', { node: 'settings' });
+  p.refs.filter(r => r.status === 'superseded').forEach(r => block(`${r.title} (${r.ed}) is superseded${r.update ? `: ${r.update} is current` : ''}`, { node: 'settings', field: 'ref-' + r.id }));
+  if (p.hours / p.weeks > 40) warn(`${Math.round(p.hours / p.weeks)} hours per week is more than a 40-hour training week`, { node: 'settings', field: 'hours' });
   if (!cb.draft) return out;
   const A = cb.draft.annexes, R = cbRanges(), wk = A.reduce((s, a) => s + a.weeks, 0), hr = A.reduce((s, a) => s + a.hours, 0);
   if (wk !== p.weeks) block(`Annexes cover ${wk} weeks, but the course is ${p.weeks} weeks`, { node: A[0]?.id, field: 'weeks' });
@@ -4178,7 +4526,7 @@ function cbIssues() {
   return out;
 }
 const cbBlocks = () => cbIssues().filter(i => i.sev === 'block');
-const cbReady = () => !!cb.draft && cbProgress().left === 0 && !cbBlocks().length;
+const cbReady = () => !!cb.draft && !cbBlocks().length;
 
 /* ---------- undo ---------- */
 function cbSnap(force) {
@@ -4261,8 +4609,8 @@ function cbFmt(key, v) {
 }
 cbReset();
 
-/* ============ Course Builder UI: stepper, parameters, generation, editor, AI edits, preview ============
-   Replaces the original Studio view (V.build). Review + submit live in builder-review.js. */
+/* ============ Course Builder UI: sources, generation, editor, AI-guided checks, preview ============
+   Replaces the original Studio view (V.build). Submit lives in builder-review.js. */
 IC.lock = '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>';
 IC.undo = '<path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/>';
 IC.up = '<path d="m18 15-6-6-6 6"/>';
@@ -4272,49 +4620,39 @@ IC.trash = '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>';
 IC.flag = '<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>';
 IC.eye = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
 IC.edit = '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/>';
-const CB_STEPS = [['params', 'Parameters'], ['gen', 'Generate'], ['edit', 'Edit & preview'], ['review', 'Line-by-line review'], ['submit', 'Submit']];
+const CB_STEPS = [['src', 'Sources'], ['gen', 'Draft'], ['edit', 'Edit & preview'], ['submit', 'Submit']];
 
 V.build = () => {
   if (cb.done) return cbDoneView();
-  return `<div class="pagehead"><h1>Course Builder</h1><p>Set the parameters, generate a draft, then edit every annex, assignment and quiz by hand or with AI. Nothing reaches the Test Bank until every line has your sign-off.</p></div>
+  return `<div class="pagehead"><h1>Course Builder</h1><p>Drop in the documents. SchoolCircle drafts the whole course from them, then walks you through what to check before anything reaches the Test Bank.</p></div>
   ${cbStepper()}
   <div id="cbStage">${cbStageHtml()}</div>
   <div class="cb-bar" id="cbBar">${cbBarHtml()}</div>`;
 };
-const cbStageHtml = () => cb.stage === 'params' ? cbParamsView() : cb.stage === 'gen' ? cbGenView() : cb.stage === 'review' ? cbReviewView() : cbEditView();
+const cbStageHtml = () => cb.stage === 'src' ? cbSourcesView() : cb.stage === 'gen' ? cbGenView() : cbEditView();
 function cbGo(stage) {
   cb.stage = stage;
   const st = document.getElementById('cbStage'); if (!st) { setView('build'); return; }
   document.getElementById('cbStepper').outerHTML = cbStepper();
   swap('cbStage', cbStageHtml()); document.getElementById('cbBar').innerHTML = cbBarHtml();
   window.scrollTo(0, 0);
-  if (stage === 'review') cbReviewAfter();
 }
 function cbRerender() {
   const y = window.scrollY, st = document.getElementById('cbStage'); if (!st) return;
   document.getElementById('cbStepper').outerHTML = cbStepper();
   st.innerHTML = cbStageHtml(); document.getElementById('cbBar').innerHTML = cbBarHtml();
   placePills(false); window.scrollTo(0, y);
-  if (cb.stage === 'review') cbReviewAfter(true);
 }
-/* cheap refresh while typing: marks, outline, side summary, stepper, bar */
+/* cheap refresh while typing: outline, stepper, bar */
 function cbTouched() {
-  const L = cbLines(), st = Object.fromEntries(L.map(l => [l.id, cbStatus(l)]));
-  document.querySelectorAll('.rvdot[data-line]').forEach(d => { const s = st[d.dataset.line]; if (s) { d.className = `rvdot ${s}`; d.title = CB_MARK[s]; } });
   const ol = document.getElementById('cbOutline'); if (ol) ol.innerHTML = cbOutlineHtml();
   const side = document.getElementById('cbSide'); if (side) side.innerHTML = cbSideHtml();
   const sp = document.getElementById('cbStepper'); if (sp) sp.outerHTML = cbStepper();
   const bar = document.getElementById('cbBar'); if (bar) bar.innerHTML = cbBarHtml();
 }
-const CB_MARK = { ok: 'Signed off', todo: 'Not reviewed yet', changed: 'Changed since you signed it off', flag: 'Flagged in review' };
-function cbMk(lineId) {
-  if (!cb.draft) return '';
-  const l = cbLines().find(x => x.id === lineId); if (!l) return '';
-  const s = cbStatus(l); return `<i class="rvdot ${s}" data-line="${lineId}" title="${CB_MARK[s]}"></i>`;
-}
-function cbRing(np) {
-  const p = np.total ? np.ok / np.total : 0;
-  return `<span class="mini-ring ${np.flag ? 'flag' : p === 1 ? 'full' : ''}" style="--p:${Math.round(p * 100)}" title="${np.ok} of ${np.total} lines signed off${np.flag ? `, ${np.flag} flagged` : ''}" aria-label="${np.ok} of ${np.total} signed off"></span>`;
+function cbChkDot(id) {
+  const open = cbOpen(), n = open.filter(c => c.jump && (c.jump.node === id || cbFind(c.jump.node || '')?.a?.id === id)).length;
+  return n ? `<span class="cb-chk-n ${open.some(c => c.sev === 'block' && (c.jump?.node === id || cbFind(c.jump?.node || '')?.a?.id === id)) ? 'block' : ''}" title="${n} to look at">${n}</span>` : '';
 }
 const cbNum = (minus, val, plus, unit = '') => `<div class="stepper"><button type="button" class="iconbtn sm press" onclick="${minus}" aria-label="Less">${ic('minus')}</button><b class="tnum">${val}</b><button type="button" class="iconbtn sm press" onclick="${plus}" aria-label="More">${ic('plus')}</button>${unit ? `<small>${unit}</small>` : ''}</div>`;
 function cbFocusField(f) {
@@ -4325,90 +4663,159 @@ function cbFocusField(f) {
     el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
   }, 90);
 }
-function cbJump(j, fromReviewLine) {
+function cbJump(j) {
   closeDialog();
-  cb.fromReview = fromReviewLine || null;
-  if (j.stage === 'params') cbGo('params');
-  else { cb.sel = j.node; cb.view = 'edit'; cbGo('edit'); }
-  if (j.field) cbFocusField(j.field);
+  cb.sel = (j && j.node) || 'settings'; cb.view = 'edit';
+  if (cb.stage !== 'edit') cbGo('edit'); else cbRerender();
+  if (j && j.field) cbFocusField(j.field);
 }
 
 /* ---------- stepper + action bar ---------- */
 function cbStepper() {
-  const pr = cb.draft ? cbProgress() : null, idx = CB_STEPS.findIndex(s => s[0] === cb.stage), ready = cbReady();
-  const done = { params: !!cb.draft, gen: !!cb.draft, edit: !!cb.draft && !!cb.visitedReview, review: ready, submit: !!cb.done };
-  const sub = { params: `${cb.params.weeks} weeks · ${cb.params.hours} hours`, gen: cb.draft ? 'Draft ready' : 'Not started', edit: cb.draft ? `${cb.draft.annexes.length} annexes` : 'Needs a draft', review: pr ? `${pr.ok} of ${pr.total} lines` : 'Needs a draft', submit: ready ? 'Ready' : 'Locked' };
+  const idx = CB_STEPS.findIndex(x => x[0] === cb.stage), ready = cbReady(), L = cb.draft ? cbLooked() : null, n = cb.params.refs.length;
+  const done = { src: !!n, gen: !!cb.draft, edit: !!cb.draft && L && !L.left, submit: !!cb.done };
+  const sub = { src: n ? plural(n, 'source') : 'Add a document', gen: cb.draft ? 'Draft ready' : 'Not started',
+    edit: cb.draft ? (L.left ? `${L.left} to look at` : 'Nothing left to look at') : 'Needs a draft', submit: ready ? 'Ready' : 'Locked' };
   return `<nav class="cb-steps" id="cbStepper" aria-label="Course builder steps">${CB_STEPS.map(([k, l], i) => {
-    const can = k === 'params' || k === 'submit' || (k !== 'gen' && !!cb.draft);
+    const can = k === 'src' || k === 'submit' || (k !== 'gen' && !!cb.draft);
     return `<button class="cb-step ${i === idx ? 'cur' : done[k] ? 'done' : ''}" ${can ? `onclick="cbStepClick('${k}')"` : 'disabled'} ${i === idx ? 'aria-current="step"' : ''}>
       <span class="cb-seg"><i></i>${done[k] && i !== idx ? ic('check') : k === 'submit' && !ready ? ic('lock') : ''}</span><span class="cb-sl"><b>${i + 1}. ${l}</b><small>${sub[k]}</small></span></button>`;
   }).join('')}</nav>`;
 }
-function cbStepClick(k) {
-  if (k === 'submit') return cbTrySubmit();
-  if (k === 'review') cb.visitedReview = true;
-  cb.fromReview = null; cbGo(k);
-}
+function cbStepClick(k) { if (k === 'submit') return cbTrySubmit(); cbGo(k); }
 function cbBarHtml() {
-  const pr = cb.draft ? cbProgress() : null, blocks = cbBlocks(), ready = cbReady();
-  const meter = pr ? `<div class="cb-meter"><span class="ring sm" style="--p:${Math.round(pr.ok / pr.total * 100)};--c:${pr.left ? 'var(--p-accent)' : 'var(--p-good)'}"><div><b class="tnum">${Math.round(pr.ok / pr.total * 100)}%</b></div></span>
-      <span class="cwho"><b class="tnum">${pr.ok} of ${pr.total} lines signed off</b><small>${pr.todo} to review${pr.changed ? ` · ${pr.changed} changed since sign-off` : ''}${pr.flag ? ` · ${pr.flag} flagged` : ''}</small></span></div>`
-    : `<div class="cb-meter"><span class="cwho"><b>No draft yet</b><small>Set the parameters, then generate a draft</small></span></div>`;
-  const issues = blocks.length ? `<button class="cb-issues press" onclick="cbShowIssues()">${ic('alert')}${blocks.length} blocking</button>` : cb.draft ? `<span class="cb-ok">${ic('check')}No blocking issues</span>` : '';
-  const submit = `<button class="btn press ${ready ? '' : 'locked'}" aria-disabled="${!ready}" onclick="cbTrySubmit()">${ic(ready ? 'send' : 'lock')} Submit to Test Bank</button>`;
+  const blocks = cbBlocks().length, L = cb.draft ? cbLooked() : null, ready = cbReady(), n = cb.params.refs.length;
+  const items = cb.draft ? cb.draft.annexes.flatMap(a => a.items) : [];
+  const meter = cb.draft
+    ? `<div class="cb-meter"><span class="cwho"><b>${esc(cb.params.name)}</b><small>${cb.draft.annexes.length} annexes · ${items.length} items · ${items.reduce((t, it) => t + it.questions.length, 0)} questions</small></span></div>`
+    : `<div class="cb-meter"><span class="cwho"><b>${n ? `${plural(n, 'source')} added` : 'No sources yet'}</b><small>${n ? 'Everything else comes from them' : 'Upload a document or search the library'}</small></span></div>`;
+  const review = cb.draft ? (L.left
+    ? `<button class="cb-issues press ${blocks ? '' : 'soft'}" onclick="cbReviewOpen()">${ic(blocks ? 'alert' : 'bolt')}${L.left} to look at${blocks ? ` · ${blocks} blocking` : ''}</button>`
+    : `<span class="cb-ok">${ic('check')}Nothing left to look at</span>`) : '';
   const action = {
-    params: `${cb.draft ? `<button class="btn ghost press" onclick="cbGo('edit')">Back to the editor</button>` : ''}<button class="btn press" onclick="cbStartGen()">${cb.draft ? 'Regenerate draft' : 'Generate draft'} ${ic('arrow')}</button>`,
-    gen: `<button class="btn press" disabled>Generating…</button>`,
-    edit: `<button class="btn press" onclick="cbStepClick('review')">Review line by line ${ic('arrow')}</button>`,
-    review: submit,
+    src: `<button class="btn press" ${n ? '' : 'disabled'} onclick="cbStartGen()">${cb.draft ? 'Rebuild the course' : 'Build the course'} ${ic('arrow')}</button>`,
+    gen: `<button class="btn press" disabled>Working…</button>`,
+    edit: `<button class="btn press ${ready ? '' : 'locked'}" aria-disabled="${!ready}" onclick="cbTrySubmit()">${ic(ready ? 'send' : 'lock')} Submit to Test Bank</button>`,
   }[cb.stage];
-  return `${meter}<span style="flex:1"></span>${issues}${action}`;
+  return `${meter}<span style="flex:1"></span>${review}${action}`;
 }
 function cbShowIssues() {
-  const all = cbIssues();
-  openDialog('Before you can submit', all.length ? `<p class="note">Blocking issues must be fixed before the course can go to the Test Bank.</p>
-    ${all.map((x, i) => `<div class="cb-issue ${x.sev}">${ic(x.sev === 'block' ? 'alert' : 'info')}<span>${esc(x.text)}</span>${x.jump ? `<button class="btn sm ghost press" onclick="cbJump(cbIssues()[${i}].jump)">Fix</button>` : ''}</div>`).join('')}` : '<p class="note">Nothing is blocking. Finish signing off every line to unlock submit.</p>',
+  const all = cbChecks(), blocks = cbBlocks().length;
+  openDialog('What to look at', all.length ? `<p class="note">${blocks ? 'The blocking items have to be fixed before the course can go to the Test Bank. The rest are suggestions.' : 'Nothing is blocking. These are suggestions, least sure first.'}</p>
+    <div class="cb-checklist">${all.map(c => `<div class="cb-issue ${c.sev === 'block' ? 'block' : 'warn'}${cb.checked[c.id] ? ' done' : ''}">${ic(c.sev === 'block' ? 'alert' : 'bolt')}<span class="cwho"><b>${esc(c.title)}</b><small>${esc(c.why)}</small></span>${c.jump ? `<button class="btn sm ghost press" onclick="cbJumpCheck('${c.id}')">Show me</button>` : ''}</div>`).join('')}</div>`
+    : '<p class="note">Nothing to flag: every field is filled in and each item cites a current source.</p>',
     `<button class="btn press" onclick="closeDialog()">Done</button>`);
 }
-
-/* ---------- 1 · parameters ---------- */
-const CB_FIELD_LINE = { name: 'p.name', short: 'p.name', code: 'p.code', section: 'p.code', audience: 'p.audience', weeks: 'p.length', hours: 'p.length', start: 'p.start', students: 'p.start' };
-function cbParamsView() {
-  const p = cb.params, fld = (f, label, input) => `<label class="cb-field" data-f="${f}"><span class="cb-lab">${label}${CB_FIELD_LINE[f] ? cbMk(CB_FIELD_LINE[f]) : ''}</span>${input}</label>`;
-  const inp = (k, aria) => `<input class="ti" value="${esc(p[k])}" aria-label="${aria}" oninput="cbParam('${k}',this.value)">`;
-  return `<div class="cb-grid"><div class="cb-main">
-    <section class="panel cb-sec"><h3>Course</h3><div class="cb-form">
-      ${fld('name', 'Course name', inp('name', 'Course name'))}${fld('short', 'Short name', inp('short', 'Short name'))}
-      ${fld('code', 'Course code', inp('code', 'Course code'))}${fld('section', 'Class or section', inp('section', 'Class or section'))}
-      ${fld('audience', 'Audience', inp('audience', 'Audience'))}
-      <div class="cb-field" data-f="delivery"><span class="cb-lab">Delivery${cbMk('p.audience')}</span>${pillHtml([['Resident', 'Resident'], ['Hybrid', 'Hybrid'], ['Distance', 'Distance']], p.delivery, 'cbDelivery', 'sm')}</div>
-    </div></section>
-    <section class="panel cb-sec"><h3>Length and schedule</h3><div class="cb-form four">
-      <div class="cb-field" data-f="weeks"><span class="cb-lab">Course length${cbMk('p.length')}</span>${cbNum(`cbParamStep('weeks',-1)`, p.weeks, `cbParamStep('weeks',1)`, 'weeks')}</div>
-      <div class="cb-field" data-f="hours"><span class="cb-lab">Hours of instruction${cbMk('p.length')}</span>${cbNum(`cbParamStep('hours',-10)`, p.hours, `cbParamStep('hours',10)`, 'hours')}</div>
-      <label class="cb-field" data-f="start"><span class="cb-lab">Start date${cbMk('p.start')}</span><select class="sel" onchange="cbParam('start',+this.value,true)">${[7, 14, 21, 28, 42, 56, 84].map(d => `<option value="${d}" ${p.start === d ? 'selected' : ''}>${fmtDate(d)} · in ${d / 7} week${d === 7 ? '' : 's'}</option>`).join('')}</select></label>
-      <div class="cb-field" data-f="students"><span class="cb-lab">Class size${cbMk('p.start')}</span>${cbNum(`cbParamStep('students',-1)`, p.students, `cbParamStep('students',1)`, 'students')}</div>
-    </div></section>
-    <section class="panel cb-sec"><div class="cb-sec-h"><h3>References</h3><button class="btn sm ghost press" onclick="cbCourseAI('refcheck')">${ic('bolt')} Check for updates</button></div>
-      ${p.refs.length ? p.refs.map(cbRefRow).join('') : '<p class="note">No references yet. Search the library or upload your own.</p>'}
-      <div class="cb-refadd"><button class="btn sm press" onclick="openRefLibrary()">${ic('search')} Search the library</button><button class="btn sm ghost press" onclick="openRefUpload()">${ic('upload')} Upload your own</button><button class="linkbtn" onclick="cbRefAdd()">${ic('plus')} Enter one manually</button></div></section>
-    <section class="panel cb-sec"><h3>Program of instruction objectives</h3>
-      ${p.objectives.map((o, i) => `<div class="cb-row" data-f="obj-${o.id}"><span class="cb-num tnum">${i + 1}</span><input class="ti" value="${esc(o.text)}" aria-label="Objective ${i + 1}" oninput="cbObjSet('${o.id}',this.value)">${cbMk('obj.' + o.id)}<button class="iconbtn sm press" onclick="cbObjDel('${o.id}')" aria-label="Remove objective">${ic('trash')}</button></div>`).join('')}
-      <button class="linkbtn cb-add" onclick="cbObjAdd()">${ic('plus')} Add an objective</button></section>
-  </div><aside class="cb-side" id="cbSide">${cbSideHtml()}</aside></div>`;
+function cbJumpCheck(id) {
+  const c = cbChecks().find(x => x.id === id); if (!c) return closeDialog();
+  const k = cbOpen().findIndex(x => x.id === id);
+  closeDialog();
+  if (k >= 0) { cb.guide = true; cb.gi = k; }
+  cbJump(c.jump || {});
 }
-function cbSideHtml() {
-  const p = cb.params, end = p.start + p.weeks * 7 - 3, perWk = p.hours / p.weeks, old = p.refs.filter(r => r.status === 'superseded').length;
-  const pIssues = cbIssues().filter(x => x.jump && x.jump.stage === 'params');
-  return `<section class="panel cb-summary"><div class="lead-k">Summary</div><h3 class="cb-sum-t">${esc(p.name || 'Untitled course')}</h3><p class="note">${esc(p.code)} · ${esc(p.section)}</p>
-    <div class="stats3"><div><small>Weeks</small><b>${p.weeks}</b></div><div><small>Hours</small><b>${p.hours}</b></div><div><small>Per week</small><b style="color:${perWk > 40 ? 'var(--p-critical)' : 'inherit'}">${Math.round(perWk)}</b></div></div>
-    <div class="cb-dates">${ic('cal')}<span>${fmtDate(p.start)} – ${fmtDate(end)}</span></div>
-    ${cb.draft ? `<div class="pv-timeline">${cb.draft.annexes.map((a, i) => `<span class="band-${cbL(i)}" style="flex:${a.weeks}" title="Annex ${cbL(i)}: ${esc(a.title)}">${cbL(i)}</span>`).join('')}</div>` : ''}
-    <div class="cb-sum-row"><span>${p.refs.length} references</span>${old ? tag('c', `${old} superseded`) : tag('g', 'All current')}</div>
-    <div class="cb-sum-row"><span>${p.objectives.length} objectives</span></div>
-    ${pIssues.length ? `<div class="cb-sum-issues">${pIssues.map(x => `<div class="cb-issue ${x.sev}">${ic(x.sev === 'block' ? 'alert' : 'info')}<span>${esc(x.text)}</span></div>`).join('')}</div>` : ''}
-    ${cb.draft ? '<p class="note">Changing a setting puts its line back in the review queue.</p>' : ''}
-  </section>`;
+
+/* ---------- AI-guided review: one thing at a time, least sure first ---------- */
+function cbReviewOpen() {
+  if (!cb.draft) return;
+  cb.guide = true; cb.gi = 0; cb.view = 'edit';
+  if (cb.stage !== 'edit') cbGo('edit'); else cbRerender();
+  cbGuideOpen();
+}
+function cbGuideHtml() {
+  const open = cbOpen();
+  if (!cb.guide || !open.length) return '';
+  cb.gi = Math.max(0, Math.min(cb.gi, open.length - 1));
+  const c = open[cb.gi];
+  return `<div class="cb-guide ${c.sev}" role="region" aria-label="AI review">
+    <span class="cb-g-ico">${ic(c.sev === 'block' ? 'alert' : 'bolt')}</span>
+    <div class="cb-g-b"><div class="cb-g-h"><b>${esc(c.title)}</b><span class="note">${cb.gi + 1} of ${open.length}${c.sev === 'block' ? ' · blocking' : ''}</span></div><p class="note">${esc(c.why)}</p></div>
+    <div class="cb-g-act">${c.jump ? `<button class="btn sm ghost press" onclick="cbGuideOpen()">${ic('eye')} Show me</button>` : ''}
+      ${c.fix ? `<button class="btn sm ghost press" onclick="cbGuideFix()">${ic('bolt')} Fix with AI</button>` : ''}
+      ${c.sev === 'block' ? '' : `<button class="btn sm press" onclick="cbGuideOk()">${ic('check')} Looks right</button>`}
+      <button class="iconbtn sm press" onclick="cbGuideStep(-1)" aria-label="Previous" ${cb.gi ? '' : 'disabled'}>${ic('up')}</button>
+      <button class="iconbtn sm press" onclick="cbGuideStep(1)" aria-label="Next" ${cb.gi < open.length - 1 ? '' : 'disabled'}>${ic('down')}</button>
+      <button class="iconbtn sm press" onclick="cbGuideClose()" aria-label="Close the guide">${ic('x')}</button></div>
+  </div>`;
+}
+function cbGuideOpen() {
+  const c = cbOpen()[cb.gi]; if (!c || !c.jump) return;
+  if (c.jump.node && c.jump.node !== cb.sel) { cb.sel = c.jump.node; cbRerender(); }
+  if (c.jump.field) cbFocusField(c.jump.field);
+  else document.getElementById('cbNode')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+}
+function cbGuideStep(d) { cb.gi += d; cbRerender(); cbGuideOpen(); }
+function cbGuideOk() {
+  const c = cbOpen()[cb.gi]; if (!c) return;
+  cb.checked[c.id] = 1;
+  const left = cbOpen().length; cb.gi = Math.min(cb.gi, Math.max(0, left - 1));
+  cbRerender();
+  if (!left) notify({ tone: 'success', title: 'Nothing left to look at', desc: cbBlocks().length ? `${plural(cbBlocks().length, 'blocking item')} still to fix.` : 'Submit is unlocked in the bar below.', burst: true, duration: 4600 });
+  else cbGuideOpen();
+}
+function cbGuideFix() {
+  const c = cbOpen()[cb.gi]; if (!c || !c.fix) return;
+  cb.ai = cbPropose(c.fix.scope, c.fix.id, c.fix.action);
+  cb.sel = c.fix.id; cbRerender();
+  setTimeout(() => document.querySelector('.ai-card')?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 60);
+}
+function cbGuideClose() { cb.guide = false; cbRerender(); }
+
+/* ---------- 1 · sources ---------- */
+function cbSourcesView() {
+  const refs = cb.params.refs;
+  return `<div class="cb-src">
+    <section class="panel cb-drop">
+      <div class="drop-zone" id="cbZone" role="button" tabindex="0" aria-label="Choose or drop a document"
+        ondragover="upDrag(event,true)" ondragenter="upDrag(event,true)" ondragleave="upDrag(event,false)" ondrop="cbDropFile(event)"
+        onclick="openRefUpload()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openRefUpload()}">
+        <span class="dz-ico">${ic('upload')}</span><b>Drop the doctrine, the POI or a lesson plan</b>
+        <span class="note">PDF, Word, TXT or Markdown · up to 50 MB</span>
+      </div>
+      <div class="cb-refadd"><button class="btn sm press" onclick="openRefLibrary()">${ic('search')} Search the library</button><button class="btn sm ghost press" onclick="openRefUpload()">${ic('upload')} Upload a document</button></div>
+      ${refs.length ? `<div class="cb-srclist">${refs.map(cbSrcRow).join('')}</div>` : ''}
+    </section>
+    <aside class="panel cb-note">
+      <label class="cb-field"><span class="cb-lab">Anything the documents don't say?</span>
+        <input class="ti" id="cbNote" value="${esc(cb.note)}" placeholder="e.g. 6 weeks, 16 students, hybrid" aria-label="Optional note" oninput="cb.note=this.value" onkeydown="if(event.key==='Enter'&&cb.params.refs.length)cbStartGen()"></label>
+      <p class="note">Optional, one line. The name, length, hours, objectives, annexes, assignments and quizzes all come from the documents; anything you leave out, the draft picks for you and you can change it afterwards.</p>
+    </aside>
+  </div>`;
+}
+const cbSrcRow = r => {
+  const lib = r.libId && libById(r.libId);
+  return `<div class="cb-srcrow"><span class="kico ${r.status === 'current' ? 'exam' : 'quiz'}">${ic(r.source === 'uploaded' ? 'file' : 'book')}</span>
+    <span class="cwho"><b>${esc(r.title || 'Untitled source')}</b><small>${esc(r.ed || 'No edition')}${lib ? ` · ${lib.pages} pages indexed` : ''}${r.source === 'uploaded' ? ' · uploaded' : ''}</small></span>
+    ${r.status === 'superseded' ? tag('c', 'Superseded') : tag('g', 'Current')}
+    <button class="iconbtn sm press" onclick="cbRefDel('${r.id}')" aria-label="Remove ${esc(r.title || 'source')}">${ic('trash')}</button></div>`;
+};
+function cbDropFile(e) {
+  e.preventDefault(); upDrag(e, false);
+  const f = e.dataTransfer && e.dataTransfer.files[0]; if (!f) return;
+  openRefUpload(); setTimeout(() => upPick(f), 40);
+}
+/* the old parameters form, now a card inside the editor */
+function cbSettingsEditor() {
+  const p = cb.params, inp = (k, aria) => `<input class="ti" value="${esc(p[k])}" aria-label="${aria}" oninput="cbParam('${k}',this.value)">`;
+  return `<div class="nd-h"><span class="kico exam">${ic('sliders')}</span><div class="cwho"><small>Course settings · written from your sources</small><b>${esc(p.name || 'Untitled course')}</b></div></div>
+  <section class="panel nd-card"><h4>Course</h4><div class="cb-form">
+    <label class="cb-field" data-f="name"><span class="cb-lab">Name</span>${inp('name', 'Course name')}</label>
+    <label class="cb-field" data-f="code"><span class="cb-lab">Code</span>${inp('code', 'Course code')}</label>
+    <label class="cb-field" data-f="section"><span class="cb-lab">Class or section</span>${inp('section', 'Class or section')}</label>
+    <label class="cb-field" data-f="audience"><span class="cb-lab">Audience</span>${inp('audience', 'Audience')}</label>
+  </div>
+  <div class="cb-field" data-f="delivery"><span class="cb-lab">Delivery</span>${pillHtml([['Resident', 'Resident'], ['Hybrid', 'Hybrid'], ['Distance', 'Distance']], p.delivery, 'cbDelivery', 'sm')}</div></section>
+  <section class="panel nd-card"><h4>Length and schedule</h4><div class="cb-form four">
+    <div class="cb-field" data-f="weeks"><span class="cb-lab">Course length</span>${cbNum(`cbParamStep('weeks',-1)`, p.weeks, `cbParamStep('weeks',1)`, 'weeks')}</div>
+    <div class="cb-field" data-f="hours"><span class="cb-lab">Hours of instruction</span>${cbNum(`cbParamStep('hours',-10)`, p.hours, `cbParamStep('hours',10)`, 'hours')}</div>
+    <label class="cb-field" data-f="start"><span class="cb-lab">Start date</span><select class="sel" onchange="cbParam('start',+this.value,true)">${[7, 14, 21, 28, 42, 56, 84].map(d => `<option value="${d}" ${p.start === d ? 'selected' : ''}>${fmtDate(d)} · in ${d / 7} week${d === 7 ? '' : 's'}</option>`).join('')}</select></label>
+    <div class="cb-field" data-f="students"><span class="cb-lab">Class size</span>${cbNum(`cbParamStep('students',-1)`, p.students, `cbParamStep('students',1)`, 'students')}</div>
+  </div></section>
+  <section class="panel nd-card"><div class="cb-sec-h"><h4>Sources</h4><button class="btn sm ghost press" onclick="cbCourseAI('refcheck')">${ic('bolt')} Check for updates</button></div>
+    ${p.refs.length ? p.refs.map(cbRefRow).join('') : '<p class="note">No sources on this course.</p>'}
+    <div class="cb-refadd"><button class="btn sm press" onclick="openRefLibrary()">${ic('search')} Search the library</button><button class="btn sm ghost press" onclick="openRefUpload()">${ic('upload')} Upload your own</button><button class="linkbtn" onclick="cbRefAdd()">${ic('plus')} Enter one manually</button></div></section>
+  <section class="panel nd-card"><h4>Objectives</h4>
+    ${p.objectives.map((o, i) => `<div class="cb-row" data-f="obj-${o.id}"><span class="cb-num tnum">${i + 1}</span><input class="ti" value="${esc(o.text)}" aria-label="Objective ${i + 1}" oninput="cbObjSet('${o.id}',this.value)"><button class="iconbtn sm press" onclick="cbObjDel('${o.id}')" aria-label="Remove objective">${ic('trash')}</button></div>`).join('') || '<p class="note">No objectives yet.</p>'}
+    <button class="linkbtn cb-add" onclick="cbObjAdd()">${ic('plus')} Add an objective</button></section>`;
 }
 function cbParam(k, v, rerender) { cbSnap(); cb.params[k] = v; rerender ? cbRerender() : cbTouched(); }
 function cbParamStep(k, d) { cbSnap(true); const lim = { weeks: [1, 52], hours: [10, 2000], students: [1, 200] }[k]; cb.params[k] = Math.min(lim[1], Math.max(lim[0], cb.params[k] + d)); cbRerender(); }
@@ -4430,17 +4837,17 @@ function cbObjDel(id) { cbSnap(true); cb.params.objectives = cb.params.objective
 
 /* ---------- 2 · generate ---------- */
 function cbStartGen() {
-  if (!cb.draft) return cbGenRun();
-  const pr = cbProgress();
-  openDialog('Regenerate the draft?', `<p class="note">This replaces every annex, assignment, quiz and question. Your edits are discarded and <b>${pr.ok} sign-off${pr.ok === 1 ? '' : 's'}</b> are cleared.</p>
-    <label class="attest"><input type="checkbox" onchange="document.getElementById('regenGo').disabled=!this.checked"><span>I understand my edits and sign-offs will be lost</span></label>`,
-    `<button class="btn ghost press" onclick="closeDialog()">Keep my draft</button><button class="btn danger press" id="regenGo" disabled onclick="closeDialog();cbGenRun()">Regenerate</button>`);
+  if (!cb.params.refs.length) return toast('Add a document first');
+  if (!cb.draft) { cbDerive(); return cbGenRun(); }
+  openDialog('Rebuild the course?', `<p class="note">This replaces every annex, assignment, quiz and question from the ${plural(cb.params.refs.length, 'source')} you have now. Your edits are discarded.</p>
+    <label class="attest"><input type="checkbox" onchange="document.getElementById('regenGo').disabled=!this.checked"><span>I understand my edits will be lost</span></label>`,
+    `<button class="btn ghost press" onclick="closeDialog()">Keep my draft</button><button class="btn danger press" id="regenGo" disabled onclick="closeDialog();cbDerive();cbGenRun()">Rebuild</button>`);
 }
 function cbGenView() {
   const p = cb.params;
-  return `<section class="panel cb-gen"><div class="lead-k">Generating · ${esc(p.code)}</div><h2>Building ${esc(p.name)}</h2>
-    <p class="note">${p.weeks} weeks · ${p.hours} hours · grounded in ${p.refs.length} references and ${p.objectives.length} objectives.</p>
-    <ul class="steps" id="cbGenSteps">${['Quarry: parse the objectives', 'Anchor: retrieve cited passages', 'Coursewright: draft annexes, assignments and quizzes', 'HHEM: verify every claim'].map(s => `<li class="step"><span class="stepdot"></span>${s}</li>`).join('')}</ul>
+  return `<section class="panel cb-gen"><div class="lead-k">Reading ${plural(p.refs.length, 'source')}</div><h2>Building ${esc(p.name)}</h2>
+    <p class="note">${esc(p.code)} · ${p.weeks} weeks · ${p.hours} hours · ${p.objectives.length} objectives, all drawn from your documents.</p>
+    <ul class="steps" id="cbGenSteps">${['Quarry: read the documents', 'Anchor: pull the passages worth teaching', 'Coursewright: draft annexes, assignments and quizzes', 'HHEM: verify every claim against the sources'].map(s => `<li class="step"><span class="stepdot"></span>${s}</li>`).join('')}</ul>
     <div class="cb-gen-out" id="cbGenOut"></div></section>`;
 }
 function cbGenRun() {
@@ -4456,11 +4863,12 @@ function cbGenRun() {
       setTimeout(() => {
         set(3);
         setTimeout(() => {
-          cbGenerateDraft(); cb.view = 'edit'; cb.visitedReview = false;
+          cbGenerateDraft(); cb.view = 'edit'; cb.checked = {}; cb.guide = false; cb.gi = 0; cb.sel = cb.draft.annexes[0].id;
           if (state.view !== 'build') return;
           cbGo('edit');
-          const pr = cbProgress(), items = cb.draft.annexes.flatMap(a => a.items);
-          notify({ tone: 'success', title: 'Draft ready', meta: cb.params.code, desc: `${cb.draft.annexes.length} annexes · ${items.length} items · ${items.reduce((s, it) => s + it.questions.length, 0)} questions. All ${pr.total} lines are unreviewed.`, duration: 5200 });
+          const L = cbLooked(), items = cb.draft.annexes.flatMap(a => a.items);
+          notify({ tone: 'success', title: 'Draft ready', meta: cb.params.code, desc: `${cb.draft.annexes.length} annexes · ${items.length} items · ${items.reduce((s, it) => s + it.questions.length, 0)} questions. ${L.total ? `${plural(L.total, 'thing')} to look at.` : 'Nothing flagged.'}`, duration: 5200,
+            actions: L.total ? [{ label: 'Walk me through it', primary: true, run: () => cbReviewOpen() }, { label: 'Later' }] : [] });
         }, 700);
       }, 320 * CB_BLUEPRINT.length + 500);
     }, 700);
@@ -4473,17 +4881,17 @@ function cbEditView() {
     <span style="flex:1"></span>
     <button class="btn sm ghost press" onclick="cbUndo()" ${cb.hist.length ? '' : 'disabled'}>${ic('undo')} Undo</button>
     <button class="btn sm ghost press" onclick="cbCourseAI('fit')">${ic('bolt')} Fit to ${cb.params.weeks} weeks · ${cb.params.hours} hours</button></div>
-  ${cb.fromReview ? `<div class="cb-back">${ic('edit')}<span>Editing line ${cb.fromReview.n} from the review. Changed lines go back into the review queue.</span><button class="btn sm press" onclick="cbBackToReview()">Back to review ${ic('arrow')}</button></div>` : ''}
+  ${cbGuideHtml()}
   ${cb.view === 'preview' ? cbPreviewHtml() : `<div class="cb-edit"><nav class="cb-outline" id="cbOutline" aria-label="Course outline">${cbOutlineHtml()}</nav><section class="cb-node" id="cbNode">${cbNodeHtml()}</section></div>`}`;
 }
 function cbSetView(btn, v) { slide(btn); cb.view = v; const y = window.scrollY; cbRerender(); window.scrollTo(0, y); }
 function cbUndo() { if (cbUndoState()) { cbRerender(); toast('Undone'); } }
 function cbOutlineHtml() {
   const R = cbRanges();
-  return `<button class="ol-course press" onclick="cbGo('params')">${ic('sliders')}<span class="cwho"><b>${esc(cb.params.name)}</b><small>${cb.params.weeks} weeks · ${cb.params.hours} hours · parameters</small></span></button>
+  return `<button class="ol-course press ${cb.sel === 'settings' ? 'sel' : ''}" onclick="cbSelect('settings')">${ic('sliders')}<span class="cwho"><b>${esc(cb.params.name)}</b><small>${cb.params.weeks} weeks · ${cb.params.hours} hours · ${plural(cb.params.refs.length, 'source')}</small></span>${cbChkDot('settings')}</button>
   ${cb.draft.annexes.map((a, ai) => `<div class="ol-annex">
-    <button class="ol-row ol-a ${cb.sel === a.id ? 'sel' : ''}" onclick="cbSelect('${a.id}')"><span class="mod-letter">${cbL(ai)}</span><span class="cwho"><b>${esc(a.title || 'Untitled annex')}</b><small>Weeks ${R[a.id][0]}–${R[a.id][1]} · ${a.hours} h</small></span>${cbRing(cbNodeProgress(a.id))}</button>
-    ${a.items.map(it => `<button class="ol-row ol-i ${cb.sel === it.id ? 'sel' : ''}" onclick="cbSelect('${it.id}')">${kico(it.type)}<span class="cwho"><b>${esc(it.title || 'Untitled')}</b><small>${CB_TYPES[it.type]} · ${it.pts} pts · week ${it.dueWeek}</small></span>${cbRing(cbNodeProgress(it.id))}</button>`).join('')}
+    <button class="ol-row ol-a ${cb.sel === a.id ? 'sel' : ''}" onclick="cbSelect('${a.id}')"><span class="mod-letter">${cbL(ai)}</span><span class="cwho"><b>${esc(a.title || 'Untitled annex')}</b><small>Weeks ${R[a.id][0]}–${R[a.id][1]} · ${a.hours} h</small></span>${cbChkDot(a.id)}</button>
+    ${a.items.map(it => `<button class="ol-row ol-i ${cb.sel === it.id ? 'sel' : ''}" onclick="cbSelect('${it.id}')">${kico(it.type)}<span class="cwho"><b>${esc(it.title || 'Untitled')}</b><small>${CB_TYPES[it.type]} · ${it.pts} pts · week ${it.dueWeek}</small></span>${cbChkDot(it.id)}</button>`).join('')}
   </div>`).join('')}
   <button class="linkbtn cb-add" onclick="cbAddAnnex()">${ic('plus')} Add an annex</button>`;
 }
@@ -4494,7 +4902,7 @@ function cbSelect(id) {
   const n = document.getElementById('cbNode'), top = n.getBoundingClientRect().top;
   if (top < 0 || top > innerHeight * .6) window.scrollTo({ top: window.scrollY + top - 140, behavior: 'smooth' });
 }
-function cbNodeHtml() { const f = cbFind(cb.sel) || { kind: 'annex', a: cb.draft.annexes[0] }; if (!f.a) return '<div class="panel empty">Add an annex to start.</div>'; cb.sel = (f.it || f.a).id; return f.kind === 'item' ? cbItemEditor(f.a, f.it) : cbAnnexEditor(f.a); }
+function cbNodeHtml() { if (cb.sel === 'settings') return cbSettingsEditor(); const f = cbFind(cb.sel) || { kind: 'annex', a: cb.draft.annexes[0] }; if (!f.a) return '<div class="panel empty">Add an annex to start.</div>'; cb.sel = (f.it || f.a).id; return f.kind === 'item' ? cbItemEditor(f.a, f.it) : cbAnnexEditor(f.a); }
 function cbRenderNode() { const y = window.scrollY, n = document.getElementById('cbNode'); if (!n) return cbRerender(); n.innerHTML = cbNodeHtml(); cbTouched(); window.scrollTo(0, y); }
 
 function cbAnnexEditor(a) {
@@ -4502,15 +4910,15 @@ function cbAnnexEditor(a) {
   return `<div class="nd-h"><span class="mod-letter">${cbL(ai)}</span><div class="cwho"><small>Annex ${cbL(ai)} · weeks ${R[a.id][0]}–${R[a.id][1]}</small><b>${esc(a.title || 'Untitled annex')}</b></div>
     <div class="nd-actions"><button class="iconbtn sm press" onclick="cbMoveAnnex('${a.id}',-1)" ${ai ? '' : 'disabled'} aria-label="Move annex earlier">${ic('up')}</button><button class="iconbtn sm press" onclick="cbMoveAnnex('${a.id}',1)" ${ai < A.length - 1 ? '' : 'disabled'} aria-label="Move annex later">${ic('down')}</button><button class="iconbtn sm press" onclick="cbDelAnnex('${a.id}')" aria-label="Delete annex">${ic('trash')}</button></div></div>
   <section class="panel nd-card"><h4>Annex layout</h4>
-    <label class="cb-field" data-f="title"><span class="cb-lab">Title${cbMk(`an.${a.id}.title`)}</span><input class="ti" value="${esc(a.title)}" oninput="cbSetAnnex('${a.id}','title',this.value)"></label>
+    <label class="cb-field" data-f="title"><span class="cb-lab">Title</span><input class="ti" value="${esc(a.title)}" oninput="cbSetAnnex('${a.id}','title',this.value)"></label>
     <div class="cb-form">
-      <div class="cb-field" data-f="weeks"><span class="cb-lab">Weeks${cbMk(`an.${a.id}.span`)}</span>${cbNum(`cbAnnexStep('${a.id}','weeks',-1)`, a.weeks, `cbAnnexStep('${a.id}','weeks',1)`, `weeks ${R[a.id][0]}–${R[a.id][1]}`)}</div>
-      <div class="cb-field" data-f="hours"><span class="cb-lab">Hours of instruction${cbMk(`an.${a.id}.span`)}</span>${cbNum(`cbAnnexStep('${a.id}','hours',-5)`, a.hours, `cbAnnexStep('${a.id}','hours',5)`, `of ${cb.params.hours}`)}</div>
+      <div class="cb-field" data-f="weeks"><span class="cb-lab">Weeks</span>${cbNum(`cbAnnexStep('${a.id}','weeks',-1)`, a.weeks, `cbAnnexStep('${a.id}','weeks',1)`, `weeks ${R[a.id][0]}–${R[a.id][1]}`)}</div>
+      <div class="cb-field" data-f="hours"><span class="cb-lab">Hours of instruction</span>${cbNum(`cbAnnexStep('${a.id}','hours',-5)`, a.hours, `cbAnnexStep('${a.id}','hours',5)`, `of ${cb.params.hours}`)}</div>
     </div>
-    <label class="cb-field" data-f="objective"><span class="cb-lab">Objective${cbMk(`an.${a.id}.obj`)}</span><textarea class="ti ta" oninput="cbSetAnnex('${a.id}','objective',this.value)">${esc(a.objective)}</textarea></label>
+    <label class="cb-field" data-f="objective"><span class="cb-lab">Objective</span><textarea class="ti ta" oninput="cbSetAnnex('${a.id}','objective',this.value)">${esc(a.objective)}</textarea></label>
   </section>
   <section class="panel nd-card"><div class="cb-sec-h"><h4>Assignments, quizzes and exams</h4><span class="btnrow" style="margin:0">${Object.entries(CB_TYPES).map(([t, l]) => `<button class="btn sm ghost press" onclick="cbAddItem('${a.id}','${t}')">${ic('plus')} ${l}</button>`).join('')}</span></div>
-    ${a.items.map((it, k) => `<div class="nd-item">${kico(it.type)}<button class="linkish cwho" onclick="cbSelect('${it.id}')"><b>${esc(it.title || 'Untitled')}</b><small>${CB_TYPES[it.type]} · ${it.pts} pts · due week ${it.dueWeek}${it.questions.length ? ` · ${it.questions.length} questions` : ''}</small></button>${cbRing(cbNodeProgress(it.id))}
+    ${a.items.map((it, k) => `<div class="nd-item">${kico(it.type)}<button class="linkish cwho" onclick="cbSelect('${it.id}')"><b>${esc(it.title || 'Untitled')}</b><small>${CB_TYPES[it.type]} · ${it.pts} pts · due week ${it.dueWeek}${it.questions.length ? ` · ${it.questions.length} questions` : ''}</small></button>${cbChkDot(it.id)}
       <button class="iconbtn sm press" onclick="cbMoveItem('${it.id}',-1)" ${k ? '' : 'disabled'} aria-label="Move up">${ic('up')}</button><button class="iconbtn sm press" onclick="cbMoveItem('${it.id}',1)" ${k < a.items.length - 1 ? '' : 'disabled'} aria-label="Move down">${ic('down')}</button></div>`).join('') || '<p class="note">Nothing in this annex yet.</p>'}
   </section>
   ${cbAiPanel('annex', a.id)}`;
@@ -4520,22 +4928,22 @@ function cbItemEditor(a, it) {
   return `<div class="nd-h">${kico(it.type)}<div class="cwho"><small><button class="linkbtn" onclick="cbSelect('${a.id}')">Annex ${cbL(A.indexOf(a))}: ${esc(a.title)}</button></small><b>${esc(it.title || 'Untitled')}</b></div>
     <div class="nd-actions"><button class="iconbtn sm press" onclick="cbMoveItem('${it.id}',-1)" ${k ? '' : 'disabled'} aria-label="Move up">${ic('up')}</button><button class="iconbtn sm press" onclick="cbMoveItem('${it.id}',1)" ${k < a.items.length - 1 ? '' : 'disabled'} aria-label="Move down">${ic('down')}</button><button class="iconbtn sm press" onclick="cbDelItem('${it.id}')" aria-label="Delete">${ic('trash')}</button></div></div>
   <section class="panel nd-card"><h4>Basics</h4>
-    <label class="cb-field" data-f="title"><span class="cb-lab">Title${cbMk(`it.${it.id}.title`)}</span><input class="ti" value="${esc(it.title)}" oninput="cbSetItem('${it.id}','title',this.value)"></label>
+    <label class="cb-field" data-f="title"><span class="cb-lab">Title</span><input class="ti" value="${esc(it.title)}" oninput="cbSetItem('${it.id}','title',this.value)"></label>
     <div class="cb-form four" data-f="pts">
-      <label class="cb-field"><span class="cb-lab">Type${cbMk(`it.${it.id}.meta`)}</span><select class="sel" onchange="cbSetItem('${it.id}','type',this.value,true)">${Object.entries(CB_TYPES).map(([v, l]) => `<option value="${v}" ${it.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
-      <label class="cb-field"><span class="cb-lab">Points${cbMk(`it.${it.id}.meta`)}</span><input class="ti tnum" type="number" min="1" max="500" value="${it.pts}" oninput="cbSetItem('${it.id}','pts',Math.max(1,+this.value||1))"></label>
-      <label class="cb-field"><span class="cb-lab">Due${cbMk(`it.${it.id}.meta`)}</span><select class="sel" onchange="cbSetItem('${it.id}','dueWeek',+this.value,true)">${Array.from({ length: cb.params.weeks }, (_, i) => i + 1).map(w => `<option value="${w}" ${it.dueWeek === w ? 'selected' : ''}>Week ${w}${w < ws || w > we ? ' · outside annex' : ''}</option>`).join('')}</select></label>
+      <label class="cb-field"><span class="cb-lab">Type</span><select class="sel" onchange="cbSetItem('${it.id}','type',this.value,true)">${Object.entries(CB_TYPES).map(([v, l]) => `<option value="${v}" ${it.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="cb-field"><span class="cb-lab">Points</span><input class="ti tnum" type="number" min="1" max="500" value="${it.pts}" oninput="cbSetItem('${it.id}','pts',Math.max(1,+this.value||1))"></label>
+      <label class="cb-field"><span class="cb-lab">Due</span><select class="sel" onchange="cbSetItem('${it.id}','dueWeek',+this.value,true)">${Array.from({ length: cb.params.weeks }, (_, i) => i + 1).map(w => `<option value="${w}" ${it.dueWeek === w ? 'selected' : ''}>Week ${w}${w < ws || w > we ? ' · outside annex' : ''}</option>`).join('')}</select></label>
       <label class="cb-field"><span class="cb-lab">Annex</span><select class="sel" onchange="cbMoveItemTo('${it.id}',this.value)">${A.map((x, i) => `<option value="${x.id}" ${x.id === a.id ? 'selected' : ''}>Annex ${cbL(i)}</option>`).join('')}</select></label>
     </div>
-    <label class="cb-field" data-f="desc"><span class="cb-lab">Instructions${cbMk(`it.${it.id}.desc`)}</span><textarea class="ti ta" oninput="cbSetItem('${it.id}','desc',this.value)">${esc(it.desc)}</textarea></label>
+    <label class="cb-field" data-f="desc"><span class="cb-lab">Instructions</span><textarea class="ti ta" oninput="cbSetItem('${it.id}','desc',this.value)">${esc(it.desc)}</textarea></label>
   </section>
   <section class="panel nd-card"><div class="cb-sec-h"><h4>Grading criteria</h4><span class="note">becomes the rubric</span></div>
-    ${it.crit.map((c, i) => `<div class="cb-row" data-f="crit-${c.id}"><span class="cb-num tnum">${i + 1}</span><input class="ti" value="${esc(c.text)}" aria-label="Criterion ${i + 1}" oninput="cbSetCrit('${it.id}','${c.id}',this.value)">${cbMk(`it.${it.id}.crit.${c.id}`)}<button class="iconbtn sm press" onclick="cbDelCrit('${it.id}','${c.id}')" aria-label="Remove criterion">${ic('trash')}</button></div>`).join('') || '<p class="note">No criteria yet.</p>'}
+    ${it.crit.map((c, i) => `<div class="cb-row" data-f="crit-${c.id}"><span class="cb-num tnum">${i + 1}</span><input class="ti" value="${esc(c.text)}" aria-label="Criterion ${i + 1}" oninput="cbSetCrit('${it.id}','${c.id}',this.value)"><button class="iconbtn sm press" onclick="cbDelCrit('${it.id}','${c.id}')" aria-label="Remove criterion">${ic('trash')}</button></div>`).join('') || '<p class="note">No criteria yet.</p>'}
     <button class="linkbtn cb-add" onclick="cbAddCrit('${it.id}')">${ic('plus')} Add a criterion</button></section>
-  <section class="panel nd-card" data-f="refs"><div class="cb-sec-h"><h4>References${cbMk(`it.${it.id}.refs`)}</h4><button class="btn sm ghost press" onclick="openRefLibrary({item:'${it.id}'})">${ic('search')} Find or upload</button></div>
+  <section class="panel nd-card" data-f="refs"><div class="cb-sec-h"><h4>References</h4><button class="btn sm ghost press" onclick="openRefLibrary({item:'${it.id}'})">${ic('search')} Find or upload</button></div>
     <div class="gen-types">${cb.params.refs.map(r => { const on = it.refs.includes(r.id); return `<button class="gtype ${on ? 'on' : ''} ${r.status === 'superseded' ? 'old' : ''}" aria-pressed="${on}" onclick="cbToggleRef('${it.id}','${r.id}')">${ic('check')}${esc(r.title || 'Untitled reference')}<small>${esc(r.ed)}${r.status === 'superseded' ? ' · superseded' : ''}</small></button>`; }).join('')}</div></section>
   ${it.type !== 'assignment' ? `<section class="panel nd-card"><div class="cb-sec-h"><h4>Questions</h4><span class="note">go to the Test Bank when you submit</span></div>
-    ${it.questions.map((q, i) => `<div class="cb-q" data-f="q-${q.id}"><div class="cb-q-h"><span class="cb-num tnum">${i + 1}</span><select class="sel sm" aria-label="Question type" onchange="cbSetQ('${it.id}','${q.id}','kind',this.value)">${GEN_TYPES.map(t => `<option ${q.kind === t ? 'selected' : ''}>${t}</option>`).join('')}</select>${cbMk(`q.${q.id}`)}<span style="flex:1"></span><button class="iconbtn sm press" onclick="cbDelQ('${it.id}','${q.id}')" aria-label="Remove question">${ic('trash')}</button></div>
+    ${it.questions.map((q, i) => `<div class="cb-q" data-f="q-${q.id}"><div class="cb-q-h"><span class="cb-num tnum">${i + 1}</span><select class="sel sm" aria-label="Question type" onchange="cbSetQ('${it.id}','${q.id}','kind',this.value)">${GEN_TYPES.map(t => `<option ${q.kind === t ? 'selected' : ''}>${t}</option>`).join('')}</select><span style="flex:1"></span><button class="iconbtn sm press" onclick="cbDelQ('${it.id}','${q.id}')" aria-label="Remove question">${ic('trash')}</button></div>
       <textarea class="ti ta sm" aria-label="Question" placeholder="Question" oninput="cbSetQ('${it.id}','${q.id}','q',this.value)">${esc(q.q)}</textarea><textarea class="ti ta sm ans" aria-label="Answer key" placeholder="Answer key and rationale" oninput="cbSetQ('${it.id}','${q.id}','a',this.value)">${esc(q.a)}</textarea></div>`).join('') || '<p class="note">No questions yet.</p>'}
     <button class="linkbtn cb-add" onclick="cbAddQ('${it.id}')">${ic('plus')} Add a question</button></section>` : ''}
   ${cbAiPanel('item', it.id)}`;
@@ -4576,8 +4984,8 @@ function cbConfirmDelete(title, body, run) {
   document.getElementById('cbDelGo').onclick = () => { closeDialog(); run(); };
 }
 function cbDelItem(id) {
-  const { a, it } = cbFind(id), n = cbLines().filter(l => l.jump?.node === id).length;
-  cbConfirmDelete(`Delete “${it.title || 'Untitled'}”?`, `Its ${n} lines, their sign-offs, and ${it.questions.length ? `${it.questions.length} questions` : 'its rubric'} are removed. You can undo this.`, () => { cbSnap(true); a.items = a.items.filter(x => x !== it); cb.sel = a.id; cbRerender(); toast('Deleted · Undo is in the toolbar'); });
+  const { a, it } = cbFind(id);
+  cbConfirmDelete(`Delete “${it.title || 'Untitled'}”?`, `Its criteria${it.questions.length ? ` and ${it.questions.length} questions` : ' and its rubric'} go with it. You can undo this.`, () => { cbSnap(true); a.items = a.items.filter(x => x !== it); cb.sel = a.id; cbRerender(); toast('Deleted · Undo is in the toolbar'); });
 }
 function cbMoveAnnex(id, dir) { cbSnap(true); const A = cb.draft.annexes, a = cbFind(id).a, i = A.indexOf(a), j = i + dir; if (j < 0 || j >= A.length) return; A.splice(i, 1); A.splice(j, 0, a); cbRerender(); }
 function cbAddAnnex() { cbSnap(true); const a = { id: cbId('an'), title: 'New annex', weeks: 1, hours: 0, objective: '', items: [] }; cb.draft.annexes.push(a); cb.sel = a.id; cbRerender(); cbFocusField('title'); }
@@ -4599,7 +5007,7 @@ function cbDiffHtml(prop, accept, reject) {
   if (!prop.changes.length) return `<div class="diff"><p class="note">Nothing to change for “${esc(prop.label)}”.</p><div class="btnrow"><button class="btn sm ghost press" onclick="${reject}">OK</button></div></div>`;
   return `<div class="diff"><div class="diff-h"><b>${esc(prop.label)}</b>${prop.prompt ? `<small>“${esc(prop.prompt)}”</small>` : ''}<span class="note">${prop.changes.length} change${prop.changes.length === 1 ? '' : 's'}</span></div>
     ${prop.changes.map(c => `<div class="diff-row"><span class="diff-l">${esc(c.label)}</span><div class="diff-b"><del>${esc(cbFmt(c.key, c.before))}</del><ins>${esc(cbFmt(c.key, c.after))}</ins></div></div>`).join('')}
-    <p class="note">Accepting puts every line it touches back in the review queue.</p>
+    <p class="note">Nothing changes until you accept, and Undo is in the toolbar.</p>
     <div class="btnrow"><button class="btn sm press" onclick="${accept}">${ic('check')} Accept</button><button class="btn sm ghost press" onclick="${reject}">Reject</button></div></div>`;
 }
 function cbAi(scope, id, action) { cb.ai = cbPropose(scope, id, action); if (!cb.ai.changes.length) cb.ai.empty = true; cbRenderNode(); }
@@ -4616,7 +5024,7 @@ function cbCourseAI(action) {
 }
 function cbCourseAccept() { const p = window.__cbCourseProp; cbApply(p); closeDialog(); cbRerender(); toast(`Accepted · ${p.changes.length} change${p.changes.length === 1 ? '' : 's'} applied`); }
 
-/* whole-course preview (read-only), with each line's review mark */
+/* whole-course preview (read-only) */
 function cbPreviewHtml() {
   const p = cb.params, R = cbRanges(), end = p.start + p.weeks * 7 - 3, items = cb.draft.annexes.flatMap(a => a.items);
   return `<article class="cb-preview">
@@ -4624,135 +5032,44 @@ function cbPreviewHtml() {
       <p class="note">${esc(p.section)} · ${esc(p.audience)} · ${esc(p.delivery)} · ${p.students} students</p>
       <div class="bento pv-bento"><div><div class="tilelab">Length</div><div class="tileval tnum">${p.weeks} <small>weeks</small></div></div><div><div class="tilelab">Instruction</div><div class="tileval tnum">${p.hours} <small>hours</small></div></div><div><div class="tilelab">Graded items</div><div class="tileval tnum">${items.length}</div></div><div><div class="tilelab">Dates</div><div class="tileval pv-dates">${fmtDate(p.start)} – ${fmtDate(end)}</div></div></div>
       <div class="pv-timeline">${cb.draft.annexes.map((a, i) => `<span class="band-${cbL(i)}" style="flex:${a.weeks}" title="Annex ${cbL(i)}: ${esc(a.title)}">Annex ${cbL(i)} · ${a.weeks} wk · ${a.hours} h</span>`).join('')}</div>
-      <div class="pv-refs">${p.refs.map(r => `<span class="doc ${r.status}">${ic('book')}<span>${esc(r.title)} · ${esc(r.ed)}${r.status === 'superseded' ? ' · superseded' : ''}</span>${cbMk('ref.' + r.id)}</span>`).join('')}</div>
+      <div class="pv-refs">${p.refs.map(r => `<span class="doc ${r.status}">${ic('book')}<span>${esc(r.title)} · ${esc(r.ed)}${r.status === 'superseded' ? ' · superseded' : ''}</span></span>`).join('')}</div>
     </header>
     ${cb.draft.annexes.map((a, ai) => `<section class="panel pv-sec">
-      <div class="pv-ah"><span class="mod-letter">${cbL(ai)}</span><div class="cwho"><b>Annex ${cbL(ai)}: ${esc(a.title)}${cbMk(`an.${a.id}.title`)}</b><small>Weeks ${R[a.id][0]}–${R[a.id][1]} · ${a.hours} hours${cbMk(`an.${a.id}.span`)}</small></div><button class="btn sm ghost press" onclick="cbSelect('${a.id}')">${ic('edit')} Edit</button></div>
-      <p class="pv-obj">${esc(a.objective)}${cbMk(`an.${a.id}.obj`)}</p>
+      <div class="pv-ah"><span class="mod-letter">${cbL(ai)}</span><div class="cwho"><b>Annex ${cbL(ai)}: ${esc(a.title)}</b><small>Weeks ${R[a.id][0]}–${R[a.id][1]} · ${a.hours} hours</small></div><button class="btn sm ghost press" onclick="cbSelect('${a.id}')">${ic('edit')} Edit</button></div>
+      <p class="pv-obj">${esc(a.objective)}</p>
       ${a.items.map(it => `<div class="pv-it">
-        <div class="pv-ih">${kico(it.type)}<div class="cwho"><b>${esc(it.title)}${cbMk(`it.${it.id}.title`)}</b><small>${CB_TYPES[it.type]} · ${it.pts} points · due ${fmtDate(p.start + (it.dueWeek - 1) * 7 + 4)} (week ${it.dueWeek})${cbMk(`it.${it.id}.meta`)}</small></div><button class="iconbtn sm press" onclick="cbSelect('${it.id}')" aria-label="Edit ${esc(it.title)}">${ic('edit')}</button></div>
-        <p>${esc(it.desc)}${cbMk(`it.${it.id}.desc`)}</p>
-        <div class="pv-cols"><div><div class="docs-h">Graded on</div><ul>${it.crit.map(c => `<li>${esc(c.text)}${cbMk(`it.${it.id}.crit.${c.id}`)}</li>`).join('')}</ul></div>
-          <div><div class="docs-h">References${cbMk(`it.${it.id}.refs`)}</div>${it.refs.map(id => `<div class="note">${esc(cbRefLabel(cbRef(id)))}</div>`).join('') || '<div class="note">None</div>'}</div></div>
-        ${it.questions.length ? `<div class="docs-h">Questions for the Test Bank</div><ol class="pv-qs">${it.questions.map(q => `<li><b>${esc(q.q || 'Empty question')}</b>${cbMk(`q.${q.id}`)}<span class="note">${esc(q.kind)} · Answer: ${esc(q.a || '—')}</span></li>`).join('')}</ol>` : ''}
+        <div class="pv-ih">${kico(it.type)}<div class="cwho"><b>${esc(it.title)}</b><small>${CB_TYPES[it.type]} · ${it.pts} points · due ${fmtDate(p.start + (it.dueWeek - 1) * 7 + 4)} (week ${it.dueWeek})</small></div><button class="iconbtn sm press" onclick="cbSelect('${it.id}')" aria-label="Edit ${esc(it.title)}">${ic('edit')}</button></div>
+        <p>${esc(it.desc)}</p>
+        <div class="pv-cols"><div><div class="docs-h">Graded on</div><ul>${it.crit.map(c => `<li>${esc(c.text)}</li>`).join('')}</ul></div>
+          <div><div class="docs-h">References</div>${it.refs.map(id => `<div class="note">${esc(cbRefLabel(cbRef(id)))}</div>`).join('') || '<div class="note">None</div>'}</div></div>
+        ${it.questions.length ? `<div class="docs-h">Questions for the Test Bank</div><ol class="pv-qs">${it.questions.map(q => `<li><b>${esc(q.q || 'Empty question')}</b><span class="note">${esc(q.kind)} · Answer: ${esc(q.a || '—')}</span></li>`).join('')}</ol>` : ''}
       </div>`).join('')}
     </section>`).join('')}
   </article>`;
 }
 
-/* ============ Course Builder: forced line-by-line review, locked submit, course creation ============ */
-const CB_DWELL = { ms: 900 };     // each line must be on screen this long before its sign-off unlocks
+/* ============ Course Builder: the locked submit and the created course ============ */
 const CB_HOLD = { ms: 2000 };     // press-and-hold duration on the final submit
-const CB_ATTEST = ['I read every line myself and signed each one off', 'Every reference is current and every citation points to the right source', 'Points, due weeks and hours of instruction are final for this class'];
-
-function cbFiltered() {
-  return cbLines().map((l, i) => ({ ...l, n: i + 1, st: cbStatus(l) }))
-    .filter(l => cb.filter === 'all' || (cb.filter === 'todo' ? (l.st === 'todo' || l.st === 'changed') : l.st === cb.filter));
-}
-function cbReviewView() {
-  const pr = cbProgress(), p = Math.round(pr.ok / pr.total * 100);
-  return `<section class="panel rv-hero">
-      <span class="ring" style="--p:${p};--c:${pr.left ? 'var(--p-accent)' : 'var(--p-good)'}"><div><b class="tnum">${p}%</b><small>signed off</small></div></span>
-      <div><div class="lead-k">Line-by-line review</div><h2>${pr.left ? `${pr.left} line${pr.left === 1 ? '' : 's'} to go before you can submit` : 'Every line is signed off'}</h2>
-        <ul class="rv-rules"><li>Read each line, then sign it off. There is no “approve all”.</li><li>Sign-off unlocks after a short pause on each line.</li><li>Editing a line, or accepting an AI edit, sends it back here.</li><li>Flagged lines and blocking issues keep submit locked.</li></ul></div>
-    </section>
-    <div class="sectionbar rv-bar">${pillHtml([['todo', `To review · ${pr.todo + pr.changed}`], ['flag', `Flagged · ${pr.flag}`], ['ok', `Signed off · ${pr.ok}`], ['all', `All · ${pr.total}`]], cb.filter, 'cbFilter')}
-      <span style="flex:1"></span><span class="note rv-keys"><kbd>A</kbd> sign off <kbd>F</kbd> flag <kbd>E</kbd> edit <kbd>J</kbd><kbd>K</kbd> next / previous</span></div>
-    <div id="rvList">${cbReviewList()}</div>`;
-}
-function cbReviewList() {
-  const rows = cbFiltered();
-  if (!rows.length) {
-    const msg = { todo: ['Nothing left to review', cbBlocks().length ? 'Fix the blocking issues, then submit.' : 'Submit is unlocked in the bar below.'], flag: ['No flagged lines', 'Flag a line during review if it needs changes.'], ok: ['Nothing signed off yet', 'Start with the “To review” list.'], all: ['No lines', ''] }[cb.filter];
-    return `<div class="panel rv-empty"><span class="qdone">${ic(cb.filter === 'todo' ? 'check' : 'info')}</span><b>${msg[0]}</b><p class="note">${msg[1]}</p>${cb.filter === 'todo' && cbBlocks().length ? `<button class="btn press" onclick="cbShowIssues()">See blocking issues</button>` : ''}</div>`;
-  }
-  cb.focus = Math.max(0, Math.min(cb.focus, rows.length - 1));
-  let sec = '';
-  return rows.map((l, i) => {
-    const head = l.sec !== sec ? `<div class="rv-sec">${esc(sec = l.sec)}</div>` : '', rv = cb.review[l.id], focus = i === cb.focus;
-    const badge = l.st === 'changed' ? tag('w', 'Changed since sign-off') : l.st === 'flag' ? tag('c', 'Flagged') : l.st === 'ok' ? tag('g', 'Signed off') : '';
-    return `${head}<div class="rv-line ${l.st} ${focus ? 'focus' : ''}" id="rv-${i}" onclick="cbFocusLine(${i})" style="--dwell:${CB_DWELL.ms}ms">
-      <span class="rv-n tnum">${l.n}</span>
-      <div class="rv-body"><div class="rv-label">${esc(l.label)}${badge}</div><div class="rv-value">${esc(l.value) || '<span class="muted">Empty</span>'}</div>
-        ${l.st === 'flag' && rv.note ? `<div class="rv-note">${ic('flag')}${esc(rv.note)}</div>` : ''}
-        ${focus && cb.flagging ? `<div class="rv-flag" onclick="event.stopPropagation()"><input class="ti" id="rvNote" placeholder="What needs to change?" onkeydown="if(event.key==='Enter')cbFlagSave(${i});if(event.key==='Escape'){event.stopPropagation();cbFlagCancel()}"><button class="btn sm press" onclick="cbFlagSave(${i})">Flag line</button><button class="btn sm ghost press" onclick="cbFlagCancel()">Cancel</button></div>` : ''}</div>
-      <div class="rv-act">${l.st === 'ok' ? `<button class="btn sm ghost press" onclick="event.stopPropagation();cbUnsign(${i})">Undo sign-off</button>`
-        : `<button class="btn sm press rv-sign" onclick="event.stopPropagation();cbSign(${i})"><span class="rv-fill"></span>${ic('check')} Sign off</button>`}
-        <button class="iconbtn sm press" title="Flag for changes" aria-label="Flag line ${l.n}" onclick="event.stopPropagation();cbFlag(${i})">${ic('flag')}</button>
-        <button class="iconbtn sm press" title="Edit this line" aria-label="Edit line ${l.n}" onclick="event.stopPropagation();cbEditLine(${i})">${ic('edit')}</button></div>
-    </div>`;
-  }).join('');
-}
-function cbReviewAfter(keep) {
-  cb.dwell = Date.now() + CB_DWELL.ms;
-  const el = document.getElementById('rv-' + cb.focus);
-  if (el) el.scrollIntoView({ block: 'center', behavior: keep ? 'auto' : 'smooth' });
-  if (cb.flagging) setTimeout(() => document.getElementById('rvNote')?.focus(), 30);
-}
-function cbReviewRefresh() { cbRerender(); }
-function cbFilter(btn, v) { slide(btn); cb.filter = v; cb.focus = 0; cb.flagging = false; swap('rvList', cbReviewList()); cbReviewAfter(); }
-function cbFocusLine(i) { if (cb.focus === i && !cb.flagging) return; cb.focus = i; cb.flagging = false; cbReviewRefresh(); cbReviewAfter(); }
-let cbNudgeAt = 0;
-function cbSign(i) {
-  if (i !== cb.focus) return cbFocusLine(i);
-  if (Date.now() < cb.dwell) {
-    const el = document.getElementById('rv-' + i); if (el) { el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
-    if (Date.now() - cbNudgeAt > 1600) { cbNudgeAt = Date.now(); toast('Read the line first · sign-off unlocks in a moment'); }
-    return;
-  }
-  const l = cbFiltered()[i]; if (!l) return;
-  cb.review[l.id] = { st: 'ok', sig: l.value };
-  if (cb.filter !== 'todo') cb.focus = i + 1;
-  cbReviewRefresh(); cbReviewAfter();
-  if (!cbProgress().left) notify({ tone: 'success', title: 'Every line is signed off', desc: cbBlocks().length ? `Fix ${cbBlocks().length} blocking issue${cbBlocks().length === 1 ? '' : 's'} to unlock submit.` : 'Submit is unlocked.', burst: true, duration: 5000 });
-}
-function cbUnsign(i) { const l = cbFiltered()[i]; delete cb.review[l.id]; cbReviewRefresh(); }
-function cbFlag(i) { cb.focus = i; cb.flagging = true; cbReviewRefresh(); cbReviewAfter(); }
-function cbFlagCancel() { cb.flagging = false; cbReviewRefresh(); }
-function cbFlagSave(i) {
-  const l = cbFiltered()[i], note = (document.getElementById('rvNote') || {}).value || '';
-  if (!note.trim()) { toast('Say what needs to change'); document.getElementById('rvNote')?.focus(); return; }
-  cb.review[l.id] = { st: 'flag', sig: l.value, note: note.trim() }; cb.flagging = false;
-  if (cb.filter !== 'todo' && cb.filter !== 'flag') cb.focus = i + 1;
-  cbReviewRefresh(); cbReviewAfter(); toast(`Flagged line ${l.n}`);
-}
-function cbEditLine(i) { const l = cbFiltered()[i]; cbJump(l.jump, { n: l.n, id: l.id }); }
-function cbBackToReview() {
-  const back = cb.fromReview; cb.fromReview = null; cb.flagging = false;
-  cb.stage = 'review'; cb.filter = 'todo';
-  const rows = cbFiltered(), k = back ? rows.findIndex(r => r.id === back.id) : -1;
-  cb.focus = k >= 0 ? k : 0; cbGo('review');
-}
-document.addEventListener('keydown', e => {
-  if (state.view !== 'build' || cb.stage !== 'review' || e.ctrlKey || e.metaKey || e.altKey) return;
-  if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) || !document.getElementById('dialog').hidden) return;
-  const k = e.key.toLowerCase(), n = cbFiltered().length;
-  if (k === 'a' || e.key === 'Enter') { e.preventDefault(); cbSign(cb.focus); }
-  else if (k === 'f') { e.preventDefault(); cbFlag(cb.focus); }
-  else if (k === 'e') { e.preventDefault(); cbEditLine(cb.focus); }
-  else if ((k === 'j' || e.key === 'ArrowDown') && cb.focus < n - 1) { e.preventDefault(); cbFocusLine(cb.focus + 1); }
-  else if ((k === 'k' || e.key === 'ArrowUp') && cb.focus > 0) { e.preventDefault(); cbFocusLine(cb.focus - 1); }
-});
-
+const CB_ATTEST = ['I looked through the whole course, not just the summary', 'Every source is current and each item cites the right one'];
 /* ---------- the locked submit ---------- */
 function cbTrySubmit() {
-  if (!cb.draft) return notify({ tone: 'warning', icon: 'lock', title: 'Nothing to submit yet', desc: 'Set the parameters and generate a draft first.' });
-  const pr = cbProgress(), blocks = cbBlocks(), todo = pr.todo + pr.changed;
-  if (pr.left || blocks.length) {
-    const why = [todo ? `${todo} line${todo === 1 ? '' : 's'} still need your sign-off` : '', pr.flag ? `${pr.flag} flagged line${pr.flag === 1 ? '' : 's'} need fixing` : '', blocks.length ? `${blocks.length} blocking issue${blocks.length === 1 ? '' : 's'}` : ''].filter(Boolean);
-    notify({ tone: 'warning', icon: 'lock', title: 'Submit is locked', desc: why.join(' · '), duration: 6000,
-      actions: [pr.left ? { label: 'Review lines', primary: true, run: () => { cb.visitedReview = true; cb.filter = todo ? 'todo' : 'flag'; cb.focus = 0; cbGo('review'); } } : null, blocks.length ? { label: 'See issues', run: () => cbShowIssues() } : null].filter(Boolean) });
+  if (!cb.draft) return notify({ tone: 'warning', icon: 'lock', title: 'Nothing to submit yet', desc: 'Add the documents and build the course first.' });
+  const blocks = cbBlocks();
+  if (blocks.length) {
+    notify({ tone: 'warning', icon: 'lock', title: 'Submit is locked', desc: `${plural(blocks.length, 'blocking item')} to fix first`, duration: 6000,
+      actions: [{ label: 'Walk me through it', primary: true, run: () => cbReviewOpen() }, { label: 'See the list', run: () => cbShowIssues() }] });
     const b = document.querySelector('#cbBar .btn.locked'); if (b) { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); }
     return;
   }
   cbSubmitDialog();
 }
 function cbSubmitDialog() {
-  const p = cb.params, items = cb.draft.annexes.flatMap(a => a.items), qs = items.reduce((s, it) => s + it.questions.length, 0), pr = cbProgress();
+  const p = cb.params, items = cb.draft.annexes.flatMap(a => a.items), qs = items.reduce((s, it) => s + it.questions.length, 0), L = cbLooked();
   openDialog(`Submit ${p.name}?`, `
     <div class="sub-warn">${ic('alert')}<span>This creates <b>${esc(p.code)}</b> for ${esc(p.section)} and sends ${qs} questions to the Test Bank. Students see it when enrollment opens, and pulling it back takes an S-3 request.</span></div>
-    <div class="bento sub-bento"><div><div class="tilelab">Annexes</div><div class="tileval tnum">${cb.draft.annexes.length}</div></div><div><div class="tilelab">Graded items</div><div class="tileval tnum">${items.length}</div></div><div><div class="tilelab">Questions</div><div class="tileval tnum">${qs}</div></div><div><div class="tilelab">Lines signed off</div><div class="tileval tnum">${pr.ok}</div></div></div>
-    <p class="sub-list">${p.weeks} weeks · ${p.hours} hours of instruction · starts ${fmtDate(p.start)} · ${p.students} students · ${p.refs.length} references</p>
+    <div class="bento sub-bento"><div><div class="tilelab">Annexes</div><div class="tileval tnum">${cb.draft.annexes.length}</div></div><div><div class="tilelab">Graded items</div><div class="tileval tnum">${items.length}</div></div><div><div class="tilelab">Questions</div><div class="tileval tnum">${qs}</div></div><div><div class="tilelab">Looked at</div><div class="tileval tnum">${L.total - L.left} <small>of ${L.total}</small></div></div></div>
+    <p class="sub-list">${p.weeks} weeks · ${p.hours} hours of instruction · starts ${fmtDate(p.start)} · ${p.students} students · ${plural(p.refs.length, 'source')}</p>
+    ${L.left ? `<div class="sub-warn">${ic('bolt')}<span>${plural(L.left, 'suggestion')} you haven't looked at yet. They don't block submitting, but they're worth a minute.</span></div>` : ''}
     <div class="fl"><span>Confirm each statement</span>${CB_ATTEST.map(t => `<label class="attest"><input type="checkbox" class="sub-chk" onchange="cbSubCheck()"><span>${t}</span></label>`).join('')}</div>
     <label class="fl"><span>Type the course code <code>${esc(p.code)}</code> to confirm</span><input class="ti" id="subCode" autocomplete="off" spellcheck="false" placeholder="${esc(p.code)}" oninput="cbSubCheck()"></label>`,
     `<button class="btn ghost press" onclick="closeDialog()">Not yet</button><button class="btn hold" id="holdBtn" disabled style="--hold:${CB_HOLD.ms}ms"><span class="hold-fill"></span><span class="hold-l">${ic('lock')} Hold to submit</span></button>`);
@@ -4783,16 +5100,16 @@ function cbCreateCourse() {
   COURSES.push(course);
   const qs = cb.draft.annexes.flatMap((a, i) => a.items.flatMap(it => it.questions.map(q => ({ course: id, annex: cbL(i), item: `${id}-${it.id}`, kind: q.kind, q: q.q, a: q.a, cite: cbRefLabel(cbRef(it.refs[0])), done: 'approved', new: true }))));
   REVQ.push(...qs);
-  cb.done = { id, qs: qs.length, items: course.annexes.reduce((s, a) => s + a.items.length, 0), lines: cbProgress().ok, at: new Date() };
+  cb.done = { id, qs: qs.length, items: course.annexes.reduce((s, a) => s + a.items.length, 0), looked: cbLooked().total - cbLooked().left, at: new Date() };
   closeDialog(); state.course.instructor = id; setView('build');
   notify({ tone: 'success', title: 'Course created', meta: p.code, desc: `${qs.length} questions sent to the Test Bank · ${cb.done.items} graded items with rubrics.`, burst: true, duration: 6000 });
 }
 function cbDoneView() {
   const c = courseById(cb.done.id), d = cb.done, first = c.annexes[0];
-  return `<div class="pagehead"><h1>Course Builder</h1><p>Submitted after a full line-by-line review.</p></div>
+  return `<div class="pagehead"><h1>Course Builder</h1><p>Built from your documents, checked, and submitted.</p></div>
   <section class="panel cb-done"><span class="qdone">${ic('check')}</span><div class="lead-k">Submitted at ${d.at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</div>
     <h2>${esc(c.name)} is ready</h2><p class="note">${esc(c.code)} · ${esc(c.section)} · starts ${fmtDate(first.start)} · ${c.students} students · enrollment code <code>${esc(c.enrollCode)}</code></p>
-    <div class="bento sub-bento"><div><div class="tilelab">Annexes</div><div class="tileval tnum">${c.annexes.length}</div></div><div><div class="tilelab">Graded items</div><div class="tileval tnum">${d.items}</div></div><div><div class="tilelab">Questions in the Test Bank</div><div class="tileval tnum">${d.qs}</div></div><div><div class="tilelab">Lines reviewed</div><div class="tileval tnum">${d.lines}</div></div></div>
+    <div class="bento sub-bento"><div><div class="tilelab">Annexes</div><div class="tileval tnum">${c.annexes.length}</div></div><div><div class="tilelab">Graded items</div><div class="tileval tnum">${d.items}</div></div><div><div class="tilelab">Questions in the Test Bank</div><div class="tileval tnum">${d.qs}</div></div><div><div class="tilelab">Checks cleared</div><div class="tileval tnum">${d.looked}</div></div></div>
     <div class="btnrow" style="justify-content:center"><button class="btn press" onclick="state.course.instructor='${c.id}';state.rev.course='${c.id}';state.rev.annex='A';setView('testbank')">${ic('review')} Open in the Test Bank</button>
       <button class="btn ghost press" onclick="goRubric('${c.id}','A','${first.items[0].id}')">${ic('rubric')} See the rubrics</button>
       <button class="btn ghost press" onclick="cbReset();setView('build')">${ic('plus')} Build another course</button></div>
@@ -4828,7 +5145,7 @@ function cbRefRow(r) {
   return `<div class="cb-ref ${r.status}" data-f="ref-${r.id}"><span class="kico ${r.status === 'current' ? 'exam' : 'quiz'}">${ic(r.source === 'uploaded' ? 'file' : 'book')}</span>
     ${lib ? `<span class="cwho cb-ref-t"><b>${esc(r.title)}</b><small>${esc(lib.type)}<span class="cb-ref-ed-m"> · ${esc(r.ed)}</span> · ${lib.pages} pages indexed${lib.rel ? ` · ${esc(lib.rel)}` : ''}</small></span><span class="cb-ref-ed tnum">${esc(r.ed)}</span>`
       : `<input class="ti" value="${esc(r.title)}" placeholder="Title" aria-label="Reference title" oninput="cbRefSet('${r.id}','title',this.value)"><input class="ti ed" value="${esc(r.ed)}" placeholder="Edition" aria-label="Edition" oninput="cbRefSet('${r.id}','ed',this.value)">`}
-    ${r.status === 'superseded' ? `<button class="btn sm press" onclick="cbRefUpdate('${r.id}')">Update to ${esc(r.update)}</button>` : tag('g', 'Current')}${src}${cbMk('ref.' + r.id)}
+    ${r.status === 'superseded' ? `<button class="btn sm press" onclick="cbRefUpdate('${r.id}')">Update to ${esc(r.update)}</button>` : tag('g', 'Current')}${src}
     <button class="iconbtn sm press" onclick="cbRefDel('${r.id}')" aria-label="Remove reference">${ic('trash')}</button></div>`;
 }
 /* the current edition may already be on the course: move the citations to it instead of keeping two copies */
@@ -4910,13 +5227,13 @@ function refPickCurrent(id) {
 }
 function refFoot() {
   const n = refLib.sel.size;
-  return `<span class="note dfoot-hint" style="margin-right:auto">${n ? `${plural(n, 'reference')} selected · each goes into the review queue` : 'Select the references to add'}</span><button class="btn ghost press" onclick="closeDialog()">Cancel</button><button class="btn press" onclick="refAddSelected()" ${n ? '' : 'disabled'}>${ic('plus')} Add ${n ? plural(n, 'reference') : 'references'}</button>`;
+  return `<span class="note dfoot-hint" style="margin-right:auto">${n ? `${plural(n, 'reference')} selected` : 'Select the references to add'}</span><button class="btn ghost press" onclick="closeDialog()">Cancel</button><button class="btn press" onclick="refAddSelected()" ${n ? '' : 'disabled'}>${ic('plus')} Add ${n ? plural(n, 'reference') : 'references'}</button>`;
 }
 function refAddSelected() {
   if (!refLib.sel.size) return;
   const added = cbAddRefs([...refLib.sel].map(libById), refLib.ctx);
   closeDialog(); cbRerender();
-  notify({ tone: 'success', title: `Added ${plural(added.length, 'reference')}`, desc: `${added.map(r => r.title).join(', ')}. ${cb.draft ? 'New lines are waiting in the review.' : ''}`, duration: 4200 });
+  notify({ tone: 'success', title: `Added ${plural(added.length, 'reference')}`, desc: `${added.map(r => r.title).join(', ')}. ${cb.draft ? 'It shows up under Course settings in the editor.' : ''}`, duration: 4200 });
   if (cb.stage === 'params') cbFocusField('ref-' + added[added.length - 1].id);
 }
 
@@ -5002,7 +5319,7 @@ function upRun() {
         setTimeout(() => {
           set(4); if (state.view === 'build') cbRerender();
           setBody(`<div class="up-done"><span class="qdone">${ic('check')}</span><span class="cwho"><b>${esc(ref.title)}</b><small>${plural(pages, 'page')} · ${passages} passages indexed · ${esc(m.rel)} · ${shared ? 'shared to the library' : 'kept with this course'}</small></span></div>
-            <p class="note">It's now a reference on ${esc(cb.params.code)}${ctx && ctx.item ? ` and cited by “${esc(cbFind(ctx.item)?.it.title || '')}”` : ''}. ${cb.draft ? 'Its line is waiting in the review.' : ''}</p>`);
+            <p class="note">It's now a reference on ${esc(cb.params.code)}${ctx && ctx.item ? ` and cited by “${esc(cbFind(ctx.item)?.it.title || '')}”` : ''}. ${cb.draft ? 'It shows up under Course settings in the editor.' : ''}</p>`);
           setFoot(`<button class="btn ghost press" onclick="openRefUpload(refUp.ctx)">${ic('upload')} Upload another</button><button class="btn press" onclick="closeDialog()">Done</button>`);
           notify({ tone: 'success', title: 'Reference uploaded', meta: ref.title, desc: `${passages} passages indexed${shared ? ' · shared to the library' : ''}`, duration: 4200 });
         }, 450);
@@ -6068,6 +6385,659 @@ document.addEventListener('keydown', e => {
   if ((k !== 'z' && k !== 'y') || /INPUT|TEXTAREA|SELECT/.test(ae.tagName) || ae.isContentEditable || !document.getElementById('dialog').hidden) return;
   e.preventDefault(); (k === 'y' || e.shiftKey) ? dkRedo() : dkUndo();
 });
+
+/* ============ Command view: cross-course rollups, trends, POI versions, and the brief ============
+   Everything here is derived from the same mock rosters, submissions and document versions the other
+   views use, so the numbers a commander sees match what an instructor sees in their own class. */
+const CMD = { period: 8, sort: 'risk', slides: ['readiness', 'courses', 'trends', 'versions'], building: false };
+const CMD_PERIODS = [[4, '4 weeks'], [8, '8 weeks'], [12, '12 weeks']];
+const RISK = { at: 70, watch: 80 };
+const pctRound = v => v == null ? null : Math.round(v);
+const cmdMean = xs => xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null;
+
+/* ---------- one row per course ---------- */
+function cmdCourse(c) {
+  const R = roster(c), subs = submissionsFor(c), items = allItems(c);
+  const scored = R.map(s => s.pct).filter(v => v != null);
+  const issued = items.filter(it => it.issued <= 0), done = items.filter(it => it.due < 0);
+  const late = subs.filter(x => x.late).length, ungraded = subs.filter(x => !x.graded).length;
+  const atRisk = R.filter(s => s.pct != null && s.pct < RISK.at);
+  const watch = R.filter(s => s.pct != null && s.pct >= RISK.at && s.pct < RISK.watch);
+  const missing = R.reduce((s, x) => s + x.missing, 0);
+  return {
+    c, id: c.id, name: c.name, short: c.short, code: c.code, instructor: c.instructor, section: c.section,
+    students: R.length, week: c.week, weeks: c.weeks, progress: Math.min(100, Math.round(c.week / c.weeks * 100)),
+    avg: cmdMean(scored), band: scored.length ? [Math.min(...scored), Math.max(...scored)] : [null, null],
+    pass: scored.length ? scored.filter(v => v >= RISK.at).length / scored.length * 100 : null,
+    atRisk: atRisk.length, watch: watch.length, names: atRisk.sort((x, y) => x.pct - y.pct).map(s => s.name),
+    items: items.length, issued: issued.length, graded: done.length, missing,
+    lateRate: subs.length ? late / subs.length * 100 : 0, ungraded,
+    poi: c.poi, docs: cmdDocState(c),
+  };
+}
+const cmdAll = () => COURSES.map(cmdCourse);
+function cmdSorted() {
+  const rows = cmdAll(), by = {
+    risk: (x, y) => y.atRisk - x.atRisk || (x.avg ?? 101) - (y.avg ?? 101),
+    avg: (x, y) => (y.avg ?? -1) - (x.avg ?? -1),
+    name: (x, y) => x.name.localeCompare(y.name),
+    size: (x, y) => y.students - x.students,
+    ungraded: (x, y) => y.ungraded - x.ungraded,
+  }[CMD.sort];
+  return rows.sort(by);
+}
+
+/* ---------- rollup across every course ---------- */
+function cmdRollup() {
+  const rows = cmdAll(), subs = allSubs();
+  const students = rows.reduce((s, r) => s + r.students, 0);
+  const scored = COURSES.flatMap(c => roster(c).map(s => s.pct)).filter(v => v != null);
+  const graded = subs.filter(x => x.graded), recent = subs.filter(x => x.at >= -7);
+  return {
+    courses: rows.length, students, avg: cmdMean(scored),
+    onTrack: scored.length ? scored.filter(v => v >= RISK.watch).length / scored.length * 100 : null,
+    atRisk: rows.reduce((s, r) => s + r.atRisk, 0), watch: rows.reduce((s, r) => s + r.watch, 0),
+    ungraded: subs.length - graded.length, thisWeek: recent.length,
+    lateRate: subs.length ? subs.filter(x => x.late).length / subs.length * 100 : 0,
+    missing: rows.reduce((s, r) => s + r.missing, 0),
+    poiCurrent: rows.filter(r => r.poi && r.poi.status === 'current').length,
+    unrevised: rows.reduce((s, r) => s + r.docs.unrevised, 0),
+  };
+}
+
+/* ---------- weekly trend, straight off the submission dates ---------- */
+function cmdTrend(weeks = CMD.period) {
+  const subs = allSubs(), out = [];
+  for (let w = weeks - 1; w >= 0; w--) {
+    const from = -(w + 1) * 7, to = -w * 7;
+    const inWeek = subs.filter(x => x.at > from && x.at <= to);
+    const scores = inWeek.filter(x => x.graded && x.score != null).map(x => x.score / x.it.pts * 100);
+    out.push({
+      label: w === 0 ? 'This week' : `${w}w ago`, short: w === 0 ? 'Now' : `-${w}w`,
+      submissions: inWeek.length, late: inWeek.filter(x => x.late).length,
+      lateRate: inWeek.length ? inWeek.filter(x => x.late).length / inWeek.length * 100 : 0,
+      avg: cmdMean(scores),
+    });
+  }
+  return out;
+}
+/* how the school behaves: when work lands, how fast it gets graded, who is slipping */
+function cmdBehavior() {
+  const subs = allSubs(), n = subs.length || 1;
+  const early = subs.filter(x => !x.late && x.it.due - x.at >= 2).length;
+  const onTime = subs.filter(x => !x.late && x.it.due - x.at < 2).length;
+  const late = subs.filter(x => x.late).length;
+  const graded = subs.filter(x => x.graded);
+  const waits = subs.filter(x => !x.graded).map(x => -x.at);
+  const trend = cmdTrend(Math.max(4, CMD.period));
+  const half = Math.ceil(trend.length / 2);
+  const firstAvg = cmdMean(trend.slice(0, half).map(t => t.avg).filter(v => v != null));
+  const lastAvg = cmdMean(trend.slice(half).map(t => t.avg).filter(v => v != null));
+  return {
+    timing: [{ label: 'Early', value: early / n * 100, tone: 'good' }, { label: 'On time', value: onTime / n * 100, tone: 'accent' }, { label: 'Late', value: late / n * 100, tone: 'crit' }],
+    lateRate: late / n * 100, gradedRate: graded.length / n * 100,
+    oldestWait: waits.length ? Math.max(...waits) : 0, medianWait: waits.length ? waits.sort((a, b) => a - b)[Math.floor(waits.length / 2)] : 0,
+    delta: firstAvg != null && lastAvg != null ? lastAvg - firstAvg : null,
+    slipping: cmdAll().flatMap(r => r.names.map(n2 => ({ name: n2, course: r.short }))).slice(0, 8),
+    byCourse: cmdAll().map(r => ({ label: r.short, value: r.lateRate, note: `${Math.round(r.lateRate)}% late` })),
+  };
+}
+/* mastery by topic, pooled across every course that teaches it */
+function cmdTopics() {
+  const out = [];
+  COURSES.forEach(c => c.topics.forEach(([t, v]) => { if (v > 0) out.push({ topic: t, v, course: c.short }); }));
+  return out.sort((a, b) => a.v - b.v).slice(0, 6);
+}
+
+/* ---------- which POI and which document versions each class is running ---------- */
+function cmdDocState(c) {
+  const items = allItems(c);
+  let rubricV = 0, sheetV = 0, unrevised = 0, recent = 0;
+  items.forEach(it => {
+    const r = docOf('rubric', it.id), s = docOf('sheet', it.id);
+    if (!r || !s) return;
+    const rv = docCur(r), sv = docCur(s);
+    rubricV = Math.max(rubricV, rv.n); sheetV = Math.max(sheetV, sv.n);
+    if (rv.by !== DOC_ME && rv.n === 1) unrevised++;
+    if (rv.at >= -30 || sv.at >= -30) recent++;
+  });
+  return { items: items.length, rubricV, sheetV, unrevised, recent };
+}
+function cmdVersions() {
+  return cmdAll().map(r => {
+    const p = r.poi || {};
+    return {
+      ...r, poiLabel: p.id ? `${p.id} · ${p.v}` : 'Not recorded', poiStatus: p.status || 'unknown',
+      approved: p.approved, review: p.review, owner: p.owner,
+      rubrics: r.docs.rubricV, sheets: r.docs.sheetV, unrevised: r.docs.unrevised, touched: r.docs.recent,
+    };
+  }).sort((x, y) => (x.poiStatus === 'superseded' ? -1 : 1) - (y.poiStatus === 'superseded' ? -1 : 1) || y.unrevised - x.unrevised);
+}
+const cmdDrift = () => cmdVersions().filter(v => v.poiStatus === 'superseded' || v.unrevised > 0);
+
+/* ---------- the brief: at most five slides, each one a small model both the screen and the .pptx render ---------- */
+const CMD_TONE = { good: 'good', warn: 'warn', crit: 'crit', accent: 'accent', flat: 'flat' };
+const toneFrom = v => v == null ? 'flat' : v >= RISK.watch ? 'good' : v >= RISK.at ? 'warn' : 'crit';
+const CMD_SLIDES = [
+  { id: 'readiness', name: 'Readiness snapshot', note: 'Headline numbers and how each course sits', build: slideReadiness },
+  { id: 'courses', name: 'Course comparison', note: 'Every course side by side', build: slideCourses },
+  { id: 'trends', name: 'Trends', note: 'Where the last weeks are heading', build: slideTrends },
+  { id: 'behavior', name: 'Student behaviour', note: 'Submission timing and who is slipping', build: slideBehavior },
+  { id: 'versions', name: 'POI and versions', note: 'What each class is running', build: slideVersions },
+  { id: 'actions', name: 'At risk and actions', note: 'Names, causes and the next step', build: slideActions },
+];
+function slideReadiness() {
+  const r = cmdRollup(), rows = cmdSorted().slice(0, 4);
+  return {
+    title: 'Readiness snapshot', sub: `${r.courses} courses · ${r.students} students · ${fmtDate(0)}`,
+    blocks: [
+      { k: 'kpi', items: [
+        { label: 'Average mastery', value: `${pctRound(r.avg)}%`, note: `${pctRound(r.onTrack)}% at or above ${RISK.watch}%`, tone: toneFrom(r.avg) },
+        { label: 'Students at risk', value: String(r.atRisk), note: `${r.watch} more on watch`, tone: r.atRisk ? 'crit' : 'good' },
+        { label: 'Work waiting on grading', value: String(r.ungraded), note: `${r.thisWeek} submitted this week`, tone: r.ungraded > 60 ? 'warn' : 'accent' },
+        { label: 'Late submissions', value: `${pctRound(r.lateRate)}%`, note: `${r.missing} pieces never turned in`, tone: r.lateRate > 15 ? 'warn' : 'good' },
+      ] },
+      { k: 'bars', title: 'Average by course', unit: '%', max: 100,
+        series: rows.map(x => ({ label: x.short, value: x.avg == null ? 0 : Math.round(x.avg), note: `${x.students} students`, tone: toneFrom(x.avg) })) },
+    ],
+  };
+}
+function slideCourses() {
+  const all = cmdSorted(), rows = all.slice(0, 7);
+  return {
+    title: 'Course comparison', sub: `Sorted by ${{ risk: 'students at risk', avg: 'average', name: 'name', size: 'class size', ungraded: 'work waiting' }[CMD.sort]}${all.length > rows.length ? ` · top ${rows.length} of ${all.length}` : ''}`,
+    blocks: [{ k: 'table', cols: ['Course', 'Students', 'Week', 'Average', 'At risk', 'Late', 'Waiting'],
+      rows: rows.map(x => [`${x.short} · ${x.code}`, String(x.students), `${x.week} of ${x.weeks}`, x.avg == null ? '—' : `${pctRound(x.avg)}%`, String(x.atRisk), `${pctRound(x.lateRate)}%`, String(x.ungraded)]),
+      tones: rows.map(x => toneFrom(x.avg)) }],
+  };
+}
+function slideTrends() {
+  const t = cmdTrend(), b = cmdBehavior(), topics = cmdTopics().slice(0, 3);
+  return {
+    title: 'Trends', sub: `Last ${CMD.period} weeks · ${b.delta == null ? 'flat' : `${b.delta >= 0 ? '+' : ''}${b.delta.toFixed(1)} pts on average`}`,
+    blocks: [
+      { k: 'line', title: 'Average score by week', unit: '%', points: t.map(x => ({ label: x.short, value: x.avg == null ? null : Math.round(x.avg) })) },
+      { k: 'bars', title: 'Weakest topics across the school', unit: '%', max: 100,
+        series: topics.map(x => ({ label: x.topic, value: x.v, note: x.course, tone: toneFrom(x.v) })) },
+    ],
+  };
+}
+function slideBehavior() {
+  const b = cmdBehavior();
+  return {
+    title: 'Student behaviour', sub: `${pctRound(b.lateRate)}% of work lands late · oldest ungraded piece is ${b.oldestWait} days old`,
+    blocks: [
+      { k: 'donut', title: 'When work is turned in', parts: b.timing.map(x => ({ label: x.label, value: Math.round(x.value), tone: x.tone })) },
+      { k: 'bars', title: 'Late rate by course', unit: '%', max: 100,
+        series: b.byCourse.slice(0, 4).map(x => ({ label: x.label, value: Math.round(x.value), tone: x.value > 20 ? 'crit' : x.value > 10 ? 'warn' : 'good' })) },
+    ],
+  };
+}
+function slideVersions() {
+  const all = cmdVersions(), v = all.slice(0, 5), drift = cmdDrift();
+  return {
+    title: 'POI and versions', sub: `${drift.length ? `${drift.length} course${drift.length === 1 ? ' needs' : 's need'} attention` : 'Every course is on a current POI'}${all.length > v.length ? ` · top ${v.length} of ${all.length}` : ''}`,
+    blocks: [
+      { k: 'table', cols: ['Course', 'POI', 'Status', 'Rubrics', 'Sheets', 'Never revised'],
+        rows: v.map(x => [x.short, x.poiLabel, x.poiStatus === 'current' ? 'Current' : x.poiStatus === 'superseded' ? 'Superseded' : 'Draft', `v${x.rubrics}`, `v${x.sheets}`, String(x.unrevised)]),
+        tones: v.map(x => x.poiStatus === 'superseded' ? 'crit' : x.unrevised ? 'warn' : 'good') },
+      { k: 'notes', title: 'What that means', items: drift.length
+        ? drift.slice(0, 3).map(x => x.poiStatus === 'superseded' ? `${x.short} is teaching ${x.poiLabel}, which was superseded.` : `${x.short} has ${x.unrevised} item${x.unrevised === 1 ? '' : 's'} still on the generated draft, never revised by an instructor.`)
+        : ['Every class is on a current POI, and each rubric has been revised at least once since it was generated.'] },
+    ],
+  };
+}
+function slideActions() {
+  const rows = cmdSorted().filter(x => x.atRisk).slice(0, 5), b = cmdBehavior();
+  return {
+    title: 'At risk and actions', sub: `${rows.reduce((s, x) => s + x.atRisk, 0)} students below ${RISK.at}%`,
+    blocks: [
+      { k: 'table', cols: ['Course', 'Below 70%', 'Who', 'Average'],
+        rows: rows.map(x => [x.short, String(x.atRisk), x.names.slice(0, 3).join(', ') + (x.names.length > 3 ? ` +${x.names.length - 3}` : ''), `${pctRound(x.avg)}%`]),
+        tones: rows.map(() => 'crit') },
+      { k: 'notes', title: 'Next step', items: [
+        rows.length ? `Remediation for ${rows[0].names.slice(0, 2).join(' and ')} in ${rows[0].short}: re-teach the weakest topic, then re-check.` : 'No student is below 70%.',
+        `${Math.round(b.lateRate)}% of work lands late; the oldest ungraded piece is ${b.oldestWait} days old.`,
+        'Instructors hold the detail in Class Progress; this brief is the school-level picture.',
+      ] },
+    ],
+  };
+}
+const cmdSlide = id => CMD_SLIDES.find(s => s.id === id);
+function cmdDeck() {
+  return CMD.slides.slice(0, 5).map(id => { const s = cmdSlide(id); return s ? { id, ...s.build() } : null; }).filter(Boolean);
+}
+const cmdDeckName = () => `SchoolCircle_command_brief_${new Date().toISOString().slice(0, 10)}`;
+
+/* ============ .pptx writer: a real PowerPoint file, built in the page ============
+   Store-only ZIP + minimal OOXML. Charts are native shapes (rectangles, paths, pie wedges),
+   so every slide stays editable in PowerPoint or Google Slides. Design grid is 1280x720 px;
+   1 px = 9525 EMU, which makes the deck exactly 13.333 x 7.5 in. */
+const EMU = 9525, SLIDE_W = 1280, SLIDE_H = 720;
+const PX = v => Math.round(v * EMU);
+const CRC_T = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+const utf8 = s => new TextEncoder().encode(s);
+
+/* store-only ZIP (no compression: nothing here is big, and it keeps the writer honest) */
+function zipStore(files) {
+  const parts = [], dir = [];
+  let off = 0;
+  const u16 = v => [v & 255, (v >> 8) & 255], u32 = v => [v & 255, (v >> 8) & 255, (v >> 16) & 255, (v >>> 24) & 255];
+  files.forEach(f => {
+    const name = utf8(f.name), data = f.data, crc = crc32(data);
+    const local = [...u32(0x04034b50), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0x21), ...u32(crc), ...u32(data.length), ...u32(data.length), ...u16(name.length), ...u16(0)];
+    parts.push(new Uint8Array(local), name, data);
+    dir.push({ name, crc, size: data.length, off });
+    off += local.length + name.length + data.length;
+  });
+  const cd = [];
+  dir.forEach(e => {
+    cd.push(new Uint8Array([...u32(0x02014b50), ...u16(20), ...u16(20), ...u16(0), ...u16(0), ...u16(0), ...u16(0x21), ...u32(e.crc), ...u32(e.size), ...u32(e.size),
+      ...u16(e.name.length), ...u16(0), ...u16(0), ...u16(0), ...u16(0), ...u32(0), ...u32(e.off)]), e.name);
+  });
+  const cdSize = cd.reduce((s, x) => s + x.length, 0);
+  const end = new Uint8Array([...u32(0x06054b50), ...u16(0), ...u16(0), ...u16(dir.length), ...u16(dir.length), ...u32(cdSize), ...u32(off), ...u16(0)]);
+  const all = [...parts, ...cd, end], total = all.reduce((s, x) => s + x.length, 0);
+  const out = new Uint8Array(total);
+  let p = 0; all.forEach(x => { out.set(x, p); p += x.length; });
+  return out;
+}
+
+/* ---------- shapes ---------- */
+const xesc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }[c]));
+const hex = c => String(c).replace('#', '').toUpperCase();
+let shapeId = 1;
+const xfrm = (x, y, w, h) => `<a:xfrm><a:off x="${PX(x)}" y="${PX(y)}"/><a:ext cx="${PX(w)}" cy="${PX(h)}"/></a:xfrm>`;
+function runs(text, o) {
+  const lines = String(text).split('\n');
+  return lines.map(ln => `<a:p><a:pPr algn="${o.align || 'l'}"/><a:r><a:rPr lang="en-US" sz="${Math.round((o.size || 12) * 100)}" b="${o.bold ? 1 : 0}" dirty="0"><a:solidFill><a:srgbClr val="${hex(o.color || '#1d1d1f')}"/></a:solidFill><a:latin typeface="Segoe UI"/></a:rPr><a:t>${xesc(ln)}</a:t></a:r></a:p>`).join('');
+}
+function spText(x, y, w, h, text, o = {}) {
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${++shapeId}" name="t${shapeId}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
+    <p:spPr>${xfrm(x, y, w, h)}<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>
+    <p:txBody><a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0" anchor="${o.anchor || 't'}"><a:spAutoFit/></a:bodyPr><a:lstStyle/>${runs(text, o)}</p:txBody></p:sp>`;
+}
+function spRect(x, y, w, h, o = {}) {
+  const fill = o.fill ? `<a:solidFill><a:srgbClr val="${hex(o.fill)}"${o.alpha != null ? `><a:alpha val="${Math.round(o.alpha * 1000)}"/></a:srgbClr` : ''}/></a:solidFill>` : '<a:noFill/>';
+  const line = o.stroke ? `<a:ln w="${Math.round((o.lw || 1) * EMU)}"><a:solidFill><a:srgbClr val="${hex(o.stroke)}"/></a:solidFill></a:ln>` : '<a:ln><a:noFill/></a:ln>';
+  const geom = o.round ? `<a:prstGeom prst="roundRect"><a:avLst><a:gd name="adj" fmla="val ${o.round}"/></a:avLst></a:prstGeom>` : '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom>';
+  const body = o.text != null ? `<p:txBody><a:bodyPr wrap="square" lIns="${PX(o.pad || 0)}" tIns="${PX(o.pad || 0)}" rIns="${PX(o.pad || 0)}" bIns="${PX(o.pad || 0)}" anchor="${o.anchor || 'ctr'}"/><a:lstStyle/>${runs(o.text, o)}</p:txBody>`
+    : '<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>';
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${++shapeId}" name="r${shapeId}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xfrm(x, y, w, h)}${geom}${fill}${line}</p:spPr>${body}</p:sp>`;
+}
+/* polyline through points, as a freeform shape */
+function spPath(x, y, w, h, pts, o = {}) {
+  const W = PX(w), H = PX(h);
+  const d = pts.map((p, i) => `<a:${i ? 'lnTo' : 'moveTo'}><a:pt x="${Math.round((p[0] - x) * EMU)}" y="${Math.round((p[1] - y) * EMU)}"/></a:${i ? 'lnTo' : 'moveTo'}>`).join('');
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${++shapeId}" name="p${shapeId}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+    <p:spPr>${xfrm(x, y, w, h)}<a:custGeom><a:avLst/><a:gdLst/><a:ahLst/><a:cxnLst/><a:rect l="0" t="0" r="r" b="b"/><a:pathLst><a:path w="${W}" h="${H}">${d}</a:path></a:pathLst></a:custGeom>
+    <a:noFill/><a:ln w="${Math.round((o.lw || 3) * EMU)}" cap="rnd"><a:solidFill><a:srgbClr val="${hex(o.stroke || '#b3122e')}"/></a:solidFill><a:round/></a:ln></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`;
+}
+function spPie(x, y, size, from, to, color) {   // angles in degrees, 0 = 3 o'clock, clockwise
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${++shapeId}" name="pie${shapeId}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+    <p:spPr>${xfrm(x, y, size, size)}<a:prstGeom prst="pie"><a:avLst><a:gd name="adj1" fmla="val ${Math.round(from * 60000)}"/><a:gd name="adj2" fmla="val ${Math.round(to * 60000)}"/></a:avLst></a:prstGeom>
+    <a:solidFill><a:srgbClr val="${hex(color)}"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`;
+}
+function spEllipse(x, y, w, h, fill) {
+  return `<p:sp><p:nvSpPr><p:cNvPr id="${++shapeId}" name="e${shapeId}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr>${xfrm(x, y, w, h)}<a:prstGeom prst="ellipse"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="${hex(fill)}"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`;
+}
+
+/* ---------- painting one slide model onto a slide ---------- */
+const DECK = { ink: '#1d1d1f', dim: '#5d5b61', faint: '#8a878f', grid: '#dcdade', panel: '#f6f5f6', white: '#ffffff',
+  good: '#1e7a3c', warn: '#b0731a', crit: '#c2410c', accent: '#b3122e', flat: '#8a878f' };
+const deckTone = t => DECK[t] || DECK.accent;
+function paintBlock(b, x, y, w, h) {
+  const out = [];
+  const head = (title, dy = 0) => { if (title) out.push(spText(x, y + dy, w, 22, title, { size: 12, bold: true, color: DECK.dim })); return title ? 28 : 0; };
+  if (b.k === 'kpi') {
+    const n = b.items.length, gap = 16, cw = (w - gap * (n - 1)) / n;
+    b.items.forEach((it, i) => {
+      const cx = x + i * (cw + gap);
+      out.push(spRect(cx, y, cw, h, { fill: DECK.panel, round: 8000 }));
+      out.push(spRect(cx, y, 6, h, { fill: deckTone(it.tone) }));
+      out.push(spText(cx + 22, y + 20, cw - 40, 20, it.label, { size: 11, color: DECK.dim }));
+      out.push(spText(cx + 22, y + 44, cw - 40, 46, String(it.value), { size: 30, bold: true, color: deckTone(it.tone) }));
+      if (it.note) out.push(spText(cx + 22, y + 96, cw - 40, 34, it.note, { size: 10, color: DECK.faint }));
+    });
+    return out;
+  }
+  if (b.k === 'bars') {
+    const top = y + head(b.title), rows = b.series.length, rh = Math.min(38, (h - (top - y)) / Math.max(1, rows));
+    const labW = 190, valW = 54, barW = w - labW - valW;
+    b.series.forEach((s, i) => {
+      const by = top + i * rh, max = b.max || Math.max(...b.series.map(v => v.value), 1);
+      out.push(spText(x, by + 6, labW - 12, 18, s.label, { size: 10, color: DECK.ink }));
+      out.push(spRect(x + labW, by + 7, barW, rh - 18, { fill: DECK.grid, round: 12000 }));
+      out.push(spRect(x + labW, by + 7, Math.max(3, barW * Math.min(1, s.value / max)), rh - 18, { fill: deckTone(s.tone), round: 12000 }));
+      out.push(spText(x + labW + barW + 10, by + 6, valW - 10, 18, `${s.value}${b.unit || ''}`, { size: 10, bold: true, color: DECK.ink }));
+    });
+    return out;
+  }
+  if (b.k === 'line') {
+    const top = y + head(b.title), ch = h - (top - y) - 26, pts = b.points.filter(p => p.value != null);
+    const lo = Math.max(0, Math.min(...pts.map(p => p.value)) - 6), hi = Math.min(100, Math.max(...pts.map(p => p.value)) + 6);
+    const px = i => x + 40 + (w - 60) * (i / Math.max(1, b.points.length - 1));
+    const py = v => top + ch - (v - lo) / Math.max(1, hi - lo) * ch;
+    out.push(spRect(x + 40, top, w - 60, ch, { fill: DECK.panel }));
+    [lo, (lo + hi) / 2, hi].forEach(v => { out.push(spRect(x + 40, py(v), w - 60, 1, { fill: DECK.grid })); out.push(spText(x, py(v) - 7, 34, 14, `${Math.round(v)}${b.unit || ''}`, { size: 9, color: DECK.faint, align: 'r' })); });
+    const line = b.points.map((p, i) => p.value == null ? null : [px(i), py(p.value)]).filter(Boolean);
+    if (line.length > 1) out.push(spPath(x + 40, top, w - 60, ch, line, { stroke: DECK.accent, lw: 3 }));
+    line.forEach(p => out.push(spEllipse(p[0] - 4, p[1] - 4, 8, 8, DECK.accent)));
+    b.points.forEach((p, i) => out.push(spText(px(i) - 26, top + ch + 6, 52, 14, p.label, { size: 9, color: DECK.faint, align: 'ctr' })));
+    return out;
+  }
+  if (b.k === 'table') {
+    const top = y + head(b.title), cols = b.cols.length, rows = b.rows.length;
+    const rh = Math.min(34, (h - (top - y) - 30) / Math.max(1, rows)), cw = w / cols;
+    out.push(spRect(x, top, w, 28, { fill: DECK.panel }));
+    b.cols.forEach((c, i) => out.push(spText(x + i * cw + 10, top + 8, cw - 14, 16, c, { size: 10, bold: true, color: DECK.dim })));
+    b.rows.forEach((r, ri) => {
+      const ry = top + 28 + ri * rh;
+      out.push(spRect(x, ry + rh - 1, w, 1, { fill: DECK.grid }));
+      if (b.tones && b.tones[ri]) out.push(spRect(x, ry + 7, 4, rh - 14, { fill: deckTone(b.tones[ri]) }));
+      r.forEach((cell, ci) => out.push(spText(x + ci * cw + 10, ry + (rh - 16) / 2, cw - 14, 16, cell, { size: 10, bold: ci === 0, color: ci === 0 ? DECK.ink : DECK.dim })));
+    });
+    return out;
+  }
+  if (b.k === 'donut') {
+    const top = y + head(b.title), size = Math.min(h - (top - y), 190), cx = x, cy = top;
+    let a = -90;
+    const total = b.parts.reduce((s, p) => s + p.value, 0) || 1;
+    b.parts.forEach(p => { const sweep = p.value / total * 360; if (sweep > .5) out.push(spPie(cx, cy, size, a, a + sweep, deckTone(p.tone))); a += sweep; });
+    out.push(spEllipse(cx + size * .3, cy + size * .3, size * .4, size * .4, DECK.white));
+    b.parts.forEach((p, i) => {
+      const ly = top + 14 + i * 34;
+      out.push(spRect(cx + size + 26, ly, 12, 12, { fill: deckTone(p.tone), round: 30000 }));
+      out.push(spText(cx + size + 46, ly - 3, w - size - 70, 18, `${p.label} · ${p.value}%`, { size: 11, color: DECK.ink }));
+    });
+    return out;
+  }
+  if (b.k === 'notes') {
+    const top = y + head(b.title);
+    b.items.forEach((t, i) => {
+      const ly = top + i * 42;
+      out.push(spRect(x, ly + 6, 8, 8, { fill: DECK.accent, round: 30000 }));
+      out.push(spText(x + 20, ly, w - 24, 38, t, { size: 11, color: DECK.ink }));
+    });
+    return out;
+  }
+  return out;
+}
+function slideXml(slide, i, total, accent) {
+  shapeId = 1;
+  DECK.accent = accent || '#b3122e';
+  const shapes = [
+    spRect(0, 0, SLIDE_W, SLIDE_H, { fill: DECK.white }),
+    spRect(64, 52, 6, 40, { fill: DECK.accent }),
+    spText(84, 48, SLIDE_W - 200, 44, slide.title, { size: 26, bold: true, color: DECK.ink }),
+    spText(84, 92, SLIDE_W - 200, 24, slide.sub || '', { size: 12, color: DECK.dim }),
+    spRect(64, 140, SLIDE_W - 128, 1, { fill: DECK.grid }),
+    spText(64, SLIDE_H - 46, 520, 18, 'SchoolCircle · command brief · mock data', { size: 9, color: DECK.faint }),
+    spText(SLIDE_W - 200, SLIDE_H - 46, 136, 18, `${i + 1} of ${total}`, { size: 9, color: DECK.faint, align: 'r' }),
+  ];
+  const top = 170, bottom = SLIDE_H - 70, gap = 26, blocks = slide.blocks.length;
+  const hEach = (bottom - top - gap * (blocks - 1)) / Math.max(1, blocks);
+  slide.blocks.forEach((b, k) => shapes.push(...paintBlock(b, 64, top + k * (hEach + gap), SLIDE_W - 128, b.k === 'kpi' ? Math.min(hEach, 150) : hEach)));
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+<p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+${shapes.join('\n')}
+</p:spTree></p:cSld><p:clrMapOvr><a:overrideClrMapping bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/></p:clrMapOvr></p:sld>`;
+}
+
+/* ---------- the package ---------- */
+const REL = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+const THEME_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="SchoolCircle"><a:themeElements>
+<a:clrScheme name="SchoolCircle"><a:dk1><a:srgbClr val="1D1D1F"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="5D5B61"/></a:dk2><a:lt2><a:srgbClr val="F6F5F6"/></a:lt2><a:accent1><a:srgbClr val="B3122E"/></a:accent1><a:accent2><a:srgbClr val="1E7A3C"/></a:accent2><a:accent3><a:srgbClr val="B0731A"/></a:accent3><a:accent4><a:srgbClr val="C2410C"/></a:accent4><a:accent5><a:srgbClr val="2555C7"/></a:accent5><a:accent6><a:srgbClr val="8A878F"/></a:accent6><a:hlink><a:srgbClr val="B3122E"/></a:hlink><a:folHlink><a:srgbClr val="8A878F"/></a:folHlink></a:clrScheme>
+<a:fontScheme name="SchoolCircle"><a:majorFont><a:latin typeface="Segoe UI"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont><a:minorFont><a:latin typeface="Segoe UI"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>
+<a:fmtScheme name="SchoolCircle"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>
+<a:lnStyleLst><a:ln w="9525"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="19050"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="28575"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>
+<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>
+<a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme>
+</a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/></a:theme>`;
+const EMPTY_TREE = `<p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld>`;
+const MASTER_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${REL}" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+${EMPTY_TREE}<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>`;
+const LAYOUT_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${REL}" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1">
+${EMPTY_TREE}<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
+function pptxBuild(slides, accent) {
+  const n = slides.length, files = [];
+  const add = (name, xml) => files.push({ name, data: utf8(xml) });
+  add('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+${slides.map((_, i) => `<Override PartName="/ppt/slides/slide${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('')}</Types>`);
+  add('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/officeDocument" Target="ppt/presentation.xml"/></Relationships>`);
+  add('ppt/presentation.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${REL}" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" saveSubsetFonts="1">
+<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst>
+<p:sldIdLst>${slides.map((_, i) => `<p:sldId id="${256 + i}" r:id="rId${i + 2}"/>`).join('')}</p:sldIdLst>
+<p:sldSz cx="${PX(SLIDE_W)}" cy="${PX(SLIDE_H)}"/><p:notesSz cx="${PX(SLIDE_H)}" cy="${PX(SLIDE_W)}"/></p:presentation>`);
+  add('ppt/_rels/presentation.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+${slides.map((_, i) => `<Relationship Id="rId${i + 2}" Type="${REL}/slide" Target="slides/slide${i + 1}.xml"/>`).join('')}
+<Relationship Id="rId${n + 2}" Type="${REL}/theme" Target="theme/theme1.xml"/></Relationships>`);
+  add('ppt/slideMasters/slideMaster1.xml', MASTER_XML);
+  add('ppt/slideMasters/_rels/slideMaster1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/><Relationship Id="rId2" Type="${REL}/theme" Target="../theme/theme1.xml"/></Relationships>`);
+  add('ppt/slideLayouts/slideLayout1.xml', LAYOUT_XML);
+  add('ppt/slideLayouts/_rels/slideLayout1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`);
+  add('ppt/theme/theme1.xml', THEME_XML);
+  slides.forEach((s, i) => {
+    add(`ppt/slides/slide${i + 1}.xml`, slideXml(s, i, n, accent));
+    add(`ppt/slides/_rels/slide${i + 1}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${REL}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`);
+  });
+  return zipStore(files);
+}
+function saveBytes(bytes, filename, mime) {
+  const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+  const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+function pptxDownload(slides, name, accent) {
+  const bytes = pptxBuild(slides, accent);
+  window.__lastPptx = bytes;
+  saveBytes(bytes, `${name}.pptx`, 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+  return bytes.length;
+}
+
+/* ============ Command view: school-level readiness, trends, POI versions, and the brief ============ */
+const cmdPct = v => v == null ? '—' : `${Math.round(v)}%`;
+const cmdToneVar = t => ({ good: 'var(--p-good)', warn: 'var(--p-warning)', crit: 'var(--p-critical)', accent: 'var(--p-accent)', flat: 'var(--p-faint)' }[t] || 'var(--p-accent)');
+const cmdAccent = () => (getComputedStyle(document.documentElement).getPropertyValue('--p-accent').trim() || '#b3122e');
+function cmdOpen(id, view = 'progress') { state.course.instructor = id; setRole('instructor'); setView(view); }
+
+/* ---------- small charts, the same shapes the slides use ---------- */
+function cmdBars(series, max = 100, unit = '%') {
+  return `<div class="cm-bars">${series.map(s => `<div class="cm-bar"><span class="cm-bl" title="${esc(s.label)}">${esc(s.label)}</span>
+    <span class="cm-bt"><i style="width:${Math.max(2, Math.min(100, s.value / max * 100))}%;background:${cmdToneVar(s.tone)}"></i></span>
+    <b class="tnum">${s.value}${unit}</b>${s.note ? `<small>${esc(s.note)}</small>` : ''}</div>`).join('')}</div>`;
+}
+function cmdLine(points, unit = '%') {
+  const vals = points.filter(p => p.value != null).map(p => p.value);
+  if (vals.length < 2) return `<p class="note">Not enough graded work in this period yet.</p>`;
+  const lo = Math.max(0, Math.min(...vals) - 6), hi = Math.min(100, Math.max(...vals) + 6), W = 100, H = 40;
+  const px = i => points.length === 1 ? 0 : i / (points.length - 1) * W;
+  const py = v => H - (v - lo) / Math.max(1, hi - lo) * H;
+  const pts = points.map((p, i) => p.value == null ? null : [px(i), py(p.value)]).filter(Boolean);
+  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(' ');
+  return `<div class="cm-line"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Average score by week">
+      <path d="${d} L${pts[pts.length - 1][0].toFixed(2)} ${H} L${pts[0][0].toFixed(2)} ${H} Z" fill="var(--p-accent-tint)"/>
+      <path d="${d}" fill="none" stroke="var(--p-accent)" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linejoin="round"/>
+      ${pts.map(p => `<circle cx="${p[0].toFixed(2)}" cy="${p[1].toFixed(2)}" r="1.6" fill="var(--p-accent)" vector-effect="non-scaling-stroke"/>`).join('')}</svg>
+    <div class="cm-axis"><span>${Math.round(hi)}${unit}</span><span>${Math.round(lo)}${unit}</span></div>
+    <div class="cm-ticks">${points.map(p => `<span>${esc(p.label)}</span>`).join('')}</div></div>`;
+}
+function cmdDonut(parts) {
+  const total = parts.reduce((s, p) => s + p.value, 0) || 1;
+  let a = 0;
+  const stops = parts.map(p => { const from = a / total * 100; a += p.value; return `${cmdToneVar(p.tone)} ${from.toFixed(1)}% ${(a / total * 100).toFixed(1)}%`; }).join(',');
+  return `<div class="cm-donut"><span class="cm-dring" style="background:conic-gradient(${stops})"><i></i></span>
+    <div class="cm-dleg">${parts.map(p => `<span><i style="background:${cmdToneVar(p.tone)}"></i>${esc(p.label)}<b class="tnum">${p.value}%</b></span>`).join('')}</div></div>`;
+}
+
+/* ---------- 1 · readiness ---------- */
+V.cdash = () => {
+  const r = cmdRollup(), rows = cmdSorted(), t = cmdTrend(), b = cmdBehavior(), topics = cmdTopics();
+  const kpi = (lab, val, note, tone) => `<div><div class="tilelab">${lab}</div><div class="tileval tnum" style="color:${cmdToneVar(tone)}">${val}</div><div class="note">${note}</div></div>`;
+  return `<div class="pagehead"><h1>Readiness</h1><p>Every course the schoolhouse is running, from the top. The numbers come from the same submissions and grades the instructors work in. Powered by <b>Sextant</b>.</p></div>
+  <div class="bento cm-bento">
+    ${kpi('Average mastery', cmdPct(r.avg), `${cmdPct(r.onTrack)} at or above 80%`, toneFrom(r.avg))}
+    ${kpi('Students at risk', r.atRisk, `${r.watch} more on watch`, r.atRisk ? 'crit' : 'good')}
+    ${kpi('Waiting on grading', r.ungraded, `${r.thisWeek} submitted this week`, r.ungraded > 60 ? 'warn' : 'accent')}
+    ${kpi('Late submissions', cmdPct(r.lateRate), `${r.missing} never turned in`, r.lateRate > 15 ? 'warn' : 'good')}
+  </div>
+  <div class="cm-grid">
+    <section class="panel"><div class="cb-sec-h"><h3>Average by course</h3><button class="linkbtn" onclick="setView('ccourses')">All courses ${ic('arrow')}</button></div>
+      ${cmdBars(rows.slice(0, 6).map(x => ({ label: x.short, value: x.avg == null ? 0 : Math.round(x.avg), note: `${x.students} students · week ${x.week} of ${x.weeks}`, tone: toneFrom(x.avg) })))}</section>
+    <section class="panel"><div class="cb-sec-h"><h3>Last ${CMD.period} weeks</h3><span class="note">${b.delta == null ? 'flat' : `${b.delta >= 0 ? '+' : ''}${b.delta.toFixed(1)} pts`}</span></div>
+      ${cmdLine(t.map(x => ({ label: x.short, value: x.avg == null ? null : Math.round(x.avg) })))}</section>
+  </div>
+  <div class="cm-grid">
+    <section class="panel"><h3>Where the school is weakest</h3>
+      ${cmdBars(topics.map(x => ({ label: x.topic, value: x.v, note: x.course, tone: toneFrom(x.v) })))}</section>
+    <section class="panel"><div class="cb-sec-h"><h3>Students at risk</h3><span class="note">below ${RISK.at}%</span></div>
+      ${rows.filter(x => x.atRisk).slice(0, 6).map(x => `<button class="cm-risk press" onclick="cmdOpen('${x.id}')"><span class="kico quiz">${ic('alert')}</span>
+        <span class="cwho"><b>${esc(x.short)}</b><small>${esc(x.names.slice(0, 3).join(', '))}${x.names.length > 3 ? ` +${x.names.length - 3}` : ''}</small></span>
+        <b class="tnum" style="color:var(--p-critical)">${x.atRisk}</b>${ic('arrow', 'dim')}</button>`).join('') || '<p class="note">Nobody is below 70% right now.</p>'}</section>
+  </div>
+  <section class="panel"><div class="cb-sec-h"><h3>Ready to brief</h3><span class="note">five slides or fewer</span></div>
+    <p class="note">Pick what the commander sees and export it as a PowerPoint deck or print it to PDF.</p>
+    <div class="btnrow"><button class="btn press" onclick="setView('cexport')">${ic('send')} Build the brief</button><button class="btn ghost press" onclick="setView('cversions')">${ic('history')} POI and versions</button></div></section>`;
+};
+
+/* ---------- 2 · courses ---------- */
+const CMD_SORTS = [['risk', 'At risk'], ['avg', 'Average'], ['ungraded', 'Waiting'], ['size', 'Class size'], ['name', 'Name']];
+function setCmdSort(btn, v) { slide(btn); CMD.sort = v; swap('cmdBody', cmdCoursesBody()); }
+V.ccourses = () => `<div class="pagehead"><h1>Courses</h1><p>Every class side by side: how far through it is, how it is scoring, and how much work is waiting on an instructor.</p></div>
+  <div class="sectionbar">${pillHtml(CMD_SORTS, CMD.sort, 'setCmdSort')}<span style="flex:1"></span><span class="note">${COURSES.length} courses · ${cmdRollup().students} students</span></div>
+  <div id="cmdBody">${cmdCoursesBody()}</div>`;
+function cmdCoursesBody() {
+  const rows = cmdSorted();
+  return `<div class="tablewrap"><table class="cm-table"><thead><tr><th>Course</th><th>Instructor</th><th>Progress</th><th>Average</th><th>At risk</th><th>Late</th><th>Waiting</th><th>POI</th><th></th></tr></thead>
+    <tbody>${rows.map(x => `<tr>
+      <td><b>${esc(x.short)}</b><small>${esc(x.code)} · ${esc(x.section.split(' · ').pop())}</small></td>
+      <td>${esc(x.instructor)}<small>${x.students} students</small></td>
+      <td><span class="cm-prog"><i style="width:${x.progress}%"></i></span><small>Week ${x.week} of ${x.weeks}</small></td>
+      <td><b class="tnum" style="color:${cmdToneVar(toneFrom(x.avg))}">${cmdPct(x.avg)}</b><small>${x.band[0] == null ? '' : `${Math.round(x.band[0])}–${Math.round(x.band[1])}%`}</small></td>
+      <td><b class="tnum">${x.atRisk}</b><small>${x.watch} on watch</small></td>
+      <td><b class="tnum">${cmdPct(x.lateRate)}</b><small>${x.missing} missing</small></td>
+      <td><b class="tnum">${x.ungraded}</b><small>to grade</small></td>
+      <td>${x.poi ? `${tag(x.poi.status === 'current' ? 'g' : x.poi.status === 'superseded' ? 'c' : 'w', x.poi.v)}<small>${esc(x.poi.id)}</small>` : '<small>Not recorded</small>'}</td>
+      <td><button class="btn sm ghost press" onclick="cmdOpen('${x.id}')">Open</button></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+/* ---------- 3 · trends ---------- */
+V.ctrends = () => {
+  const t = cmdTrend(), b = cmdBehavior();
+  return `<div class="pagehead"><h1>Trends</h1><p>How work is arriving, how it is scoring, and which way the last weeks are pointing.</p></div>
+  <div class="sectionbar">${pillHtml(CMD_PERIODS.map(([v, l]) => [String(v), l]), String(CMD.period), 'setCmdPeriod')}<span style="flex:1"></span>
+    <span class="note">${b.delta == null ? 'Not enough graded work to call a trend' : `${b.delta >= 0 ? 'Up' : 'Down'} ${Math.abs(b.delta).toFixed(1)} points over the period`}</span></div>
+  <div class="cm-grid">
+    <section class="panel"><h3>Average score by week</h3>${cmdLine(t.map(x => ({ label: x.short, value: x.avg == null ? null : Math.round(x.avg) })))}</section>
+    <section class="panel"><h3>When work is turned in</h3>${cmdDonut(b.timing.map(x => ({ label: x.label, value: Math.round(x.value), tone: x.tone })))}
+      <p class="note">${Math.round(b.gradedRate)}% of it is graded. The oldest piece still waiting is ${b.oldestWait} days old; the middle of the queue is ${b.medianWait} days.</p></section>
+  </div>
+  <div class="cm-grid">
+    <section class="panel"><h3>Submissions each week</h3>${cmdBars(t.map(x => ({ label: x.label, value: x.submissions, note: `${x.late} late`, tone: x.lateRate > 20 ? 'crit' : x.lateRate > 10 ? 'warn' : 'good' })), Math.max(...t.map(x => x.submissions), 1), '')}</section>
+    <section class="panel"><h3>Late rate by course</h3>${cmdBars(b.byCourse.map(x => ({ label: x.label, value: Math.round(x.value), tone: x.value > 20 ? 'crit' : x.value > 10 ? 'warn' : 'good' })))}</section>
+  </div>
+  <section class="panel"><div class="cb-sec-h"><h3>Students slipping</h3><span class="note">below ${RISK.at}% across every class</span></div>
+    <div class="cm-chips">${b.slipping.map(s => `<span class="chip">${esc(s.name)}<small>${esc(s.course)}</small></span>`).join('') || '<span class="note">Nobody is below 70%.</span>'}</div></section>`;
+};
+function setCmdPeriod(btn, v) { slide(btn); CMD.period = +v; rerender(); }
+
+/* ---------- 4 · POI and versions ---------- */
+V.cversions = () => {
+  const rows = cmdVersions(), drift = cmdDrift();
+  return `<div class="pagehead"><h1>POI & versions</h1><p>What each class is actually teaching from: which program of instruction, which rubric and sheet versions, and what has never been revised since it was generated.</p></div>
+  ${drift.length ? `<div class="dk-note">${ic('alert')}<span>${drift.length} course${drift.length === 1 ? ' needs' : 's need'} attention: ${drift.map(d => esc(d.short)).join(', ')}.</span></div>` : `<div class="dk-note" style="background:var(--p-good-tint);color:#1e5e32">${ic('check')}<span>Every course is on a current POI and every rubric has been revised at least once.</span></div>`}
+  <div class="tablewrap"><table class="cm-table"><thead><tr><th>Course</th><th>Program of instruction</th><th>Approved</th><th>Next review</th><th>Rubrics</th><th>Sheets</th><th>Never revised</th><th></th></tr></thead>
+    <tbody>${rows.map(x => `<tr>
+      <td><b>${esc(x.short)}</b><small>${esc(x.code)}</small></td>
+      <td>${esc(x.poiLabel)}<small>${esc(x.owner || '—')}</small></td>
+      <td>${x.approved == null ? '—' : fmtDate(x.approved)}<small>${x.poiStatus === 'current' ? 'Current' : x.poiStatus === 'superseded' ? 'Superseded' : 'Draft'}</small></td>
+      <td>${x.review == null ? '—' : fmtDate(x.review)}<small>${x.review != null && x.review < 0 ? 'overdue' : 'scheduled'}</small></td>
+      <td><b class="tnum">v${x.rubrics}</b><small>${x.touched} changed in 30 days</small></td>
+      <td><b class="tnum">v${x.sheets}</b><small>${x.items} items</small></td>
+      <td><b class="tnum" style="color:${x.unrevised ? 'var(--p-warning)' : 'var(--p-good)'}">${x.unrevised}</b><small>as generated</small></td>
+      <td><button class="btn sm ghost press" onclick="cmdOpen('${x.id}','rubrics')">Rubrics</button></td></tr>`).join('')}</tbody></table></div>
+  <section class="panel"><h3>Why this matters</h3>
+    <p class="note">A class running a superseded POI is teaching to a standard the schoolhouse has already replaced. An item still on its generated first version has never had an instructor's eye on the wording, the points or the answer key — the Course Builder flags those before submission, and they show up here if they slip through.</p></section>`;
+};
+
+/* ---------- 5 · the brief ---------- */
+V.cexport = () => {
+  const deck = cmdDeck();
+  return `<div class="pagehead"><h1>Export brief</h1><p>Five slides or fewer, built from what you are looking at. Download it as a PowerPoint file, or print it to PDF.</p></div>
+  <div class="cm-export">
+    <aside class="panel cm-pick"><div class="cb-sec-h"><h3>Slides</h3><span class="note">${CMD.slides.length} of 5</span></div>
+      ${CMD_SLIDES.map(s => { const on = CMD.slides.includes(s.id), full = CMD.slides.length >= 5 && !on;
+        return `<button class="cm-slidepick ${on ? 'on' : ''}" onclick="cmdToggleSlide('${s.id}')" ${full ? 'disabled' : ''} aria-pressed="${on}">
+          <span class="cm-check">${on ? ic('check') : ''}</span><span class="cwho"><b>${esc(s.name)}</b><small>${esc(s.note)}</small></span></button>`; }).join('')}
+      <div class="cb-sec-h" style="margin-top:.9rem"><h3>Period</h3></div>${pillHtml(CMD_PERIODS.map(([v, l]) => [String(v), l]), String(CMD.period), 'setCmdPeriodX', 'sm')}
+      <div class="btnrow" style="margin-top:1rem"><button class="btn press" onclick="cmdExportPptx()" ${deck.length ? '' : 'disabled'}>${ic('download')} Download .pptx</button>
+        <button class="btn ghost press" onclick="cmdPrintDeck()" ${deck.length ? '' : 'disabled'}>${ic('print')} Print or save as PDF</button></div>
+      <p class="note">The file opens in PowerPoint, Keynote or Google Slides. Every chart is a real shape, so it can be edited after export.</p></aside>
+    <div class="cm-slides" id="cmdSlides">${deck.length ? deck.map((s, i) => cmdSlideHtml(s, i, deck.length)).join('') : '<div class="pv-empty"><b>No slides picked</b><p class="note">Choose at least one on the left.</p></div>'}</div>
+  </div>`;
+};
+function setCmdPeriodX(btn, v) { slide(btn); CMD.period = +v; swap('cmdSlides', cmdDeck().map((s, i, a) => cmdSlideHtml(s, i, a.length)).join('')); }
+function cmdToggleSlide(id) {
+  const i = CMD.slides.indexOf(id);
+  if (i >= 0) CMD.slides.splice(i, 1);
+  else { if (CMD.slides.length >= 5) return toast('Five slides is the limit'); CMD.slides.push(id); CMD.slides.sort((a, b) => CMD_SLIDES.findIndex(s => s.id === a) - CMD_SLIDES.findIndex(s => s.id === b)); }
+  rerender();
+}
+function cmdSlideBlock(b) {
+  if (b.k === 'kpi') return `<div class="sl-kpi">${b.items.map(it => `<div style="--t:${cmdToneVar(it.tone)}"><small>${esc(it.label)}</small><b class="tnum">${esc(it.value)}</b><span>${esc(it.note || '')}</span></div>`).join('')}</div>`;
+  if (b.k === 'bars') return `<div class="sl-block">${b.title ? `<div class="sl-bt">${esc(b.title)}</div>` : ''}${cmdBars(b.series, b.max || 100, b.unit || '')}</div>`;
+  if (b.k === 'line') return `<div class="sl-block">${b.title ? `<div class="sl-bt">${esc(b.title)}</div>` : ''}${cmdLine(b.points, b.unit || '')}</div>`;
+  if (b.k === 'donut') return `<div class="sl-block">${b.title ? `<div class="sl-bt">${esc(b.title)}</div>` : ''}${cmdDonut(b.parts)}</div>`;
+  if (b.k === 'notes') return `<div class="sl-block">${b.title ? `<div class="sl-bt">${esc(b.title)}</div>` : ''}<ul class="sl-notes">${b.items.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`;
+  if (b.k === 'table') return `<div class="sl-block">${b.title ? `<div class="sl-bt">${esc(b.title)}</div>` : ''}
+    <table class="sl-table"><thead><tr>${b.cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead>
+    <tbody>${b.rows.map((r, i) => `<tr style="--t:${cmdToneVar(b.tones ? b.tones[i] : 'flat')}">${r.map(c => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  return '';
+}
+const cmdSlideHtml = (s, i, n) => `<article class="sl"><div class="sl-in">
+    <div class="sl-h"><span class="sl-rule"></span><div><h3>${esc(s.title)}</h3><p>${esc(s.sub || '')}</p></div></div>
+    <div class="sl-body">${s.blocks.map(cmdSlideBlock).join('')}</div>
+    <div class="sl-f"><span>SchoolCircle · command brief · mock data</span><span>${i + 1} of ${n}</span></div>
+  </div></article>`;
+function cmdExportPptx() {
+  const deck = cmdDeck(); if (!deck.length) return;
+  const h = notify({ tone: 'info', icon: 'file', title: 'Building the deck', meta: `${plural(deck.length, 'slide')}`, desc: cmdDeckName(), progress: .35, duration: 0 });
+  setTimeout(() => {
+    const bytes = pptxDownload(deck, cmdDeckName(), cmdAccent());
+    h.update({ tone: 'success', icon: 'check', title: 'Deck downloaded', meta: `${plural(deck.length, 'slide')} · ${Math.round(bytes / 1024)} KB`, desc: `${cmdDeckName()}.pptx`, progress: null, burst: true, duration: 5200,
+      actions: [{ label: 'Download again', run: () => pptxDownload(cmdDeck(), cmdDeckName(), cmdAccent()) }, { label: 'Done', primary: true }] });
+  }, 420);
+}
+function cmdPrintDeck() {
+  const deck = cmdDeck(); if (!deck.length) return;
+  let root = document.getElementById('printRoot');
+  if (!root) { root = document.createElement('div'); root.id = 'printRoot'; document.body.appendChild(root); }
+  root.innerHTML = `<div class="deck-print">${deck.map((s, i) => cmdSlideHtml(s, i, deck.length)).join('')}</div>`;
+  let st = document.getElementById('printPage');
+  if (!st) { st = document.createElement('style'); st.id = 'printPage'; document.head.appendChild(st); }
+  st.textContent = '@page{size:13.333in 7.5in;margin:0}';
+  const done = () => { root.innerHTML = ''; window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done);
+  window.__lastPrint = { deck: deck.length, slides: root.querySelectorAll('.sl').length };
+  window.print();
+}
 
 
 /* ---- QA issue widget ---- */
