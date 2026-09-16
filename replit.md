@@ -38,7 +38,7 @@ cloud processing of real training documents.
 - Firebase web auth uses `NEXT_PUBLIC_FIREBASE_*` for local public configuration and
   `/api/auth/firebase-config` for runtime public configuration mapped from the existing secure
   deployment variables. Server routes verify bearer tokens; clients never assign roles.
-- Root shared grounding/model/provider adapters are restored from `.migration-backup`.
+- Root shared grounding/model/provider adapters (`lib/doctrine.js`, `lib/poi-parser.js`, `lib/model.js`, `lib/providers.js`) are the canonical main versions.
 - `app/api` and `lib/server` are owned by the native API lane.
 - `app/learn`, `app/teach`, and `app/_learning` are owned by the learning UI lane.
 - The original `/prototype`, landing/auth shell, `/plan` reader, styles, and merged feedback
@@ -74,7 +74,7 @@ Acceptance is integration wiring, not a redesign:
   follows from a local API or fixture pass.
 - `README.md`, `PLAN.md`, and `docs/` retain the project specification and planning material.
 - `prisma/schema.prisma` and `artifacts/api-server/prisma/` are the database contract.
-- `.migration-backup/` is retained as the source archive for restored original modules.
+- The original Next modules live at their normal paths; there is no backup archive in the tree.
 
 Keep the original grounded rule: every answer cites its source or the system refuses; nothing
 unreviewed reaches a learner.

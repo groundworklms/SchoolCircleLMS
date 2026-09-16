@@ -14,49 +14,59 @@ jobs:
   build:
     name: build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     env:
       # Prisma needs a parseable URL at generate/build time. Nothing connects.
+      # The Postgres-fixture tests skip themselves when no reachable DB is set,
+      # so this placeholder is removed again before `pnpm test` below.
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
       NEXT_TELEMETRY_DISABLED: "1"
 
     steps:
       - uses: actions/checkout@v4
 
+      # pnpm version comes from package.json#packageManager.
+      - uses: pnpm/action-setup@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
+          cache: pnpm
 
       - name: Install
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
-      # Arsenal adapter + evidence contract tests (no database; RUN_DB_TESTS is unset).
+      # Native Next + archived API contract tests, then the shared arsenal
+      # adapter/evidence tests (no database).
       - name: Test
-        run: npm test
+        run: |
+          unset DATABASE_URL
+          pnpm test
+          pnpm run test:upstream-learning
 
   database:
     name: database
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          node-version: 22
+          cache: pnpm
       - name: Install
-        run: npm ci
+        run: pnpm install --frozen-lockfile
       - name: Locate native PostgreSQL
         run: |
           PG_BIN="$(pg_config --bindir)"
           test -x "$PG_BIN/initdb"
           echo "$PG_BIN" >> "$GITHUB_PATH"
       - name: Seed safety policy
-        run: npm run test:db-policy
+        run: pnpm run test:db-policy
       - name: Isolated PostgreSQL persistence
-        run: npm run test:db
+        run: pnpm run test:db

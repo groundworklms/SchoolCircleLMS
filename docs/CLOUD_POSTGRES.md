@@ -61,11 +61,11 @@ Migrations and seeds run from a laptop with `gcloud auth login --update-adc`:
 
 ```bash
 export CLOUD_SQL_CONNECTION_NAME=schoolcircle-ae29a:us-east4:schoolcircle-ae29a-instance
-npm run db:proxy            # loopback 127.0.0.1:5433 -> instance, in a second terminal
+pnpm run db:proxy            # loopback 127.0.0.1:5433 -> instance, in a second terminal
 export DATABASE_URL='postgresql://schoolcircle_app:PASSWORD@127.0.0.1:5433/schoolcircle_demo?schema=public'
 export DATABASE_TARGET_CONFIRM=schoolcircle_demo SCHOOLCIRCLE_DB_ENV=demo
-npm run db:deploy
-NODE_ENV=development ALLOW_DEMO_SEED=true npm run db:seed
+pnpm run db:deploy
+NODE_ENV=development ALLOW_DEMO_SEED=true pnpm run db:seed
 ```
 
 **Switching to the offline box:** leave `CLOUD_SQL_CONNECTION_NAME` unset, point
@@ -158,8 +158,8 @@ not inline in shell history.
 # These are non-secret target acknowledgments, not credentials:
 export SCHOOLCIRCLE_DB_ENV=demo
 export DATABASE_TARGET_CONFIRM=schoolcircle_demo
-npm run db:status     # A new/pending migration returns a nonzero status.
-npm run db:deploy     # Applies committed migrations; never automatically seeds.
+pnpm run db:status     # A new/pending migration returns a nonzero status.
+pnpm run db:deploy     # Applies committed migrations; never automatically seeds.
 ```
 
 Detailed child-process errors are suppressed because Prisma diagnostics can
@@ -182,7 +182,7 @@ export SCHOOLCIRCLE_DB_ENV=demo
 export DATABASE_TARGET_CONFIRM=schoolcircle_demo
 export NODE_ENV=development
 export ALLOW_DEMO_SEED=true
-npm run db:seed
+pnpm run db:seed
 unset ALLOW_DEMO_SEED
 ```
 
@@ -203,10 +203,10 @@ On hardware with Docker available (not inside Replit):
 ```bash
 docker compose up -d
 cp .env.example .env.local
-npm ci
-npm run db:deploy
-NODE_ENV=development ALLOW_DEMO_SEED=true npm run db:seed
-npm run dev
+pnpm install --frozen-lockfile
+pnpm run db:deploy
+NODE_ENV=development ALLOW_DEMO_SEED=true pnpm run db:seed
+pnpm run dev
 ```
 
 Alternatively use native PostgreSQL 16; create `schoolcircle_dev` with a
@@ -231,12 +231,12 @@ outside this PR.
 
 ## 6. Verification and rollout checklist
 
-- `npm run test:db-policy`: no database needed; seed safety-policy regression tests.
-- `npm run test:db`: native PostgreSQL 16 binaries on PATH; creates its own
+- `pnpm run test:db-policy`: no database needed; seed safety-policy regression tests.
+- `pnpm run test:db`: native PostgreSQL 16 binaries on PATH; creates its own
   private temporary cluster, never uses the workspace's existing DATABASE_URL.
   Applies migrations twice, seeds twice, verifies reconnect persistence and
   rejection of real-data/production seeding, and checks schema drift.
-- `npm run build`: no live database connection required.
+- `pnpm run build`: no live database connection required.
 - After separate rollout approval: merge the verified VPC/secret settings into
   App Hosting configuration, confirm migrations and grants, deploy the approved
   PR revision, then verify `/api/courses` returns the seeded course and only

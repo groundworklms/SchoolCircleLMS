@@ -32,12 +32,12 @@ VITE_FIREBASE_PROJECT_ID = "schoolcircle-ae29a"
 VITE_FIREBASE_STORAGE_BUCKET = "schoolcircle-ae29a.firebasestorage.app"
 
 [userenv.development]
-MODEL_BASE_URL = "https://openrouter.ai/api/v1"
-MODEL_ID = "openai/gpt-4.1-mini"
-RUBRICON_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
-RUBRICON_MODEL = "openai/gpt-4.1-mini"
-WHETSTONE_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
-WHETSTONE_MODEL = "openai/gpt-4.1-mini"
+MODEL_BASE_URL = "https://api.openai.com/v1"
+MODEL_ID = "gpt-4.1-mini"
+RUBRICON_ENDPOINT = "https://api.openai.com/v1/chat/completions"
+RUBRICON_MODEL = "gpt-4.1-mini"
+WHETSTONE_ENDPOINT = "https://api.openai.com/v1/chat/completions"
+WHETSTONE_MODEL = "gpt-4.1-mini"
 
 [nix]
 channel = "stable-25_05"
