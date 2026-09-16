@@ -64,6 +64,23 @@ test('existing learner and instructor course patterns remain canonical', () => {
   assert.equal(href(parse('/prototype/instructor/M092721')), '/prototype/instructor/M092721/builder');
 });
 
+test('instructor secondary and legacy course tools retain canonical deep links', () => {
+  for (const view of ['sources', 'rubrics', 'settings']) {
+    const path = `/prototype/instructor/${view}`;
+    assert.equal(parse(path).area, 'library', path);
+    assert.equal(href(parse(path)), path);
+  }
+
+  // The review/publish path stays the canonical builder URL, while existing
+  // roster and live-learning links remain addressable for saved bookmarks.
+  assert.equal(href(parse('/prototype/instructor/M092721')), '/prototype/instructor/M092721/builder');
+  for (const view of ['roster', 'control', 'fidelity', 'mastery', 'aar', 'settings']) {
+    const path = `/prototype/instructor/M092721/${view}`;
+    assert.equal(parse(path).area, 'course', path);
+    assert.equal(href(parse(path)), path);
+  }
+});
+
 test('invalid, retired, malformed, and extra paths become not-found', () => {
   for (const path of [
     '/prototype/teach',
