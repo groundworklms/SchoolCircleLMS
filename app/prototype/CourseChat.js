@@ -6,6 +6,7 @@ import { authenticatedFetch } from '../../lib/auth-fetch';
 import { useApiQuery } from '../_learning/useLearning';
 import { unlockedLessonIds } from './Lessons';
 import { usePrefs } from './prefs';
+import { SourceViewer } from './SourceViewer';
 
 /* The one chat. Bottom-right of every student screen. Which grounding it
    uses depends on what is on screen:
@@ -141,12 +142,57 @@ function findLockedLesson(lockedLessons, question) {
 /* Anchor returns { n, citation, pub_id, page_printed }; Sourcerer returns
    { label, source, page }. One shape for the renderer. */
 export function normaliseCitation(c, i) {
-  return {
+  const citation = {
     n: c.n ?? i + 1,
     citation: c.citation ?? c.label ?? c.source ?? 'source',
     pub_id: c.pub_id ?? c.source ?? c.sourceId ?? '',
     page: c.page_printed ?? c.page ?? null,
   };
+  const sourceId = c.sourceId ?? c.source_id;
+  const passage = c.passage ?? c.text ?? c.quote ?? c.excerpt ?? c.snippet;
+  // Keep the compact legacy citation shape unless the provider supplied a
+  // locator that the viewer can use. This also keeps citations from older
+  // Anchor responses backwards-compatible.
+  if (sourceId) citation.sourceId = sourceId;
+  if (typeof passage === 'string' && passage.trim()) citation.passage = passage;
+  // Keep a Sourcerer record locator even when pub_id is a human publication
+  // label. Non-enumerable preserves the compact legacy JSON shape.
+  if (typeof c.source === 'string' && c.source.trim()) {
+    Object.defineProperty(citation, 'source', { value: c.source, enumerable: false });
+  }
+  return citation;
+}
+
+function citationSourceText(citation) {
+  return [
+    citation?.sourceId,
+    citation?.source_id,
+    citation?.source,
+    citation?.pub_id,
+  ].filter((value) => typeof value === 'string' && value.trim());
+}
+
+function startsWithSourceId(value, sourceId) {
+  const escaped = String(sourceId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // A source id must end at a locator boundary. Without this check source-1
+  // would incorrectly claim source-10 p.2 in a multi-source course.
+  return new RegExp(`^${escaped}(?=$|[\\s,;:#()[\\]{}.])`).test(value.trim());
+}
+
+export function resolveCitationSourceId(citation, sourceIds) {
+  if (!Array.isArray(sourceIds) || sourceIds.length === 0) return null;
+  const texts = citationSourceText(citation);
+  const exact = sourceIds.find((sourceId) =>
+    texts.some((text) => String(text).trim() === String(sourceId)),
+  );
+  if (exact) return exact;
+  const prefixed = sourceIds.find((sourceId) =>
+    texts.some((text) => startsWithSourceId(text, sourceId)),
+  );
+  if (prefixed) return prefixed;
+  // A one-source course has no ambiguity when an older provider omits the
+  // record id. Never guess in a multi-source course.
+  return sourceIds.length === 1 ? sourceIds[0] : null;
 }
 
 export default function CourseChat({ course = null, view = null }) {
@@ -162,6 +208,8 @@ function SignedInCourseChat({ course, view }) {
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [providerError, setProviderError] = useState(null);
+  const [selectedCitation, setSelectedCitation] = useState(null);
   const bodyRef = useRef(null);
   const inputRef = useRef(null);
   const requestRef = useRef(null);
@@ -178,8 +226,14 @@ function SignedInCourseChat({ course, view }) {
     if (tutorMode) return;
     fetch('/api/doctrine')
       .then((r) => r.json())
-      .then(setStatus)
-      .catch(() => setStatus({ ready: false }));
+      .then((nextStatus) => {
+        setStatus(nextStatus);
+        if (!nextStatus?.ready) setProviderError(nextStatus?.reason || 'Doctrine provider is not configured.');
+      })
+      .catch(() => {
+        setStatus({ ready: false, reason: 'Doctrine provider status unavailable.' });
+        setProviderError('Doctrine provider status unavailable.');
+      });
   }, [tutorMode]);
 
   useEffect(() => {
@@ -192,7 +246,7 @@ function SignedInCourseChat({ course, view }) {
 
   const grounded = tutorMode ? sourceIds.length > 0 : !!status?.ready;
   const modeLabel = tutorMode
-    ? (grounded ? 'Grounded · course sources' : 'Waiting for sources')
+    ? (providerError ? 'Provider unavailable' : grounded ? 'Grounded · course sources' : 'Waiting for sources')
     : status === null ? 'Checking…' : grounded ? 'Grounded · doctrine' : 'Scripted demo';
   const modeTitle = tutorMode
     ? `Sourcerer over ${sourceIds.length} approved source${sourceIds.length === 1 ? '' : 's'}`
@@ -206,6 +260,11 @@ function SignedInCourseChat({ course, view }) {
       .filter((m) => m.role === 'user' || (m.role === 'assistant' && !m.error))
       .map((m) => ({ role: m.role, text: m.role === 'user' ? m.text : m.answer }));
     setMsgs((m) => [...m, { role: 'user', text: question }]);
+    setProviderError(
+      tutorMode || status?.ready
+        ? null
+        : status?.reason || 'Doctrine provider is not configured.',
+    );
 
     const locked = findLockedLesson(lockedLessons, question);
     if (locked) {
@@ -235,6 +294,7 @@ function SignedInCourseChat({ course, view }) {
         out = res.ok
           ? { abstained: Boolean(json.refused), reason: json.reason, answer: json.answer, citations: (json.citations || []).map(normaliseCitation) }
           : { abstained: true, answer: `The tutor could not answer: ${json.error || res.status}.`, citations: [], error: true };
+        if (!res.ok) setProviderError(json.error || `Tutor service returned ${res.status}.`);
       } else if (grounded) {
         const res = await authenticatedFetch('/api/doctrine', {
           method: 'POST',
@@ -246,12 +306,14 @@ function SignedInCourseChat({ course, view }) {
         out = res.ok
           ? { ...json, citations: (json.citations || []).map(normaliseCitation) }
           : { abstained: true, answer: `The doctrine service could not answer: ${json.error || res.status}.`, citations: [], error: true };
+        if (!res.ok) setProviderError(json.error || `Doctrine service returned ${res.status}.`);
       } else {
         await new Promise((r) => setTimeout(r, 500 + Math.random() * 400));
         out = scripted(question);
       }
     } catch (e) {
       if (e.name === 'AbortError') return;
+      setProviderError(e?.message || 'The grounding service is unreachable.');
       out = { abstained: true, answer: 'The grounding service is unreachable.', citations: [], error: true };
     }
     setMsgs((m) => [...m, { role: 'assistant', ...out }]);
@@ -262,6 +324,7 @@ function SignedInCourseChat({ course, view }) {
   const title = course ? 'Ask about this course' : 'Ask the doctrine';
   const subtitle = course ? course.name : 'Grounded by Anchor · cite-or-refuse';
   const placeholder = !course ? 'Ask the doctrine…' : `Ask about ${view === 'lessons' ? 'this lesson' : 'this course'}…`;
+  const citationSourceId = resolveCitationSourceId(selectedCitation, sourceIds);
 
   return (
     <>
@@ -290,6 +353,15 @@ function SignedInCourseChat({ course, view }) {
           </header>
 
           <div className="s-chat-body" ref={bodyRef}>
+            {providerError && (
+              <div
+                className="s-chat-provider-error"
+                role="alert"
+                style={{ margin: '0.6rem', padding: '0.55rem 0.7rem', borderRadius: '6px', color: 'var(--p-warning)', background: 'var(--p-surface-2)', fontSize: '0.8em' }}
+              >
+                {providerError}
+              </div>
+            )}
             <div className="s-chat-msg assistant">
               <div className="s-chat-bubble">
                 {tutorMode
@@ -322,7 +394,13 @@ function SignedInCourseChat({ course, view }) {
                   {m.citations?.length > 0 && (
                     <div className="s-chat-cites">
                       {m.citations.map((c) => (
-                        <button key={c.n} className="s-chat-cite" title={c.citation}>
+                         <button
+                           key={c.n}
+                           type="button"
+                           className="s-chat-cite"
+                           title={c.citation}
+                           onClick={() => setSelectedCitation(c)}
+                         >
                           <b>[{c.n}]</b> {c.pub_id || c.citation}{c.page ? ` · p.${c.page}` : ''}
                         </button>
                       ))}
@@ -361,6 +439,12 @@ function SignedInCourseChat({ course, view }) {
             Not available during exams. Your instructor sees what the class asks, in aggregate — never who asked.
           </div>
         </section>
+      )}
+      {tutorMode && citationSourceId && selectedCitation && (
+        <SourceViewer
+          sourceId={citationSourceId}
+          citation={selectedCitation}
+        />
       )}
     </>
   );

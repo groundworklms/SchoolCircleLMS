@@ -6,7 +6,7 @@ import {
   createSessionEpochGuard,
   createStableAttemptManager,
   requestAuthoring,
-} from '../app/learn/library/client.js';
+} from '../app/prototype/published/client.js';
 
 test('stable attempt ids are reused for an identical network retry', async () => {
   const calls = [];

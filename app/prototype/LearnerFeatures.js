@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning/useLearning';
+import CourseLesson from '../_course/CoursePresentation';
 import { SourceViewer } from './SourceViewer';
 
 /* Learner-side arsenal features for a real (LearningRecord) course: the
@@ -121,13 +122,42 @@ export function CourseReader({ course }) {
   if (error) return <Err msg={errText(error, 'Could not load this course.')} />;
   if (!sections.length) return <p className="p-src">This course has no sections yet.</p>;
 
+  const lesson = {
+    id: String(cur.id || `section-${i + 1}`),
+    title: cur.title || `Section ${i + 1}`,
+    citation: cur.cite || cur.citation || '',
+    blocks: [
+      ...(cur.lesson ? [{
+        id: `${cur.id || `section-${i + 1}`}:lesson`,
+        type: 'text',
+        body: cur.lesson,
+      }] : []),
+      ...['pre', 'post'].flatMap((phase) => (Array.isArray(cur[phase]) ? cur[phase] : []).map((question, questionIndex) => {
+        const questionId = String(question.id || `${cur.id || `section-${i + 1}`}:${phase}${questionIndex + 1}`);
+        const options = Array.isArray(question.options)
+          ? question.options.map((option, optionIndex) => ({
+              id: String(option?.id || `${questionId}-option-${optionIndex + 1}`),
+              text: typeof option === 'string' ? option : option?.text || '',
+            }))
+          : [];
+        return {
+          id: questionId,
+          type: 'check',
+          title: phase === 'pre' ? 'Before you read' : 'After you read',
+          prompt: question.stem || question.prompt || '',
+          options,
+        };
+      })),
+    ],
+  };
+
   return (
     <div className="s-reader">
       <aside className="s-reader-toc">
         <h4 className="s-label">Sections</h4>
         <ol className="s-reader-list">
           {sections.map((s, j) => (
-            <li key={s.title || j}>
+            <li key={s.id || s.sectionId || s.title || `section-${j + 1}`}>
               <button className={`s-reader-row${j === i ? ' on' : ''}`} onClick={() => setI(j)}>
                 <span className="s-reader-id">{j + 1}</span>
                 <span className="s-reader-title">{s.title || `Section ${j + 1}`}</span>
@@ -142,33 +172,7 @@ export function CourseReader({ course }) {
           <span className="s-reader-kicker">Section {i + 1} of {sections.length}</span>
           <h2>{cur.title || `Section ${i + 1}`}</h2>
         </div>
-        {cur.lesson ? <p className="s-reader-p" style={{ whiteSpace: 'pre-wrap' }}>{cur.lesson}</p> : <p className="p-src">No lesson text in this section.</p>}
-
-        {[['pre', 'Before you read — check yourself'], ['post', 'After — check yourself']].map(([k, label]) =>
-          cur[k]?.length ? (
-            <div className="p-panel" key={k}>
-              <h3>{label}</h3>
-              <ol className="s-obj">
-                {cur[k].map((q, qi) => (
-                  <li key={qi}>
-                    {q.stem}
-                    {Array.isArray(q.options) && (
-                      <ul className="s-draft-opts">
-                        {q.options.map((o, oi) => (
-                          <li key={oi}>{typeof o === 'string' ? o : o.text}</li>
-                        ))}
-                      </ul>
-                    )}
-                    {q.citation && (
-                      <span className="p-src"> {typeof q.citation === 'string' ? q.citation : q.citation.citation}</span>
-                    )}
-                  </li>
-                ))}
-              </ol>
-              <p className="p-src">Answer keys stay with your instructor. Grading happens in a mastery session.</p>
-            </div>
-          ) : null,
-        )}
+        <CourseLesson content={lesson} />
 
         <div className="s-reader-nav">
           <button className="s-lesson-navbtn" disabled={i === 0} onClick={() => setI(i - 1)}>← Previous</button>
@@ -181,19 +185,72 @@ export function CourseReader({ course }) {
 
 /* ---------- mastery (Whetstone) ---------- */
 
+/*
+ * A reload returns every saved session owned by this learner. Prefer the
+ * current approved shared-plan revision, then an ACTIVE record, then the
+ * newest record returned by the API. Selecting a saved row never mutates it;
+ * starting a new session creates a new immutable record.
+ */
+export function selectMasterySession(sessions, masteryPlan, selectedId = null) {
+  if (!Array.isArray(sessions) || sessions.length === 0) return null;
+  if (selectedId) {
+    const selected = sessions.find((session) => session.id === selectedId);
+    // An explicit selection can be the id returned by a just-created session
+    // while the refresh is still replacing the old list. Do not silently
+    // resume a different saved record during that window.
+    return selected || null;
+  }
+
+  const approvedRevision =
+    masteryPlan?.status === 'APPROVED' && masteryPlan.revision
+      ? masteryPlan.revision
+      : null;
+  if (approvedRevision) {
+    const currentPlanSessions = sessions.filter(
+      (session) => session?.masteryPlanRevision === approvedRevision,
+    );
+    if (currentPlanSessions.length > 0) {
+      return currentPlanSessions.find((session) => session.status === 'ACTIVE') || currentPlanSessions[0];
+    }
+  }
+  return sessions.find((session) => session.status === 'ACTIVE') || sessions[0];
+}
+
 export function MasterySession({ course }) {
   const { data: envelope } = useApiQuery(`/courses/${course.id}`);
-  const sourceId = envelope?.course?.sourceIds?.[0];
+  const masteryPlan = envelope?.course?.masteryPlan?.status === 'APPROVED'
+    ? envelope.course.masteryPlan
+    : envelope?.course?.masteryPlan || null;
+  const sourceId = masteryPlan?.sourceId || envelope?.course?.sourceIds?.[0];
   const { data: sessions, loading, refetch } = useApiQuery(`/mastery/sessions?courseId=${course.id}`);
   const startSession = useApiMutation('/mastery/sessions', 'POST');
   const [answer, setAnswer] = useState('');
   const [err, setErr] = useState(null);
   const [last, setLast] = useState(null); // last turn's { verdict, feedback }
+  const [selectedId, setSelectedId] = useState(null);
+  const [pendingSessionId, setPendingSessionId] = useState(null);
   const inputRef = useRef(null);
 
-  const active = sessions?.find((s) => s.status === 'ACTIVE') || null;
+  const selected = selectMasterySession(sessions, masteryPlan, pendingSessionId || selectedId);
+  const active = selected?.status === 'ACTIVE' ? selected : null;
   const done = (sessions || []).filter((s) => s.status === 'COMPLETE');
   const turn = useApiMutation(`/mastery/sessions/${active?.id}/turn`, 'POST');
+
+  useEffect(() => {
+    if (pendingSessionId) {
+      if (sessions?.some((session) => session.id === pendingSessionId)) {
+        setSelectedId(pendingSessionId);
+        setPendingSessionId(null);
+      }
+      return;
+    }
+    if (!sessions?.length) {
+      setSelectedId(null);
+      return;
+    }
+    const preferred = selectMasterySession(sessions, masteryPlan, selectedId);
+    if (preferred && preferred.id !== selectedId) setSelectedId(preferred.id);
+  }, [sessions, masteryPlan, selectedId, pendingSessionId]);
 
   useEffect(() => {
     if (active && inputRef.current) inputRef.current.focus();
@@ -202,10 +259,18 @@ export function MasterySession({ course }) {
   const handleStart = async () => {
     setErr(null);
     setLast(null);
+    if (masteryPlan?.status !== 'APPROVED') {
+      return setErr('The shared mastery plan is not approved yet. New sessions are unavailable until the instructor approves it.');
+    }
     if (!sourceId) return setErr('This course has no source document to grade against.');
     try {
-      await startSession.mutate({ sourceId, courseId: course.id });
-      refetch();
+      const result = await startSession.mutate({ sourceId, courseId: course.id });
+      if (result?.id) setPendingSessionId(result.id);
+      await refetch();
+      // The effect above also guards the stale-list render, but selecting
+      // after the refresh makes the intended record explicit for a fast
+      // response where React batches the query state update.
+      if (result?.id) setSelectedId(result.id);
     } catch (e) {
       setErr(errText(e, 'Could not start the session'));
     }
@@ -218,7 +283,7 @@ export function MasterySession({ course }) {
       const res = await turn.mutate({ answer });
       setLast(res.result || null);
       setAnswer('');
-      refetch();
+      await refetch();
     } catch (e) {
       if (e?.code === 'CONFLICT') {
         setErr('This session changed elsewhere — refreshed to the latest state.');
@@ -231,6 +296,12 @@ export function MasterySession({ course }) {
 
   const verdictColor = (v) =>
     v === 'mastered' ? 'var(--p-good)' : v === 'competent' ? 'var(--p-accent)' : v === 'developing' ? 'var(--p-warning)' : 'var(--p-dim)';
+  const approvedRevision = masteryPlan?.status === 'APPROVED' ? masteryPlan.revision : null;
+  const sessionNeedsApprovedPlan = Boolean(
+    selected &&
+    approvedRevision &&
+    selected.masteryPlanRevision !== approvedRevision,
+  );
 
   return (
     <>
@@ -239,18 +310,96 @@ export function MasterySession({ course }) {
         Whetstone asks about the approved source and grades what you say against it — in your own
         words, no multiple choice. Each answer is scored on a rubric your instructor approved.
       </p>
+      <div className="p-btnrow" style={{ marginBottom: '0.75rem' }}>
+        <button
+          type="button"
+          className="p-btn ghost"
+          onClick={() => refetch()}
+          disabled={loading}
+        >
+          {loading ? 'Reloading…' : 'Reload saved sessions'}
+        </button>
+        {sessions?.length > 0 && (
+          <label className="p-src" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+            Selected session
+            <select
+              className="scw-ti"
+              aria-label="Selected saved mastery session"
+              value={selected?.id || ''}
+              onChange={(event) => {
+                setLast(null);
+                setSelectedId(event.target.value || null);
+              }}
+            >
+              {sessions.map((session) => (
+                <option key={session.id} value={session.id}>
+                  {session.id.slice(-6)} · {session.status}{session.masteryPlanRevision ? ` · ${session.masteryPlanRevision}` : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
 
       <Err msg={err} />
       {loading && <p>Loading sessions…</p>}
 
-      {!loading && !active && (
+      {!loading && !selected && (
         <div className="p-panel">
           <h3>Start a session</h3>
           <p className="p-src" style={{ marginBottom: '1rem' }}>
             Grounded on <code>{sourceId || '—'}</code>. A session runs until every criterion is assessed or the turn limit is reached.
           </p>
-          <button className="p-btn" onClick={handleStart} disabled={startSession.loading || !sourceId}>
-            {startSession.loading ? 'Starting…' : 'Start mastery session'}
+          {masteryPlan?.status === 'PENDING' && (
+            <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
+              The shared mastery plan is pending instructor approval. New sessions are unavailable until it is approved.
+            </p>
+          )}
+          {!masteryPlan && (
+            <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
+              This course has no approved shared mastery plan yet. Ask the instructor to review and approve it before starting.
+            </p>
+          )}
+          <button className="p-btn" onClick={handleStart} disabled={startSession.loading || !sourceId || masteryPlan?.status !== 'APPROVED'}>
+            {startSession.loading ? 'Starting…' : masteryPlan?.status === 'APPROVED' ? 'Start session with approved plan' : 'Start mastery session'}
+          </button>
+        </div>
+      )}
+
+      {selected && !active && (
+        <div className="p-panel">
+          <h3>Saved mastery session</h3>
+          <p style={{ margin: '0 0 0.35rem' }}>
+            <strong>{selected.status === 'COMPLETE' ? 'Complete' : 'Ended'}</strong>
+            {selected.report?.score !== undefined && ` · Score ${pct(selected.report.score)}`}
+          </p>
+          {selected.masteryPlanRevision && (
+            <p className="p-src" style={{ margin: '0 0 0.35rem' }}>
+              Shared-plan revision: <code>{selected.masteryPlanRevision}</code>
+            </p>
+          )}
+          {sessionNeedsApprovedPlan && (
+            <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
+              This saved session predates the current approved shared mastery plan. Your previous record is preserved; start a new session for the current revision.
+            </p>
+          )}
+          {selected.transcript?.length > 0 && (
+            <details style={{ marginTop: '0.75rem' }}>
+              <summary className="p-src" style={{ cursor: 'pointer' }}>Saved transcript ({selected.transcript.length} messages)</summary>
+              <ol className="s-obj">
+                {selected.transcript.map((t, i) => (
+                  <li key={i} style={{ whiteSpace: 'pre-wrap' }}>{typeof t === 'string' ? t : t.text || JSON.stringify(t)}</li>
+                ))}
+              </ol>
+            </details>
+          )}
+          <button
+            className="p-btn ghost"
+            onClick={handleStart}
+            disabled={startSession.loading || !sourceId || masteryPlan?.status !== 'APPROVED'}
+            style={{ marginTop: '0.8rem' }}
+          >
+            {startSession.loading ? 'Starting…' : 'Start another session'}
           </button>
         </div>
       )}
@@ -258,6 +407,21 @@ export function MasterySession({ course }) {
       {active && (
         <div className="p-panel s-mastery">
           <h3>Question</h3>
+          {active.masteryPlanRevision && (
+            <p className="p-src">
+              Shared-plan revision: <code>{active.masteryPlanRevision}</code>
+            </p>
+          )}
+          {sessionNeedsApprovedPlan && (
+            <>
+              <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
+                This session predates the current approved shared plan. It is read-only; start a new session for the current revision.
+              </p>
+              <button className="p-btn ghost" onClick={handleStart} disabled={startSession.loading || !sourceId}>
+                {startSession.loading ? 'Starting…' : 'Start current-plan session'}
+              </button>
+            </>
+          )}
           <p className="s-mastery-q">{active.currentQuestion || 'Session initialised — submit any answer to receive the first question.'}</p>
 
           {last && (
@@ -282,7 +446,7 @@ export function MasterySession({ course }) {
                 }
               }}
             />
-            <button className="p-btn" onClick={handleTurn} disabled={turn.loading || !answer.trim()} style={{ alignSelf: 'flex-end' }}>
+            <button className="p-btn" onClick={handleTurn} disabled={turn.loading || !answer.trim() || sessionNeedsApprovedPlan} style={{ alignSelf: 'flex-end' }}>
               {turn.loading ? 'Grading…' : 'Submit'}
             </button>
           </div>
@@ -294,7 +458,7 @@ export function MasterySession({ course }) {
                 {active.criteria.map((c, i) => (
                   <li className="p-reqrow" key={i}>
                     <span style={{ color: verdictColor(c.verdict), fontSize: '0.8em' }}>●</span>
-                    <span className="p-reqname">{c.elo}</span>
+                    <span className="p-reqname">{c.elo || c.competency || `Criterion ${i + 1}`}</span>
                     <span style={{ color: verdictColor(c.verdict), fontSize: '0.82em' }}>{c.verdict || 'not yet assessed'}</span>
                   </li>
                 ))}
@@ -325,12 +489,16 @@ export function MasterySession({ course }) {
               </thead>
               <tbody>
                 {done.map((s) => (
-                  <tr key={s.id}>
-                    <td><code>{s.id.slice(-6)}</code></td>
+                  <tr key={s.id} aria-selected={selected?.id === s.id}>
+                    <td>
+                      <button type="button" className="p-btn ghost" onClick={() => { setLast(null); setSelectedId(s.id); }}>
+                        <code>{s.id.slice(-6)}</code>
+                      </button>
+                    </td>
                     <td className="p-num">{pct(s.report?.score)}</td>
                     <td>
                       {(s.criteria || []).map((c, i) => (
-                        <span key={i} style={{ color: verdictColor(c.verdict), marginRight: '0.6rem' }}>{c.elo}: {c.verdict}</span>
+                        <span key={i} style={{ color: verdictColor(c.verdict), marginRight: '0.6rem' }}>{c.elo || c.competency}: {c.verdict}</span>
                       ))}
                     </td>
                   </tr>
@@ -338,7 +506,7 @@ export function MasterySession({ course }) {
               </tbody>
             </table>
           </div>
-          {!active && (
+           {!active && !selected && (
             <button className="p-btn ghost" onClick={handleStart} disabled={startSession.loading || !sourceId} style={{ marginTop: '0.8rem' }}>
               {startSession.loading ? 'Starting…' : 'Start another session'}
             </button>

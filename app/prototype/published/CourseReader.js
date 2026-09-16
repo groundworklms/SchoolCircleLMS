@@ -1,29 +1,31 @@
 'use client';
 
-import Link from 'next/link';
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
-import ManualLesson from '../../../_authoring/ManualLesson';
-import { useAuth } from '../../../_auth/AuthProvider';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import CourseLesson from '../../_course/CoursePresentation';
+import { useAuth } from '../../_auth/AuthProvider';
+import { publishedCourseHref } from '../nav';
 import {
   createLibraryTransport,
   createSessionEpochGuard,
   createStaleSessionError,
   createStableAttemptManager,
   messageForError,
-} from '../client';
-import '../library.css';
+} from './client';
+import './library.css';
 
 function LoadingState() {
   return <div className="manual-library-state" role="status">Loading published course…</div>;
 }
 
-function SignInState() {
+function SignInState({ courseId }) {
+  const query = typeof window === 'undefined' ? '' : window.location.search;
+  const next = `${publishedCourseHref(courseId)}${query}`;
   return (
     <div className="manual-library-state manual-auth-notice">
       <h2>Sign-in required</h2>
       <p>Sign in with any SchoolCircle account to view this course.</p>
-      <Link className="manual-reader-back" href="/login">Sign in</Link>
+      <a className="manual-reader-back" href={`/login?next=${encodeURIComponent(next)}`}>Sign in</a>
     </div>
   );
 }
@@ -35,27 +37,49 @@ function courseLessons(content) {
   return [];
 }
 
+function lessonIndexFor(content, requestedLesson) {
+  const lessons = courseLessons(content);
+  if (!requestedLesson) return 0;
+  const byId = lessons.findIndex((lesson) => String(lesson?.id || '') === String(requestedLesson));
+  if (byId >= 0) return byId;
+  const number = Number(requestedLesson);
+  if (Number.isInteger(number) && number > 0 && number <= lessons.length) return number - 1;
+  return 0;
+}
+
 function returnedProgress(response) {
   if (response?.progress) return response.progress;
   if (response && Array.isArray(response.completedBlockIds)) return response;
   return null;
 }
 
+function BackButton({ onBack }) {
+  if (onBack) {
+    return (
+      <button type="button" className="manual-reader-back" onClick={onBack}>
+        ← Courses
+      </button>
+    );
+  }
+  return <a className="manual-reader-back" href="/prototype/courses">← Courses</a>;
+}
+
 /**
- * The reader gets its Firebase user from useAuth but accepts request as an
- * injection point for a browser harness.  No learner-role gate is used here:
- * instructors and BOTH accounts are valid library readers too.
+ * The published manual reader as a screen inside StudentShell.
+ *
+ * The reader gets its Firebase user from useAuth but accepts request and user
+ * injection points for a browser harness. Instructors and BOTH accounts are
+ * valid library readers too; authorization remains in the API transport.
  */
-export function CourseReader({ courseId: providedCourseId, request, user: providedUser } = {}) {
-  const params = useParams();
-  const routeCourseId = providedCourseId || params?.id;
+export function CourseReader({ courseId, request, user: providedUser, onBack } = {}) {
   const auth = useAuth();
   const user = providedUser || auth.user;
   const authLoading = auth.loading;
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const requestedReleaseId = searchParams.get('releaseId') || '';
+  const requestedReleaseId = searchParams.get('releaseId') || searchParams.get('release') || '';
+  const requestedLesson = searchParams.get('lesson') || searchParams.get('lessonId') || '';
   const [envelope, setEnvelope] = useState(null);
   const [progress, setProgress] = useState(null);
   const [lessonIndex, setLessonIndex] = useState(0);
@@ -70,7 +94,7 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
   // mutation before a late promise continuation can publish state.
   const sessionKey = JSON.stringify({
     user: user?.uid || user?.email || null,
-    courseId: routeCourseId || null,
+    courseId: courseId || null,
     requestedReleaseId,
     releaseId: releaseId || null,
   });
@@ -78,26 +102,34 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
   const renderedSessionToken = sessionGuardRef.current.capture();
 
   const load = useCallback(async (signal) => {
-    if (!user || !routeCourseId) {
+    if (!user || !courseId) {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+      setError(new Error('A published course ID is required.'));
       setLoading(false);
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const nextEnvelope = await transport.course(routeCourseId, requestedReleaseId, signal);
+      const nextEnvelope = await transport.course(courseId, requestedReleaseId, signal);
       if (signal?.aborted) return;
       if (!nextEnvelope?.release) throw new Error('The course response did not include a published release.');
       setEnvelope(nextEnvelope);
       setProgress(nextEnvelope.progress || null);
       setLessonIndex(0);
-      // The first successful read chooses the exact immutable release.  Keep
+      // The first successful read chooses the exact immutable release. Keep
       // that id in the address bar so a refresh remains on the same snapshot
       // even if the instructor publishes a newer release in the meantime.
       if (!requestedReleaseId && nextEnvelope.release.id) {
-        const query = new URLSearchParams(searchParams.toString());
+        const query = new URLSearchParams(
+          typeof window === 'undefined' ? '' : window.location.search,
+        );
         query.set('releaseId', nextEnvelope.release.id);
-        router.replace(`${pathname}?${query.toString()}`, { scroll: false });
+        const queryText = query.toString();
+        router.replace(`${pathname}${queryText ? `?${queryText}` : ''}`, { scroll: false });
       }
     } catch (nextError) {
       if (signal?.aborted || nextError?.name === 'AbortError') return;
@@ -107,7 +139,7 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
-  }, [pathname, requestedReleaseId, routeCourseId, router, searchParams, transport, user]);
+  }, [courseId, pathname, requestedReleaseId, router, transport, user]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -124,16 +156,32 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
   const lessons = useMemo(() => courseLessons(envelope?.release?.content), [envelope]);
   const lesson = lessons[lessonIndex] || null;
 
+  useEffect(() => {
+    if (envelope) setLessonIndex(lessonIndexFor(envelope.release?.content, requestedLesson));
+  }, [envelope, requestedLesson]);
+
+  const selectLesson = useCallback((index) => {
+    setLessonIndex(index);
+    const query = new URLSearchParams(
+      typeof window === 'undefined' ? '' : window.location.search,
+    );
+    const selected = lessons[index];
+    if (selected?.id) query.set('lesson', selected.id);
+    else query.set('lesson', String(index + 1));
+    const queryText = query.toString();
+    router.replace(`${pathname}${queryText ? `?${queryText}` : ''}`, { scroll: false });
+  }, [lessons, pathname, router]);
+
   const sendAttempt = useMemo(
     () => createStableAttemptManager(
-      (blockId, optionId, attemptId) => transport.answer(routeCourseId, {
+      (blockId, optionId, attemptId) => transport.answer(courseId, {
         releaseId,
         blockId,
         optionId,
         attemptId,
       }),
     ),
-    [releaseId, routeCourseId, transport],
+    [courseId, releaseId, transport],
   );
 
   const onAnswer = useCallback(async (blockId, optionId, attemptId) => {
@@ -169,7 +217,7 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
     setError(null);
     try {
       if (!sessionGuardRef.current.isCurrent(sessionToken)) throw createStaleSessionError();
-      const response = await transport.complete(routeCourseId, { releaseId, blockId });
+      const response = await transport.complete(courseId, { releaseId, blockId });
       if (!sessionGuardRef.current.isCurrent(sessionToken)) throw createStaleSessionError();
       const nextProgress = returnedProgress(response);
       if (nextProgress) setProgress(nextProgress);
@@ -183,10 +231,10 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
         setSaving((current) => ({ ...current, [blockId]: false }));
       }
     }
-  }, [releaseId, renderedSessionToken, routeCourseId, transport]);
+  }, [courseId, releaseId, renderedSessionToken, transport]);
 
   if (authLoading) return <div className="manual-reader"><div className="manual-reader-inner"><LoadingState /></div></div>;
-  if (!user) return <div className="manual-reader"><div className="manual-reader-inner"><SignInState /></div></div>;
+  if (!user) return <div className="manual-reader"><div className="manual-reader-inner"><SignInState courseId={courseId} /></div></div>;
   if (loading && !envelope) return <div className="manual-reader"><div className="manual-reader-inner"><LoadingState /></div></div>;
   if (error && !envelope) {
     return (
@@ -211,7 +259,7 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
     <div className="manual-reader">
       <div className="manual-reader-inner">
         <div className="manual-reader-top">
-          <Link className="manual-reader-back" href="/learn/library">← Library</Link>
+          <BackButton onBack={onBack} />
           <h1>{title}</h1>
         </div>
         {content.summary ? <p className="manual-reader-summary">{content.summary}</p> : null}
@@ -227,8 +275,8 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
               <button
                 type="button"
                 className={index === lessonIndex ? 'is-active' : ''}
-                key={item.id || index}
-                onClick={() => setLessonIndex(index)}
+                key={item.id || item.lessonId || item.title || 'lesson'}
+                onClick={() => selectLesson(index)}
                 aria-current={index === lessonIndex ? 'page' : undefined}
               >
                 {item.title || `Lesson ${index + 1}`}
@@ -242,7 +290,7 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
           <main className="manual-reader-content">
             {Object.values(saving).some(Boolean) ? <p className="manual-reader-saving" role="status">Saving progress…</p> : null}
             {lesson ? (
-              <ManualLesson
+              <CourseLesson
                 content={lesson}
                 progress={progress}
                 onAnswer={onAnswer}
@@ -262,10 +310,12 @@ export function CourseReader({ courseId: providedCourseId, request, user: provid
   );
 }
 
-export default function LibraryCoursePage() {
+export function PublishedCourseReader(props) {
   return (
     <Suspense fallback={<div className="manual-reader"><div className="manual-reader-inner"><LoadingState /></div></div>}>
-      <CourseReader />
+      <CourseReader {...props} />
     </Suspense>
   );
 }
+
+export default PublishedCourseReader;
