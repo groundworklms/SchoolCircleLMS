@@ -320,6 +320,13 @@ export function StudentSettings({ onSignOut, account, authenticated = false, tab
 
 /* ---------- instructor ---------- */
 
+const COUNSELING_TIMELINES = [
+  ['1', 'Within 1 training day of the annex exam'],
+  ['2', 'Within 2 training days of the annex exam'],
+  ['3', 'Within 3 training days of the annex exam'],
+  ['5', 'Within 5 training days of the annex exam'],
+];
+
 export function InstructorSettings({
   course,
   account,
@@ -334,6 +341,8 @@ export function InstructorSettings({
   const requested = tab === 'app' || tab === 'course' || tab === 'account' ? tab : 'account';
   const active = courseScoped ? 'course' : requested;
   const show = !!prefs.showStanding?.[course?.id];
+  const counselingDueDays = prefs.counselingDueDays?.[course?.id] || '2';
+  const remarkRequired = prefs.remarkRequired?.[course?.id] || 'yes';
 
   return (
     <div className="s-settings">
@@ -413,11 +422,24 @@ export function InstructorSettings({
         </p>
         <div className="s-settings-row">
           <span>Counseling due</span>
-          <span className="s-settings-val">Within 2 training days of the annex exam</span>
+          <select
+            className="s-dq-select small"
+            value={counselingDueDays}
+            onChange={(e) => setPref(`counselingDueDays.${course.id}`, e.target.value)}
+          >
+            {COUNSELING_TIMELINES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
         </div>
         <div className="s-settings-row">
           <span>Remark required</span>
-          <span className="s-settings-val">Yes</span>
+          <select
+            className="s-dq-select small"
+            value={remarkRequired}
+            onChange={(e) => setPref(`remarkRequired.${course.id}`, e.target.value)}
+          >
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </select>
         </div>
       </section>
 

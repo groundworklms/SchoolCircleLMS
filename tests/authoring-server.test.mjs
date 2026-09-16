@@ -12,6 +12,20 @@ function copy(value) {
   return value === undefined ? undefined : structuredClone(value);
 }
 
+// Minimal support for the two Prisma clauses getResults/listLibrary now query
+// with (#74): `{ in: [...] }` on a plain field, and a single-segment JSON
+// path filter on `payload`. Anything else falls back to strict equality,
+// same as before.
+function matchesClause(row, key, value) {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    if (Array.isArray(value.in)) return value.in.includes(row[key]);
+    if (Array.isArray(value.path) && value.path.length === 1) {
+      return (row[key] || {})[value.path[0]] === value.equals;
+    }
+  }
+  return row[key] === value;
+}
+
 function memoryDb(initialRows = []) {
   let sequence = 0;
   const rows = [];
@@ -36,7 +50,7 @@ function memoryDb(initialRows = []) {
       return copy(rows.find((row) => row.id === where.id) || null);
     },
     async findMany({ where = {} }) {
-      return copy(rows.filter((row) => Object.entries(where).every(([key, value]) => row[key] === value)));
+      return copy(rows.filter((row) => Object.entries(where).every(([key, value]) => matchesClause(row, key, value))));
     },
     async updateMany({ where, data }) {
       const row = rows.find((candidate) =>

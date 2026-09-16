@@ -226,6 +226,20 @@
   line-height: 1.45;
 }
 .s-profile-editor-note strong { color: var(--p-text, #1d1d1f); }
+/* This screen renders standalone on auth failure, outside .p-root, so the
+   --p-* variables its buttons rely on are unset — .s-profile-editor gives
+   itself the matching card background for the same reason (#69). Without
+   this, the ghost buttons' text-color fallback (#1d1d1f, meant for a light
+   card) sits directly on the app's dark global body, rendering as
+   near-invisible dark-on-dark. */
+.s-account-recovery {
+  max-width: 34rem;
+  margin: 3rem auto;
+  color: var(--p-text, #1d1d1f);
+  background: var(--p-surface, #fff);
+  border-radius: var(--p-radius, 18px);
+  box-shadow: var(--p-shadow, 0 2px 12px rgba(0,0,0,0.06));
+}
 .s-profile-editor .p-btn,
 .s-account-recovery .p-btn {
   background: var(--p-accent, #b3122e);
@@ -456,7 +470,12 @@ details[open] > summary.s-label::before { content: '▾'; }
 .s-cal-swatch { width: 0.7em; height: 0.7em; border-radius: 50%; background: var(--k, var(--p-faint)); }
 .s-cal-count { font-size: 0.8em; color: var(--p-faint); margin-left: 0.4rem; }
 
-.class { --k: #3b5b8c; --k-bg: #e8eef8; }
+/* #82: .class stood out as the one saturated, one-off blue (#3b5b8c) never
+   used anywhere else in the app; everything else here already reuses an
+   existing semantic token. Swap it for --p-seq-600, the app's own muted
+   blue-gray (already used for neutral chart fills), so the calendar's
+   palette stays inside the same family as the rest of the page. */
+.class { --k: var(--p-seq-600); --k-bg: rgba(138, 149, 163, 0.16); }
 .exam  { --k: var(--p-accent); --k-bg: var(--p-accent-tint); }
 .plan  { --k: var(--p-good); --k-bg: #e8f4ec; }
 .todo  { --k: var(--p-warning); --k-bg: #fdf3e2; }
