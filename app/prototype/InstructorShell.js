@@ -240,7 +240,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
 
   return (
     <div className="s-root">
-      <nav className="s-rail">
+      <nav className="s-rail s-rail-instructor" aria-label="Instructor navigation">
         <UserMenu
           name={displayName}
           role={!profileRole ? INSTRUCTOR.role : profileRole === 'BOTH' ? 'Learner · Instructor' : INSTRUCTOR.role}
@@ -254,6 +254,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
           ]}
         />
 
+        <div className="s-rail-scroll" tabIndex={0} role="region" aria-label="Library and course navigation">
         <div className="s-rail-sec" style={{ paddingTop: '0.2rem' }}>Library</div>
         {LIBRARY.map((l) => (
           <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
@@ -283,11 +284,13 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
           </>
         )}
 
-        <div className="s-rail-spacer" />
+        </div>
+        <div className="s-rail-footer">
         {onSwitchRole && (
           <RailButton icon={I.swap} label="View as student" onClick={onSwitchRole} />
         )}
         <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/plan'; }} />
+        </div>
       </nav>
 
       <div className="s-content">
