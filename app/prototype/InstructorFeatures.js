@@ -560,7 +560,6 @@ export function RubricsView() {
     <>
       <div className="s-pagehead">
         <h1>Rubrics</h1>
-        <p>Generate a rubric from a task and approved source.</p>
       </div>
 
       <div className="p-panel">
