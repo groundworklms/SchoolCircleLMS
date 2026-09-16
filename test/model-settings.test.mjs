@@ -86,12 +86,16 @@ const crypto = await import('../lib/settings-crypto.js');
 const routeModule = await import('../app/api/learning/model-settings/route.js');
 
 const {
+  changeNeedsOperator,
+  claimOperatorPassphrase,
   disableModelSettings,
   invalidateModelSettings,
   primeModelSettings,
   publicModelSettings,
   saveModelSettings,
   storedApiKey,
+  operatorPassphraseNeedsClaim,
+  verifyOperatorPassphrase,
 } = settings;
 
 /* --------------------------------- fixtures -------------------------------- */
@@ -107,6 +111,7 @@ const ENV_KEYS = [
   'MODEL_BASE_URL',
   'MODEL_ID',
   'MODEL_API_KEY',
+  'OPENAI_API_KEY',
   'OPENROUTER_API_KEY',
 ];
 let savedEnv = {};
@@ -387,12 +392,15 @@ test('writes require the operator passphrase and fail closed without one', async
   assert.equal(response.status, 403);
   assert.equal(rows.size, 0);
 
-  // No passphrase configured on the deployment at all: refuse, do not open up.
+  // No passphrase configured at all is still a refusal -- it does not open up --
+  // but it is reported as an actionable state so the panel can offer to claim
+  // one instead of greying itself out.
   delete process.env.MODEL_SETTINGS_KEY;
+  invalidateModelSettings();
   response = await routeModule.PUT(request('PUT', { body, key: 'anything' }), context);
-  assert.equal(response.status, 503);
-  assert.equal((await response.json()).code, 'SETTINGS_NOT_WRITABLE');
-  assert.equal(rows.size, 0);
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'PASSPHRASE_NOT_SET');
+  assert.equal(rows.size, 0, 'an unauthorized write still writes nothing');
 });
 
 test('the operator view reports why it is not writable and not sealable', async () => {
@@ -421,4 +429,253 @@ test('a tampered envelope opens as no credential instead of throwing', async () 
   assert.equal(crypto.openSecret({ ...sealed, tag: Buffer.alloc(16, 1).toString('base64') }), null);
   assert.equal(crypto.openSecret(null), null);
   assert.equal(crypto.openSecret({ apiKey: 'plaintext' }), null);
+});
+
+/* ------------------------- passphrase bootstrapping ------------------------ */
+
+test('a deployment with no secrets offers to claim a passphrase rather than locking out', async () => {
+  delete process.env.MODEL_SETTINGS_KEY;
+  await primeModelSettings();
+  assert.equal(operatorPassphraseNeedsClaim(), true);
+
+  const view = publicModelSettings(await primeModelSettings(), providers.textProvider());
+  assert.equal(view.needsPassphraseClaim, true);
+  assert.equal(view.writable, false);
+  assert.equal(view.passphrasePinned, false);
+
+  await claimOperatorPassphrase({ passphrase: 'a-good-operator-phrase', updatedBy: INSTRUCTOR.id });
+  await primeModelSettings();
+
+  assert.equal(operatorPassphraseNeedsClaim(), false);
+  assert.equal(verifyOperatorPassphrase('a-good-operator-phrase'), true);
+  assert.equal(verifyOperatorPassphrase('not-it'), false);
+
+  const after = publicModelSettings(await primeModelSettings(), providers.textProvider());
+  assert.equal(after.writable, true);
+  assert.equal(after.needsPassphraseClaim, false);
+});
+
+test('a claimed passphrase is hashed, not stored or returned in any readable form', async () => {
+  delete process.env.MODEL_SETTINGS_KEY;
+  await claimOperatorPassphrase({ passphrase: 'phrase-to-not-leak', updatedBy: INSTRUCTOR.id });
+
+  const stored = JSON.stringify(rows.get('system-model-settings'));
+  assert.ok(!stored.includes('phrase-to-not-leak'), 'the passphrase must not be recoverable');
+  assert.equal(rows.get('system-model-settings').payload.operatorPassphrase.alg, 'scrypt');
+
+  const view = publicModelSettings(await primeModelSettings(), providers.textProvider());
+  assert.ok(!JSON.stringify(view).includes('phrase-to-not-leak'));
+  assert.ok(!JSON.stringify(view).includes('operatorPassphrase'));
+});
+
+test('claiming is refused once a passphrase exists by either route', async () => {
+  delete process.env.MODEL_SETTINGS_KEY;
+  await claimOperatorPassphrase({ passphrase: 'first-claim-phrase', updatedBy: INSTRUCTOR.id });
+  await assert.rejects(
+    () => claimOperatorPassphrase({ passphrase: 'second-claim-phrase', updatedBy: 'instructor-2' }),
+    (error) => error.code === 'PASSPHRASE_ALREADY_SET',
+  );
+  // The original still works; a second claim cannot lock the operator out.
+  await primeModelSettings();
+  assert.equal(verifyOperatorPassphrase('first-claim-phrase'), true);
+
+  // A deployment-pinned value refuses a claim outright.
+  process.env.MODEL_SETTINGS_KEY = OPERATOR;
+  invalidateModelSettings();
+  await assert.rejects(
+    () => claimOperatorPassphrase({ passphrase: 'third-claim-phrase', updatedBy: INSTRUCTOR.id }),
+    (error) => error.code === 'PASSPHRASE_PINNED',
+  );
+});
+
+test('a pinned MODEL_SETTINGS_KEY wins over a previously claimed one', async () => {
+  delete process.env.MODEL_SETTINGS_KEY;
+  await claimOperatorPassphrase({ passphrase: 'claimed-phrase-here', updatedBy: INSTRUCTOR.id });
+  await primeModelSettings();
+  assert.equal(verifyOperatorPassphrase('claimed-phrase-here'), true);
+
+  process.env.MODEL_SETTINGS_KEY = OPERATOR;
+  await primeModelSettings();
+  assert.equal(verifyOperatorPassphrase(OPERATOR), true);
+  assert.equal(verifyOperatorPassphrase('claimed-phrase-here'), false, 'the pin is authoritative');
+});
+
+test('a short passphrase is refused', async () => {
+  delete process.env.MODEL_SETTINGS_KEY;
+  await assert.rejects(
+    () => claimOperatorPassphrase({ passphrase: 'short', updatedBy: INSTRUCTOR.id }),
+    (error) => /at least 8 characters/.test(error.message),
+  );
+  await primeModelSettings();
+  assert.equal(operatorPassphraseNeedsClaim(), true, 'nothing was claimed');
+});
+
+test('saving a provider or disabling it preserves the claimed passphrase', async () => {
+  delete process.env.MODEL_SETTINGS_KEY;
+  await claimOperatorPassphrase({ passphrase: 'survives-a-save-ok', updatedBy: INSTRUCTOR.id });
+
+  // Both writes rebuild the payload, so either could silently unclaim the
+  // deployment and lock the operator out of their own panel.
+  await saveModelSettings({
+    baseUrl: 'http://127.0.0.1:8001/v1',
+    modelId: 'local-model',
+    updatedBy: INSTRUCTOR.id,
+  });
+  await primeModelSettings();
+  assert.equal(verifyOperatorPassphrase('survives-a-save-ok'), true, 'a provider save kept it');
+
+  await disableModelSettings({ updatedBy: INSTRUCTOR.id });
+  await primeModelSettings();
+  assert.equal(verifyOperatorPassphrase('survives-a-save-ok'), true, 'disabling kept it');
+});
+
+test('the route claims a passphrase and then accepts it for a provider write', async () => {
+  delete process.env.MODEL_SETTINGS_KEY;
+  const context = { params: Promise.resolve({}) };
+
+  // A write before anything is claimed is refused, but as an actionable state.
+  let response = await routeModule.PUT(
+    request('PUT', { body: { baseUrl: 'https://api.example.com/v1', modelId: 'm' } }),
+    context,
+  );
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'PASSPHRASE_NOT_SET');
+
+  response = await routeModule.POST(
+    request('POST', { body: { passphrase: 'route-claimed-phrase' } }),
+    context,
+  );
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).settings.writable, true);
+
+  // The freshly claimed passphrase now authorizes a provider change.
+  response = await routeModule.PUT(
+    request('PUT', {
+      body: { baseUrl: 'http://127.0.0.1:8001/v1', modelId: 'local-model' },
+      key: 'route-claimed-phrase',
+    }),
+    context,
+  );
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.equal(body.settings.configured, true);
+  assert.equal(body.settings.active.source, 'settings');
+
+  // And a wrong one still does not.
+  response = await routeModule.PUT(
+    request('PUT', { body: { baseUrl: 'https://evil.example/v1', modelId: 'x' }, key: 'wrong' }),
+    context,
+  );
+  assert.equal(response.status, 403);
+});
+
+test('an existing OPENAI_API_KEY secret is accepted without a duplicate MODEL_API_KEY', async () => {
+  process.env.MODEL_BASE_URL = 'https://api.openai.com/v1';
+  process.env.MODEL_ID = 'some-model';
+  process.env.OPENAI_API_KEY = 'sk-existing-secret-2222';
+  await primeModelSettings();
+
+  assert.equal(providers.textProvider().ready, true);
+  assert.equal(providers.textProvider().source, 'env');
+  assert.equal(providers.textProviderCredential(), 'sk-existing-secret-2222');
+  assert.ok(!JSON.stringify(providers.textProvider()).includes('sk-existing-secret-2222'));
+
+  // An explicit MODEL_API_KEY still takes precedence over the fallback name.
+  process.env.MODEL_API_KEY = 'sk-explicit-wins-3333';
+  assert.equal(providers.textProviderCredential(), 'sk-explicit-wins-3333');
+
+  // It is never sent to a non-OpenRouter-but-OpenRouter-URL mismatch either:
+  // the OpenRouter path only ever reads OPENROUTER_API_KEY.
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  assert.equal(providers.textProviderCredential(), '');
+});
+
+/* ------------------- model choice vs. privileged changes ------------------- */
+
+test('choosing a model on the endpoint in force is not a privileged change', async () => {
+  process.env.MODEL_BASE_URL = 'https://api.openai.com/v1';
+
+  // Model only, endpoint inherited: an ordinary instructor action.
+  assert.equal(changeNeedsOperator({ modelId: 'some-model' }, null, process.env.MODEL_BASE_URL), false);
+  // Re-sending the endpoint already in force is still not a change.
+  assert.equal(
+    changeNeedsOperator({ baseUrl: 'https://api.openai.com/v1' }, null, process.env.MODEL_BASE_URL),
+    false,
+  );
+  // Trailing-slash differences are not a change either.
+  assert.equal(
+    changeNeedsOperator({ baseUrl: 'https://api.openai.com/v1/' }, null, process.env.MODEL_BASE_URL),
+    false,
+  );
+
+  // A different destination is privileged -- this is the exfiltration path.
+  assert.equal(
+    changeNeedsOperator({ baseUrl: 'https://evil.example/v1' }, null, process.env.MODEL_BASE_URL),
+    true,
+  );
+  // Supplying a credential is privileged regardless of endpoint.
+  assert.equal(
+    changeNeedsOperator({ apiKey: 'sk-something' }, null, process.env.MODEL_BASE_URL),
+    true,
+  );
+
+  // Once settings hold an endpoint, that one is also "in force".
+  const settings = { baseUrl: 'http://127.0.0.1:8001/v1' };
+  assert.equal(changeNeedsOperator({ baseUrl: 'http://127.0.0.1:8001/v1' }, settings, ''), false);
+  assert.equal(changeNeedsOperator({ baseUrl: 'http://127.0.0.1:9999/v1' }, settings, ''), true);
+});
+
+test('an instructor picks a model with no passphrase, but cannot redirect the endpoint', async () => {
+  delete process.env.MODEL_SETTINGS_KEY;
+  process.env.MODEL_BASE_URL = 'https://api.openai.com/v1';
+  process.env.MODEL_ID = 'deployment-default';
+  process.env.OPENAI_API_KEY = 'sk-deployment-key-8888';
+  invalidateModelSettings();
+  const context = { params: Promise.resolve({}) };
+
+  // No passphrase header, no passphrase configured anywhere: still works,
+  // because choosing a model cannot send course text anywhere new.
+  let response = await routeModule.PUT(
+    request('PUT', { body: { modelId: 'instructor-picked-model' } }),
+    context,
+  );
+  let body = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(body));
+  assert.equal(body.settings.modelId, 'instructor-picked-model');
+  assert.equal(body.settings.baseUrl, 'https://api.openai.com/v1', 'endpoint was inherited');
+  assert.equal(body.settings.active.source, 'settings');
+  assert.equal(body.settings.active.credential, 'environment', 'uses the deployment key');
+
+  // Redirecting the endpoint without the passphrase is refused.
+  response = await routeModule.PUT(
+    request('PUT', { body: { baseUrl: 'https://evil.example/v1', modelId: 'x' } }),
+    context,
+  );
+  assert.equal(response.status, 409);
+  assert.equal((await response.json()).code, 'PASSPHRASE_NOT_SET');
+  await primeModelSettings();
+  assert.equal(
+    providers.textProvider().baseUrl,
+    'https://api.openai.com/v1',
+    'the refused redirect changed nothing',
+  );
+});
+
+test('a settings-chosen model uses the deployment key without one being typed', async () => {
+  process.env.MODEL_BASE_URL = 'https://api.openai.com/v1';
+  process.env.OPENAI_API_KEY = 'sk-from-secret-manager-1234';
+  await saveModelSettings({
+    baseUrl: 'https://api.openai.com/v1',
+    modelId: 'picked-model',
+    updatedBy: INSTRUCTOR.id,
+  });
+  await primeModelSettings();
+
+  const status = providers.textProvider();
+  assert.equal(status.ready, true, 'no SETTINGS_ENCRYPTION_KEY needed for this setup');
+  assert.equal(status.source, 'settings');
+  assert.equal(status.model, 'picked-model');
+  assert.equal(status.credential, 'environment');
+  assert.equal(providers.textProviderCredential(), 'sk-from-secret-manager-1234');
+  assert.ok(!JSON.stringify(status).includes('sk-from-secret-manager-1234'));
 });
