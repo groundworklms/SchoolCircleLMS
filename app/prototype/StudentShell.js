@@ -20,14 +20,23 @@ import Grades from './Grades';
 import Discussions from './Discussions';
 import { StudentSettings } from './Settings';
 import { usePrefs } from './prefs';
+import { useLearningCourses, resolveCourse } from './learning';
+import { RealCourseHome, CourseReader, MasterySession, StudyPlan, LearnerProgress } from './LearnerFeatures';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
 
 /* Student shell. Canvas-shaped — global icon rail, dashboard with course cards,
    course sub-nav, breadcrumb, and a To-Do column — on a neutral palette.
-   The four screens it mounts are untouched; this file only decides where they sit. */
+   The screens it mounts are untouched; this file only decides where they sit.
+
+   Courses come from two places (see learning.js): approved LearningRecord
+   courses from /api/learning, which get the views the API can back (reader,
+   Whetstone mastery, Cadence path, Sextant progress), and the mock demo
+   courses, which keep the full click-through set. */
 
 const STUDENT = { name: 'Cpl Rivera', initials: 'CR' };
+// Published manual courses (app/_authoring, PR #73) have their own player page for now.
+const MANUAL_LIBRARY = '/learn/library';
 
 const COURSE_NAV = [
   { id: 'home', label: 'Home' },
@@ -40,6 +49,26 @@ const COURSE_NAV = [
   { id: 'live', label: 'Live Session' },
   { id: 'progress', label: 'My Progress' },
 ];
+
+// Views a real (approved LearningRecord) course supports.
+const REAL_COURSE_NAV = [
+  { id: 'home', label: 'Home' },
+  { id: 'lessons', label: 'Lessons' },
+  { id: 'mastery', label: 'Mastery Session' },
+  { id: 'path', label: 'Learning Path' },
+  { id: 'progress', label: 'My Progress' },
+];
+
+function RealProgress({ course }) {
+  return <LearnerProgress courseId={course.id} />;
+}
+
+const REAL_SCREENS = {
+  lessons: CourseReader,
+  mastery: MasterySession,
+  path: StudyPlan,
+  progress: RealProgress,
+};
 
 const SCREENS = {
   lessons: Lessons,
@@ -104,7 +133,27 @@ function Agenda({ courseId, onOpen }) {
 
 /* ---------- dashboard ---------- */
 
-function Dashboard({ onOpen }) {
+function RealCourseCard({ c, onOpen }) {
+  return (
+    <button className="s-card" onClick={() => onOpen(c.id, 'home')}>
+      <div className="s-card-head">
+        <div>
+          <div className="s-card-title">{c.name}</div>
+          <div className="s-card-school">{c.school}</div>
+        </div>
+        <div className="s-card-avg">
+          <span style={{ color: 'var(--p-good)' }}>✓</span>
+          <small>cited</small>
+        </div>
+      </div>
+      <div className="s-card-foot">
+        <span>{c.sections} sections · approved by your instructor</span>
+      </div>
+    </button>
+  );
+}
+
+function Dashboard({ onOpen, realCourses = [] }) {
   const { ready, profile } = useAuth();
   const identity = accountDisplay({ ready, profile, demo: STUDENT });
   const list = Object.values(COURSES);
@@ -122,7 +171,7 @@ function Dashboard({ onOpen }) {
       <div>
         <div className="s-pagehead">
           <h1>{greet}, {[identity.rank, identity.name].filter(Boolean).join(' ')}</h1>
-          <p>{list.length} courses in progress · 1 requirement overdue</p>
+          <p>{list.length + realCourses.length} courses in progress · 1 requirement overdue</p>
         </div>
 
         <h4 className="s-label">Up next</h4>
@@ -145,6 +194,9 @@ function Dashboard({ onOpen }) {
 
         <h4 className="s-label">My courses</h4>
         <div className="s-cards">
+          {realCourses.map((c) => (
+            <RealCourseCard key={c.id} c={c} onOpen={onOpen} />
+          ))}
           {list.map((c) => {
             const avg = courseAvg(c);
             const weakest = [...c.topics].sort((a, b) => a.mastery - b.mastery)[0];
@@ -205,7 +257,7 @@ function Dashboard({ onOpen }) {
   );
 }
 
-function Courses({ onOpen }) {
+function Courses({ onOpen, realCourses = [] }) {
   const list = Object.values(COURSES);
   return (
     <div className="s-two">
@@ -217,6 +269,20 @@ function Courses({ onOpen }) {
 
         <h4 className="s-label">In progress</h4>
         <div className="s-courselist">
+          {realCourses.map((c) => (
+            <button className="s-courserow" key={c.id} onClick={() => onOpen(c.id, 'home')}>
+              <div className="s-courserow-main">
+                <div className="s-card-title">{c.name}</div>
+                <div className="s-card-school">{c.school}</div>
+                <div className="s-prog"><span>{c.sections} sections</span></div>
+              </div>
+              <div className="s-card-avg">
+                <span style={{ color: 'var(--p-good)' }}>✓</span>
+                <small>cited</small>
+              </div>
+              <span className="s-quick-arrow">→</span>
+            </button>
+          ))}
           {list.map((c) => {
             const avg = courseAvg(c);
             const pct = Math.round((c.week / c.weeks) * 100);
@@ -418,7 +484,11 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   // Location comes from the URL (see nav.js); these are the three moves the shell makes.
   const { area, courseId, view, lessonId, page, threadId } = nav;
   const prefs = usePrefs();
-  const course = courseId ? COURSES[courseId] : null;
+  const learning = useLearningCourses();
+  const course = resolveCourse(courseId, learning.courses);
+  const isReal = Boolean(course?.record);
+  const pendingCourse = area === 'course' && Boolean(courseId) && !course && learning.loading;
+  const NAV = isReal ? REAL_COURSE_NAV : COURSE_NAV;
   const inboxUnread = useInboxMessages().filter((m) => m.unread).length;
 
   // Remember the lesson + page you were on per course, so leaving Lessons for
@@ -443,16 +513,17 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const crumbs = [{ label: 'Dashboard', onClick: () => setArea('dashboard') }];
   if (area === 'course' && course) {
     crumbs.push({ label: course.name, onClick: () => setView('home') });
-    if (view !== 'home') crumbs.push({ label: COURSE_NAV.find((n) => n.id === view).label });
+    if (view !== 'home') crumbs.push({ label: (NAV.find((n) => n.id === view) || NAV[0]).label });
   } else if (area === 'courses') crumbs.push({ label: 'Courses' });
   else if (area === 'calendar') crumbs.push({ label: 'Calendar' });
   else if (area === 'inbox') crumbs.push({ label: 'Inbox' });
   else if (area === 'settings') crumbs.push({ label: 'Settings' });
 
   let body;
-  if (area === 'course' && !course) body = <Dashboard onOpen={open} />;
-  else if (area === 'dashboard') body = <Dashboard onOpen={open} />;
-  else if (area === 'courses') body = <Courses onOpen={open} />;
+  if (pendingCourse) body = <p>Loading course…</p>;
+  else if (area === 'course' && !course) body = <Dashboard onOpen={open} realCourses={learning.courses} />;
+  else if (area === 'dashboard') body = <Dashboard onOpen={open} realCourses={learning.courses} />;
+  else if (area === 'courses') body = <Courses onOpen={open} realCourses={learning.courses} />;
   else if (area === 'calendar') body = <StudentCalendar onOpen={open} />;
   else if (area === 'inbox') body = <StudentInbox onOpen={open} onArea={setArea} />;
   else if (area === 'settings') {
@@ -463,6 +534,11 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
         authenticated={authenticated}
       />
     );
+  }
+  else if (isReal && view === 'home') body = <RealCourseHome key={course.id} course={course} go={setView} />;
+  else if (isReal) {
+    const Screen = REAL_SCREENS[view] || REAL_SCREENS.lessons;
+    body = <Screen key={`${course.id}:${view}`} course={course} />;
   }
   else if (view === 'home') body = <CourseHome course={course} go={setView} onOpen={open} />;
   else {
@@ -487,6 +563,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
         />
         <RailButton icon={I.dashboard} label="Dashboard" on={area === 'dashboard'} onClick={() => setArea('dashboard')} />
         <RailButton icon={I.courses} label="Courses" on={area === 'courses'} onClick={() => setArea('courses')} />
+        <RailButton icon={I.courses} label="Interactive courses" onClick={() => { window.location.href = MANUAL_LIBRARY; }} />
         <RailButton icon={I.calendar} label="Calendar" on={area === 'calendar'} onClick={() => setArea('calendar')} />
         <RailButton icon={I.inbox} label="Inbox" on={area === 'inbox'} onClick={() => setArea('inbox')} badge={inboxUnread} />
 
@@ -494,15 +571,24 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
           <>
             <div className="s-rail-sec">
               <span className="s-rail-sec-name">{course.name}</span>
-              <code>{course.id}</code>
+              {!isReal && <code>{course.id}</code>}
             </div>
-            {COURSE_NAV.map((n) => (
+            {NAV.map((n) => (
               <RailButton key={n.id} label={n.label} sub on={view === n.id} onClick={() => setView(n.id)} />
             ))}
           </>
         ) : (
           <>
             <div className="s-rail-sec">My courses</div>
+            {learning.courses.map((c) => (
+              <RailButton
+                key={c.id}
+                sub
+                icon={<span className="s-rail-dot" style={{ background: 'var(--p-good)' }} />}
+                label={c.name}
+                onClick={() => open(c.id, 'home')}
+              />
+            ))}
             {Object.values(COURSES).map((c) => (
               <RailButton
                 key={c.id}
@@ -549,7 +635,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
         </main>
       </div>
 
-      {area === 'course' && course && <CourseChat key={course.id} course={course} view={view} />}
+      <CourseChat key={course?.id || 'doctrine'} course={course} view={view} />
     </div>
   );
 }

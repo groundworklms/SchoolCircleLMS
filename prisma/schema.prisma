@@ -136,10 +136,16 @@ model Schedule {
   @@index([learnerId, dueAt])
 }
 
-// Additive boundary for integrations that do not have a first-class LMS table yet.
-// The payload is always JSON produced by a reviewed adapter (source, draft, rubric,
-// tutor turn, or mastery session). `ownerId` is the authenticated SchoolCircle User
+// Authoring and evidence store for the arsenal loop. The payload is always JSON
+// produced by a reviewed adapter (source, draft, rubric, tutor turn, mastery
+// session, study plan, AAR…). `ownerId` is the authenticated SchoolCircle User
 // id; no client-provided identity is accepted by the learning routes.
+//
+// Relationship to the typed tables above: approving a COURSE_DRAFT record
+// materialises it into Course / Section / Item (Course.id = the record id; see
+// lib/learning/project-course.js). The record stays the source of truth for
+// what was drafted and approved; the typed rows are the delivery read model
+// behind /api/courses and the anchor for Attempt and Schedule.
 model LearningRecord {
   id        String   @id @default(cuid())
   ownerId   String

@@ -58,8 +58,8 @@ export default function Prototype() {
       <div className="p-banner">
         <strong>PROTOTYPE</strong>
         <span>
-          Click-through concept only. All &quot;AI output&quot; below is hand-written mock data — no model
-          is running.
+          Grounded answers, POI ingest and approved course content are live where a service is
+          configured; everything else is hand-written mock data. Nothing unreviewed reaches a student.
         </span>
       </div>
       {nav.role === 'student' ? (
