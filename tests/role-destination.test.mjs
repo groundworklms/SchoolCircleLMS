@@ -18,10 +18,10 @@ const complete = (role) => ({
   profileCompletedAt: completedAt,
 });
 
-test('role defaults route instructors to teaching and learners/both to learning', () => {
-  assert.equal(getDefaultDestination(complete('INSTRUCTOR')), '/teach');
-  assert.equal(getDefaultDestination(complete('LEARNER')), '/learn');
-  assert.equal(getDefaultDestination(complete('BOTH')), '/learn');
+test('role defaults route instructors to the builder and learners/both to the student dashboard', () => {
+  assert.equal(getDefaultDestination(complete('INSTRUCTOR')), '/prototype/instructor');
+  assert.equal(getDefaultDestination(complete('LEARNER')), '/prototype');
+  assert.equal(getDefaultDestination(complete('BOTH')), '/prototype');
 });
 
 test('incomplete profiles always enter AuthGuard onboarding', () => {
@@ -46,11 +46,11 @@ test('mismatched or external deep links fall back to the persisted role', () => 
   const instructor = complete('INSTRUCTOR');
   const learner = complete('LEARNER');
 
-  assert.equal(getPostLoginDestination(instructor, '/learn/course/42'), '/teach');
-  assert.equal(getPostLoginDestination(learner, '/teach'), '/learn');
+  assert.equal(getPostLoginDestination(instructor, '/learn/course/42'), '/prototype/instructor');
+  assert.equal(getPostLoginDestination(learner, '/teach'), '/prototype');
   assert.equal(isSafeDeepLink('https://evil.example/teach', instructor), false);
   assert.equal(isSafeDeepLink('//evil.example/teach', instructor), false);
   assert.equal(isSafeDeepLink('/teach/../evil', instructor), false);
   assert.equal(isSafeDeepLink('/prototype/instructor/M092721', learner), false);
-  assert.equal(getPostLoginDestination(instructor, '/unknown'), '/teach');
+  assert.equal(getPostLoginDestination(instructor, '/unknown'), '/prototype/instructor');
 });
