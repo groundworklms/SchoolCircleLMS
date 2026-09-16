@@ -379,47 +379,48 @@ test('Hotwash uses the explicit prose seam without replacing its pinned implemen
   assert.equal(fallback.source, 'heuristic');
 });
 
-test('Rubricon follows the configured model; native Whetstone accepts the shared key only on explicit OpenRouter URLs', async () => {
+test('Rubricon and Whetstone track the shared model, ignoring any per-helper endpoint vars', async () => {
+  // Shared model configured and NO RUBRICON_*/WHETSTONE_* set at all.
   await withEnvironment(
     {
-      MODEL_BASE_URL: OPENROUTER_BASE_URL,
-      MODEL_ID: OPENROUTER_MODEL_ID,
-      OPENROUTER_API_KEY: 'synthetic-openrouter-key',
-      RUBRICON_ENDPOINT: `${OPENROUTER_BASE_URL}/chat/completions`,
-      RUBRICON_MODEL: OPENROUTER_MODEL_ID,
+      MODEL_BASE_URL: 'http://127.0.0.1:8001/v1',
+      MODEL_ID: 'synthetic-local-model',
+      MODEL_API_KEY: 'synthetic-local-key',
+      OPENROUTER_API_KEY: undefined,
+      RUBRICON_ENDPOINT: undefined,
+      RUBRICON_MODEL: undefined,
       RUBRICON_API_KEY: undefined,
-      WHETSTONE_ENDPOINT: `${OPENROUTER_BASE_URL}/chat/completions`,
-      WHETSTONE_MODEL: OPENROUTER_MODEL_ID,
+      WHETSTONE_ENDPOINT: undefined,
+      WHETSTONE_MODEL: undefined,
       WHETSTONE_API_KEY: undefined,
     },
     () => {
       const configured = learningModelStatus();
-      // Rubricon is driven through the configured provider, so it is ready
-      // whenever the model is -- RUBRICON_* is no longer a second credential to
-      // set before an instructor can generate a rubric.
+      assert.equal(configured.model.ready, true);
       assert.equal(configured.rubriconConfigured, true);
       assert.equal(configured.whetstoneConfigured, true);
     },
   );
 
+  // No shared model: both report unconfigured even though each helper has a
+  // fully-populated legacy endpoint trio, which is no longer read.
   await withEnvironment(
     {
-      MODEL_BASE_URL: 'http://127.0.0.1:8001/v1',
-      MODEL_ID: 'synthetic-local-model',
-      OPENROUTER_API_KEY: 'synthetic-openrouter-key',
+      MODEL_BASE_URL: undefined,
+      MODEL_ID: undefined,
+      MODEL_API_KEY: undefined,
+      OPENROUTER_API_KEY: undefined,
       RUBRICON_ENDPOINT: 'https://model.invalid/v1/chat/completions',
       RUBRICON_MODEL: 'synthetic-model',
-      RUBRICON_API_KEY: undefined,
+      RUBRICON_API_KEY: 'synthetic-rubricon-key',
       WHETSTONE_ENDPOINT: 'https://model.invalid/v1/chat/completions',
       WHETSTONE_MODEL: 'synthetic-model',
-      WHETSTONE_API_KEY: undefined,
+      WHETSTONE_API_KEY: 'synthetic-whetstone-key',
     },
     () => {
       const notConfigured = learningModelStatus();
-      // A self-hosted model is still a model, so Rubricon is ready on it.
-      assert.equal(notConfigured.rubriconConfigured, true);
-      // Whetstone still calls its own endpoint, and the shared OpenRouter key
-      // must not leak to a non-OpenRouter URL.
+      assert.equal(notConfigured.model.ready, false);
+      assert.equal(notConfigured.rubriconConfigured, false);
       assert.equal(notConfigured.whetstoneConfigured, false);
     },
   );

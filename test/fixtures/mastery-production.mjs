@@ -9,7 +9,12 @@ let replies = [];
 const requests = [];
 globalThis.fetch = async (url, init) => {
   assert.equal(String(url), 'https://whetstone.invalid/chat/completions');
-  assert.equal(init.headers.Authorization, 'Bearer fixture-not-a-credential');
+  // Two real transports reach this URL: upstream Whetstone's own fetch (negative
+  // control below, header `Authorization`, WHETSTONE_API_KEY) and the shared model
+  // adapter that now drives production (header `authorization`, MODEL_API_KEY).
+  // Both must present a fixture bearer token; neither may call unauthenticated.
+  const authorization = init.headers.Authorization ?? init.headers.authorization;
+  assert.equal(authorization, 'Bearer fixture-not-a-credential');
   const body = JSON.parse(init.body);
   assert.equal(body.model, 'fixture-model');
   requests.push(body);
