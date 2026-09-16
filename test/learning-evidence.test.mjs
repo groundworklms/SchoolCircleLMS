@@ -52,6 +52,44 @@ test('mastery turns and missing correctness never become false pre/post attempts
   assert.equal(analytics.evidence.mastery.status, 'insufficient_evidence');
 });
 
+test('analytics rejects malformed grouping keys and strips nested attempt payloads', () => {
+  const analytics = buildAnalytics({
+    cohort: true,
+    attempts: [
+      {
+        learnerId: { learnerId: 'nested-learner' },
+        objective: {
+          learnerId: 'nested-group-learner',
+          answer: 'nested-answer',
+          gradedAgainst: 'nested-key',
+        },
+        phase: 'pre',
+        correct: false,
+        answer: 'raw-answer',
+        gradedAgainst: 'raw-key',
+      },
+      {
+        learnerId: { learnerId: 'nested-learner' },
+        objective: { learnerId: 'nested-group-learner' },
+        phase: 'post',
+        correct: true,
+        answer: 'raw-answer',
+        gradedAgainst: 'raw-key',
+      },
+    ],
+    sessions: [],
+  });
+
+  assert.equal(analytics.privacy.observedLearners, 0);
+  assert.equal(analytics.gain.status, 'insufficient_evidence');
+  assert.deepEqual(analytics.gaps, []);
+  const serialised = JSON.stringify(analytics);
+  for (const secret of ['nested-learner', 'nested-group-learner', 'nested-answer', 'nested-key', 'raw-answer', 'raw-key']) {
+    assert.equal(serialised.includes(secret), false);
+  }
+  assert.equal(serialised.includes('[object Object]'), false);
+});
+
 test('Sextant fixture cohort is emitted only after distinct-learner threshold', () => {
   const attempts = [...FIXTURE_ATTEMPTS];
   for (const learnerId of ['fixture-d', 'fixture-e']) {
@@ -61,6 +99,112 @@ test('Sextant fixture cohort is emitted only after distinct-learner threshold', 
   assert.equal(analytics.gaps.length, 1);
   assert.equal(analytics.gaps[0].cohort, 5);
   assert.equal('learnerId' in analytics.gaps[0], false);
+});
+
+test('cohort membership is the union of attempts and mastery, while each statistic needs contributors', () => {
+  const attempts = ['a', 'b', 'c', 'd'].flatMap((learnerId) => [
+    { learnerId, objective: 'movement', phase: 'pre', correct: false },
+    { learnerId, objective: 'movement', phase: 'post', correct: true },
+  ]);
+  const analytics = buildAnalytics({
+    cohort: true,
+    attempts,
+    sessions: [
+      { learnerId: 'd', criteria: [{ competency: 'movement', verdict: 'mastered' }] },
+      { learnerId: 'e', criteria: [{ competency: 'movement', verdict: 'mastered' }] },
+    ],
+  });
+
+  assert.equal(analytics.privacy.observedLearners, 5);
+  assert.equal(analytics.gain.status, 'insufficient_evidence');
+  assert.equal(analytics.gain.observedContributors, 4);
+  assert.equal(analytics.mastery.status, 'insufficient_evidence');
+  assert.equal(analytics.mastery.observedContributors, 2);
+  assert.deepEqual(analytics.gaps, []);
+  const serialised = JSON.stringify(analytics);
+  assert.equal(serialised.includes('"learnerId"'), false);
+  assert.equal(serialised.includes('correct'), false);
+  assert.equal(serialised.includes('answer'), false);
+  assert.equal(serialised.includes('gradedAgainst'), false);
+});
+
+test('mastery-only four learners are suppressed but five learners do not invent gain', () => {
+  const sessions = (learnerIds) => learnerIds.map((learnerId) => ({
+    learnerId,
+    criteria: [
+      { competency: 'movement', verdict: 'mastered' },
+      ...(learnerId === 'a'
+        ? [{ competency: 'sparse-competency', verdict: 'developing' }]
+        : []),
+    ],
+  }));
+  const four = buildAnalytics({
+    cohort: true,
+    attempts: [],
+    sessions: sessions(['a', 'b', 'c', 'd']),
+  });
+  assert.equal(four.privacy.observedLearners, 4);
+  assert.equal(four.mastery.status, 'insufficient_evidence');
+  assert.deepEqual(four.gaps, []);
+
+  const five = buildAnalytics({
+    cohort: true,
+    attempts: [],
+    sessions: sessions(['a', 'b', 'c', 'd', 'e']),
+  });
+  assert.equal(five.privacy.observedLearners, 5);
+  assert.equal(five.gain.status, 'insufficient_evidence');
+  assert.equal(five.gain.overall, null);
+  assert.ok(Array.isArray(five.mastery));
+  assert.equal(JSON.stringify(five.mastery).includes('sparse-competency'), false);
+  assert.equal(JSON.stringify(five).includes('"learnerId"'), false);
+});
+
+test('cohort gain and objective output suppress disjoint and sparse contributors', () => {
+  const attempts = [
+    ...['a', 'b', 'c', 'd', 'e'].flatMap((learnerId) => [
+      { learnerId, objective: 'movement', phase: 'pre', correct: false },
+      { learnerId, objective: 'movement', phase: 'post', correct: true },
+    ]),
+    { learnerId: 'a', objective: 'sparse-objective', phase: 'pre', correct: false },
+    { learnerId: 'a', objective: 'sparse-objective', phase: 'post', correct: true },
+  ];
+  const analytics = buildAnalytics({
+    cohort: true,
+    attempts,
+    sessions: [],
+  });
+
+  assert.equal(analytics.gain.status, undefined);
+  assert.ok(analytics.gain.objectives.some((entry) => entry.objective === 'movement'));
+  assert.equal(analytics.gain.objectives.some((entry) => entry.objective === 'sparse-objective'), false);
+  assert.equal(analytics.gaps.length, 1);
+  assert.equal(analytics.privacy.objectiveContributors.suppressed, 1);
+  const serialised = JSON.stringify(analytics);
+  assert.equal(serialised.includes('sparse-objective'), false);
+  assert.equal(serialised.includes('"learnerId"'), false);
+});
+
+test('gain calculation excludes unpaired learner attrition from overall and objective rates', () => {
+  const paired = ['a', 'b', 'c', 'd', 'e'].flatMap((learnerId) => [
+    { learnerId, objective: 'movement', phase: 'pre', correct: false },
+    { learnerId, objective: 'movement', phase: 'post', correct: true },
+  ]);
+  const baseline = buildAnalytics({ cohort: true, attempts: paired, sessions: [] });
+  const withAttrition = buildAnalytics({
+    cohort: true,
+    attempts: [
+      ...paired,
+      { learnerId: 'attrition', objective: 'movement', phase: 'post', correct: true },
+      { learnerId: 'attrition', objective: 'movement', phase: 'post', correct: false },
+    ],
+    sessions: [],
+  });
+
+  assert.deepEqual(withAttrition.gain.overall, baseline.gain.overall);
+  assert.deepEqual(withAttrition.gain.objectives, baseline.gain.objectives);
+  assert.equal(withAttrition.privacy.observedLearners, 6);
+  assert.equal(withAttrition.privacy.gainContributors.observed, 5);
 });
 
 test('Cadence fixture returns a deterministic recommended plan, reminders, and ICS', () => {

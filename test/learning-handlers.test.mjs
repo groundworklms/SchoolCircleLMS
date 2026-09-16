@@ -196,3 +196,66 @@ test('evidence handlers enforce the store seam and instructor gates without a da
   assert.equal(await status(handlers.getAnalytics(learner, { query: {} })), 501); // seam missing
   assert.equal(await status(handlers.createStudyPlan(learner, { body: {} })), 400);
 });
+
+test('cohort handler unions learner membership across attempts and mastery records', async () => {
+  const attempts = ['a', 'b', 'c', 'd'].flatMap((learnerId) => [
+    { learnerId, objective: 'movement', phase: 'pre', correct: false },
+    { learnerId, objective: 'movement', phase: 'post', correct: true },
+  ]);
+  const sessions = [
+    { learnerId: 'd', criteria: [{ competency: 'movement', verdict: 'mastered' }] },
+    { learnerId: 'e', criteria: [{ competency: 'movement', verdict: 'mastered' }] },
+  ];
+  const handlers = createEvidenceHandlers({
+    store: {
+      async listCohortAttempts() {
+        return attempts;
+      },
+      async listCohortMasteryReports() {
+        return sessions;
+      },
+    },
+  });
+  const result = await handlers.getAnalytics(
+    { id: 'instructor-1', role: 'INSTRUCTOR' },
+    { query: { scope: 'cohort', courseId: 'course-1' } },
+  );
+
+  assert.equal(result.json.privacy.observedLearners, 5);
+  assert.equal(result.json.gain.status, 'insufficient_evidence');
+  assert.equal(result.json.gain.observedContributors, 4);
+  assert.equal(result.json.mastery.status, 'insufficient_evidence');
+  assert.equal(result.json.mastery.observedContributors, 2);
+});
+
+test('count-only cohort seam responses fail closed instead of adding unknown counts', async () => {
+  const handlers = createEvidenceHandlers({
+    store: {
+      async listCohortAttempts() {
+        return {
+          attempts: [
+            { objective: 'movement', phase: 'pre', correct: false },
+            { objective: 'movement', phase: 'post', correct: true },
+          ],
+          distinctLearnerCount: 4,
+        };
+      },
+      async listCohortMasteryReports() {
+        return {
+          sessions: [],
+          // This is the same four-person population, but the seam has no IDs
+          // with which to prove that overlap.
+          distinctLearnerCount: 4,
+        };
+      },
+    },
+  });
+  const result = await handlers.getAnalytics(
+    { id: 'instructor-1', role: 'INSTRUCTOR' },
+    { query: { scope: 'cohort', courseId: 'course-1' } },
+  );
+
+  assert.equal(result.json.privacy.observedLearners, 0);
+  assert.equal(result.json.gain.status, 'insufficient_evidence');
+  assert.equal(result.json.mastery.status, 'insufficient_evidence');
+});
