@@ -16,6 +16,7 @@ const ENV_KEYS = [
   'MODEL_BASE_URL',
   'MODEL_ID',
   'MODEL_API_KEY',
+  'OPENAI_API_KEY',
   'OPENROUTER_API_KEY',
   'RUBRICON_ENDPOINT',
   'RUBRICON_MODEL',
@@ -32,10 +33,8 @@ async function withEnvironment(values, callback) {
   );
   try {
     for (const key of ENV_KEYS) {
-      if (Object.prototype.hasOwnProperty.call(values, key)) {
-        if (values[key] === undefined) delete process.env[key];
-        else process.env[key] = values[key];
-      }
+      if (values[key] === undefined) delete process.env[key];
+      else process.env[key] = values[key];
     }
     return await callback();
   } finally {
@@ -171,7 +170,7 @@ test('explicit OpenRouter sends the selected Gemini model and structured contrac
   }
 });
 
-test('a non-OpenRouter endpoint never receives OPENROUTER_API_KEY', async () => {
+test('a local endpoint never receives OpenAI or OpenRouter vendor credentials', async () => {
   let request;
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url, options) => {
@@ -191,6 +190,7 @@ test('a non-OpenRouter endpoint never receives OPENROUTER_API_KEY', async () => 
         MODEL_BASE_URL: 'http://127.0.0.1:8001/v1',
         MODEL_ID: 'synthetic-local-model',
         MODEL_API_KEY: undefined,
+        OPENAI_API_KEY: 'synthetic-openai-key',
         OPENROUTER_API_KEY: 'synthetic-openrouter-key',
       },
       () =>

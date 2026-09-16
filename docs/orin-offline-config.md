@@ -80,6 +80,34 @@ whole loop (generate → ground → deliver) runs on the board with the network 
 **Leave `tutor-embed` (8081), `tutor-rerank` (8082) and `tutor-verify` (8083) on loopback.** Anchor
 calls them locally on the Orin; exposing them buys nothing and widens the surface.
 
+### Optional: student-chat local model
+
+Student chat keeps its hosted GPT 6 Astra selection as primary. For a locally
+running SchoolCircle installation, its bounded offline retry is configured
+separately from generation:
+
+```bash
+STUDENT_LOCAL_BASE_URL=http://192.168.55.1:8080/v1
+STUDENT_LOCAL_MODEL_ID=<exact id returned by http://192.168.55.1:8080/v1/models>
+# STUDENT_LOCAL_API_KEY=<only if llama-server was configured to require one>
+```
+
+Do **not** infer `STUDENT_LOCAL_MODEL_ID` from
+`gemma-4-E2B_q4_0-it.gguf`: that filename is not a documented API model ID.
+The student adapter permits only private/localhost HTTP(S) URLs with no URL
+credentials, query, or fragment, and never reuses `OPENAI_API_KEY` for this
+endpoint. It retries only an unreachable/timed-out hosted transport, once, by
+rerunning the full scoped Anchor → strict Sourcerer → Understudy pipeline
+local-only. The whole turn is bounded to 110 seconds (30 seconds hosted, then
+75 seconds local); local catalog and model calls are bounded to 5 and 15
+seconds. Refusals, auth/rate-limit responses, malformed output, and missing
+models do not trigger it.
+
+Do not set these Orin addresses in Replit or expect this server fallback to
+make a cloud-hosted browser session offline. The SchoolCircle app/auth/data
+services and scoped Anchor `/api/ground` must themselves be locally reachable
+to the browser and server for an air-gapped student turn.
+
 ## Revert
 
 ```bash
