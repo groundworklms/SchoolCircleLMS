@@ -9,7 +9,7 @@
     "test:account-profile": "node --test test/account-profile.test.mjs tests/account-profile-race.test.mjs tests/account-profile-behavior.test.mjs tests/profile-options.test.mjs tests/role-destination.test.mjs",
     "test:model": "node --experimental-test-module-mocks --test test/model-openrouter.test.mjs test/model-settings.test.mjs test/model-catalog.test.mjs",
     "test:doctrine": "node --experimental-test-module-mocks --test test/doctrine-settings.test.mjs",
-    "test:ui-rendering": "node --test tests/ui-rendering.test.mjs",
+    "test:ui-rendering": "node --test tests/ui-rendering.test.mjs tests/inbox-filter-contrast.test.mjs",
     "test:source-library": "node --experimental-test-module-mocks --test test/source-library.test.mjs test/source-library-hermetic.test.mjs",
     "test:ai-authoring": "node --experimental-test-module-mocks --test test/course-revisions.test.mjs test/course-revision-handlers.test.mjs test/course-revision-transaction.test.mjs test/delivery.test.mjs test/delivery-route.test.mjs tests/learner-redaction.test.mjs tests/authoring-retired.test.mjs",
     "test:authoring": "node --test tests/authoring-server.test.mjs tests/authoring-retired.test.mjs tests/authoring-player.test.mjs",

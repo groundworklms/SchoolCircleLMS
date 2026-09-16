@@ -19,6 +19,7 @@ const DEFAULTS = {
   textScale: 1,
   // 'light' | 'dark' | 'system'
   theme: 'system',
+  showCalendar: true,
 };
 
 let cache = null;

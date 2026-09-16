@@ -379,7 +379,7 @@ test('Hotwash uses the explicit prose seam without replacing its pinned implemen
   assert.equal(fallback.source, 'heuristic');
 });
 
-test('native Rubricon and Whetstone accept the shared key only on explicit OpenRouter URLs', async () => {
+test('Rubricon follows the configured model; native Whetstone accepts the shared key only on explicit OpenRouter URLs', async () => {
   await withEnvironment(
     {
       MODEL_BASE_URL: OPENROUTER_BASE_URL,
@@ -394,6 +394,9 @@ test('native Rubricon and Whetstone accept the shared key only on explicit OpenR
     },
     () => {
       const configured = learningModelStatus();
+      // Rubricon is driven through the configured provider, so it is ready
+      // whenever the model is -- RUBRICON_* is no longer a second credential to
+      // set before an instructor can generate a rubric.
       assert.equal(configured.rubriconConfigured, true);
       assert.equal(configured.whetstoneConfigured, true);
     },
@@ -413,7 +416,10 @@ test('native Rubricon and Whetstone accept the shared key only on explicit OpenR
     },
     () => {
       const notConfigured = learningModelStatus();
-      assert.equal(notConfigured.rubriconConfigured, false);
+      // A self-hosted model is still a model, so Rubricon is ready on it.
+      assert.equal(notConfigured.rubriconConfigured, true);
+      // Whetstone still calls its own endpoint, and the shared OpenRouter key
+      // must not leak to a non-OpenRouter URL.
       assert.equal(notConfigured.whetstoneConfigured, false);
     },
   );

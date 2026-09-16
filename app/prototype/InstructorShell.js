@@ -310,10 +310,6 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     body = <CourseUnavailable courseId={nav.courseId} title="Course not found" />;
   }
 
-  const crumbTail = inLibrary
-    ? (libraryEntry?.label || 'Not found')
-    : (current?.label || (inCourse ? 'Course' : 'Not found'));
-
   return (
     <div className="s-root">
       <nav className="s-rail s-rail-instructor" aria-label="Instructor navigation">
@@ -388,31 +384,20 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
       </nav>
 
       <div className="s-content">
-        <div className="s-crumbs">
-          <span className="s-crumb-cur">Instructor</span>
-          <span className="s-crumb-sep">/</span>
-          {inLibrary ? (
-            <span className="s-crumb-cur">Library</span>
-          ) : inCourse && course ? (
-            <button onClick={() => go({ view: isManual ? 'roster' : 'builder' })}>{course.name}</button>
-          ) : (
-            <span className="s-crumb-cur">Not found</span>
-          )}
-          <span className="s-crumb-sep">/</span>
-          <span className="s-crumb-cur">{crumbTail}</span>
-          <span className="s-crumb-spacer" />
-          {inCourse && course && !isReal && view !== 'roster' && (
-            <span className="s-lastlogin">{course.students} students · Week {course.week} of {course.weeks}</span>
-          )}
-          {inCourse && course && isReal && !isManual && (
-            <span className="s-lastlogin">{course.sections} sections · {courseHeaderStatus(course)}</span>
-          )}
-          {inCourse && course && isManual && (
-            <span className="s-lastlogin">{course.school}</span>
-          )}
-        </div>
         <main className="s-main">
           <div className="s-container">
+            {/* The breadcrumb row is gone; the course status it carried is not.
+                courseHeaderStatus is used rather than a raw status string so a
+                pending revision still reads as needing review, and a legacy
+                manual course keeps the school label it used to show. */}
+            {inCourse && course && isReal && !isManual && (
+              <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
+                {course.sections} sections · {courseHeaderStatus(course)}
+              </p>
+            )}
+            {inCourse && course && isManual && course.school && (
+              <p className="p-src" style={{ margin: '0 0 0.75rem' }}>{course.school}</p>
+            )}
             {signOutError && (
               <div className="s-shell-error" role="alert">
                 {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
