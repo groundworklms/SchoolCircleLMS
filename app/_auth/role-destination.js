@@ -30,11 +30,13 @@ function roleAllows(profile, role) {
 /**
  * The destination for a profile with no explicit same-site deep link.
  * Incomplete profiles always enter the AuthGuard-owned prototype onboarding
- * page; that page can then redirect to the selected role's shell.
+ * page; that page can then redirect to the selected role's shell. Completed
+ * profiles land in the role's shell of the one app (see prototype/nav.js):
+ * instructors in the builder, learners (and BOTH) on the student dashboard.
  */
 export function getDefaultDestination(profile) {
   if (!isProfileComplete(profile)) return '/prototype';
-  return profile.role === 'INSTRUCTOR' ? '/teach' : '/learn';
+  return profile.role === 'INSTRUCTOR' ? '/prototype/instructor' : '/prototype';
 }
 
 /**
@@ -47,6 +49,8 @@ export function isSafeDeepLink(next, profile) {
   const path = pathPart(next);
   if (!path) return false;
 
+  // /teach and /learn are the legacy entry points; they redirect into the
+  // prototype shells, so they stay accepted here with the same role rules.
   if (isPath(path, '/teach')) return roleAllows(profile, 'instructor');
   if (isPath(path, '/learn')) return roleAllows(profile, 'learner');
   if (isPath(path, '/prototype/instructor')) return roleAllows(profile, 'instructor');

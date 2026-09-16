@@ -94,7 +94,7 @@ export default function InstructorShell({ nav, onSwitchRole }) {
         {onSwitchRole && (
           <RailButton icon={I.swap} label="View as student" onClick={onSwitchRole} />
         )}
-        <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/'; }} />
+        <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/plan'; }} />
       </nav>
 
       <div className="s-content">
