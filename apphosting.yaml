@@ -1,0 +1,157 @@
+# Firebase App Hosting runtime config.
+# https://firebase.google.com/docs/app-hosting/configure
+# Database: see the DATABASE_URL block at the bottom and docs/CLOUD_POSTGRES.md.
+# Do not run migrations or demo seeding in the build/start commands.
+runConfig:
+  # db-f1-micro allows ~25 Postgres connections; each instance pools connection_limit=3.
+  maxInstances: 4
+
+  # Keep one instance warm. Without this App Hosting scales to zero, and with a
+  # handful of occasional testers that means nearly every session's first click
+  # pays a full cold start: container boot, Next.js server start, Prisma client
+  # init and the Cloud SQL connector handshake. That is seconds of latency on a
+  # click that should be instant, and no amount of query tuning removes it.
+  #
+  # The cost is one always-running instance. Set this back to 0 if the demo goes
+  # idle for long stretches and the wait is acceptable.
+  minInstances: 1
+
+  # Next.js plus Prisma, firebase-admin and the Cloud SQL connector is a lot to
+  # hold in the 512 MiB default; paging under memory pressure shows up as slow
+  # requests rather than as an error.
+  memoryMiB: 1024
+  cpu: 1
+env:
+  # --- Grounding: point the cloud app's server-side /api/doctrine at the Orin's
+  # Anchor engine, exposed over a tunnel.
+  # NOTE: this is a TEMPORARY Cloudflare quick-tunnel URL — it changes whenever the
+  # tunnel restarts. For a stable setup use a named Cloudflare tunnel. Update if restarted.
+  - variable: DOCTRINE_BASE_URL
+    value: https://calculations-probability-dozens-recommended.trycloudflare.com
+    availability:
+      - RUNTIME
+  - variable: DOCTRINE_TIMEOUT_MS
+    value: "30000"
+    availability:
+      - RUNTIME
+
+  # --- Firebase Authentication (login). PUBLIC client config, inlined into the
+  # browser bundle at build time -> must be available at BUILD (and RUNTIME).
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyDNULW649liOlpJEuIfKc5fGrsAjmrOF1g
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: schoolcircle-ae29a.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: schoolcircle-ae29a
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: schoolcircle-ae29a.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "770710930289"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:770710930289:web:cda5d4e9c6ea74742cecd0"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # --- Tester allowlist. Only these emails may sign in / create an account;
+  # anyone else is refused at login and any just-created account is deleted.
+  # Comma-separated, case-insensitive. Baked into the client at BUILD time, so
+  # editing this list needs a new rollout. Unset = allowlist off (open).
+  - variable: NEXT_PUBLIC_ALLOWED_EMAILS
+    value: twhite0911@gmail.com,canyonmcdonald@gmail.com,emor.639@gmail.com,jmathdog@gmail.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # --- In-app "Report an issue" widget -> files GitHub issues directly via
+  # /api/feedback. Secrets live in Cloud Secret Manager; the App Hosting compute
+  # service account has Secret Accessor on both.
+  - variable: GITHUB_FEEDBACK_REPO
+    value: groundworklms/SchoolCircleLMS
+    availability:
+      - RUNTIME
+  # Fine-grained PAT (schoolcircle-feedback-widget): Issues read/write on the repo above.
+  - variable: GITHUB_FEEDBACK_TOKEN
+    secret: GITHUB_FEEDBACK_TOKEN
+    availability:
+      - RUNTIME
+  # Shared team passphrase testers enter once in the widget.
+  - variable: FEEDBACK_KEY
+    secret: FEEDBACK_KEY
+    availability:
+      - RUNTIME
+
+  # --- Generation provider.
+  # The API key stays in Secret Manager; the MODEL is chosen at runtime in
+  # Settings -> Generation model and stored in the database, so switching models
+  # needs no rollout (docs/generation-provider.md).
+  #
+  # MODEL_API_KEY is the variable the transport reads. It is fed here by the
+  # existing OPENAI_API_KEY secret rather than a second copy of the same
+  # credential -- `secret:` names the Secret Manager entry, `variable:` names the
+  # environment variable it lands in.
+  - variable: MODEL_API_KEY
+    secret: OPENAI_API_KEY
+    availability:
+      - RUNTIME
+
+  # The default endpoint. An operator can point Settings at a different one
+  # (including a self-hosted model on the local network) without touching this.
+  - variable: MODEL_BASE_URL
+    value: https://api.openai.com/v1
+    availability:
+      - RUNTIME
+
+  # MODEL_ID is deliberately NOT set: leaving it unset means generation reports
+  # an explicit 503 until an operator picks a model in Settings, which is honest,
+  # rather than this file guessing a slug that may not exist on the account.
+  # The panel's "List available models" button reads the real catalogue using the
+  # key above.
+
+  # Optional. SETTINGS_ENCRYPTION_KEY is only needed to TYPE an API key into
+  # Settings; with the key supplied above it is unnecessary. MODEL_SETTINGS_KEY
+  # pins the operator passphrase from configuration instead of letting the first
+  # instructor claim one in the panel.
+  #   gcloud secrets create SETTINGS_ENCRYPTION_KEY --data-file=- <<< "$(openssl rand -base64 32)"
+  #   gcloud secrets create MODEL_SETTINGS_KEY --data-file=-
+  # - variable: SETTINGS_ENCRYPTION_KEY
+  #   secret: SETTINGS_ENCRYPTION_KEY
+  #   availability:
+  #     - RUNTIME
+  # - variable: MODEL_SETTINGS_KEY
+  #   secret: MODEL_SETTINGS_KEY
+  #   availability:
+  #     - RUNTIME
+
+  # --- Database: Cloud SQL Postgres (the Firebase Data Connect trial instance), reached
+  # through the Cloud SQL connector in lib/db.js -- the compute service account has
+  # roles/cloudsql.client. DATABASE_URL (Secret Manager) carries user/password/database;
+  # its host is ignored while CLOUD_SQL_CONNECTION_NAME is set. Migrations/seeds run from
+  # an operator laptop via `npm run db:proxy`, never from build/start.
+  - variable: DATABASE_URL
+    secret: DATABASE_URL
+    availability:
+      - RUNTIME
+  - variable: CLOUD_SQL_CONNECTION_NAME
+    value: schoolcircle-ae29a:us-east4:schoolcircle-ae29a-instance
+    availability:
+      - RUNTIME
+  - variable: SCHOOLCIRCLE_DB_ENV
+    value: demo
+    availability:
+      - RUNTIME

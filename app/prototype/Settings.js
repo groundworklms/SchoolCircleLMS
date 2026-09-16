@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { COURSES } from './data';
 import { usePrefs, setPref } from './prefs';
+import AccountProfile from '../_auth/AccountProfile';
+import { WaypointSurvey } from './LearnerFeatures';
+import { ModelProviderSettings } from './ModelProviderSettings';
 
 /* Settings, both roles. Preferences persist in the browser (prefs.js) so the
    instructor's per-course toggles show up on the student side in a demo. */
@@ -20,6 +23,13 @@ function Toggle({ on, onChange, label, note }) {
     </label>
   );
 }
+
+const QUIET_HOURS = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2);
+  const m = i % 2 ? '30' : '00';
+  const val = `${String(h).padStart(2, '0')}${m}`;
+  return [val, `${String(h).padStart(2, '0')}:${m}`];
+});
 
 /* ---------- "How do I learn?" ---------- */
 
@@ -131,22 +141,41 @@ function Survey({ result, onDone }) {
   );
 }
 
+/* Accepts only characters that actually appear in a phone number, and only
+   counts it as "entered" once it has a real area code + number (10 digits
+   for a US number, up to 15 for a country-code-prefixed one). */
+function cleanPhoneInput(raw) {
+  return raw.replace(/[^0-9()+\-\s]/g, '');
+}
+function isValidPhone(phone) {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 15;
+}
+
 /* ---------- student ---------- */
 
-export function StudentSettings({ onSignOut }) {
+export function StudentSettings({ onSignOut, account, authenticated = false }) {
   const prefs = usePrefs();
-  const r = prefs.reminders;
+  const r = { ...prefs.reminders, phone: prefs.reminders.phone || '' };
+  const displayName = account?.name || (authenticated ? 'Account' : 'Cpl Rivera');
+  const displayEmail = account?.email || (authenticated ? 'signed-in account' : 'rivera.j@usmc.mil');
 
   return (
     <div className="s-settings">
       <div className="s-pagehead">
         <h1>Settings</h1>
-        <p>Cpl Rivera · signed in via MCeLE · rivera.j@usmc.mil</p>
+        <p>
+          {displayName} · signed in via MCeLE · {displayEmail}
+        </p>
       </div>
 
       <section className="p-panel">
-        <h3>How do I learn?</h3>
-        <Survey result={prefs.learnerProfile} onDone={(res) => setPref('learnerProfile', res)} />
+        <h3>What&apos;s my learning style?</h3>
+        {authenticated ? (
+          <WaypointSurvey />
+        ) : (
+          <Survey result={prefs.learnerProfile} onDone={(res) => setPref('learnerProfile', res)} />
+        )}
       </section>
 
       <section className="p-panel">
@@ -154,15 +183,59 @@ export function StudentSettings({ onSignOut }) {
         <p className="s-settings-p">Study-plan blocks and due dates go to the channels you pick. Instructors cannot see these.</p>
         <Toggle label="Outlook calendar" note="Plan blocks appear as calendar events" on={r.outlook} onChange={(v) => setPref('reminders.outlook', v)} />
         <Toggle label="Email" note="A morning summary of what is due" on={r.email} onChange={(v) => setPref('reminders.email', v)} />
-        <Toggle label="Text message" note="15 minutes before a plan block" on={r.text} onChange={(v) => setPref('reminders.text', v)} />
+        <Toggle
+          label="Text message"
+          note={isValidPhone(r.phone) ? `15 minutes before a plan block, to ${r.phone}` : 'Enter a valid phone number below to turn this on'}
+          on={r.text}
+          onChange={(v) => { if (v && !isValidPhone(r.phone)) return; setPref('reminders.text', v); }}
+        />
+        <div className="s-settings-row">
+          <span>Phone number</span>
+          <span className="s-settings-val" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+            <input
+              className="s-dq-select small"
+              type="tel"
+              placeholder="(555) 555-0100"
+              value={r.phone}
+              onChange={(e) => {
+                const phone = cleanPhoneInput(e.target.value);
+                setPref('reminders.phone', phone);
+                if (r.text && !isValidPhone(phone)) setPref('reminders.text', false);
+              }}
+            />
+            {r.phone && !isValidPhone(r.phone) && (
+              <span style={{ fontSize: '0.78em', color: 'var(--p-critical)' }}>Enter a valid phone number (10 digits).</span>
+            )}
+          </span>
+        </div>
         <div className="s-settings-row">
           <span>Quiet hours</span>
-          <span className="s-settings-val">{r.quietFrom} – {r.quietTo}</span>
+          <span className="s-settings-val" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <select className="s-dq-select small" value={r.quietFrom} onChange={(e) => setPref('reminders.quietFrom', e.target.value)}>
+              {QUIET_HOURS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            <span>–</span>
+            <select className="s-dq-select small" value={r.quietTo} onChange={(e) => setPref('reminders.quietTo', e.target.value)}>
+              {QUIET_HOURS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </span>
         </div>
       </section>
 
       <section className="p-panel">
         <h3>Display</h3>
+        <div className="s-settings-row">
+          <span>Theme</span>
+          <span className="p-diff">
+            {[
+              ['light', 'Light'],
+              ['dark', 'Dark'],
+              ['system', 'Match system'],
+            ].map(([v, l]) => (
+              <button key={v} className={prefs.theme === v ? 'on' : ''} onClick={() => setPref('theme', v)}>{l}</button>
+            ))}
+          </span>
+        </div>
         <div className="s-settings-row">
           <span>Text size</span>
           <span className="p-diff">
@@ -179,9 +252,13 @@ export function StudentSettings({ onSignOut }) {
 
       <section className="p-panel">
         <h3>Account</h3>
+        {authenticated && <AccountProfile />}
         <div className="s-settings-row">
           <span>Identity</span>
-          <span className="s-settings-val">MCeLE / MarineNet SSO · EDIPI on file</span>
+          <span className="s-settings-val">
+            {account?.name || (authenticated ? 'Account' : 'MCeLE / MarineNet SSO')}
+            {account?.rank ? ` · ${account.rank}` : ''}
+          </span>
         </div>
         <div className="s-settings-row">
           <span>Courses</span>
@@ -197,7 +274,7 @@ export function StudentSettings({ onSignOut }) {
 
 /* ---------- instructor ---------- */
 
-export function InstructorSettings({ course }) {
+export function InstructorSettings({ course, account, authenticated = false }) {
   const prefs = usePrefs();
   const show = !!prefs.showStanding?.[course.id];
 
@@ -205,6 +282,13 @@ export function InstructorSettings({ course }) {
     <div className="s-settings">
       <h2 className="p-h">Course settings</h2>
       <p className="p-sub">{course.name} · {course.id}. These apply to this course only.</p>
+
+      {authenticated && (
+        <section className="p-panel">
+          <h3>Account profile</h3>
+          <AccountProfile />
+        </section>
+      )}
 
       <section className="p-panel">
         <h3>What students see</h3>
@@ -239,6 +323,13 @@ export function InstructorSettings({ course }) {
         <Toggle label="Instructor approval before students see generated items" note="Cannot be turned off." on onChange={() => {}} />
         <Toggle label="Cite sources on every generated question" note="Requires the doctrine service." on onChange={() => {}} />
       </section>
+
+      {authenticated && (
+        <section className="p-panel">
+          <h3>Generation model</h3>
+          <ModelProviderSettings />
+        </section>
+      )}
     </div>
   );
 }

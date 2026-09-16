@@ -2,8 +2,159 @@
 
 import { MasteryPanel } from './shared';
 import { POIS } from './poi';
+import { useApiQuery } from '../_learning/useLearning';
+
+/* ---------- real course: Sextant cohort analytics ---------- */
+
+function Insufficient({ evidence, what }) {
+  return (
+    <div className="p-panel">
+      <h3>{what}</h3>
+      <p className="p-src">
+        {evidence?.reason || `Not enough evidence yet to show ${what.toLowerCase()}.`}
+        {Number.isInteger(evidence?.observedLearners) && ` Observed learners: ${evidence.observedLearners} of ${evidence.minimumLearners}.`}
+        {Number.isInteger(evidence?.observedContributors) && ` Contributors: ${evidence.observedContributors} of ${evidence.minimumContributors}.`}
+      </p>
+    </div>
+  );
+}
+
+function pct(v) {
+  return typeof v === 'number' ? `${Math.round(v <= 1 ? v * 100 : v)}%` : '—';
+}
+
+/* Class mastery from persisted Whetstone reports and attempts. Every
+   aggregate is suppressed below five distinct learners on the server — this
+   screen shows what came back and never fills a gap with a number. */
+function CohortMastery({ course }) {
+  const { data, loading, error } = useApiQuery(`/analytics/cohort?courseId=${course.id}`);
+
+  if (loading) return <p>Loading class evidence…</p>;
+  if (error) {
+    return (
+      <p className="s-shell-error" role="alert">
+        {error.error || error.message || 'Could not load class analytics.'}
+      </p>
+    );
+  }
+  if (!data) return null;
+
+  const { gain, gaps, mastery, privacy } = data;
+  const masteryRows = Array.isArray(mastery) ? mastery : null;
+  const gapRows = Array.isArray(gaps) ? gaps : [];
+
+  return (
+    <>
+      <h2 className="p-h">Class mastery</h2>
+      <p className="p-sub">
+        From saved mastery sessions and attempts for this course. Aggregates appear only once
+        {privacy?.cohortSuppressedBelow ? ` ${privacy.cohortSuppressedBelow}` : ' enough'} distinct learners have contributed — never any one Marine&apos;s answers.
+      </p>
+      <p className="p-src" role="status">
+        Privacy-safe cohort aggregate only. Individual learner sessions and IDs are never shown here.
+      </p>
+
+      <div className="p-tiles">
+        <div className="p-tile">
+          <div className="p-tilelab">Learners observed</div>
+          <div className="p-tileval">{privacy?.observedLearners ?? '—'}</div>
+          <div className="p-tilenote">with saved evidence</div>
+        </div>
+        <div className="p-tile">
+          <div className="p-tilelab">Contributors</div>
+          <div className="p-tileval">{masteryRows ? (privacy?.observedContributors ?? '—') : '—'}</div>
+          <div className="p-tilenote">per competency, privacy-gated</div>
+        </div>
+        <div className="p-tile">
+          <div className="p-tilelab">Learning gain</div>
+          <div className="p-tileval">{gain?.status === 'insufficient_evidence' ? '—' : pct(gain?.overall?.normalizedGain ?? gain?.overall?.gain)}</div>
+          <div className="p-tilenote">{gain?.status === 'insufficient_evidence' ? 'insufficient evidence' : 'pre → post'}</div>
+        </div>
+        <div className="p-tile">
+          <div className="p-tilelab">Gaps flagged</div>
+          <div className="p-tileval" style={{ color: gapRows.length ? 'var(--p-warning)' : 'var(--p-good)' }}>{gapRows.length}</div>
+          <div className="p-tilenote">objectives below threshold</div>
+        </div>
+        <div className="p-tile">
+          <div className="p-tilelab">Competencies</div>
+          <div className="p-tileval">{masteryRows ? masteryRows.length : '—'}</div>
+          <div className="p-tilenote">with enough contributors</div>
+        </div>
+      </div>
+
+      {masteryRows ? (
+        <div className="p-panel">
+          <h3>Mastery by competency</h3>
+          <div className="p-tablewrap">
+            <table className="p-table">
+              <thead>
+                <tr>
+                  <th>Competency</th>
+                  <th className="p-num">Mastered</th>
+                  <th className="p-num">Competent</th>
+                  <th className="p-num">Developing</th>
+                  <th className="p-num">Mastered rate</th>
+                </tr>
+              </thead>
+              <tbody>
+                {masteryRows.map((row, i) => (
+                  <tr key={row.competency || i}>
+                    <td>{row.competency || `Competency ${i + 1}`}</td>
+                    <td className="p-num">{row.mastered ?? '—'}</td>
+                    <td className="p-num">{row.competent ?? '—'}</td>
+                    <td className="p-num">{row.developing ?? '—'}</td>
+                    <td className="p-num" style={{ color: row.masteredRate < 0.65 ? 'var(--p-critical)' : 'var(--p-good)' }}>{pct(row.masteredRate)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <Insufficient evidence={mastery?.status ? mastery : data.evidence?.mastery} what="Mastery by competency" />
+      )}
+
+      {gapRows.length > 0 && (
+        <div className="p-panel">
+          <h3>Class gaps — queued for lesson review</h3>
+          <div className="p-tablewrap">
+            <table className="p-table">
+              <thead>
+                <tr>
+                  <th>Objective</th>
+                  <th className="p-num">Missed</th>
+                  <th className="p-num">Attempts</th>
+                  <th className="p-num">Learners</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gapRows.map((g, i) => (
+                  <tr key={g.objective || i}>
+                    <td>{g.objective}</td>
+                    <td className="p-num" style={{ color: g.missRate >= 0.6 ? 'var(--p-critical)' : 'var(--p-warning)' }}>{pct(g.missRate)}</td>
+                    <td className="p-num">{g.attempts ?? '—'}</td>
+                    <td className="p-num">{g.cohort ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="p-src">
+            Sextant ranks the objectives the class misses most. The instructor decides what to re-teach.
+          </p>
+        </div>
+      )}
+
+      {gain?.status === 'insufficient_evidence' && <Insufficient evidence={gain} what="Learning gain" />}
+    </>
+  );
+}
+
+/* ---------- mock course: the demo numbers ---------- */
 
 function Mastery({ course }) {
+  if (course.record) return <CohortMastery course={course} />;
+
   const avg = Math.round(course.topics.reduce((s, t) => s + t.mastery, 0) / course.topics.length);
   const atRisk = course.topics.filter((t) => t.mastery < 65);
 

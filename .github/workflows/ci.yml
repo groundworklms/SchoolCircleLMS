@@ -34,3 +34,64 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Arsenal adapter + evidence contract tests (no database; RUN_DB_TESTS is unset).
+      - name: Test
+        run: npm test
+
+      - name: Account profile and session regressions
+        run: npm run test:account-profile
+
+      - name: Non-empty learning views
+        run: npm run test:ui-rendering
+
+      - name: Manual course authoring contracts
+        run: npm run test:authoring
+
+      # The AI authoring path is the only authoring path (#78), so its revision,
+      # immutable-release and learner-redaction contracts gate merges like the
+      # rest. Needs --experimental-test-module-mocks; the script carries the flag.
+      - name: AI course authoring, releases and redaction
+        run: npm run test:ai-authoring
+
+      # Transport contract for the text model: a key alone never selects a cloud
+      # provider, and prose seams must not inherit the JSON response format.
+      - name: Text model transport
+        run: npm run test:model
+
+  database:
+    name: database
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Locate native PostgreSQL
+        run: |
+          PG_BIN="$(pg_config --bindir)"
+          test -x "$PG_BIN/initdb"
+          echo "$PG_BIN" >> "$GITHUB_PATH"
+      - name: Seed safety policy
+        run: npm run test:db-policy
+      # Fails when schema.prisma has changes that no committed migration produces,
+      # i.e. someone edited the schema and forgot `prisma migrate dev`. The live DB
+      # is migrated from prisma/migrations/ (see migrate.yml), so schema-only
+      # changes never reach it and break the first query that touches them (#69).
+      - name: Migrations produce schema.prisma
+        env:
+          PGDATA: ${{ runner.temp }}/pg-shadow
+        run: |
+          initdb -D "$PGDATA" -U ci --auth=trust > /dev/null
+          pg_ctl -D "$PGDATA" -o "-p 5499 -k /tmp" -w start > /dev/null
+          createdb -h localhost -p 5499 -U ci shadow
+          npx prisma migrate diff             --from-migrations prisma/migrations             --shadow-database-url postgresql://ci@localhost:5499/shadow             --to-schema-datamodel prisma/schema.prisma             --exit-code             || { echo "::error::prisma/schema.prisma differs from what prisma/migrations/ produces. Generate a migration (npm run db:migrate) and commit it."; exit 1; }
+          pg_ctl -D "$PGDATA" -w stop > /dev/null
+      - name: Isolated PostgreSQL persistence
+        run: npm run test:db
+      - name: Manual publication and learner persistence
+        run: npm run test:authoring-db

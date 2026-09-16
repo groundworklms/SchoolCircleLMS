@@ -99,18 +99,26 @@ function isUnanswered(t) {
   return !t.resolved && !t.replies.some((r) => r.role === 'instructor' || r.answer);
 }
 
+function applyReplyOverlay(replies, id, local) {
+  const deleted = local.replyDeletes?.[id] || [];
+  const edits = local.replyEdits?.[id] || {};
+  return replies
+    .filter((r) => !deleted.includes(r.id))
+    .map((r) => (edits[r.id] !== undefined ? { ...r, body: edits[r.id], edited: true } : r));
+}
+
 function useThreads(course) {
   const prefs = usePrefs();
-  const local = prefs.discussions?.[course.id] || { threads: [], replies: {}, resolved: {} };
+  const local = prefs.discussions?.[course.id] || { threads: [], replies: {}, resolved: {}, replyEdits: {}, replyDeletes: {} };
   const threads = useMemo(() => {
     const base = (SEED[course.id] || []).map((t) => ({
       ...t,
-      replies: [...t.replies, ...(local.replies[t.id] || [])],
+      replies: applyReplyOverlay([...t.replies, ...(local.replies[t.id] || [])], t.id, local),
       resolved: local.resolved[t.id] ?? t.resolved,
     }));
     const mine = local.threads.map((t) => ({
       ...t,
-      replies: local.replies[t.id] || [],
+      replies: applyReplyOverlay(local.replies[t.id] || [], t.id, local),
       resolved: local.resolved[t.id] ?? false,
     }));
     return [...mine, ...base];
@@ -126,10 +134,46 @@ function Avatar({ name, role }) {
 
 /* ---------- thread view ---------- */
 
+function ReplyActions({ thread, reply, local, save }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(reply.body);
+
+  if (editing) {
+    return (
+      <div className="s-dq-editbox">
+        <textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} />
+        <div className="p-btnrow">
+          <button
+            className="p-btn"
+            disabled={!draft.trim()}
+            onClick={() => {
+              save({ replyEdits: { ...local.replyEdits, [thread.id]: { ...(local.replyEdits?.[thread.id] || {}), [reply.id]: draft.trim() } } });
+              setEditing(false);
+            }}
+          >
+            Save
+          </button>
+          <button className="p-btn ghost" onClick={() => { setDraft(reply.body); setEditing(false); }}>Cancel</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="s-dq-replyactions">
+      <button className="s-label-link" onClick={() => setEditing(true)}>Edit</button>
+      <button
+        className="s-label-link"
+        onClick={() => save({ replyDeletes: { ...local.replyDeletes, [thread.id]: [...(local.replyDeletes?.[thread.id] || []), reply.id] } })}
+      >
+        Delete
+      </button>
+    </div>
+  );
+}
+
 function Thread({ course, thread, onBack, onOpenLesson, local, save }) {
   const [text, setText] = useState('');
   const lesson = lessonTitle(course, thread.lessonId);
-  const mine = thread.author === ME;
 
   const post = () => {
     const body = text.trim();
@@ -178,8 +222,10 @@ function Thread({ course, thread, onBack, onOpenLesson, local, save }) {
                 <span className="s-dq-when">{r.when}</span>
               </span>
               {r.answer && <span className="s-dq-answer">✓ Answer</span>}
+              {r.edited && <span className="s-dq-when">(edited)</span>}
             </div>
             <p className="s-dq-body">{r.body}</p>
+            {r.author === ME && <ReplyActions thread={thread} reply={r} local={local} save={save} />}
           </article>
         ))}
         {thread.replies.length === 0 && <p className="s-cal-empty">No replies yet. Instructors see unanswered questions first.</p>}
@@ -189,8 +235,8 @@ function Thread({ course, thread, onBack, onOpenLesson, local, save }) {
         <textarea rows={3} placeholder="Write a reply…" value={text} onChange={(e) => setText(e.target.value)} />
         <div className="p-btnrow">
           <button className="p-btn" disabled={!text.trim()} onClick={post}>Reply</button>
-          {mine && !thread.resolved && <button className="p-btn ghost" onClick={() => resolve(true)}>Mark resolved</button>}
-          {mine && thread.resolved && <button className="p-btn ghost" onClick={() => resolve(false)}>Reopen</button>}
+          {!thread.resolved && <button className="p-btn ghost" onClick={() => resolve(true)}>Mark resolved</button>}
+          {thread.resolved && <button className="p-btn ghost" onClick={() => resolve(false)}>Reopen</button>}
           <span className="s-reply-note">Everyone in the course can see this thread. Keep it about the material.</span>
         </div>
       </div>

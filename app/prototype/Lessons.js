@@ -5,6 +5,70 @@ import { POIS } from './poi';
 import { contentFor } from './lessonContent';
 import { usePrefs, setPref } from './prefs';
 import { countForLesson } from './Discussions';
+import { useDoctrineCourse } from './grounded';
+
+/* ---------- real cited items from the DB (issue #8) ----------
+   The lesson reader's structure is POI-driven and real; its teaching CONTENT was mock.
+   This pulls the human-ratified (APPROVED) items — with their Anchor citations — from the
+   seeded course database via GET /api/courses, matched to the course (and section) on screen.
+   It degrades silently: on the static Pages build (no API/DB), if the DB is unreachable, or if
+   this course has no grounded items seeded yet, the reader still works and the card stays hidden. */
+
+/* Grounded key-points card: real APPROVED lesson claims for THIS course, scoped to the current
+   section when the DB has one, each with a clickable citation that expands the paragraph/page
+   locator — the "trust on tap" moment from 06-learner-loop. Silent unless matching items exist. */
+function GroundedKeyPoints({ course, lesson }) {
+  const { status, db } = useDoctrineCourse(course.id);
+  const [open, setOpen] = useState(null);
+
+  // Offline/static, DB unreachable, or no grounded items for this course yet: stay silent.
+  if (status !== 'ready' || !db) return null;
+
+  const withLessons = db.sections.filter((s) => (s.items || []).some((it) => it.kind === 'LESSON'));
+  const scoped = withLessons.filter((s) => s.title === lesson?.annex?.title);
+  const sections = scoped.length ? scoped : withLessons;
+  const lessons = sections.flatMap((s) =>
+    (s.items || []).filter((it) => it.kind === 'LESSON').map((it) => ({ ...it, section: s.title }))
+  );
+  if (!lessons.length) return null;
+
+  return (
+    <div className="s-gkp">
+      <div className="s-gkp-head">
+        <span className="s-gkp-t">Grounded key points</span>
+        <span className="s-gkp-src">✓ Verified from {db.sourceId} · {scoped.length ? 'this section' : 'this course'} · live from the database</span>
+      </div>
+      <ul className="s-gkp-list">
+        {lessons.map((it, i) => {
+          const c = it.citation || {};
+          const isOpen = open === i;
+          return (
+            <li key={it.id} className={`s-gkp-item${isOpen ? ' open' : ''}`}>
+              <p className="s-gkp-stem">{it.stem}</p>
+              <button className="s-gkp-cite" onClick={() => setOpen(isOpen ? null : i)} aria-expanded={isOpen}>
+                <span className="s-gkp-cite-mark">§</span>
+                <span className="s-gkp-cite-txt">{c.citation || 'citation'}</span>
+                <span className="s-gkp-cite-chev">{isOpen ? '▾' : '▸'}</span>
+              </button>
+              {isOpen && (
+                <div className="s-gkp-passage">
+                  <div className="s-gkp-loc">
+                    <span><b>Publication</b> {c.pubId || '—'}</span>
+                    {c.page && <span><b>Page</b> {c.page}</span>}
+                    {typeof it.support === 'number' && (
+                      <span><b>HHEM support</b> {(it.support * 100).toFixed(0)}%</span>
+                    )}
+                  </div>
+                  <div className="s-gkp-note">Full passage text opens from Anchor when the grounding service is connected.</div>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
 
 /* Student · Lessons. The course as the POI lays it out — annexes as modules,
    lessons in order, exams where they fall. Structure, IDs, and hours are REAL
@@ -56,6 +120,29 @@ function currentLesson(course) {
   return sequence(course).current;
 }
 
+/* Lessons must be completed consecutively, in POI order (see Lessons list
+   below) — this is the same rule expressed as a plain id set, so anything
+   that needs to know "has this student reached lesson X yet" (e.g. gating
+   the Ask-the-doctrine widget to material already covered) can reuse it
+   without recomputing the sequence logic. */
+function unlockedLessonIds(course, progress) {
+  const seq = sequence(course);
+  const ids = new Set();
+  let priorSatisfied = true;
+  for (const l of seq.flat) {
+    if (priorSatisfied) ids.add(l.id);
+    // A lesson counts as "done enough to move past" either because the
+    // student actually finished it, or because the course's week-based
+    // schedule already places it behind the student (the mock progress the
+    // rest of the demo — "13/48 done" — is built from). Otherwise a fresh
+    // profile with no real per-lesson completions yet would find nearly the
+    // whole course locked despite the dashboard saying it is mid-course.
+    const satisfied = l.status === 'complete' || !!progress?.[l.id]?.complete;
+    if (!satisfied) priorSatisfied = false;
+  }
+  return { ids, flat: seq.flat };
+}
+
 const STATUS = {
   complete: { label: 'Complete', mark: '✓' },
   current: { label: 'In progress', mark: '●' },
@@ -83,7 +170,7 @@ function materialsFor(l) {
    done, how checks were answered) persists per lesson in prefs. A check has
    to be answered before Next unlocks — the Moodle question-page rule. */
 
-function Block({ block }) {
+function Block({ block, blockKey, explored, onExplore }) {
   switch (block.type) {
     case 'p':
       return <p className="s-ls-p">{block.text}</p>;
@@ -137,7 +224,7 @@ function Block({ block }) {
     case 'accordion':
       return <Accordion items={block.items} />;
     case 'hotspots':
-      return <Hotspots block={block} />;
+      return <Hotspots block={block} explored={explored || []} onExplore={(i) => onExplore(blockKey, i)} />;
     case 'video':
       return <InteractiveVideo block={block} />;
     case 'flashcards':
@@ -166,14 +253,15 @@ function Accordion({ items }) {
   );
 }
 
-function Hotspots({ block }) {
+function Hotspots({ block, explored, onExplore }) {
   const [on, setOn] = useState(null);
-  const [seen, setSeen] = useState(() => new Set());
+  const seen = new Set(explored);
   const pick = (i) => {
     setOn(on === i ? null : i);
-    setSeen((s) => new Set(s).add(i));
+    if (!seen.has(i)) onExplore(i);
   };
   const spot = on != null ? block.spots[on] : null;
+  const allSeen = seen.size >= block.spots.length;
   return (
     <figure className="s-ls-fig s-hs">
       <div className="s-ls-fig-art s-hs-art">
@@ -197,7 +285,9 @@ function Hotspots({ block }) {
             <div className="s-hs-text">{spot.text}</div>
           </>
         ) : (
-          <div className="s-hs-text" style={{ color: 'var(--p-faint)' }}>{seen.size} of {block.spots.length} explored</div>
+          <div className="s-hs-text" style={{ color: allSeen ? 'var(--p-good)' : 'var(--p-faint)' }}>
+            {seen.size} of {block.spots.length} explored{allSeen ? ' — all explored' : ', tap each point to continue'}
+          </div>
         )}
       </div>
       <figcaption>{block.caption}</figcaption>
@@ -338,7 +428,7 @@ function LessonPage({ course, lesson, seq, page, onBack, onPick, onPage, go, onO
   const content = useMemo(() => contentFor(lesson, course), [lesson, course]);
   const mats = materialsFor(lesson);
   const prefs = usePrefs();
-  const prog = prefs.progress?.[lesson.id] || { seen: [], answers: {}, complete: false };
+  const prog = prefs.progress?.[lesson.id] || { seen: [], answers: {}, hotspots: {}, complete: false };
 
   // Screen 1 is the overview; items follow.
   const screens = useMemo(
@@ -356,9 +446,18 @@ function LessonPage({ course, lesson, seq, page, onBack, onPick, onPage, go, onO
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cur.id]);
 
+  // A page with interactive diagram callouts stays gated until every callout
+  // on it has been opened — pages with none are never held up by this.
+  const unexploredHotspots = (sc) =>
+    sc.type === 'page' &&
+    sc.blocks.some((b, bi) => b.type === 'hotspots' && (prog.hotspots?.[`${sc.id}::${bi}`]?.length || 0) < b.spots.length);
+  const onExplore = (blockKey, i) =>
+    save({ hotspots: { ...prog.hotspots, [blockKey]: [...new Set([...(prog.hotspots?.[blockKey] || []), i])] } });
+
   const doneIds = new Set([...prog.seen, ...Object.keys(prog.answers)]);
   const isDone = (sc) => (sc.type === 'check' ? prog.answers[sc.id] != null : doneIds.has(sc.id));
-  const gated = cur.type === 'check' && prog.answers[cur.id] == null;
+  const isGatedScreen = (sc) => (sc.type === 'check' && prog.answers[sc.id] == null) || unexploredHotspots(sc);
+  const gated = isGatedScreen(cur);
   const doneCount = screens.filter(isDone).length;
   const pct = Math.round((doneCount / screens.length) * 100);
   const checks = content.items.filter((it) => it.type === 'check');
@@ -367,7 +466,7 @@ function LessonPage({ course, lesson, seq, page, onBack, onPick, onPage, go, onO
   const allDone = screens.every(isDone);
 
   // Sequential: you can jump back freely, forward only as far as you've unlocked.
-  const firstLocked = screens.findIndex((sc, k) => k > 0 && sc.type === 'check' && prog.answers[sc.id] == null);
+  const firstLocked = screens.findIndex((sc, k) => k > 0 && isGatedScreen(sc));
   const maxReach = firstLocked === -1 ? screens.length - 1 : firstLocked;
   const canOpen = (k) => k <= maxReach;
 
@@ -405,6 +504,7 @@ function LessonPage({ course, lesson, seq, page, onBack, onPick, onPage, go, onO
                 <div><b>{lesson.hours} h</b> of instruction</div>
                 <div><b>~{Math.max(8, content.items.length * 3)} min</b> to read</div>
               </div>
+              <GroundedKeyPoints course={course} lesson={lesson} />
               {prog.complete && <div className="s-ls-callout tip" style={{ marginTop: '1rem' }}><div className="s-ls-callout-t">Completed</div><div>You have finished this lesson. Pages stay open for review.</div></div>}
             </>
           )}
@@ -413,7 +513,13 @@ function LessonPage({ course, lesson, seq, page, onBack, onPick, onPage, go, onO
             <>
               <h2 className="s-lp-h">{cur.title}</h2>
               {cur.blocks.map((b, bi) => (
-                <Block key={bi} block={b} />
+                <Block
+                  key={bi}
+                  block={b}
+                  blockKey={`${cur.id}::${bi}`}
+                  explored={prog.hotspots?.[`${cur.id}::${bi}`]}
+                  onExplore={onExplore}
+                />
               ))}
             </>
           )}
@@ -455,7 +561,9 @@ function LessonPage({ course, lesson, seq, page, onBack, onPick, onPage, go, onO
         <div className="s-lp-nav">
           <button className="p-btn ghost" disabled={idx === 0} onClick={() => goTo(idx - 1)}>← Previous</button>
           <span className="s-lp-navmid">
-            {gated ? 'Answer to continue' : cur.type === 'overview' ? (prog.complete ? 'Review' : 'Start the lesson') : ''}
+            {gated
+              ? (cur.type === 'check' ? 'Answer to continue' : 'Explore every callout to continue')
+              : cur.type === 'overview' ? (prog.complete ? 'Review' : 'Start the lesson') : ''}
           </span>
           {!atEnd ? (
             <button className="p-btn" disabled={gated} onClick={() => goTo(idx + 1)}>
@@ -518,15 +626,44 @@ function LessonPage({ course, lesson, seq, page, onBack, onPick, onPage, go, onO
 
 function Lessons({ course, go, lessonId, page, onOpenLesson, onOpenThread }) {
   const seq = useMemo(() => sequence(course), [course]);
+  const prefs = usePrefs();
   const [open, setOpen] = useState(() => {
     const o = {};
     for (const a of seq.annexes) o[a.letter] = a.status === 'current';
     return o;
   });
 
+  // Lessons must be completed consecutively, in POI order: a lesson unlocks
+  // once every teaching lesson before it is actually marked complete.
+  // Already-completed lessons and the current one stay open for review.
+  const unlocked = useMemo(() => unlockedLessonIds(course, prefs.progress).ids, [course, prefs.progress]);
+  const isLocked = (l) => l.status !== 'admin' && !unlocked.has(l.id);
+
   // The open lesson is in the URL; the list is the no-lesson state.
   const setPicked = (l) => onOpenLesson(l ? l.id : null);
   const picked = lessonId ? seq.flat.find((l) => l.id === lessonId) || seq.annexes.flatMap((a) => a.lessons).find((l) => l.id === lessonId) : null;
+
+  if (picked && isLocked(picked)) {
+    // Name the EARLIEST unsatisfied lesson, using the same rule unlockedLessonIds
+    // applies (schedule-complete or actually completed). A reverse scan on
+    // progress alone pointed at the lesson just before this one, which is
+    // usually locked itself, bouncing the student through a chain of "Locked".
+    const need = seq.flat
+      .slice(0, seq.flat.findIndex((l) => l.id === picked.id))
+      .find((l) => !(l.status === 'complete' || prefs.progress?.[l.id]?.complete));
+    return (
+      <div className="s-lp-locked">
+        <button className="s-crumbs-inline" onClick={() => setPicked(null)}>← All lessons</button>
+        <div className="s-ls-callout note" style={{ marginTop: '1rem' }}>
+          <div className="s-ls-callout-t">Locked</div>
+          <div>
+            Lessons unlock in order. Finish {need ? <><code>{need.id}</code> {need.title}</> : 'the lessons before this one'} first.
+          </div>
+        </div>
+        {need && <button className="p-btn" style={{ marginTop: '0.9rem' }} onClick={() => setPicked(need)}>Go to {need.title}</button>}
+      </div>
+    );
+  }
 
   if (picked) {
     return (
@@ -610,20 +747,28 @@ function Lessons({ course, go, lessonId, page, onOpenLesson, onOpenThread }) {
               </button>
               {isOpen && (
                 <ol className="s-lessons">
-                  {a.lessons.map((l) => (
-                    <li key={l.id}>
-                      <button className={`s-lesson ${l.status}`} onClick={() => setPicked(l)}>
-                        <span className="s-lesson-mark">{STATUS[l.status].mark}</span>
-                        <code>{l.id}</code>
-                        <span className="s-lesson-title">
-                          {l.title}
-                          {l.kind === 'exam' && <span className="p-examtag" style={{ marginLeft: '0.5rem' }}>EXAM</span>}
-                        </span>
-                        <span className="s-lesson-hours">{l.hours} h</span>
-                        <span className="s-lesson-status">{l.status === 'admin' ? '' : STATUS[l.status].label}</span>
-                      </button>
-                    </li>
-                  ))}
+                  {a.lessons.map((l) => {
+                    const locked = isLocked(l);
+                    return (
+                      <li key={l.id}>
+                        <button
+                          className={`s-lesson ${l.status}${locked ? ' locked' : ''}`}
+                          disabled={locked}
+                          title={locked ? 'Complete the lessons before this one first' : undefined}
+                          onClick={() => setPicked(l)}
+                        >
+                          <span className="s-lesson-mark">{locked ? '🔒' : STATUS[l.status].mark}</span>
+                          <code>{l.id}</code>
+                          <span className="s-lesson-title">
+                            {l.title}
+                            {l.kind === 'exam' && <span className="p-examtag" style={{ marginLeft: '0.5rem' }}>EXAM</span>}
+                          </span>
+                          <span className="s-lesson-hours">{l.hours} h</span>
+                          <span className="s-lesson-status">{l.status === 'admin' ? '' : locked ? 'Locked' : STATUS[l.status].label}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ol>
               )}
             </section>
@@ -635,4 +780,4 @@ function Lessons({ course, go, lessonId, page, onOpenLesson, onOpenThread }) {
 }
 
 export default Lessons;
-export { currentLesson };
+export { currentLesson, unlockedLessonIds };
