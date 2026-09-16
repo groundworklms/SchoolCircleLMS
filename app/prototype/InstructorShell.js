@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import './student.css';
 
 import { I, RailButton, UserMenu } from './shell';
@@ -10,14 +11,18 @@ import AAR from './AAR';
 import Roster from './Roster';
 import { SourcesView, CoursesLibrary, CourseDraft } from './Library';
 import { InstructorFidelity, RubricsView } from './InstructorFeatures';
-import { useLearningCourses } from './learning';
+import { courseFromRecord, useLearningCourses } from './learning';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
 
 /* Instructor shell. Same rail and content column as the student side; what
    changes is who is signed in and what is in the rail.
 
-   The library is the persisted learning loop: courses, sources and rubrics.
+   The library is the persisted learning loop, grouped by how often each part
+   is used: Courses is the authoring path (source selection → generation →
+   review → approval/publish), Sources is reusable supporting material, and
+   Rubrics is an optional advanced tool.
+
    A course gets its tools only after the learning service has resolved it.
    There are no sample courses here: an instructor's rail shows the real ones
    they own, and an unresolved id is an explicit not-found rather than a
@@ -31,21 +36,53 @@ import { accountDisplay } from '../_auth/account-display';
 
 const INSTRUCTOR = { name: 'SSgt Okafor', initials: 'SO', role: 'Instructor' };
 
-const LIBRARY = [
+const LIBRARY_PRIMARY = [
   { id: 'courses', label: 'Courses', icon: I.courses },
+];
+
+const LIBRARY_SECONDARY = [
   { id: 'sources', label: 'Sources', icon: I.dashboard },
+];
+
+const LIBRARY_ADVANCED = [
   { id: 'rubrics', label: 'Rubrics', icon: I.dashboard },
+];
+
+const LIBRARY_ACCOUNT = [
   { id: 'settings', label: 'Settings', icon: I.dashboard },
 ];
 
+const LIBRARY = [
+  ...LIBRARY_PRIMARY,
+  ...LIBRARY_SECONDARY,
+  ...LIBRARY_ADVANCED,
+  ...LIBRARY_ACCOUNT,
+];
+
 const REAL_VIEWS = [
-  { id: 'builder', label: 'Course draft' },
-  { id: 'fidelity', label: 'Doctrinal fidelity' },
-  { id: 'roster', label: 'Roster' },
-  { id: 'mastery', label: 'Class Mastery' },
-  { id: 'aar', label: 'Course AAR' },
+  { id: 'builder', label: 'Review & publish' },
+  { id: 'roster', label: 'Roster', secondary: true },
+  { id: 'fidelity', label: 'Fidelity check', advanced: true },
+  { id: 'mastery', label: 'Class Mastery', advanced: true },
+  { id: 'aar', label: 'Course AAR', advanced: true },
   { id: 'settings', label: 'Course settings' },
 ];
+
+export function courseListWithSelectedFallback(courses, selectedCourse) {
+  const list = Array.isArray(courses) ? courses : [];
+  if (!selectedCourse?.id || list.some((item) => item.id === selectedCourse.id)) return list;
+  return [...list, courseFromRecord(selectedCourse)];
+}
+
+export function courseHeaderStatus(course) {
+  const hasPendingRevision = Boolean(course?.hasPendingRevision || course?.record?.hasPendingRevision);
+  if (course?.status === 'APPROVED') {
+    return hasPendingRevision ? 'Published · revision needs review' : 'Published';
+  }
+  // Anything not approved still needs review, whether or not a revision is
+  // already pending against it.
+  return 'Needs review';
+}
 
 const LEGACY_MANUAL_VIEWS = [
   { id: 'roster', label: 'Roster' },
@@ -89,6 +126,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     initials,
   } = accountDisplay({ ready: authReady, profile, demo: INSTRUCTOR });
   const learning = useLearningCourses({ includeManual: true });
+  const [selectedCourse, setSelectedCourse] = useState(null);
 
   const inLibrary = nav.area === 'library';
   const inCourse = nav.area === 'course';
@@ -96,18 +134,31 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   const libraryView = libraryEntry?.id || null;
   const invalidArea = !inLibrary && !inCourse;
 
-  // null; while the list is loading we hold rather than bounce to a sample
-  // course. An unresolved id is an explicit service/not-found state below.
-  // Instructors see only real courses. A sample id is not resolved here at
-  // all, so an old sample deep link is an explicit not-found rather than a
-  // read-only placeholder sitting where a real course should be.
+  // Which course is on screen. Instructors see only real courses: while the
+  // list is loading we hold rather than substitute anything, and an id that
+  // resolves to nothing is an explicit service/not-found state below. An old
+  // sample deep link therefore reads as not-found rather than as a read-only
+  // placeholder sitting where a real course should be.
+  //
+  // Immediately after creating a course the POST has returned its id, but the
+  // list query may not have committed the new row yet. Keep that creation
+  // response as a short-lived shell fallback so the instructor lands in
+  // review instead of seeing a false not-found state.
+  const selectedCourseId = selectedCourse?.id || null;
+  const hasAuthoritativeSelectedCourse = Boolean(
+    selectedCourseId && learning.courses.some((item) => item.id === selectedCourseId),
+  );
+  useEffect(() => {
+    if (hasAuthoritativeSelectedCourse) setSelectedCourse(null);
+  }, [hasAuthoritativeSelectedCourse]);
+  const courses = courseListWithSelectedFallback(learning.courses, selectedCourse);
   const course = inCourse
-    ? (learning.courses.find((c) => c.id === nav.courseId) || null)
+    ? (courses.find((candidate) => candidate.id === nav.courseId) || null)
     : null;
   const isReal = Boolean(course?.record);
   const isManual = Boolean(course?.manual);
-  // main removed sample/mock courses for instructors, so there is no mock view
-  // set to fall back to; `course` is only ever a real course or null here and the
+  // There is no mock view set to fall back to: `course` is only ever a
+  // service-backed course, a legacy manual course, or null, and the
   // `course ?` guard below covers the null case.
   const VIEWS = isManual ? LEGACY_MANUAL_VIEWS : REAL_VIEWS;
   const current = course
@@ -132,6 +183,22 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     const target = learning.courses.find((candidate) => candidate.id === id);
     nav.go({ role: 'instructor', area: 'course', courseId: id, view: target?.manual ? 'roster' : 'builder' });
   };
+  const handleDrafted = async (created) => {
+    const record = created?.record || created?.course || created;
+    const id = created?.id || record?.id || null;
+    if (id) {
+      setSelectedCourse({
+        ...record,
+        id,
+        title: created?.title || record?.title || record?.name,
+        status: created?.status || record?.status || 'PENDING',
+        sections: created?.sections ?? record?.sections,
+        sourceIds: created?.sourceIds || record?.sourceIds || [],
+      });
+      openCourse(id);
+    }
+    await learning.refetch();
+  };
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -152,7 +219,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   if (invalidArea) {
     body = (
       <StatusMessage title="Page not found">
-        Choose a page from the instructor library.
+        This instructor page does not exist. Choose Courses, Sources, Rubrics or Settings from the instructor workspace.
       </StatusMessage>
     );
   } else if (inCourse && courseLookupLoading) {
@@ -194,7 +261,8 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
       <>
         <h2 className="p-h">Sign in required</h2>
         <p className="p-sub">
-          Sign in to use Sources, Courses and Rubrics.
+          The library — Courses, Sources and Rubrics — is the persisted learning loop, and it needs a
+          verified identity. Sign in to use Sources, Courses and Rubrics.
         </p>
       </>
     );
@@ -208,7 +276,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
           loading={learning.loading}
           error={learning.error}
           onOpen={openCourse}
-          onDrafted={learning.refetch}
+          onDrafted={handleDrafted}
         />
       );
     }
@@ -234,9 +302,10 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     else if (view === 'fidelity') {
       body = (
         <>
-          <h2 className="p-h">Doctrinal fidelity</h2>
+          <h2 className="p-h">Fidelity check</h2>
           <p className="p-sub">
-            Run learner questions against approved sources before publishing.
+            Optional advanced check. Understudy asks the tutor what a learner would ask and grades
+            every answer against the approved sources. It does not block course review or publish.
           </p>
           <InstructorFidelity key={course.id} courseId={course.id} />
         </>
@@ -271,7 +340,22 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
 
         <div className="s-rail-scroll" tabIndex={0} role="region" aria-label="Library and course navigation">
         <div className="s-rail-sec" style={{ paddingTop: '0.2rem' }}>Library</div>
-        {LIBRARY.map((l) => (
+        {LIBRARY_PRIMARY.map((l) => (
+          <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
+        ))}
+
+        <div className="s-rail-sec">Secondary tools</div>
+        {LIBRARY_SECONDARY.map((l) => (
+          <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
+        ))}
+
+        <div className="s-rail-sec">Advanced tools</div>
+        {LIBRARY_ADVANCED.map((l) => (
+          <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
+        ))}
+
+        <div className="s-rail-sec">Account</div>
+        {LIBRARY_ACCOUNT.map((l) => (
           <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
         ))}
 
@@ -290,8 +374,9 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
             ))}
           </>
         )}
-        {/* main removed the instructor-side sample-course rail along with the
-            COURSES fixture import; instructors see only real courses. */}
+        {/* No instructor-side sample-course rail, and no COURSES fixture import:
+            instructors see only the real courses they own. The student shell
+            still carries demo content. */}
 
         {inCourse && course && (
           <>
@@ -299,9 +384,25 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
               <span className="s-rail-sec-name">{course.name}</span>
               {!isReal && <code>{course.id}</code>}
             </div>
-            {VIEWS.map((v) => (
+            {VIEWS.filter((v) => !v.advanced && !v.secondary).map((v) => (
               <RailButton key={v.id} sub on={view === v.id} label={v.label} onClick={() => go({ view: v.id })} />
             ))}
+            {VIEWS.some((v) => v.secondary) && (
+              <>
+                <div className="s-rail-sec">Course tools</div>
+                {VIEWS.filter((v) => v.secondary).map((v) => (
+                  <RailButton key={v.id} sub on={view === v.id} label={v.label} onClick={() => go({ view: v.id })} />
+                ))}
+              </>
+            )}
+            {VIEWS.some((v) => v.advanced) && (
+              <>
+                <div className="s-rail-sec">Advanced tools</div>
+                {VIEWS.filter((v) => v.advanced).map((v) => (
+                  <RailButton key={v.id} sub on={view === v.id} label={v.label} onClick={() => go({ view: v.id })} />
+                ))}
+              </>
+            )}
           </>
         )}
 
@@ -332,9 +433,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
             <span className="s-lastlogin">{course.students} students · Week {course.week} of {course.weeks}</span>
           )}
           {inCourse && course && isReal && !isManual && (
-            <span className="s-lastlogin">
-              {course.sections} sections · {course.hasPendingRevision ? 'Pending review · revised course' : course.status === 'APPROVED' ? 'Approved' : 'Draft'}
-            </span>
+            <span className="s-lastlogin">{course.sections} sections · {courseHeaderStatus(course)}</span>
           )}
           {inCourse && course && isManual && (
             <span className="s-lastlogin">{course.school}</span>

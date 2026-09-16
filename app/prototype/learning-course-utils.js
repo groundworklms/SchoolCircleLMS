@@ -16,8 +16,8 @@ export function courseFromRecord(entry, source = 'learning') {
     school: manual
       ? `Legacy manual course · ${entry.status === 'PUBLISHED' ? 'Published' : 'Draft'}`
       : hasPendingRevision
-        ? 'Pending review · revised course'
-        : entry.status === 'APPROVED' ? 'Approved · cited course' : 'Draft · awaiting approval',
+        ? `${entry.status === 'APPROVED' ? 'Published' : 'Draft'} · revision needs review`
+        : entry.status === 'APPROVED' ? 'Published · cited course' : 'Draft · needs review',
     status: entry.status,
     hasPendingRevision,
     sections,
