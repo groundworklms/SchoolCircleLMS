@@ -59,6 +59,14 @@ function loadComponent(relativePath, { queryData = {}, queryStates = {}, stateVa
       if (request === '../_auth/AuthProvider') {
         return { useAuth: () => ({ user: { uid: 'tester' }, ready: true, loading: false }) };
       }
+      // Stubbed rather than loaded: the account form owns its own auth and
+      // network behaviour, and these tests are about which panels a tab shows.
+      if (request === '../_auth/AccountProfile') {
+        return {
+          __esModule: true,
+          default: () => React.createElement('div', null, 'Account profile fields'),
+        };
+      }
       if (request === '../../lib/auth-fetch') return { authenticatedFetch: async () => ({ ok: false, json: async () => ({}) }) };
       if (request === '../../lib/firebase') {
         return { authFetch: async () => { throw new Error('Static rendering must not make authenticated requests'); } };
@@ -534,4 +542,75 @@ test('prototype mastery selection keeps a refreshed requested session ahead of l
   const startBlock = source.slice(start, finish);
   assert.ok(startBlock.indexOf('await refetch();') < startBlock.indexOf('setSelectedId(result.id);'));
   assert.match(startBlock, /setPendingSessionId\(result\.id\)/);
+});
+
+test('settings renders one destination whose tabs show only their own section', () => {
+  const { InstructorSettings } = loadComponent('app/prototype/Settings.js');
+
+  const render = (props) => renderToStaticMarkup(
+    React.createElement(InstructorSettings, {
+      account: { name: 'SSgt Tester', email: 'tester@example.mil' },
+      authenticated: true,
+      onTab: () => {},
+      ...props,
+    }),
+  );
+
+  // All three tabs are offered from one place, which is the point of the merge.
+  const account = render({ tab: 'account', course: null });
+  for (const label of ['Account', 'App', 'Course']) {
+    assert.match(account, new RegExp(`>${label}<`), `missing tab ${label}`);
+  }
+
+  // Each tab shows its own panels and not the others'.
+  assert.match(account, /Account profile/);
+  assert.doesNotMatch(account, /What students see/);
+  assert.doesNotMatch(account, /Generation model/);
+
+  const app = render({ tab: 'app', course: null });
+  assert.match(app, /Generation/);
+  assert.doesNotMatch(app, /What students see/);
+
+  // Course settings with no course selected must say so rather than invent one.
+  // This page previously received a fabricated "Instructor account" course and
+  // titled itself "Course settings" for something that was not a course.
+  const noCourse = render({ tab: 'course', course: null });
+  assert.match(noCourse, /Open a course from the library/);
+  assert.doesNotMatch(noCourse, /Instructor account\s*·/);
+  assert.doesNotMatch(noCourse, /Show class standing/);
+
+  // With a real course, the course-only panels appear and name it.
+  const withCourse = render({ tab: 'course', course: { id: 'c-1', name: 'Marksmanship' } });
+  assert.match(withCourse, /Marksmanship/);
+  assert.match(withCourse, /Show class standing/);
+  assert.match(withCourse, /apply to/);
+
+  // A course-scoped visit pins the Course tab regardless of the requested tab.
+  const scoped = render({ tab: 'account', course: { id: 'c-1', name: 'Marksmanship' }, courseScoped: true });
+  assert.match(scoped, /Show class standing/);
+  assert.doesNotMatch(scoped, /Account profile/);
+});
+
+test('student settings splits account from app without losing a panel', () => {
+  const { StudentSettings } = loadComponent('app/prototype/Settings.js');
+  const render = (tab) => renderToStaticMarkup(
+    React.createElement(StudentSettings, {
+      account: { name: 'Cpl Tester', email: 'cpl@example.mil' },
+      authenticated: false,
+      onSignOut: () => {},
+      onTab: () => {},
+      tab,
+    }),
+  );
+
+  const account = render('account');
+  assert.match(account, />Account</);
+  assert.match(account, />App</);
+  assert.doesNotMatch(account, /Reminders/);
+
+  const app = render('app');
+  // Every panel that existed before the split still has a home.
+  for (const heading of ['learning style', 'Reminders', 'Display']) {
+    assert.match(app, new RegExp(heading), `App tab lost ${heading}`);
+  }
 });

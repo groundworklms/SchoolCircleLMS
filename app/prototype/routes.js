@@ -34,6 +34,15 @@ const INSTRUCTOR_COURSE_VIEWS = new Set([
   'aar',
   'settings',
 ]);
+/*
+ * Settings is one destination with tabs rather than several scattered buttons,
+ * so the tab is part of the URL: a deep link has to be able to name it, and
+ * the shells must not hold the active tab in state the router cannot see.
+ * `account` is the default, which is why /settings stays a valid location.
+ */
+const SETTINGS_TABS = new Set(['account', 'app', 'course']);
+const DEFAULT_SETTINGS_TAB = 'account';
+
 const INSTRUCTOR_ROLES = new Set(['INSTRUCTOR', 'BOTH']);
 const LEARNER_ROLES = new Set(['LEARNER', 'BOTH']);
 
@@ -86,7 +95,7 @@ function splitPath(pathname) {
   return segments.every(Boolean) ? segments : null;
 }
 
-function studentGlobal(area) {
+function studentGlobal(area, extra = {}) {
   return {
     role: 'student',
     area,
@@ -94,6 +103,7 @@ function studentGlobal(area) {
     view: null,
     lessonId: null,
     page: null,
+    ...extra,
   };
 }
 
@@ -154,15 +164,25 @@ function parseInstructor(segments) {
 
   const first = segments[1];
   if (INSTRUCTOR_LIBRARY_VIEWS.has(first)) {
-    return segments.length === 2
-      ? { role: 'instructor', area: 'library', courseId: null, view: first }
-      : null;
+    if (segments.length === 2) {
+      return first === 'settings'
+        ? { role: 'instructor', area: 'library', courseId: null, view: first, tab: DEFAULT_SETTINGS_TAB }
+        : { role: 'instructor', area: 'library', courseId: null, view: first };
+    }
+    if (first === 'settings' && segments.length === 3 && SETTINGS_TABS.has(segments[2])) {
+      return { role: 'instructor', area: 'library', courseId: null, view: first, tab: segments[2] };
+    }
+    return null;
   }
 
   if (!first || segments.length > 3) return null;
   const view = segments[2] || 'builder';
   if (!INSTRUCTOR_COURSE_VIEWS.has(view)) return null;
-  return { role: 'instructor', area: 'course', courseId: first, view };
+  // A per-course settings link keeps working and resolves to the Course tab of
+  // the consolidated page, so old deep links are not broken by the merge.
+  return view === 'settings'
+    ? { role: 'instructor', area: 'course', courseId: first, view, tab: 'course' }
+    : { role: 'instructor', area: 'course', courseId: first, view };
 }
 
 /**
@@ -189,7 +209,15 @@ export function parse(pathname) {
     return parseStudentCourse(segments) || notFound();
   }
   if (STUDENT_AREAS.has(segments[0])) {
-    return segments.length === 1 ? studentGlobal(segments[0]) : notFound();
+    if (segments.length === 1) {
+      return segments[0] === 'settings'
+        ? studentGlobal('settings', { tab: DEFAULT_SETTINGS_TAB })
+        : studentGlobal(segments[0]);
+    }
+    if (segments[0] === 'settings' && segments.length === 2 && SETTINGS_TABS.has(segments[1])) {
+      return studentGlobal('settings', { tab: segments[1] });
+    }
+    return notFound();
   }
   // The retired instructor and learner roots are not aliases here. They are
   // retired entry points and must not be accepted as prototype deep links.
@@ -202,6 +230,10 @@ function validCourseId(value) {
 
 function studentHref(loc) {
   if (loc.area === 'dashboard') return BASE;
+  if (loc.area === 'settings') {
+    const suffix = settingsTabSuffix(loc);
+    return suffix === null ? NOT_FOUND_HREF : `${BASE}/settings${suffix}`;
+  }
   if (STUDENT_AREAS.has(loc.area)) return `${BASE}/${loc.area}`;
   if (loc.area === 'published') {
     const id = validCourseId(loc.courseId);
@@ -244,11 +276,22 @@ function studentHref(loc) {
   return `${BASE}/course/${courseId}/${view}`;
 }
 
+/** The tab suffix for a settings href. Absent for the default tab, so the
+ * canonical form of the landing page stays /settings rather than
+ * /settings/account -- two URLs for one screen invites drift. */
+function settingsTabSuffix(loc) {
+  const tab = loc.tab;
+  if (tab === undefined || tab === null || tab === DEFAULT_SETTINGS_TAB) return '';
+  return SETTINGS_TABS.has(tab) ? `/${tab}` : null;
+}
+
 function instructorHref(loc) {
   if (loc.area === 'library') {
-    return INSTRUCTOR_LIBRARY_VIEWS.has(loc.view || 'courses')
-      ? `${BASE}/instructor/${loc.view || 'courses'}`
-      : NOT_FOUND_HREF;
+    const view = loc.view || 'courses';
+    if (!INSTRUCTOR_LIBRARY_VIEWS.has(view)) return NOT_FOUND_HREF;
+    if (view !== 'settings') return `${BASE}/instructor/${view}`;
+    const suffix = settingsTabSuffix(loc);
+    return suffix === null ? NOT_FOUND_HREF : `${BASE}/instructor/settings${suffix}`;
   }
   if (loc.area !== 'course') return NOT_FOUND_HREF;
   const courseId = validCourseId(loc.courseId);
@@ -265,6 +308,15 @@ export function href(loc) {
   if (!loc || (loc.role !== 'student' && loc.role !== 'instructor')) return NOT_FOUND_HREF;
   return loc.role === 'instructor' ? instructorHref(loc) : studentHref(loc);
 }
+
+/** Href for a settings tab, for either role. */
+export function settingsHref(role, tab = DEFAULT_SETTINGS_TAB, courseId = null) {
+  return role === 'instructor'
+    ? href({ role: 'instructor', area: 'library', courseId, view: 'settings', tab })
+    : href({ role: 'student', area: 'settings', tab });
+}
+
+export { SETTINGS_TABS, DEFAULT_SETTINGS_TAB };
 
 export function publishedCourseHref(id) {
   return href({ role: 'student', area: 'published', courseId: id, view: null });
