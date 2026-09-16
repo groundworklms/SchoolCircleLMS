@@ -5,6 +5,7 @@ import { COURSES } from './data';
 import { usePrefs, setPref } from './prefs';
 import AccountProfile from '../_auth/AccountProfile';
 import { WaypointSurvey } from './LearnerFeatures';
+import { ModelProviderSettings } from './ModelProviderSettings';
 
 /* Settings, both roles. Preferences persist in the browser (prefs.js) so the
    instructor's per-course toggles show up on the student side in a demo. */
@@ -322,6 +323,13 @@ export function InstructorSettings({ course, account, authenticated = false }) {
         <Toggle label="Instructor approval before students see generated items" note="Cannot be turned off." on onChange={() => {}} />
         <Toggle label="Cite sources on every generated question" note="Requires the doctrine service." on onChange={() => {}} />
       </section>
+
+      {authenticated && (
+        <section className="p-panel">
+          <h3>Generation model</h3>
+          <ModelProviderSettings />
+        </section>
+      )}
     </div>
   );
 }

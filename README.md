@@ -57,6 +57,11 @@ Point `DOCTRINE_BASE_URL` at a running **Anchor** instance for grounded answers,
 (both are optional for a first run — see `.env.example`). Unset means generation reports an
 explicit `503 NO_PROVIDER`; there is no mock and no silent fallback.
 
+Those two variables are only the bootstrap. The generation model is also chosen at runtime in
+**Settings → Generation model** — a self-hosted endpoint or a hosted API key — which wins over
+them and changes without a redeploy. See
+[the generation provider](docs/generation-provider.md).
+
 The product is offline and grounded **by default**: generation runs against self-hosted compute.
 An OpenRouter overlay exists for authorized development and testing only, and is selected solely
 by pointing `MODEL_BASE_URL` at that exact base URL alongside `OPENROUTER_API_KEY` — a key on its

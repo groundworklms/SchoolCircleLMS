@@ -1,8 +1,10 @@
+import { primeModelSettings } from '../../../lib/model-settings.js';
 import { capabilities } from '../../../lib/providers';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
+  await primeModelSettings();
   const caps = capabilities();
   return Response.json({
     capabilities: caps,

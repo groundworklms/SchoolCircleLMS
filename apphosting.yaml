@@ -80,6 +80,28 @@ env:
     availability:
       - RUNTIME
 
+  # --- Generation provider. Deliberately NOT set here: the model is chosen at
+  # runtime in Settings -> Generation model and stored in the database, so it
+  # changes without a rollout (docs/generation-provider.md). Setting
+  # MODEL_BASE_URL/MODEL_ID here would only supply the fallback used before an
+  # operator has chosen one.
+  #
+  # These two enable the panel. Create both in Secret Manager and grant the App
+  # Hosting compute service account Secret Accessor, then uncomment:
+  #   gcloud secrets create SETTINGS_ENCRYPTION_KEY --data-file=- <<< "$(openssl rand -base64 32)"
+  #   gcloud secrets create MODEL_SETTINGS_KEY --data-file=-
+  # SETTINGS_ENCRYPTION_KEY seals an operator-entered API key at rest; rotating
+  # it makes any stored key unreadable, which surfaces as an explicit 503 rather
+  # than a silent unauthenticated call.
+  # - variable: SETTINGS_ENCRYPTION_KEY
+  #   secret: SETTINGS_ENCRYPTION_KEY
+  #   availability:
+  #     - RUNTIME
+  # - variable: MODEL_SETTINGS_KEY
+  #   secret: MODEL_SETTINGS_KEY
+  #   availability:
+  #     - RUNTIME
+
   # --- Database: Cloud SQL Postgres (the Firebase Data Connect trial instance), reached
   # through the Cloud SQL connector in lib/db.js -- the compute service account has
   # roles/cloudsql.client. DATABASE_URL (Secret Manager) carries user/password/database;
