@@ -1,0 +1,94 @@
+name: Migrate live database
+
+# Applies committed Prisma migrations to the live Cloud SQL database whenever a
+# migration lands on main, then asserts the database matches schema.prisma.
+#
+# Why: Firebase App Hosting builds do NOT run `prisma migrate deploy`. Twice on
+# 2026-09-15 a PR merged with a new migration that nobody applied, and the next
+# valid sign-in took the app down with a 503 (#69). This closes that gap.
+#
+# One-time setup (see docs/CLOUD_POSTGRES.md, "CI migrations"): a GitHub Actions
+# secret GCP_SA_KEY holding a service-account key with roles/cloudsql.client on
+# the project and Secret Accessor on the DATABASE_URL secret. Until it exists the
+# job fails fast with instructions instead of silently skipping.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "prisma/migrations/**"
+      - "prisma/schema.prisma"
+      - ".github/workflows/migrate.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: migrate-live
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT: schoolcircle-ae29a
+  CLOUD_SQL_CONNECTION_NAME: schoolcircle-ae29a:us-east4:schoolcircle-ae29a-instance
+  # Non-secret target acknowledgments required by scripts/database.mjs.
+  SCHOOLCIRCLE_DB_ENV: demo
+  DATABASE_TARGET_CONFIRM: schoolcircle_demo
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  deploy:
+    name: apply migrations to Cloud SQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check CI credentials exist
+        env:
+          HAS_KEY: ${{ secrets.GCP_SA_KEY != '' }}
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::error::GCP_SA_KEY secret is not set. Migrations were NOT applied."
+            echo "::error::Run 'npm run db:deploy' manually now, then follow docs/CLOUD_POSTGRES.md > 'CI migrations' to set up the secret."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Fetch DATABASE_URL from Secret Manager
+        run: |
+          URL="$(gcloud secrets versions access latest --secret=DATABASE_URL --project "$GCP_PROJECT")"
+          echo "::add-mask::$URL"
+          echo "DATABASE_URL=$URL" >> "$GITHUB_ENV"
+
+      - name: Start Cloud SQL proxy
+        run: |
+          node scripts/cloud-sql-proxy.mjs > proxy.log 2>&1 &
+          for i in $(seq 1 30); do
+            grep -q "Cloud SQL proxy:" proxy.log && break
+            sleep 1
+          done
+          grep -q "Cloud SQL proxy:" proxy.log || { cat proxy.log; exit 1; }
+
+      - name: Pending migrations
+        run: npm run db:status || true
+
+      - name: Apply migrations
+        run: npm run db:deploy
+
+      - name: Assert database matches schema.prisma
+        run: |
+          npx prisma migrate diff \
+            --from-url "$DATABASE_URL" \
+            --to-schema-datamodel prisma/schema.prisma \
+            --exit-code
