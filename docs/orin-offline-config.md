@@ -8,6 +8,23 @@ no SSH key, no tunnel, and no network.
 Anchor used to bind the Orin's loopback (`127.0.0.1:8000`), so a laptop could only reach it through
 an SSH tunnel. It now binds the **USB device-mode interface** (`l4tbr0 = 192.168.55.1`) instead.
 
+> **Where the bind actually comes from.** Not the YAML. `server.host` in
+> `/opt/tutor/config/default.yaml` is decorative — `main.py` never reads it. The real control is the
+> `--host` CLI flag (`main.py`: `ap.add_argument("--host", default="127.0.0.1")`, consumed by
+> `uvicorn.run(app, host=args.host, ...)`). The systemd unit did not pass it, so it defaulted to
+> loopback. **Already applied** via a drop-in — note the directory must be `<unit>.service.d`, not
+> `<unit>.d`, or systemd silently ignores it:
+>
+> ```
+> /etc/systemd/system/tutor-api.service.d/bind-usb.conf
+> [Service]
+> ExecStart=
+> ExecStart=/usr/bin/python3 /opt/tutor/api/main.py --db ... --items ... --host 192.168.55.1
+> ```
+>
+> Revert: `sudo rm -rf /etc/systemd/system/tutor-api.service.d && sudo systemctl daemon-reload &&
+> sudo systemctl restart tutor-api`
+
 That is **not** `0.0.0.0`. The USB link is point-to-point to the single attached laptop — it is not
 reachable from any real network, so the air-gap holds. It just removes the tunnel from the path.
 
@@ -18,11 +35,10 @@ laptop  ──USB device-mode──  Orin
 
 ## Level 1 — grounding offline (the demo path)
 
-**Activate once** (needs the team sudo password; run from a laptop that has `~/.ssh/gameday_orin`):
-
-```bash
-ssh -t -i ~/.ssh/gameday_orin vanguard@192.168.55.1 'sudo systemctl restart tutor-api'
-```
+**Already applied and verified** (16 Sep 2026): the drop-in above is in place and Anchor listens on
+`192.168.55.1:8000`. Confirmed from a laptop with the SSH tunnel killed — health ok, 14 publications
+/ 4,731 chunks, a cited answer from TC 3-22.9, and a correct refusal on an out-of-corpus question.
+Nothing below needs running again unless the Orin is reimaged.
 
 **Verify from any plugged-in laptop** — nothing else running, no tunnel:
 
