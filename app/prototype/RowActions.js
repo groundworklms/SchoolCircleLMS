@@ -29,6 +29,18 @@ function errText(error, fallback) {
   return error?.error || error?.message || fallback;
 }
 
+/** Name what permanent removal destroys, in the server's own counts. */
+function describeEvidence(evidence) {
+  if (!evidence) return 'Learner work';
+  const parts = [];
+  const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+  if (evidence.attempts) parts.push(plural(evidence.attempts, 'learner attempt'));
+  if (evidence.schedules) parts.push(plural(evidence.schedules, 'scheduled item'));
+  if (evidence.records) parts.push(plural(evidence.records, 'learner progress record'));
+  if (!parts.length) return 'Learner work';
+  return parts.join(' and ');
+}
+
 export function RowActions({
   label,
   title,
@@ -44,6 +56,10 @@ export function RowActions({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [notice, setNotice] = useState(null);
+  // Set only after the server archives and reports what it would destroy, so
+  // the permanent option can never be the first thing offered.
+  const [archived, setArchived] = useState(null);
+  const [typed, setTyped] = useState('');
   const wrapRef = useRef(null);
 
   // Close on an outside click or Escape, like the account menu does. Without
@@ -69,12 +85,12 @@ export function RowActions({
 
   useEffect(() => { setDraft(title || ''); }, [title]);
 
-  async function send(method, body) {
+  async function send(method, body, search = '') {
     setBusy(true);
     setErr(null);
     setNotice(null);
     try {
-      const res = await authFetch(endpoint, {
+      const res = await authFetch(`${endpoint}${search}`, {
         method,
         headers: { 'Content-Type': 'application/json' },
         ...(body ? { body: JSON.stringify(body) } : {}),
@@ -105,11 +121,30 @@ export function RowActions({
   async function remove() {
     const json = await send('DELETE');
     if (!json) return;
+    // An archive is not a failure, but it is not what was asked for either.
+    // When the server kept learner work, stay open and offer the second,
+    // explicit decision rather than closing on a half-done action.
+    if (json.archived && json.canDeletePermanently) {
+      setArchived(json);
+      setMode('permanent');
+      setTyped('');
+      onChanged?.();
+      return;
+    }
     setMode(null);
     setOpen(false);
-    // An archive is not a failure, but it is not what was asked for either.
-    // Say which happened, in the server's words.
     if (json.archived && json.reason) setNotice(json.reason);
+    onChanged?.();
+  }
+
+  /** The irreversible one. Guarded by an exact-title match, server-side too. */
+  async function removePermanently() {
+    const search = `?permanent=1&confirm=${encodeURIComponent(typed.trim())}`;
+    const json = await send('DELETE', null, search);
+    if (!json) return;
+    setMode(null);
+    setOpen(false);
+    setArchived(null);
     onChanged?.();
   }
 
@@ -190,6 +225,47 @@ export function RowActions({
             </button>
             <button type="button" className="p-btn ghost" onClick={() => setMode(null)} disabled={busy}>
               Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {open && mode === 'permanent' && (
+        <div className="row-actions-menu row-actions-form" role="alertdialog">
+          <p className="row-actions-confirm">
+            <strong>{title || label}</strong> was archived, not deleted.
+          </p>
+          <p className="row-actions-danger">
+            {describeEvidence(archived?.evidence)} will be destroyed permanently if you
+            continue. This cannot be undone.
+          </p>
+          <label>
+            <span>Type the name to confirm</span>
+            <input
+              type="text"
+              value={typed}
+              onChange={(event) => setTyped(event.target.value)}
+              placeholder={title || ''}
+              autoFocus
+              disabled={busy}
+            />
+          </label>
+          <div className="row-actions-buttons">
+            <button
+              type="button"
+              className="p-btn danger"
+              onClick={removePermanently}
+              disabled={busy || typed.trim() !== (title || '').trim()}
+            >
+              {busy ? 'Deleting…' : 'Delete permanently'}
+            </button>
+            <button
+              type="button"
+              className="p-btn ghost"
+              onClick={() => { setMode(null); setOpen(false); setArchived(null); }}
+              disabled={busy}
+            >
+              Keep archived
             </button>
           </div>
         </div>
