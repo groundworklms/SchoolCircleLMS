@@ -163,9 +163,11 @@ export default function LearnApp() {
           <a href={`/login?next=${encodeURIComponent("/learn")}`} className="p-btn" style={{ width: "max-content" }}>
             Sign in with Firebase
           </a>
-          <a href="/api/login?returnTo=/learn" className="p-btn ghost" style={{ width: "max-content" }}>
-            Use organization sign-in
-          </a>
+          {status?.auth?.replit?.configured && (
+            <a href="/api/login?returnTo=/learn" className="p-btn ghost" style={{ width: "max-content" }}>
+              Use organization sign-in
+            </a>
+          )}
         </div>
       </div>
     );

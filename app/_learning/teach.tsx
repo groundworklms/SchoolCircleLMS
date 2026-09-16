@@ -68,7 +68,9 @@ export default function TeachApp() {
         <h2>Authentication Required</h2>
         <p>{status?.auth?.reason || "Please log in to continue."}</p>
         <a href="/login?next=%2Fteach" className="p-btn" style={{ width: "max-content" }}>Sign in with email or Google</a>
-        <a href="/api/login?returnTo=/teach" className="p-btn ghost" style={{ width: "max-content" }}>Sign in with Replit</a>
+        {status?.auth?.replit?.configured && (
+          <a href="/api/login?returnTo=/teach" className="p-btn ghost" style={{ width: "max-content" }}>Sign in with Replit</a>
+        )}
       </div>
     );
   }
