@@ -177,3 +177,36 @@ test('the connection test refuses to run without a model', async () => {
   );
   assert.equal(calls.length, 0, 'nothing was sent upstream');
 });
+
+test('the catalogue is readable before any model is chosen', async () => {
+  // The intended deployment shape: endpoint and key from configuration, model
+  // left to an instructor. Listing models must work in that state, or picking
+  // a model would require a model to already be picked.
+  delete process.env.MODEL_ID;
+  invalidateModelSettings();
+  await primeModelSettings();
+
+  const status = (await import('../lib/providers.js')).textProvider();
+  assert.equal(status.ready, false, 'not ready without a model');
+  assert.equal(status.baseUrl, 'https://api.openai.com/v1', 'but the endpoint is still reported');
+  assert.equal(status.credential, 'environment');
+
+  stubFetch(() => respond({ data: [{ id: 'gpt-4o' }, { id: 'gpt-4o-mini' }] }));
+  const result = await listModels();
+  assert.deepEqual(result.models.map((m) => m.id), ['gpt-4o', 'gpt-4o-mini']);
+  assert.equal(calls[0].url, 'https://api.openai.com/v1/models');
+  assert.equal(calls[0].init.headers.authorization, 'Bearer sk-catalog-test-4242');
+});
+
+test('with no endpoint at all the catalogue reports no provider, not a bad URL', async () => {
+  delete process.env.MODEL_BASE_URL;
+  delete process.env.MODEL_ID;
+  invalidateModelSettings();
+  await primeModelSettings();
+  stubFetch(() => respond({ data: [] }));
+  await assert.rejects(
+    () => listModels(),
+    (error) => error.code === 'NO_PROVIDER',
+  );
+  assert.equal(calls.length, 0, 'nothing was sent upstream');
+});
