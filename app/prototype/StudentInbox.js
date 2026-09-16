@@ -332,7 +332,7 @@ export default function StudentInbox({ onOpen, onArea }) {
         </div>
         <div className="s-inbox-filters">
           {FILTERS.map((f) => (
-            <button key={f.id} className={filter === f.id ? 'on' : ''} onClick={() => setFilter(f.id)}>
+            <button key={f.id} type="button" className={filter === f.id ? 'on' : ''} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
               {f.label}
               {f.id === 'unread' && unreadCount > 0 && <span className="s-inbox-pill">{unreadCount}</span>}
             </button>
