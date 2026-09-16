@@ -463,6 +463,25 @@ details[open] > summary.s-label::before { content: '▾'; }
 .req   { --k: #6b7280; --k-bg: #eef0f3; }
 .late  { --k: var(--p-critical); --k-bg: var(--p-critical-tint); }
 
+/* Calendar-only palette from the approved preview. light-dark follows the
+   root color-scheme, including an explicit theme or Match system. */
+.s-cal-wrap .class { --k: light-dark(#51657b, #b7c7db); --k-bg: light-dark(#edf1f5, #35404d); }
+.s-cal-wrap .exam { --k: light-dark(#a4213a, #ff91a1); --k-bg: light-dark(#faedf0, #493039); }
+.s-cal-wrap .plan { --k: light-dark(#246b3f, #75df92); --k-bg: light-dark(#eef7f0, #2e4436); }
+.s-cal-wrap .todo { --k: light-dark(#8b5b16, #ffc66e); --k-bg: light-dark(#fbf3e6, #4a3f30); }
+.s-cal-wrap .req { --k: light-dark(#69717c, #c4c4c9); --k-bg: light-dark(#f0f1f3, #3f3f43); }
+.s-cal-wrap .late { --k: light-dark(#a43b16, #ffb095); --k-bg: light-dark(#fff2eb, #4e3932); }
+.s-cal-wrap :is(.s-cal-arrow, .s-cal-today, .s-cal-key) {
+  background: color-mix(in srgb, var(--p-text) 5%, var(--p-surface));
+}
+.s-cal-wrap :is(.s-cal-arrow, .s-cal-today, .s-cal-key):hover {
+  background: color-mix(in srgb, var(--p-text) 10%, var(--p-surface));
+}
+.s-cal-wrap button:focus-visible {
+  outline: 2px solid light-dark(var(--p-accent), #ff91a1);
+  outline-offset: 2px;
+}
+
 .s-cal {
   display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
   background: var(--p-surface); box-shadow: var(--p-shadow); border-radius: var(--p-radius); overflow: hidden;
@@ -474,11 +493,11 @@ details[open] > summary.s-label::before { content: '▾'; }
   font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 0.35rem;
 }
 .s-cal-day:nth-child(7n) { border-right: none; }
-.s-cal-day:hover { background: #fafafa; }
-.s-cal-day.wknd { background: #fbfbfc; }
-.s-cal-day.out { color: var(--p-faint); background: #f9f9fa; }
+.s-cal-day.wknd { background: color-mix(in srgb, var(--p-surface) 70%, var(--p-bg)); }
+.s-cal-day.out { color: var(--p-faint); background: var(--p-bg); }
+.s-cal-day:hover { background: var(--p-surface-2); }
 .s-cal-day.out .s-cal-chip { opacity: 0.5; }
-.s-cal-day.sel { box-shadow: inset 0 0 0 2px var(--p-accent); }
+.s-cal-day.sel { box-shadow: inset 0 0 0 2px light-dark(var(--p-accent), #ff91a1); }
 .s-cal-num { font-size: 0.85em; font-weight: 600; width: 1.7em; height: 1.7em; display: grid; place-items: center; border-radius: 50%; }
 .s-cal-day.today .s-cal-num { background: var(--p-accent); color: #fff; }
 .s-cal-evs { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
