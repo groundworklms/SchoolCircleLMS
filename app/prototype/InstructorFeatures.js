@@ -517,9 +517,65 @@ export function RubricsView() {
 
   const [generatedRubricId, setGeneratedRubricId] = useState(null);
 
+  // Auto-filled task suggestions for the selected source.
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [suggestionOrigin, setSuggestionOrigin] = useState('');
+  const [suggestionError, setSuggestionError] = useState(null);
+  const [suggesting, setSuggesting] = useState(false);
+
   const generateRubric = useApiMutation('/rubrics/generate', 'POST');
+  const suggestTasks = useApiMutation('/rubrics/task-suggestions', 'POST');
   const approveRubric = useApiMutation(`/rubrics/${generatedRubricId}/approve`, 'POST');
   const { data: rubricData, refetch } = useApiQuery(`/rubrics/${generatedRubricId}`, { enabled: !!generatedRubricId });
+
+  const applySuggestion = (task) => {
+    if (!task) return;
+    setTaskCode(task.code || '');
+    setTaskTitle(task.title || '');
+    setTaskCondition(task.condition || '');
+    setTaskStandard(task.standard || '');
+    setTaskSteps((task.performanceSteps || []).join('\n'));
+  };
+
+  // Selecting a source fills the whole form from it, so the ordinary path is
+  // pick a source and press Generate. Every field stays editable; a failure
+  // here leaves the form usable by hand rather than blocking generation.
+  useEffect(() => {
+    if (!sourceId) {
+      setSuggestions([]);
+      setSuggestionOrigin('');
+      setSuggestionError(null);
+      return undefined;
+    }
+    let current = true;
+    setSuggesting(true);
+    setSuggestionError(null);
+    suggestTasks
+      .mutate({ sourceId })
+      .then((res) => {
+        if (!current) return;
+        const tasks = Array.isArray(res?.tasks) ? res.tasks : [];
+        setSuggestions(tasks);
+        setSuggestionOrigin(res?.origin || '');
+        setSuggestionIndex(0);
+        applySuggestion(tasks[0]);
+      })
+      .catch((e) => {
+        if (!current) return;
+        setSuggestions([]);
+        setSuggestionOrigin('');
+        setSuggestionError(errText(e, 'Could not read a task from this source.'));
+      })
+      .finally(() => {
+        if (current) setSuggesting(false);
+      });
+    return () => {
+      current = false;
+    };
+    // suggestTasks is a fresh object each render; the source id is the input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceId]);
 
   const handleGenerate = async () => {
     if (!sourceId || !taskCode) return;
@@ -565,6 +621,10 @@ export function RubricsView() {
 
       <div className="p-panel">
         <h3>Generate a rubric</h3>
+        <p className="p-src">
+          Pick an approved source and the task fields fill themselves from it. Edit anything that
+          needs it, then generate.
+        </p>
         {sourcesPending && <p className="p-src">Loading approved sources…</p>}
         {sourcesError && (
           <div className="s-shell-error" role="alert">
@@ -584,13 +644,52 @@ export function RubricsView() {
               <option key={s.id} value={s.id}>{s.title}</option>
             ))}
           </select>
+          {suggesting && <p className="p-src">Reading the task from this source…</p>}
+          {suggestionOrigin === 'quarry' && suggestions.length > 0 && (
+            <p className="p-src">
+              {suggestions.length === 1
+                ? 'Filled from the task written in this source.'
+                : `${suggestions.length} tasks in this source — pick one to fill the form.`}
+            </p>
+          )}
+          {suggestionOrigin === 'model' && (
+            <p className="p-src">
+              This source has no task block, so the fields below are a draft written from its text.
+              Check them before generating.
+            </p>
+          )}
+          {suggestions.length > 1 && (
+            <select
+              className="scw-ti"
+              aria-label="Task from this source"
+              value={suggestionIndex}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                setSuggestionIndex(next);
+                applySuggestion(suggestions[next]);
+              }}
+            >
+              {suggestions.map((task, i) => (
+                <option key={task.code || i} value={i}>{task.code} — {task.title}</option>
+              ))}
+            </select>
+          )}
+          {suggestionError && (
+            <p className="p-src" role="status">{suggestionError} Fill the fields in by hand.</p>
+          )}
           <input className="scw-ti" placeholder="Task code (e.g. 0311-M16-1001)" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} disabled={sourcesUnavailable} />
+          {suggestions[suggestionIndex]?.codeGenerated && taskCode === suggestions[suggestionIndex]?.code && (
+            <small style={{ color: 'var(--p-faint)', marginTop: '-0.25rem' }}>
+              This source carries no task code, so one was derived from the title. Replace it with
+              the real code if the task has one.
+            </small>
+          )}
           <input className="scw-ti" placeholder="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} disabled={sourcesUnavailable} />
           <input className="scw-ti" placeholder="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} disabled={sourcesUnavailable} />
           <input className="scw-ti" placeholder="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
           <textarea className="scw-ti" placeholder="Performance steps (one per line)" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
           <Err msg={err} />
-          <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || sourcesUnavailable || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
+          <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || suggesting || sourcesUnavailable || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
             {generateRubric.loading ? 'Generating…' : 'Generate rubric'}
           </button>
         </div>
