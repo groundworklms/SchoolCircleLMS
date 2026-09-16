@@ -3,8 +3,8 @@
 // PATCH renames it; DELETE removes it, but refuses while any course still
 // cites it, because a source is the grounding behind those citations. Both are
 // owner-only and instructor-only: the read is shared, the writes are not.
-import { learningRoute } from '../../../../../lib/learning/http';
-import { deleteSource, getSource, renameSource } from '../../../../../lib/learning/core';
+import { learningRoute } from '../../../../../lib/learning/http.js';
+import { deleteSource, getSource, renameSource } from '../../../../../lib/learning/core.js';
 
 export const runtime = 'nodejs';
 
