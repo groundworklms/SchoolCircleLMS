@@ -40,12 +40,20 @@ function courseInclude(full) {
   };
 }
 
-function errorResponse(error) {
-  const status = Number.isInteger(error?.status)
-    ? error.status
-    : error?.code === 'AUTH_REQUIRED' ? 401
-      : error?.code === 'FORBIDDEN' ? 403
-        : 500;
+function deliveryStatus(error) {
+  if (Number.isInteger(error?.status)) return error.status;
+  if (error?.code === 'AUTH_REQUIRED') return 401;
+  if (error?.code === 'FORBIDDEN') return 403;
+  return 500;
+}
+
+function errorResponse(error, label) {
+  const status = deliveryStatus(error);
+  // Log against the status actually being returned. A Prisma or connection
+  // failure carries no `status` of its own, so guarding the log on
+  // `error.status >= 500` dropped every genuine server error -- exactly the
+  // class of failure that took the app down in #69.
+  if (status >= 500) console.error(label, error?.message);
   return Response.json(
     {
       error: status >= 500 ? 'Course delivery is temporarily unavailable.' : error?.message,
@@ -125,7 +133,6 @@ export async function GET(request, { params }) {
       { headers: HEADERS },
     );
   } catch (error) {
-    if (error?.status >= 500) console.error('[courses/:id]', error.message);
-    return errorResponse(error);
+    return errorResponse(error, '[courses/:id]');
   }
 }
