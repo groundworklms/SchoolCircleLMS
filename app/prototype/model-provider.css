@@ -1,0 +1,142 @@
+/*
+ * Settings -> Generation model.
+ *
+ * Self-contained on purpose: the visually similar .course-revision-form lives
+ * in app/_course/course.css, which only loads when a course is being presented.
+ * Borrowing it would leave this panel unstyled in Settings. Colors come from
+ * the same --p-* tokens the prototype shells define, with literal fallbacks.
+ */
+
+.model-provider-form {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+  padding: 0.85rem;
+  background: var(--p-bg, #f5f5f7);
+  border-radius: 12px;
+}
+
+.model-provider-form label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--p-dim, #6e6e73);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.model-provider-form input[type='url'],
+.model-provider-form input[type='text'],
+.model-provider-form input[type='password'],
+.model-provider-form select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  color: var(--p-text, #1d1d1f);
+  background: var(--p-surface, #fff);
+  border: none;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 0.7px rgba(0, 0, 0, 0.16);
+  font: inherit;
+}
+
+.model-provider-form input:disabled,
+.model-provider-form select:disabled {
+  color: var(--p-dim, #6e6e73);
+  background: var(--p-bg, #f5f5f7);
+  cursor: not-allowed;
+}
+
+/* An endpoint or model id is long and monospaced-friendly; a passphrase is not. */
+.model-provider-form input[type='url'],
+.model-provider-form input[type='text'] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+.model-provider-note {
+  margin: 0;
+  color: var(--p-dim, #6e6e73);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+/* The checkbox reads as one line, not as a stacked field like the inputs. */
+.model-provider-clear {
+  display: flex !important;
+  align-items: center;
+  gap: 0.45rem;
+  font-weight: 500;
+}
+
+.model-provider-clear input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+}
+
+.model-provider-active {
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- the simple path: a clickable list of models --- */
+
+.model-provider-choices {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.model-provider-choice {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--p-surface, #fff);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 0.7px rgba(0, 0, 0, 0.14);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Selection has to be obvious at a glance for a non-expert. */
+.model-provider-choice:has(input:checked) {
+  box-shadow: inset 0 0 0 1.6px var(--p-accent, #0071e3);
+}
+
+.model-provider-choice input[type='radio'] {
+  width: auto;
+  margin: 0.15rem 0 0;
+  flex: none;
+}
+
+.model-provider-choice-body {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.model-provider-choice-name {
+  color: var(--p-text, #1d1d1f);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.model-provider-choice-hint {
+  color: var(--p-dim, #6e6e73);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+/* Advanced is a quiet link, not a button competing with "Use this model". */
+.model-provider-disclose {
+  margin-top: 0.7rem;
+  padding: 0;
+  color: var(--p-dim, #6e6e73);
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.model-provider-disclose:hover {
+  color: var(--p-text, #1d1d1f);
+}

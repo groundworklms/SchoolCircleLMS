@@ -36,12 +36,6 @@ function loadInstructorShell({ courses = [] } = {}) {
     courseFromRecord(entry) {
       return { ...entry, name: entry.title || entry.name, record: entry };
     },
-    isDemoCourseId(id) {
-      return id === 'TC32209';
-    },
-    resolveCourse(id, courses) {
-      return courses.find((course) => course.id === id) || null;
-    },
     useLearningCourses() {
       return {
         courses,
@@ -151,7 +145,10 @@ test('authoritative course refresh replaces the selected creation fallback', () 
   assert.equal(courseHeaderStatus({ status: 'DRAFT' }), 'Needs review');
 });
 
-test('demo courses are disclosed behind the explicit Demo entry', () => {
+/* The stubbed bridge deliberately still offers a demoCourses collection. The
+   instructor rail must ignore it: an instructor sees only the real courses they
+   own, and the grouped library rail is what replaces the old sample rail. */
+test('the instructor rail exposes no sample or demo courses', () => {
   const { default: InstructorShell } = loadInstructorShell();
   const markup = renderToStaticMarkup(React.createElement(InstructorShell, {
     nav: {
@@ -160,8 +157,22 @@ test('demo courses are disclosed behind the explicit Demo entry', () => {
       courseId: null,
     },
   }));
-  assert.match(markup, />Demo</);
-  assert.match(markup, />Demo courses</);
+  assert.doesNotMatch(markup, />Demo</);
+  assert.doesNotMatch(markup, />Demo courses</);
+  assert.doesNotMatch(markup, /Sample courses/);
+  assert.doesNotMatch(markup, /Rifle Marksmanship/);
+  assert.match(markup, />Courses</);
+  assert.match(markup, />Sources</);
+  assert.match(markup, />Rubrics</);
+  assert.match(markup, />Settings</);
+});
+
+test('an unresolved instructor course id is an explicit not-found', () => {
+  const { default: InstructorShell } = loadInstructorShell();
+  const markup = renderToStaticMarkup(React.createElement(InstructorShell, {
+    nav: { area: 'course', courseId: 'TC32209', view: 'builder' },
+  }));
+  assert.match(markup, /Course not found/);
   assert.doesNotMatch(markup, /Rifle Marksmanship/);
 });
 

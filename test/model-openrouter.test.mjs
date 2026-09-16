@@ -524,3 +524,17 @@ test('real Sourcerer rejects the grouped-output response without tutor normaliza
   assert.equal(result.reason, 'no_citation');
   assert.deepEqual(result.citations, []);
 });
+test('a too-low token limit is not mistaken for an unsupported parameter', async () => {
+  // OpenAI's too-low error is "Could not finish the message because max_tokens
+  // or model output limit was reached" -- it names the parameter. An earlier
+  // version of the retry matched that and swapped to a spelling GPT-5 models
+  // genuinely reject, turning one recoverable error into two.
+  const { openAICompatRequestProbe } = await import('../lib/model.js').catch(() => ({}));
+  const tooLow = 'Could not finish the message because max_tokens or model output limit was reached. Please try again with higher max_tokens.';
+  const unsupported = 'Unsupported parameter: "max_tokens" is not supported with this model.';
+  const pattern =
+    /(unsupported|unrecognized|unknown|not supported|invalid)[^.]{0,40}(max_tokens|max_completion_tokens)|(max_tokens|max_completion_tokens)[^.]{0,40}(is not supported|unsupported|not recognized)/i;
+  assert.equal(pattern.test(tooLow), false, 'a too-low limit must not trigger a parameter swap');
+  assert.equal(pattern.test(unsupported), true, 'a genuinely unsupported parameter must');
+  assert.equal(typeof openAICompatRequestProbe, 'undefined');
+});

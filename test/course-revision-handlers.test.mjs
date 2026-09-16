@@ -354,6 +354,16 @@ const dbMock = {
   async getLearningRecord(id) {
     return snapshot(records.get(id) || null);
   },
+  async getLearningRecordsByIds(ids) {
+    // Same contract as the real batched read: a Map keyed by id, missing ids
+    // simply absent. The production list path uses this instead of a query
+    // per row, so the mock has to offer it too.
+    return new Map(
+      [...new Set(ids || [])]
+        .map((id) => [id, snapshot(records.get(id) || null)])
+        .filter(([, record]) => record),
+    );
+  },
   async listLearningRecords({ ownerId, type, status } = {}) {
     return [...records.values()]
       .filter((record) => !ownerId || record.ownerId === ownerId)
