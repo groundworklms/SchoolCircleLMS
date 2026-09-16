@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { projectCourseRows } from '../lib/learning/project-course.js';
+import { projectCourseRows, withPreservedItemStatus } from '../lib/learning/project-course.js';
 
 const DRAFT = {
   title: 'Marksmanship fundamentals',
@@ -19,7 +19,7 @@ const DRAFT = {
   scenario: { situation: 'You are on the 300 m line.', task: 'Call the correction.', coaching: 'Check alignment first. [1]' },
 };
 
-test('projects a Coursewright draft into course, sections and approved items with stable ids', () => {
+test('projects a Coursewright draft into course, sections and pending items with stable ids', () => {
   const rows = projectCourseRows('rec_1', DRAFT, { sourceId: 'TC 3-22.9' });
 
   assert.deepEqual(rows.course, { id: 'rec_1', title: 'Marksmanship fundamentals', sourceId: 'TC 3-22.9' });
@@ -35,7 +35,8 @@ test('projects a Coursewright draft into course, sections and approved items wit
   ]);
   // The section's cite grounds every item in it; page parsed from "p.N".
   for (const item of aiming.items) {
-    assert.equal(item.status, 'APPROVED');
+    // Generation proposes; a human ratifies. Nothing is materialised APPROVED.
+    assert.equal(item.status, 'PENDING');
     assert.deepEqual(item.citation, { citation: 'src_1 p.7', pubId: 'TC 3-22.9', page: '7' });
   }
   assert.deepEqual(aiming.items[1].options, ['Left', 'Centred']);
@@ -49,7 +50,46 @@ test('projects a Coursewright draft into course, sections and approved items wit
 
   assert.equal(scenario.id, 'rec_1:scenario');
   assert.equal(scenario.items[0].kind, 'SCENARIO');
+  assert.equal(scenario.items[0].status, 'PENDING');
   assert.match(scenario.items[0].stem, /300 m line[\s\S]*Call the correction/);
+});
+
+// Materialisation is the generator's output and always proposes PENDING. A
+// status a human already recorded for the same item id is a decision, and a
+// rewrite must not quietly discard it (or, worse, promote it).
+test('re-materialisation keeps a status a human already recorded', () => {
+  const { sections } = projectCourseRows('rec_1', DRAFT, { sourceId: 'TC 3-22.9' });
+  const preserved = withPreservedItemStatus(sections, {
+    'rec_1:s1:lesson': 'APPROVED',
+    'rec_1:s1:pre1': 'REJECTED',
+  });
+
+  const [aiming] = preserved;
+  assert.deepEqual(aiming.items.map((item) => [item.id, item.status]), [
+    ['rec_1:s1:lesson', 'APPROVED'],
+    ['rec_1:s1:pre1', 'REJECTED'],
+    ['rec_1:s1:post1', 'PENDING'],
+  ]);
+  // Only the status moves; content, citation and ids are untouched.
+  assert.deepEqual(
+    preserved.map((s) => s.items.map((i) => ({ ...i, status: 'PENDING' }))),
+    sections.map((s) => s.items),
+  );
+});
+
+test('preservation accepts a Map, ignores unknown ids and never invents APPROVED', () => {
+  const { sections } = projectCourseRows('rec_1', DRAFT, { sourceId: 'TC 3-22.9' });
+  const viaMap = withPreservedItemStatus(sections, new Map([['rec_1:s1:post1', 'APPROVED']]));
+  assert.equal(viaMap[0].items[2].status, 'APPROVED');
+  assert.equal(viaMap[0].items[0].status, 'PENDING');
+
+  // A PENDING row on record, a junk value, or no record at all all leave the
+  // proposal as it is -- nothing here can promote an item on its own.
+  for (const recorded of [undefined, null, 'PENDING', 'SOMETHING_ELSE']) {
+    const out = withPreservedItemStatus(sections, { 'rec_1:s1:lesson': recorded });
+    assert.equal(out[0].items[0].status, 'PENDING');
+  }
+  assert.deepEqual(withPreservedItemStatus(undefined, undefined), []);
 });
 
 test('is deterministic, so re-approval replaces rather than duplicates', () => {

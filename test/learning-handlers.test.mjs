@@ -16,10 +16,12 @@ import {
   getMasterySession,
   getCourse,
   getSource,
+  listCourseItems,
   listCourses,
   listMasterySessions,
   listSources,
   masteryTurn,
+  reviewCourseItem,
 } from '../lib/learning/core.js';
 import { createEvidenceHandlers } from '../lib/learning/evidence.js';
 import { errorStatus } from '../lib/learning/http.js';
@@ -193,7 +195,9 @@ test(
       });
       assert.equal(typed.sourceId, `fixture-approved-source-${suffix}`);
       assert.equal(typed.sections.length, 1);
-      assert.deepEqual(typed.sections[0].items.map((item) => [item.kind, item.status]), [['LESSON', 'APPROVED'], ['QUESTION', 'APPROVED'], ['QUESTION', 'APPROVED']]);
+      // Materialised PENDING: approving the course releases the snapshot, not
+      // the items in it. Each one still needs an instructor's decision.
+      assert.deepEqual(typed.sections[0].items.map((item) => [item.kind, item.status]), [['LESSON', 'PENDING'], ['QUESTION', 'PENDING'], ['QUESTION', 'PENDING']]);
       assert.equal(typed.sections[0].items[0].citation.pubId, `fixture-approved-source-${suffix}`);
       assert.equal(await status(approveCourse(learner, { params: { id: pendingCourse.id } })), 404);
     } finally {
@@ -495,6 +499,119 @@ test(
     } finally {
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
       await db.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });
+    }
+  },
+);
+
+// The gate end to end against real rows: approving a course materialises
+// items PENDING, only an explicit per-item decision moves one to APPROVED, and
+// only APPROVED items reach the learner-facing delivery query. The decision
+// rules themselves are unit-tested in test/item-review.test.mjs; what is
+// proved here is the wiring -- ownership, persistence and the learner read.
+test(
+  'per-item ratification gates what a learner can see',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `items-${Date.now()}-${process.pid}`;
+    const ownerRow = await db.user.create({
+      data: { name: `Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `owner-${suffix}` },
+    });
+    const otherRow = await db.user.create({
+      data: { name: `Other ${suffix}`, role: 'INSTRUCTOR', externalId: `other-${suffix}` },
+    });
+    const owner = { id: ownerRow.id, name: ownerRow.name, role: 'INSTRUCTOR' };
+    const other = { id: otherRow.id, name: otherRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+    const source = await createLearningRecord({
+      ownerId: owner.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Source ${suffix}`,
+        sourceId: `source-${suffix}`,
+        text: 'Sight alignment is the relationship between the post and the aperture.',
+        pages: [{ page: 1, text: 'Sight alignment is the relationship between the post and the aperture.' }],
+        chunks: [{ page: 1, text: 'Sight alignment is the relationship between the post and the aperture.' }],
+      },
+    });
+    records.push(source);
+    const course = await createLearningRecord({
+      ownerId: owner.id,
+      type: 'COURSE_DRAFT',
+      payload: {
+        title: `Aiming ${suffix}`,
+        sourceIds: [source.id],
+        sections: [{
+          title: 'Aiming',
+          cite: `${source.id} p.1`,
+          lesson: 'Sight alignment is the relationship between the post and the aperture.',
+          pre: [{ stem: 'Where does the post sit?', options: ['Left of the aperture', 'Centred in the aperture'], answer: 1 }],
+          post: [{ stem: 'Why does alignment matter?', options: ['It does not', 'Angular error grows with range'], answer: 1 }],
+        }],
+      },
+    });
+    records.push(course);
+
+    try {
+      // Items cannot be reviewed before there are any.
+      assert.equal(await status(listCourseItems(owner, { params: { id: course.id } })), 409);
+
+      const approved = await approveCourse(owner, { params: { id: course.id }, body: { version: course.version } });
+      const deliveryCourseId = approved.json.deliveryCourseId;
+
+      const listed = await listCourseItems(owner, { params: { id: course.id } });
+      assert.equal(listed.json.deliveryCourseId, deliveryCourseId);
+      assert.deepEqual(listed.json.counts, { PENDING: 3, APPROVED: 0, REJECTED: 0 });
+      assert.equal(listed.json.readyForLearners, false);
+      const [lesson, pre, post] = listed.json.sections[0].items;
+      assert.deepEqual(listed.json.sections[0].items.map((i) => i.status), ['PENDING', 'PENDING', 'PENDING']);
+
+      // Another instructor owns neither the draft nor its items.
+      assert.equal(await status(listCourseItems(other, { params: { id: course.id } })), 404);
+      assert.equal(
+        await status(reviewCourseItem(other, { params: { id: course.id, itemId: pre.id }, body: { decision: 'APPROVE' } })),
+        404,
+      );
+      // Nor can an item from elsewhere be written through a course the caller owns.
+      assert.equal(
+        await status(reviewCourseItem(owner, { params: { id: course.id, itemId: 'not-an-item' }, body: { decision: 'APPROVE' } })),
+        404,
+      );
+
+      await reviewCourseItem(owner, { params: { id: course.id, itemId: lesson.id }, body: { decision: 'APPROVE' } });
+      await reviewCourseItem(owner, { params: { id: course.id, itemId: post.id }, body: { decision: 'REJECT' } });
+
+      // A revision rewrites the wording and ratifies -- and leaves the evidence alone.
+      const revised = await reviewCourseItem(owner, {
+        params: { id: course.id, itemId: pre.id },
+        body: {
+          decision: 'REVISE',
+          stem: 'Where does the front sight post sit?',
+          options: ['Left of the aperture', 'Centred in the aperture', 'Below the aperture'],
+          answer: 1,
+          citation: { citation: 'FABRICATED p.99', pubId: 'FABRICATED', page: '99' },
+          support: 1,
+        },
+      });
+      assert.equal(revised.json.item.status, 'APPROVED');
+      assert.equal(revised.json.item.stem, 'Where does the front sight post sit?');
+      assert.equal(revised.json.item.options.length, 3);
+      assert.deepEqual(revised.json.item.citation, pre.citation, 'citation is evidence, not content');
+      assert.equal(revised.json.item.support, pre.support, 'support is measured, never rewritten');
+      assert.deepEqual(revised.json.counts, { PENDING: 0, APPROVED: 2, REJECTED: 1 });
+      assert.equal(revised.json.readyForLearners, true);
+
+      // The learner-facing delivery read returns only what was ratified.
+      const delivered = await db.course.findUnique({
+        where: { id: deliveryCourseId },
+        include: { sections: { include: { items: { where: { status: 'APPROVED' }, orderBy: { createdAt: 'asc' } } } } },
+      });
+      assert.deepEqual(delivered.sections[0].items.map((item) => item.id), [lesson.id, pre.id]);
+    } finally {
+      await db.course.deleteMany({ where: { id: { startsWith: course.id } } });
+      await db.learningRecord.deleteMany({ where: { id: { in: records.map((entry) => entry.id) } } });
+      await db.learningRecord.deleteMany({ where: { ownerId: { in: [owner.id, other.id] } } });
+      await db.user.deleteMany({ where: { id: { in: [ownerRow.id, otherRow.id] } } });
     }
   },
 );
