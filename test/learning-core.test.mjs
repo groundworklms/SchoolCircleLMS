@@ -174,3 +174,61 @@ test('Whetstone session progresses with an injected model', async () => {
   assert.equal(saved.criteria[0].verdict, 'mastered');
   assert.equal(saved.rubric[0].indicators.mastered, 'Explains when the check occurs.');
 });
+
+test('mastery restores mid-session and completes the final criterion via the production scorer path', async () => {
+  // Two criteria, so the session is NOT complete after the first answer — the case the
+  // single-criterion test above never exercises. Answering on a RESTORED, incomplete
+  // session is the exact path the rubric->criteria restore bug broke.
+  const rubric = {
+    criteria: [
+      { elo: 'Name the check', indicators: { developing: 'a', competent: 'b', mastered: 'c' } },
+      { elo: 'Explain the timing', indicators: { developing: 'a', competent: 'b', mastered: 'c' } },
+    ],
+  };
+  const ask = async (system) => {
+    if (system.includes('rubric')) return rubric;
+    if (system.includes('Score the learner')) {
+      return { verdict: 'mastered', feedback: 'Correct.', followup: '' };
+    }
+    return { question: 'Explain the safety check.' }; // firstQuestion (initial + on advance)
+  };
+
+  const started = await startMasterySession(
+    {
+      objectives: 'Explain the safety check',
+      source: 'A safety check is required before operation, and it occurs before startup.',
+      maxTurns: 6,
+    },
+    { load: upstream, ask },
+  );
+
+  // First criterion mastered -> advance to the second, NOT complete yet.
+  const turn1 = await started.session.answer('You name the safety check.');
+  assert.equal(turn1.complete, false);
+  assert.equal(started.session.eloIndex, 1);
+
+  // Persist mid-session, then restore — the round-trip that used to drop the criteria.
+  const state = serialiseMasterySession(started.session, 'source-1', started.session.objectives);
+  const restored = await restoreMasterySession(state, { load: upstream, ask });
+
+  // Regression: the restored session must carry its grading criteria. Before the fix these
+  // landed on session.rubric, leaving session.criteria === null, so the next answer() threw
+  // 'call start() before answer()' and the final criterion could never complete.
+  assert.ok(
+    Array.isArray(restored.criteria) && restored.criteria.length === 2,
+    'restored session must grade on session.criteria',
+  );
+  assert.equal(restored.complete, false);
+  assert.equal(restored.eloIndex, 1);
+
+  // Answer the FINAL criterion on the RESTORED session -> terminal completion.
+  const turn2 = await restored.answer('You explain that it occurs before startup.');
+  assert.equal(turn2.complete, true);
+  assert.equal(restored.complete, true);
+  assert.equal(restored.currentQuestion, null);
+
+  const report = restored.report();
+  assert.equal(report.complete, true);
+  assert.equal(report.stalled, false);
+  assert.equal(report.criteria.length, 2);
+});
