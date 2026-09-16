@@ -73,8 +73,8 @@ apply both together or Anchor loses its own generator:
 
 ```bash
 # 1. bind llama-server to the USB interface
-sudo mkdir -p /etc/systemd/system/tutor-gen.d
-sudo tee /etc/systemd/system/tutor-gen.d/bind-usb.conf >/dev/null <<'EOF'
+sudo mkdir -p /etc/systemd/system/tutor-gen.service.d
+sudo tee /etc/systemd/system/tutor-gen.service.d/bind-usb.conf >/dev/null <<'EOF'
 [Service]
 ExecStart=
 ExecStart=/opt/tutor/llama.cpp/build/bin/llama-server -m /opt/tutor/models/gemma-4-E2B_q4_0-it.gguf \
@@ -127,9 +127,10 @@ to the browser and server for an air-gapped student turn.
 ## Revert
 
 ```bash
-cp /opt/tutor/config/default.yaml.bak_prebind /opt/tutor/config/default.yaml   # restores 127.0.0.1
-sudo systemctl restart tutor-api
-# Level 2: sudo rm -rf /etc/systemd/system/tutor-gen.d && sudo systemctl daemon-reload \
+# Level 1 (the bind comes from the drop-in, NOT the YAML):
+sudo rm -rf /etc/systemd/system/tutor-api.service.d
+sudo systemctl daemon-reload && sudo systemctl restart tutor-api
+# Level 2: sudo rm -rf /etc/systemd/system/tutor-gen.service.d && sudo systemctl daemon-reload \
 #          && sudo systemctl restart tutor-gen
 ```
 
