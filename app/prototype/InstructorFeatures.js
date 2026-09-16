@@ -3,11 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useApiQuery, useApiMutation } from '../_learning/useLearning';
 
-/* Instructor-side arsenal features for a real (LearningRecord) course:
+/* Instructor-side optional tools for a real (LearningRecord) course:
    syllabus (Cadence), doctrinal fidelity (Understudy), the after-action
-   review (Hotwash) and rubric generation (Rubricon). Each talks to
-   /api/learning/* and shows the server's answer or its error — never a
-   made-up result. */
+   review (Hotwash), shared mastery (Sextant) and rubric generation
+   (Rubricon). The primary Courses flow owns source selection, generation,
+   review, approval and publish; these tools never stand in for those stages.
+   Each talks to /api/learning/* and shows the server's answer or its error —
+   never a made-up result. */
 
 function errText(e, fallback) {
   return e?.error || e?.message || fallback;
@@ -77,10 +79,11 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
 
   return (
     <div className="p-panel" data-testid="instructor-mastery-plan" style={{ marginTop: '1rem' }}>
-      <h3>Shared mastery plan</h3>
+      <h3>Optional advanced tool: Shared mastery plan</h3>
       <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
         One reviewed set of criteria keeps learner outcomes comparable across the cohort.
-        Once approved, this revision is locked for the course.
+        This optional plan does not block course review or publish. Once approved, this revision
+        is locked for the course.
       </p>
 
       {mutationError && <Err msg={`Mastery plan update failed: ${errorText}`} />}
@@ -280,6 +283,7 @@ export function InstructorFidelity({ courseId }) {
         <div className="p-panel">
           <h3>Benchmark cases</h3>
           <p className="p-src" style={{ marginBottom: '0.75rem' }}>
+            Optional advanced tool.{' '}
             Situations a learner might raise, and what doctrine says should come back. Understudy runs each through the tutor and grades the answer against the approved sources.
           </p>
           <input className="scw-ti" placeholder="Source IDs (comma-separated)" value={sourceIdsStr} onChange={(e) => setSourceIdsStr(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
@@ -302,6 +306,9 @@ export function InstructorFidelity({ courseId }) {
 
       <div className="p-panel">
         <h3>Fidelity report</h3>
+        <p className="p-src" style={{ marginBottom: '0.75rem' }}>
+          Optional advanced tool; this report informs review but does not block course approval or publish.
+        </p>
         <Err msg={err} />
         {hasReport ? (
           <>
@@ -561,7 +568,10 @@ export function RubricsView() {
     <>
       <div className="s-pagehead">
         <h1>Rubrics</h1>
-        <p>Rubricon drafts a behaviourally-anchored rubric from a task and an approved source, then traces every element back to the text.</p>
+        <p>
+          Optional advanced tool. Rubricon drafts a behaviourally-anchored rubric from a task and an
+          approved source, then traces every element back to the text.
+        </p>
       </div>
 
       <div className="p-panel">

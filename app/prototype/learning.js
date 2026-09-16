@@ -22,10 +22,20 @@ export { courseFromRecord } from './learning-course-utils';
    `resolveCourse` returns a shell-shaped object for either. Real courses carry
    `record` so a screen can tell which it has and draw from the API instead of
    the mock. Mock screens never call the API with a mock id; real screens never
-   fall back to mock numbers — they show what the evidence supports or say so. */
+   fall back to mock numbers — they show what the evidence supports or say so.
+
+   Demo data is intentionally a separate collection.  The instructor Courses
+   library is backed by the learning service only; a shell must opt into the
+   demo collection (through its explicit Demo entry) before displaying sample
+   content.  Learner links keep the legacy resolver behaviour for compatibility
+   with the manual read/playback/progress demo. */
 
 export function isMockCourseId(id) {
   return Boolean(id && COURSES[id]);
+}
+
+export function isDemoCourseId(id) {
+  return isMockCourseId(id);
 }
 
 /* The learning API's course list for the signed-in account. Learners see
@@ -86,6 +96,7 @@ export function useLearningCourses({ includeManual = false } = {}) {
   });
   return {
     courses: [...byId.values()],
+    demoCourses: DEMO_COURSES,
     learningCourses,
     manualCourses,
     loading: enabled && loading,
@@ -104,3 +115,5 @@ export function resolveCourse(id, learningCourses) {
   if (COURSES[id]) return COURSES[id];
   return learningCourses.find((c) => c.id === id) || null;
 }
+
+export const DEMO_COURSES = Object.freeze(Object.values(COURSES));
