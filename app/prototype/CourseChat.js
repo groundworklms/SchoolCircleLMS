@@ -8,19 +8,9 @@ import { unlockedLessonIds } from './Lessons';
 import { usePrefs } from './prefs';
 import { SourceViewer } from './SourceViewer';
 
-/* The one chat. Bottom-right of every student screen. Which grounding it
-   uses depends on what is on screen:
-
-     real course   -> Sourcerer over that course's approved sources
-                      (/api/learning/tutor). Cite-or-refuse; every turn is
-                      recorded for the class view, never attributed.
-     mock course   -> Anchor over the doctrine corpus (/api/doctrine) when a
-                      service is configured; a small script otherwise, and the
-                      header says so.
-     no course     -> Anchor over the doctrine corpus, or the same script.
-
-   Never an ungrounded model. Citations from either backend are normalised to
-   one shape (see `normaliseCitation`) so the renderer is the same. */
+/* The one chat. It answers only within a persisted course's server-selected,
+   approved source set. The API derives both source selection and prior history
+   from authenticated records; clients never supply either as evidence. */
 
 const SUGGEST = {
   M092721: [
@@ -34,77 +24,6 @@ const SUGGEST = {
     'What does PMCS cover on the AN/PRC-117G?',
   ],
 };
-
-const DOCTRINE_SUGGEST = [
-  'What is sight alignment?',
-  'How do I correct trigger jerk?',
-  'What is the maximum effective range of a Javelin missile?',
-];
-
-// Scripted fallback. Keyed by a regex over the question; the answer shape
-// matches what the doctrine service returns so the renderer is the same.
-const SCRIPT = [
-  {
-    match: /swr|standing wave/i,
-    answer:
-      'Convert the power ratio to a voltage ratio first. The reflection coefficient is the square root of reflected over forward power — √(4 W / 100 W) = 0.2. SWR is then (1 + Γ) / (1 − Γ) = 1.2 / 0.8 = 1.5 : 1. [1] The common miss is using the raw power ratio (0.04), which gives about 1.08 : 1 and understates the mismatch.',
-    citations: [{ n: 1, citation: 'Student Outline — RF Fundamentals, "Transmission Lines", para 4', pub_id: 'POI 2841 §4.2' }],
-  },
-  {
-    match: /cause|symptom|vswr|fault isolation/i,
-    answer:
-      'A symptom is what you observe; a cause is what you can fix. High VSWR, power foldback and low output are all downstream effects of one impedance mismatch — a damaged or water-intruded connector is the physical cause. [1] Signal-flow isolation works stage by stage from the last known-good point toward the fault, so your first step is never "check the meter that told you there was a problem."',
-    citations: [{ n: 1, citation: 'Student Outline — Fault Isolation Procedures, "Cause vs. symptom", para 2', pub_id: 'POI 2841 §6.1' }],
-  },
-  {
-    match: /bond|ground/i,
-    answer:
-      'Bonding provides a low-impedance path between metallic parts so they sit at the same potential. At RF this matters because a strap or wire that is a meaningful fraction of a wavelength stops behaving like a short — it has reactance — so strap selection and length are part of the standard, not just contact. [1]',
-    citations: [{ n: 1, citation: 'Student Outline — Grounding & Bonding, "Bonding at RF", para 1', pub_id: 'POI 2841 §3.4' }],
-  },
-  {
-    match: /net entry|enter the net/i,
-    answer:
-      'Net entry: listen before transmitting, call the net control station using the net call sign, identify yourself, authenticate when challenged, and wait for acknowledgement before passing traffic. [1] The order matters — authenticating before you are challenged is the fumble people make under time pressure.',
-    citations: [{ n: 1, citation: 'Student Outline — Radio Fundamentals, "Net entry procedure", para 3', pub_id: 'POI M09CVS1 Annex B' }],
-  },
-  {
-    match: /proword/i,
-    answer:
-      'A proword is a word or phrase with an assigned meaning used to speed and standardise net traffic — "OVER", "OUT", "ROGER", "WILCO", "SAY AGAIN". Each replaces a sentence, and the meaning is fixed so there is nothing to interpret. [1]',
-    citations: [{ n: 1, citation: 'Student Outline — Radio Fundamentals, "Prowords", table 1', pub_id: 'POI M09CVS1 Annex B' }],
-  },
-  {
-    match: /pmcs/i,
-    answer:
-      'Operator-level PMCS on the AN/PRC-117G covers the before/during/after checks in the -10: case and connectors, battery condition and seating, antenna and connector inspection, power-on self-test, and a comm check. [1] The step people put out of sequence is the antenna check — it comes before power-on, not after.',
-    citations: [{ n: 1, citation: 'TM-XXXXX-10, Ch 2, "Operator PMCS", table 2-1', pub_id: 'TM-XXXXX-10' }],
-  },
-  {
-    match: /sight alignment/i,
-    answer:
-      'Sight alignment is the relationship between the front sight post and the rear sight aperture: the top of the front post centred in the aperture, level with an equal amount of light on each side. [1] Sight picture adds the target — but alignment comes first, because an alignment error grows with range while a picture error does not.',
-    citations: [{ n: 1, citation: 'TC 3-22.9, Ch 7, "Aiming — sight alignment"', pub_id: 'TC 3-22.9 §7' }],
-  },
-  {
-    match: /trigger jerk|trigger control/i,
-    answer:
-      'Trigger jerk is an abrupt rearward pull that disturbs the sights at the instant of firing. Correct it with a steady, increasing pressure straight to the rear, applied so the shot surprises you, with follow-through — hold the sight picture through recoil. [1] Dry-fire with a coin on the barrel exposes it fast.',
-    citations: [{ n: 1, citation: 'TC 3-22.9, Ch 8, "Trigger control & follow-through"', pub_id: 'TC 3-22.9 §8' }],
-  },
-];
-
-const ABSTAIN = {
-  abstained: true,
-  answer:
-    'I can\'t answer that from the approved course material. Nothing in the student outlines or the doctrine indexed for this course supports an answer — ask your instructor, or try rephrasing with the term as it appears in the outline.',
-  citations: [],
-};
-
-function scripted(q) {
-  const hit = SCRIPT.find((s) => s.match.test(q));
-  return hit ? { abstained: false, answer: hit.answer, citations: hit.citations } : ABSTAIN;
-}
 
 // A student has to have reached a lesson before the tutor will answer from it —
 // study aid for reinforcement, not a shortcut around the lesson (#63). There is
@@ -202,9 +121,10 @@ export default function CourseChat({ course = null, view = null }) {
 }
 
 function SignedInCourseChat({ course, view }) {
-  const tutorMode = Boolean(course?.record);
+  // Legacy manual-course records do not have LearningRecord source ownership
+  // relationships, so they must not be treated as a tutor scope.
+  const tutorMode = Boolean(course?.record) && course.record.type !== 'MANUAL_COURSE';
   const [open, setOpen] = useState(false);
-  const [status, setStatus] = useState(null); // { ready, baseUrl?, reason? }
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -223,20 +143,6 @@ function SignedInCourseChat({ course, view }) {
   useEffect(() => () => requestRef.current?.abort(), []);
 
   useEffect(() => {
-    if (tutorMode) return;
-    fetch('/api/doctrine')
-      .then((r) => r.json())
-      .then((nextStatus) => {
-        setStatus(nextStatus);
-        if (!nextStatus?.ready) setProviderError(nextStatus?.reason || 'Doctrine provider is not configured.');
-      })
-      .catch(() => {
-        setStatus({ ready: false, reason: 'Doctrine provider status unavailable.' });
-        setProviderError('Doctrine provider status unavailable.');
-      });
-  }, [tutorMode]);
-
-  useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
   }, [msgs, busy, open]);
 
@@ -244,27 +150,24 @@ function SignedInCourseChat({ course, view }) {
     if (open && inputRef.current) inputRef.current.focus();
   }, [open]);
 
-  const grounded = tutorMode ? sourceIds.length > 0 : !!status?.ready;
+  const grounded = tutorMode && sourceIds.length > 0;
   const modeLabel = tutorMode
-    ? (providerError ? 'Provider unavailable' : grounded ? 'Grounded · course sources' : 'Waiting for sources')
-    : status === null ? 'Checking…' : grounded ? 'Grounded · doctrine' : 'Scripted demo';
+    ? (providerError ? 'Provider unavailable' : grounded ? 'Course sources selected' : 'Waiting for sources')
+    : 'Course scope required';
   const modeTitle = tutorMode
-    ? `Sourcerer over ${sourceIds.length} approved source${sourceIds.length === 1 ? '' : 's'}`
-    : grounded ? `Anchor via ${status.baseUrl}` : status?.reason || 'No doctrine service configured';
+    ? `Answers require Anchor, Sourcerer, and Understudy checks over ${sourceIds.length} approved source${sourceIds.length === 1 ? '' : 's'}. Service availability is checked when you ask.`
+    : 'Choose a persisted course to use the grounded tutor.';
 
   const ask = async (q) => {
     const question = (q ?? text).trim();
     if (!question || busy) return;
     setText('');
-    const history = msgs
-      .filter((m) => m.role === 'user' || (m.role === 'assistant' && !m.error))
-      .map((m) => ({ role: m.role, text: m.role === 'user' ? m.text : m.answer }));
+    if (!tutorMode || !grounded) {
+      setProviderError('Grounded chat requires a persisted course with approved sources.');
+      return;
+    }
     setMsgs((m) => [...m, { role: 'user', text: question }]);
-    setProviderError(
-      tutorMode || status?.ready
-        ? null
-        : status?.reason || 'Doctrine provider is not configured.',
-    );
+    setProviderError(null);
 
     const locked = findLockedLesson(lockedLessons, question);
     if (locked) {
@@ -283,34 +186,18 @@ function SignedInCourseChat({ course, view }) {
     try {
       const controller = new AbortController();
       requestRef.current = controller;
-      if (tutorMode) {
-        const res = await authenticatedFetch('/api/learning/tutor', {
-          method: 'POST',
-          signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question, sourceIds, history }),
-        });
-        const json = await res.json().catch(() => ({}));
-        out = res.ok
-          ? { abstained: Boolean(json.refused), reason: json.reason, answer: json.answer, citations: (json.citations || []).map(normaliseCitation) }
-          : { abstained: true, answer: `The tutor could not answer: ${json.error || res.status}.`, citations: [], error: true };
-        if (!res.ok) setProviderError(json.error || `Tutor service returned ${res.status}.`);
-      } else if (grounded) {
-        const res = await authenticatedFetch('/api/doctrine', {
-          method: 'POST',
-          signal: controller.signal,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ question }),
-        });
-        const json = await res.json().catch(() => ({}));
-        out = res.ok
-          ? { ...json, citations: (json.citations || []).map(normaliseCitation) }
-          : { abstained: true, answer: `The doctrine service could not answer: ${json.error || res.status}.`, citations: [], error: true };
-        if (!res.ok) setProviderError(json.error || `Doctrine service returned ${res.status}.`);
-      } else {
-        await new Promise((r) => setTimeout(r, 500 + Math.random() * 400));
-        out = scripted(question);
-      }
+      const res = await authenticatedFetch('/api/learning/tutor', {
+        method: 'POST',
+        signal: controller.signal,
+        headers: { 'Content-Type': 'application/json' },
+        // The server resolves source selection and history from this scope.
+        body: JSON.stringify({ question, courseId: course.id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      out = res.ok
+        ? { abstained: Boolean(json.refused), reason: json.reason, answer: json.answer, citations: (json.citations || []).map(normaliseCitation), stages: json.stages || [] }
+        : { abstained: true, answer: 'The grounded tutor is unavailable. Please try again.', citations: [], error: true };
+      if (!res.ok) setProviderError(json.error || `Tutor service returned ${res.status}.`);
     } catch (e) {
       if (e.name === 'AbortError') return;
       setProviderError(e?.message || 'The grounding service is unreachable.');
@@ -320,10 +207,12 @@ function SignedInCourseChat({ course, view }) {
     setBusy(false);
   };
 
-  const suggestions = course ? SUGGEST[course.id] || [] : DOCTRINE_SUGGEST;
-  const title = course ? 'Ask about this course' : 'Ask the doctrine';
-  const subtitle = course ? course.name : 'Grounded by Anchor · cite-or-refuse';
-  const placeholder = !course ? 'Ask the doctrine…' : `Ask about ${view === 'lessons' ? 'this lesson' : 'this course'}…`;
+  const suggestions = tutorMode ? SUGGEST[course.id] || [] : [];
+  const title = course ? 'Ask about this course' : 'Grounded course chat';
+  const subtitle = tutorMode ? course.name : 'Select a persisted course to ask the tutor';
+  const placeholder = tutorMode
+    ? `Ask about ${view === 'lessons' ? 'this lesson' : 'this course'}…`
+    : 'Course scope required';
   const citationSourceId = resolveCitationSourceId(selectedCitation, sourceIds);
 
   return (
@@ -366,7 +255,7 @@ function SignedInCourseChat({ course, view }) {
               <div className="s-chat-bubble">
                 {tutorMode
                   ? 'Answers come only from the approved sources behind this course, with a citation you can open. If they don\'t cover it, I\'ll say so rather than guess.'
-                  : 'Answers come only from the approved outlines and doctrine, with a citation you can open. If the material doesn\'t cover it, I\'ll say so rather than guess.'}
+                  : 'Grounded chat is available only inside a persisted course with approved sources.'}
               </div>
             </div>
 
@@ -387,7 +276,7 @@ function SignedInCourseChat({ course, view }) {
                 <div className={`s-chat-msg assistant${m.abstained ? ' abstain' : ''}`} key={i}>
                   <div className="s-chat-bubble">
                     {m.locked && <div className="s-chat-abstain">Not yet unlocked</div>}
-                    {m.abstained && !m.error && !m.locked && <div className="s-chat-abstain">Not in the {tutorMode ? 'course sources' : 'course material'}{m.reason ? ` · ${String(m.reason).replace(/_/g, ' ')}` : ''}</div>}
+                    {m.abstained && !m.error && !m.locked && <div className="s-chat-abstain">Not in the course sources{m.reason ? ` · ${String(m.reason).replace(/_/g, ' ')}` : ''}</div>}
                     {m.error && <div className="s-chat-abstain">Service error</div>}
                     {m.answer}
                   </div>
@@ -429,9 +318,9 @@ function SignedInCourseChat({ course, view }) {
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder={placeholder}
-              disabled={busy || (tutorMode && !grounded)}
+              disabled={busy || !grounded}
             />
-            <button type="submit" className="p-btn" disabled={busy || !text.trim() || (tutorMode && !grounded)} aria-label="Send">
+            <button type="submit" className="p-btn" disabled={busy || !text.trim() || !grounded} aria-label="Send">
               ↑
             </button>
           </form>
