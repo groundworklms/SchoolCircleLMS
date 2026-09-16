@@ -64,5 +64,18 @@ jobs:
           echo "$PG_BIN" >> "$GITHUB_PATH"
       - name: Seed safety policy
         run: npm run test:db-policy
+      # Fails when schema.prisma has changes that no committed migration produces,
+      # i.e. someone edited the schema and forgot `prisma migrate dev`. The live DB
+      # is migrated from prisma/migrations/ (see migrate.yml), so schema-only
+      # changes never reach it and break the first query that touches them (#69).
+      - name: Migrations produce schema.prisma
+        env:
+          PGDATA: ${{ runner.temp }}/pg-shadow
+        run: |
+          initdb -D "$PGDATA" -U ci --auth=trust > /dev/null
+          pg_ctl -D "$PGDATA" -o "-p 5499 -k /tmp" -w start > /dev/null
+          createdb -h localhost -p 5499 -U ci shadow
+          npx prisma migrate diff             --from-migrations prisma/migrations             --shadow-database-url postgresql://ci@localhost:5499/shadow             --to-schema-datamodel prisma/schema.prisma             --exit-code             || { echo "::error::prisma/schema.prisma differs from what prisma/migrations/ produces. Generate a migration (npm run db:migrate) and commit it."; exit 1; }
+          pg_ctl -D "$PGDATA" -w stop > /dev/null
       - name: Isolated PostgreSQL persistence
         run: npm run test:db
