@@ -5,4 +5,7 @@ import { tutor } from '../../../../lib/learning/core';
 export const runtime = 'nodejs';
 export const maxDuration = 120;
 
-export const POST = learningRoute({ roles: ['LEARNER', 'INSTRUCTOR'] }, ({ identity, ...input }) => tutor(identity, input));
+export const POST = learningRoute(
+  { roles: ['LEARNER', 'INSTRUCTOR'], maxBodyBytes: 16 * 1024 },
+  ({ identity, ...input }) => tutor(identity, input),
+);

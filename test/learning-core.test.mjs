@@ -19,9 +19,11 @@ import {
 } from '../lib/arsenal-core.js';
 import {
   extractedRubricTasks,
+  canViewCourse,
   learnerCourseProjection,
   savedMasteryView,
   sourceDocuments,
+  tutor,
 } from '../lib/learning/core.js';
 import { matchesApprovedMasteryPlan } from '../lib/db.js';
 
@@ -797,6 +799,37 @@ test('learner course projection exposes only approved plan source and revision',
     revision: 'approved-revision',
   });
   assert.equal(JSON.stringify(approved).includes('answer key'), false);
+});
+
+test('student tutor course visibility matches the authenticated course-view convention', async () => {
+  const approvedElsewhere = {
+    id: 'course-public',
+    type: 'COURSE_DRAFT',
+    status: 'APPROVED',
+    ownerId: 'instructor-1',
+  };
+  const pendingOwn = {
+    id: 'course-pending',
+    type: 'COURSE_DRAFT',
+    status: 'PENDING',
+    ownerId: 'instructor-1',
+  };
+  // Course list/reader have no roster enrollment filter: approved courses are
+  // visible to authenticated learning users. Tutor intentionally shares that
+  // rule instead of creating a divergent delivery policy.
+  assert.equal(canViewCourse({ id: 'learner-1', role: 'LEARNER' }, approvedElsewhere), true);
+  assert.equal(canViewCourse({ id: 'learner-1', role: 'LEARNER' }, pendingOwn), false);
+  assert.equal(canViewCourse({ id: 'instructor-1', role: 'INSTRUCTOR' }, pendingOwn), true);
+  assert.equal(canViewCourse({ id: 'other-instructor', role: 'INSTRUCTOR' }, pendingOwn), false);
+
+  // Validate the bounded question before any record/model lookup.
+  await assert.rejects(
+    tutor(
+      { id: 'learner-1', role: 'LEARNER' },
+      { body: { courseId: 'course-public', question: 'x'.repeat(2_001) } },
+    ),
+    (error) => error instanceof TypeError && /2000/.test(error.message),
+  );
 });
 
 test('approved cohort plan key excludes legacy and mismatched session evidence', () => {
