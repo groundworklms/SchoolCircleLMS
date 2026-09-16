@@ -137,8 +137,7 @@ for a direct remote connection.
 
 ## 3. Migrations: confirm the target, never reset
 
-The committed migrations (`20250915185900_init`, then `20250915190000_learning_records`)
-create the schema described by Prisma.
+The committed migrations under `prisma/migrations/` create the schema described by Prisma.
 It is intended for an **empty database**. Check for existing tables and migration
 history first using a read-only connection.
 
@@ -167,6 +166,38 @@ contain credentials. On failure, use a secure operator session to inspect
 connectivity and migration status; do not paste raw errors into public logs.
 `DATABASE_TARGET_CONFIRM` is an accidental-target guard, not authorization.
 Bypassing the wrapper with raw Prisma commands bypasses that guard.
+
+### CI migrations (automatic on merge)
+
+`.github/workflows/migrate.yml` applies committed migrations to the live Cloud SQL
+database on every push to `main` that touches `prisma/migrations/**` or
+`prisma/schema.prisma`, then runs `prisma migrate diff` and fails if the database
+still differs from the schema. App Hosting builds never run migrations, so without
+this a merged migration sits unapplied until the first query needs it (issue #69).
+
+The pull-request `database` job also fails when `schema.prisma` changed without a
+matching migration, so drift is caught before merge.
+
+**One-time setup** (project owner, once):
+
+```bash
+PROJECT=schoolcircle-ae29a
+SA=github-migrator@$PROJECT.iam.gserviceaccount.com
+gcloud iam service-accounts create github-migrator --project $PROJECT   --display-name "GitHub Actions: apply Prisma migrations"
+gcloud projects add-iam-policy-binding $PROJECT --member serviceAccount:$SA --role roles/cloudsql.client
+gcloud secrets add-iam-policy-binding DATABASE_URL --project $PROJECT   --member serviceAccount:$SA --role roles/secretmanager.secretAccessor
+gcloud iam service-accounts keys create gh-migrator.json --iam-account $SA
+gh secret set GCP_SA_KEY < gh-migrator.json && rm gh-migrator.json
+```
+
+Until `GCP_SA_KEY` exists the workflow fails on its first step with a message
+telling you to run `npm run db:deploy` by hand — it never silently skips.
+Workload Identity Federation is the better long-term option; a key is the
+fastest for hackathon week.
+
+**Merge checklist:** if a PR adds a directory under `prisma/migrations/`, watch the
+"Migrate live database" run after merging. If it is red, the app will 503 on the
+next sign-in until someone runs `db:deploy`.
 
 ## 4. Deliberate demo seeding only
 
