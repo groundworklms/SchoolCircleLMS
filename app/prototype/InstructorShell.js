@@ -61,8 +61,7 @@ function SampleCourse({ course }) {
   return (
     <StatusMessage title={course?.name || 'Sample course'}>
       <span>
-        This sample course is view-only. AI-generated courses are created and reviewed from the
-        signed-in Courses library; sample data never creates or edits an authoring record.
+        Sample course · view only. Create and review AI-generated courses from the signed-in Courses library.
       </span>
     </StatusMessage>
   );
@@ -82,8 +81,7 @@ function CourseUnavailable({ courseId, title = 'Course unavailable', children })
     <StatusMessage title={title}>
       {children || (
         <>
-          Course <code>{courseId || 'unknown'}</code> is not available in this instructor account.
-          Return to Courses to choose an available course.
+          Course <code>{courseId || 'unknown'}</code> is not available here. Return to Courses.
         </>
       )}
     </StatusMessage>
@@ -143,7 +141,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   if (invalidArea) {
     body = (
       <StatusMessage title="Page not found">
-        This instructor page does not exist. Choose Courses, Sources, Rubrics or Settings from the library.
+        Choose a page from the instructor library.
       </StatusMessage>
     );
   } else if (inCourse && courseLookupLoading) {
@@ -151,14 +149,13 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   } else if (inCourse && courseServiceError) {
     body = (
       <CourseUnavailable courseId={nav.courseId} title="Course service unavailable">
-        The course service could not be reached. Try again, or return to Courses when the service is available.
+        Try again or return to Courses.
       </CourseUnavailable>
     );
   } else if (inCourse && courseUnavailable) {
     body = (
       <CourseUnavailable courseId={nav.courseId}>
-        Sign in with an instructor account to load this course. Sample courses are available in the clearly labelled
-        sample area.
+        Sign in with an instructor account to load this course. Sample courses are available below.
       </CourseUnavailable>
     );
   } else if (inCourse && courseNotFound) {
@@ -166,7 +163,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   } else if (inLibrary && !libraryEntry) {
     body = (
       <StatusMessage title="Library page not found">
-        This library page does not exist. Choose Courses, Sources, Rubrics or Settings.
+        Choose a page from the instructor library.
       </StatusMessage>
     );
   } else if (inLibrary && libraryView === 'settings') {
@@ -182,8 +179,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
       <>
         <h2 className="p-h">Sign in required</h2>
         <p className="p-sub">
-          The library — sources, course drafts and rubrics — is the persisted learning loop, and it needs a
-          verified identity. Sign in to use it; the clearly labelled sample courses below work without one.
+          Sign in to use Sources, Courses and Rubrics. Sample courses work without an account.
         </p>
       </>
     );
@@ -204,8 +200,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   } else if (inCourse && unsupportedRealView) {
     body = (
       <CourseUnavailable courseId={course.id} title="Course tool unavailable">
-        This tool is not available for this service-backed course. Choose one of the tools listed under the selected
-        course.
+        Choose another tool for this course.
       </CourseUnavailable>
     );
   } else if (isReal) {
@@ -215,8 +210,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
         <>
           <h2 className="p-h">Doctrinal fidelity</h2>
           <p className="p-sub">
-            Understudy asks the tutor what a learner would ask and grades every answer against the
-            approved sources. A course ships only when its answers hold to doctrine.
+            Run learner questions against approved sources before publishing.
           </p>
           <InstructorFidelity key={course.id} courseId={course.id} />
         </>
@@ -313,10 +307,6 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
         </div>
         <main className="s-main">
           <div className="s-container">
-            <div className="p-roleband inst">
-              <strong>Instructor view</strong>
-              <span>Every AI output lands here for review before it reaches a student.</span>
-            </div>
             {signOutError && (
               <div className="s-shell-error" role="alert">
                 {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
