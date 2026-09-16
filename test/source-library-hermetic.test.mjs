@@ -178,6 +178,7 @@ const sourceCollectionRoute = await import('../app/api/learning/sources/route.js
 const sourceRoute = await import('../app/api/learning/sources/[id]/route.js');
 const sourcePdfRoute = await import('../app/api/learning/sources/[id]/pdf/route.js');
 const pdfUploadRoute = await import('../app/api/learning/sources/pdf/route.js');
+const batchApproveRoute = await import('../app/api/learning/sources/approve/route.js');
 const { errorStatus } = await import('../lib/learning/http.js');
 
 const OWNER = { id: 'hermetic-owner', role: 'INSTRUCTOR' };
@@ -215,10 +216,19 @@ async function jsonResponse(response) {
   return { status: response.status, body: await response.json() };
 }
 
-async function formRequest(url, identity, bytes, filename = 'original.pdf') {
+async function formRequest(url, identity, bytes, filename = 'original.pdf', fields = {}) {
   const form = new FormData();
   form.append('file', new Blob([bytes], { type: 'application/pdf' }), filename);
+  for (const [key, value] of Object.entries(fields)) form.append(key, value);
   return new Request(url, { method: 'POST', headers: headers(identity), body: form });
+}
+
+function jsonRequest(url, identity, body) {
+  return new Request(url, {
+    method: 'POST',
+    headers: { ...headers(identity), 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 }
 
 async function statusOf(operation) {
@@ -723,4 +733,109 @@ test('source PDF ingest stores bytes, attach validates pages, and keeps metadata
       .some((record) => record.payload.sourceRecordId === mismatch.id),
     false,
   );
+});
+test('a zipped upload carries its collection and a collection-scoped citation label', async () => {
+  const bytes = makePdf('Lesson one');
+  const uploaded = await pdfUploadRoute.POST(await formRequest(
+    'http://localhost/api/learning/sources/pdf',
+    OWNER,
+    bytes,
+    'lesson-01.pdf',
+    { title: 'lesson-01', collection: '  Lesson   plans ' },
+  ));
+  assert.equal(uploaded.status, 201);
+  const body = await uploaded.json();
+  assert.equal(body.collection, 'Lesson plans');
+  assert.equal(body.title, 'lesson-01');
+  // Two collections can both hold a lesson-01.pdf; the default label keeps
+  // their citations apart.
+  assert.equal(body.sourceId, 'Lesson plans/lesson-01.pdf');
+  const stored = await dbMock.getLearningRecord(body.id);
+  assert.equal(stored.payload.collection, 'Lesson plans');
+
+  // An explicit sourceId still wins, and an over-long collection reads as none.
+  const plain = await pdfUploadRoute.POST(await formRequest(
+    'http://localhost/api/learning/sources/pdf',
+    OWNER,
+    bytes,
+    'lesson-01.pdf',
+    { sourceId: 'FM-1', collection: 'x'.repeat(81) },
+  ));
+  const plainBody = await plain.json();
+  assert.equal(plainBody.sourceId, 'FM-1');
+  assert.equal(plainBody.collection, null);
+
+  const text = await sourceCollectionRoute.POST(jsonRequest(
+    'http://localhost/api/learning/sources',
+    OWNER,
+    { title: 'Pasted notes', text: 'Some text', pages: [{ page: 1, text: 'Some text' }], collection: 'Student material' },
+  ));
+  assert.equal(text.status, 201);
+  assert.equal((await text.json()).collection, 'Student material');
+  const listed = await core.listSources(OWNER);
+  assert.ok(listed.json.some((item) => item.id === body.id && item.collection === 'Lesson plans'));
+});
+
+test('batch approval applies the single-source gate per id and reports partial failure', async () => {
+  const good = await Promise.all([1, 2, 3].map((n) => dbMock.createLearningRecord({
+    ownerId: OWNER.id,
+    type: 'SOURCE',
+    status: 'PENDING',
+    payload: {
+      title: `Batch ${n}`,
+      sourceId: `batch-${n}`,
+      collection: 'Batch',
+      text: `Text ${n}`,
+      pages: [{ page: 1, text: `Text ${n}` }],
+      chunks: [{ page: 1, text: `Text ${n}` }],
+    },
+  })));
+  // A scanned PDF: pages exist but hold no text, so it is not approvable.
+  const scanned = await dbMock.createLearningRecord({
+    ownerId: OWNER.id,
+    type: 'SOURCE',
+    status: 'PENDING',
+    payload: { title: 'Scanned', sourceId: 'scan', collection: 'Batch', text: '', pages: [{ page: 1, text: '' }], chunks: [] },
+  });
+  // Someone else's pending source: not found, never approved.
+  const foreign = await dbMock.createLearningRecord({
+    ownerId: OTHER_INSTRUCTOR.id,
+    type: 'SOURCE',
+    status: 'PENDING',
+    payload: { title: 'Foreign', sourceId: 'foreign', text: 'Text', pages: [{ page: 1, text: 'Text' }], chunks: [] },
+  });
+
+  const response = await batchApproveRoute.POST(jsonRequest(
+    'http://localhost/api/learning/sources/approve',
+    OWNER,
+    { ids: [...good.map((record) => record.id), good[0].id, scanned.id, foreign.id] },
+  ));
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.deepEqual(
+    result.approved.map((item) => item.id).sort(),
+    good.map((record) => record.id).sort(),
+    'each owned, approvable id is approved exactly once',
+  );
+  assert.deepEqual(
+    result.failed.map((item) => [item.id, item.code]).sort(),
+    [[scanned.id, 'SOURCE_NOT_APPROVABLE'], [foreign.id, 'NOT_FOUND']].sort(),
+  );
+  for (const record of good) {
+    assert.equal((await dbMock.getLearningRecord(record.id)).status, 'APPROVED');
+  }
+  assert.equal((await dbMock.getLearningRecord(scanned.id)).status, 'PENDING');
+  assert.equal((await dbMock.getLearningRecord(foreign.id)).status, 'PENDING');
+
+  // Learners cannot batch-approve; a malformed body is a 400, not a partial result.
+  const forbidden = await batchApproveRoute.POST(jsonRequest(
+    'http://localhost/api/learning/sources/approve',
+    LEARNER,
+    { ids: [good[0].id] },
+  ));
+  assert.equal(forbidden.status, 403);
+  for (const body of [{}, { ids: [] }, { ids: 'nope' }, { ids: [''] }, { ids: Array.from({ length: 201 }, (_, i) => `id-${i}`) }]) {
+    const bad = await batchApproveRoute.POST(jsonRequest('http://localhost/api/learning/sources/approve', OWNER, body));
+    assert.equal(bad.status, 400, JSON.stringify(body).slice(0, 40));
+  }
 });

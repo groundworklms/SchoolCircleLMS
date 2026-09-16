@@ -16,6 +16,7 @@ import {
   sourcePdfRecordFor,
   sourceSummary,
   validatePdfPages,
+  normaliseCollection,
 } from '../lib/source/library.js';
 
 test('source PDF matching normalises whitespace but enforces page count and text', () => {
@@ -98,10 +99,25 @@ test('source summaries expose only boolean PDF and removal capabilities', () => 
     sourceId: 'legacy-1',
     pages: 0,
     chunks: 0,
+    collection: null,
     canRemove: true,
     hasPdf: true,
   });
   assert.equal(JSON.stringify(summary).includes('secret'), false);
+});
+
+test('a collection is a bounded single-line label, or nothing', () => {
+  assert.equal(normaliseCollection('  Lesson   plans \n'), 'Lesson plans');
+  assert.equal(normaliseCollection(''), '');
+  assert.equal(normaliseCollection(null), '');
+  assert.equal(normaliseCollection(42), '');
+  assert.equal(normaliseCollection('x'.repeat(81)), '');
+  assert.equal(normaliseCollection('x'.repeat(80)), 'x'.repeat(80));
+  const summary = sourceSummary(
+    { id: 'source-2', status: 'PENDING' },
+    { title: 'Zipped', sourceId: 'Student material/lesson-01.pdf', pages: [], chunks: [], collection: ' Student material ' },
+  );
+  assert.equal(summary.collection, 'Student material');
 });
 
 const databaseReady = process.env.RUN_DB_TESTS === '1' && Boolean(process.env.DATABASE_URL);
