@@ -635,7 +635,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
         </main>
       </div>
 
-      {area === 'course' && course && <CourseChat key={course.id} course={course} view={view} />}
+      <CourseChat key={course?.id || 'doctrine'} course={course} view={view} />
     </div>
   );
 }

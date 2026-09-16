@@ -47,7 +47,11 @@ function loadComponent(relativePath, { queryData = {}, stateValues = [] } = {}) 
     require(request) {
       if (request === 'react') return reactForModule;
       if (request === '../_learning/useLearning') return useLearning;
-      // Sibling components (e.g. LearnerFeatures -> ./LearnerTutor) load through
+      if (request === '../_auth/AuthProvider') {
+        return { useAuth: () => ({ user: { uid: 'tester' }, ready: true, loading: false }) };
+      }
+      if (request === '../../lib/auth-fetch') return { authenticatedFetch: async () => ({ ok: false, json: async () => ({}) }) };
+      // Sibling components (e.g. LearnerFeatures -> ./SourceViewer) load through
       // the same sandbox so their API hooks are shimmed too.
       if (request.startsWith('./')) {
         const sibling = path.join(path.dirname(relativePath), `${request}.js`);
@@ -79,28 +83,49 @@ test('learner progress renders a non-empty mastery record', () => {
   assert.match(markup, /75% missed/);
 });
 
-test('tutor renders citation and chunk content from non-empty source data', () => {
-  const { LearnerTutor, SourceViewer } = loadComponent('app/prototype/LearnerTutor.js', {
+test('source viewer renders chunk content from non-empty source data', () => {
+  const { SourceViewer } = loadComponent('app/prototype/SourceViewer.js', {
     queryData: {
       '/sources/source-1': {
         title: 'Field manual',
         chunks: [{ text: 'Chunk evidence' }],
       },
     },
+    stateValues: [[true, () => {}]],
+  });
+  const sourceMarkup = renderToStaticMarkup(React.createElement(SourceViewer, { sourceId: 'source-1' }));
+  assert.match(sourceMarkup, /Chunk evidence/);
+});
+
+test('course chat renders Sourcerer and Anchor citations in one shape', () => {
+  const { normaliseCitation } = loadComponent('app/prototype/CourseChat.js');
+  const sourcerer = normaliseCitation({ label: 'Aiming', source: 'Field manual', page: 4 }, 0);
+  const anchor = normaliseCitation({ n: 2, citation: 'TC 3-22.9 §7', pub_id: 'TC 3-22.9', page_printed: 88 }, 1);
+  // JSON compare: the sandbox has its own Object prototype.
+  assert.equal(JSON.stringify(sourcerer), JSON.stringify({ n: 1, citation: 'Aiming', pub_id: 'Field manual', page: 4 }));
+  assert.equal(JSON.stringify(anchor), JSON.stringify({ n: 2, citation: 'TC 3-22.9 §7', pub_id: 'TC 3-22.9', page: 88 }));
+
+  const { default: CourseChat } = loadComponent('app/prototype/CourseChat.js', {
+    queryData: {
+      '/courses/course-1': { id: 'course-1', course: { sourceIds: ['source-1'] } },
+    },
+    // SignedInCourseChat state order: open, status, msgs, text, busy.
     stateValues: [
-      [[{
-        role: 'assistant',
-        text: 'Grounded answer',
-        citations: [{ source: 'Field manual', page: 4 }],
-      }], () => {}],
-      ['', () => {}],
       [true, () => {}],
+      [{ ready: true }, () => {}],
+      [[
+        { role: 'user', text: 'What is sight alignment?' },
+        { role: 'assistant', answer: 'Grounded answer [1] [2]', citations: [sourcerer, anchor] },
+      ], () => {}],
+      ['', () => {}],
+      [false, () => {}],
     ],
   });
-  const tutorMarkup = renderToStaticMarkup(React.createElement(LearnerTutor, { sourceId: 'source-1' }));
-  const sourceMarkup = renderToStaticMarkup(React.createElement(SourceViewer, { sourceId: 'source-1' }));
-  assert.match(tutorMarkup, /Field manual p\. 4/);
-  assert.match(sourceMarkup, /Chunk evidence/);
+  const course = { id: 'course-1', name: 'Rifle Marksmanship', record: { id: 'course-1' } };
+  const markup = renderToStaticMarkup(React.createElement(CourseChat, { course }));
+  assert.match(markup, /Grounded · course sources/);
+  assert.match(markup, /Field manual · p\.4/);
+  assert.match(markup, /TC 3-22\.9 · p\.88/);
 });
 
 test('instructor fidelity renders a non-empty run report', () => {
