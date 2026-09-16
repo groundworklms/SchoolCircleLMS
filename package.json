@@ -12,6 +12,8 @@
     "test:ai-authoring": "node --experimental-test-module-mocks --test test/course-revisions.test.mjs test/course-revision-handlers.test.mjs test/course-revision-transaction.test.mjs test/delivery.test.mjs test/delivery-route.test.mjs tests/learner-redaction.test.mjs tests/authoring-retired.test.mjs",
     "test:authoring": "node --test tests/authoring-server.test.mjs tests/authoring-retired.test.mjs tests/authoring-player.test.mjs",
     "test:navigation": "node --test tests/navigation.test.mjs tests/role-destination.test.mjs tests/legacy-route-removal.mjs tests/auth-redirect.test.mjs",
+    "test:roster": "node --test tests/roster-server.test.mjs tests/roster-ui-utils.mjs",
+    "test:roster-db": "node tests/roster-postgres.mjs",
     "test:authoring-db": "node tests/authoring-postgres.mjs",
     "start": "next start -p 3111",
     "db:generate": "prisma generate",

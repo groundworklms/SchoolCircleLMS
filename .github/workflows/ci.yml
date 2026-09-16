@@ -59,6 +59,13 @@ jobs:
       - name: Text model transport
         run: npm run test:model
 
+      # Roster and in-app messaging. These are the delivery-authorization contracts:
+      # a message is bound to a User row rather than a token email claim, a
+      # recipient needs real participation in the course, a learner can only touch
+      # their own mailbox, and sending is rate limited.
+      - name: Class roster and messaging
+        run: npm run test:roster
+
   database:
     name: database
     runs-on: ubuntu-latest
@@ -95,3 +102,5 @@ jobs:
         run: npm run test:db
       - name: Manual publication and learner persistence
         run: npm run test:authoring-db
+      - name: Roster persistence
+        run: npm run test:roster-db
