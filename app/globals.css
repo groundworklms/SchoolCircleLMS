@@ -25,7 +25,14 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-.shell { min-height: 100vh; display: flex; flex-direction: column; }
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* The planning board is intentionally dark; keep native controls aligned
+     with its surface instead of inheriting the user's light form palette. */
+  color-scheme: dark;
+}
 
 /* ---------- Header ---------- */
 .topbar {
@@ -83,7 +90,7 @@ html, body {
 }
 .dot.stale { background: #f87171; }
 
-.hint { font-size: 0.75em; color: #5c6b7f; white-space: nowrap; }
+.hint { font-size: 0.75em; color: var(--text-dim); white-space: nowrap; }
 .hint kbd {
   background: var(--bg-card-2);
   border: 1px solid var(--border);
@@ -194,4 +201,10 @@ html, body {
 .empty { color: var(--text-dim); padding: 3rem; text-align: center; }
 
 
-.scl-fullcenter { min-height: 100vh; display: grid; place-items: center; color: #6b6b70; font: 15px system-ui; }
+.scl-fullcenter {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  font: 15px system-ui;
+}
