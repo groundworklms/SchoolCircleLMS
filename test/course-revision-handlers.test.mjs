@@ -354,6 +354,12 @@ const dbMock = {
   async getLearningRecord(id) {
     return snapshot(records.get(id) || null);
   },
+  // Per-item ratification (#863f724) reaches Item rows through db.js. These
+  // suites never exercise that path, so the seams answer empty rather than
+  // the module failing to link.
+  async listDeliveryCourseItems() { return []; },
+  async getDeliveryCourseItem() { return null; },
+  async updateDeliveryCourseItem() { return null; },
   async courseEvidenceCount() {
     // No typed delivery rows in this fixture, so no learner evidence. The
     // delete path reads this to decide archive-vs-remove.

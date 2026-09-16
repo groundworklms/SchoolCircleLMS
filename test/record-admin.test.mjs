@@ -114,6 +114,12 @@ mock.module('../lib/db.js', {
       for (const id of new Set(courseIds)) if (courses.delete(id)) dropped += 1;
       return { records: removed, courses: dropped };
     },
+    // Per-item ratification (#863f724) reaches Item rows through db.js. These
+    // suites never exercise that path, so the seams answer empty rather than
+    // the module failing to link.
+    async listDeliveryCourseItems() { return []; },
+    async getDeliveryCourseItem() { return null; },
+    async updateDeliveryCourseItem() { return null; },
     async courseEvidenceCount(courseId) {
       const n = evidence.get(courseId) || 0;
       return { attempts: n, schedules: 0, total: n };
