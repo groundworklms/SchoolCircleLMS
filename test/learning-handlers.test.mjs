@@ -7,6 +7,7 @@ import {
   db,
 } from '../lib/db.js';
 import {
+  approveCourse,
   approveRubric,
   getMasterySession,
   getSource,
@@ -72,7 +73,11 @@ test(
     const pendingCourse = await createLearningRecord({
       ownerId: instructor.id,
       type: 'COURSE_DRAFT',
-      payload: { title: `Pending ${suffix}`, sourceIds: [source.id], sections: [] },
+      payload: {
+        title: `Pending ${suffix}`,
+        sourceIds: [approvedSource.id],
+        sections: [{ title: 'Aiming', cite: `${approvedSource.id} p.1`, lesson: 'A cited lesson.', pre: [{ stem: 'Before?', options: ['A', 'B'], answer: 0 }] }],
+      },
     });
     records.push(pendingCourse);
     const approvedCourse = await createLearningRecord({
@@ -161,7 +166,25 @@ test(
       assert.equal(exportRows.length, 1);
       assert.equal(exportRows[0].payload.courseId, approvedCourse.id);
       assert.equal(await status(evidence.exportScorm(learner, { query: { courseId: approvedCourse.id } })), 403);
+
+      // Approval materialises the draft into Course/Section/Item, keyed by the
+      // record id, with the source's Anchor id on every citation. Twice is safe.
+      for (let pass = 0; pass < 2; pass += 1) {
+        const approved = await approveCourse(instructor, { params: { id: pendingCourse.id } });
+        assert.equal(approved.json.status, 'APPROVED');
+        assert.deepEqual(approved.json.materialised, { courseId: pendingCourse.id, sections: 1, items: 2 });
+      }
+      const typed = await db.course.findUnique({
+        where: { id: pendingCourse.id },
+        include: { sections: { include: { items: { orderBy: { id: 'asc' } } } } },
+      });
+      assert.equal(typed.sourceId, `fixture-approved-source-${suffix}`);
+      assert.equal(typed.sections.length, 1);
+      assert.deepEqual(typed.sections[0].items.map((item) => [item.kind, item.status]), [['LESSON', 'APPROVED'], ['QUESTION', 'APPROVED']]);
+      assert.equal(typed.sections[0].items[0].citation.pubId, `fixture-approved-source-${suffix}`);
+      assert.equal(await status(approveCourse(learner, { params: { id: pendingCourse.id } })), 404);
     } finally {
+      await db.course.deleteMany({ where: { id: pendingCourse.id } });
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((entry) => entry.id) } } });
       await db.user.deleteMany({ where: { id: { in: [instructorRow.id, learnerRow.id] } } });
     }

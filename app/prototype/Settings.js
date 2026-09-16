@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { COURSES } from './data';
 import { usePrefs, setPref } from './prefs';
 import AccountProfile from '../_auth/AccountProfile';
+import { WaypointSurvey } from './LearnerFeatures';
 
 /* Settings, both roles. Preferences persist in the browser (prefs.js) so the
    instructor's per-course toggles show up on the student side in a demo. */
@@ -169,7 +170,11 @@ export function StudentSettings({ onSignOut, account, authenticated = false }) {
 
       <section className="p-panel">
         <h3>What&apos;s my learning style?</h3>
-        <Survey result={prefs.learnerProfile} onDone={(res) => setPref('learnerProfile', res)} />
+        {authenticated ? (
+          <WaypointSurvey />
+        ) : (
+          <Survey result={prefs.learnerProfile} onDone={(res) => setPref('learnerProfile', res)} />
+        )}
       </section>
 
       <section className="p-panel">

@@ -10,10 +10,9 @@ function errorMessage(error) {
 }
 
 /**
- * Recovery actions are shared by the authenticated prototype gate and the
- * learning gate. Retry keeps the current Firebase session; sign-in again
- * deliberately offers a clean reauthentication path when that session/token
- * is the problem.
+ * Recovery actions for the authenticated shell. Retry keeps the current
+ * Firebase session; sign-in again deliberately offers a clean
+ * reauthentication path when that session/token is the problem.
  */
 export default function AccountRecovery({ error, onRetry, returnTo = '/prototype' }) {
   const { signOut, signOutError } = useAuth();
