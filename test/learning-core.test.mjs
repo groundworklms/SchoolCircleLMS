@@ -13,10 +13,16 @@ import {
   terminalSafeScorer,
   tutorAnswer,
   validateCourseDraft,
+  draftRubricTask,
   validateCourseOutline,
   validateMasteryPlan,
 } from '../lib/arsenal-core.js';
-import { learnerCourseProjection, savedMasteryView, sourceDocuments } from '../lib/learning/core.js';
+import {
+  extractedRubricTasks,
+  learnerCourseProjection,
+  savedMasteryView,
+  sourceDocuments,
+} from '../lib/learning/core.js';
 import { matchesApprovedMasteryPlan } from '../lib/db.js';
 
 const upstream = (name) => import(name);
@@ -768,4 +774,265 @@ test('approved cohort plan key excludes legacy and mismatched session evidence',
     assert.equal(matchesApprovedMasteryPlan(session, plan), false);
   }
   assert.equal(matchesApprovedMasteryPlan({ sourceId: 'source-1' }, { status: 'PENDING' }), true);
+});
+// A Coursewright section-generation fixture. Only the outline/title prompts
+// differ between the cases below, so they pass their own handler in.
+function coursewrightAsk(outlineHandler) {
+  const calls = [];
+  const ask = async (model, system, prompt) => {
+    calls.push({ model, system, prompt });
+    if (system.includes('instructional designer')) return outlineHandler(calls.length, prompt);
+    if (system.includes('micro-lesson')) {
+      return { lesson: 'A safety check is required before operation.' };
+    }
+    if (system.includes('"items"') && system.includes('answerIndex')) {
+      return {
+        items: [
+          {
+            stem: 'When is a safety check required before operation?',
+            options: ['Before operation', 'Never'],
+            answerIndex: 0,
+            rationale: 'The safety check is required before operation.',
+          },
+          {
+            stem: 'What does the operator confirm before starting?',
+            options: ['The safety check', 'Nothing'],
+            answerIndex: 0,
+            rationale: 'The operator confirms the safety check before starting.',
+          },
+        ],
+      };
+    }
+    if (system.includes('"cards"')) {
+      return {
+        cards: [
+          { front: 'What is required before operation?', back: 'A safety check.' },
+          { front: 'What does the operator confirm?', back: 'The safety check.' },
+          { front: 'When does the operator confirm it?', back: 'Before starting.' },
+        ],
+      };
+    }
+    if (system.includes('applied scenario')) {
+      return {
+        situation: 'A safety check is required before operation.',
+        task: 'Confirm the safety check before starting.',
+        coaching: 'The operator confirms the check before starting.',
+      };
+    }
+    if (system.includes('discussion prompts')) {
+      return { prompts: ['Why is a safety check required before operation?'] };
+    }
+    if (system.includes('summarize')) {
+      return { summary: 'The course covers the safety check required before operation.' };
+    }
+    throw new Error(`unexpected Coursewright prompt: ${system}`);
+  };
+  return { ask, calls };
+}
+
+const SAFETY_DOCUMENT = {
+  source: 'poi-1',
+  text: 'A safety check is required before operation. The operator confirms the check before starting.',
+};
+
+test('the outline prompt states the objective character limit the validator enforces', () => {
+  // The limit went unstated once and every generated objective came back a
+  // paragraph, so all twelve failed at once and the instructor saw only
+  // "outline.objectives[0] exceeds 280 characters" twelve times over.
+  const { ask, calls } = coursewrightAsk(() => ({ objectives: ['Safety check'] }));
+  return draftCourse(
+    { title: 'Stated limits', objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
+    { load: upstream, ask },
+  ).then(() => {
+    assert.match(calls[0].system, /280 characters/);
+    assert.match(calls[0].system, /at most 12 objectives/);
+  });
+});
+
+test('an outline the validator rejects is repaired once with the reasons, not failed outright', async () => {
+  const tooLong = 'The learner will be able to describe, in complete detail and with reference to every applicable authority, the full sequence of the standard safety check that is required before operation, including the confirmation the operator performs before starting, so that operation never begins without it having been carried out first.';
+  assert.ok(tooLong.length > 280, 'fixture must exceed the objective limit');
+
+  const { ask, calls } = coursewrightAsk((call) =>
+    call === 1 ? { objectives: [tooLong] } : { objectives: ['Safety check'] });
+
+  const course = await draftCourse(
+    { title: 'Repaired outline', objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
+    { load: upstream, ask },
+  );
+
+  assert.deepEqual(course.objectives, ['Safety check']);
+  const repair = calls[1];
+  assert.equal(repair.model, 'coursewright-outline');
+  assert.match(repair.prompt, /A previous attempt was rejected/);
+  assert.match(repair.prompt, /exceeds 280 characters/);
+});
+
+test('the outline repair pass is bounded at one retry', async () => {
+  const { ask, calls } = coursewrightAsk(() => ({ objectives: [] }));
+  await assert.rejects(
+    () => draftCourse(
+      { title: 'Never valid', objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
+      { load: upstream, ask },
+    ),
+    (error) => error.code === 'COURSE_OUTLINE_INVALID' && error.status === 422,
+  );
+  assert.equal(calls.length, 2, 'one outline attempt plus one repair, then stop');
+});
+
+test('an omitted title is named by the model from the same sources', async () => {
+  const { ask, calls } = coursewrightAsk(() => ({
+    title: 'Pre-Operation Safety Checks',
+    objectives: ['Safety check'],
+  }));
+
+  const course = await draftCourse(
+    { objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
+    { load: upstream, ask },
+  );
+
+  assert.equal(course.title, 'Pre-Operation Safety Checks');
+  assert.equal(calls[0].prompt.includes('Course title:'), false, 'nothing to echo back');
+});
+
+test('a supplied title is never overwritten by the generated one', async () => {
+  const { ask } = coursewrightAsk(() => ({
+    title: 'Model would have called it this',
+    objectives: ['Safety check'],
+  }));
+
+  const course = await draftCourse(
+    { title: 'Instructor wording', objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
+    { load: upstream, ask },
+  );
+
+  assert.equal(course.title, 'Instructor wording');
+});
+
+test('explicit objectives with no title get a title of their own before generation', async () => {
+  const { ask, calls } = coursewrightAsk(() => ({ title: 'Safety Check Fundamentals' }));
+
+  const course = await draftCourse(
+    { objectives: ['Safety check'], documents: [SAFETY_DOCUMENT], diagrams: false },
+    { load: upstream, ask },
+  );
+
+  assert.equal(course.title, 'Safety Check Fundamentals');
+  assert.equal(calls[0].model, 'coursewright-title');
+});
+
+test('a title the model will not produce is an explicit failure, never a guess', async () => {
+  const { ask } = coursewrightAsk(() => ({ title: '   ' }));
+  await assert.rejects(
+    () => draftCourse(
+      { objectives: ['Safety check'], documents: [SAFETY_DOCUMENT], diagrams: false },
+      { load: upstream, ask },
+    ),
+    (error) => error.code === 'COURSE_TITLE_INVALID' && error.status === 422,
+  );
+});
+
+/* ---------- rubric task auto-fill ---------- */
+
+// The CONDITION / STANDARD / PERFORMANCE STEPS layout Quarry's extractTasks reads.
+const STANDARDS_DOCUMENT = [
+  '0311-MNT-1001: Maintain an M16 service rifle',
+  'CONDITION: Given a service rifle, a cleaning kit, and lubricant.',
+  'STANDARD: Rifle is cleaned and lubricated so that it functions without stoppage.',
+  'PERFORMANCE STEPS:',
+  '1. Clear the rifle.',
+  '2. Disassemble the rifle into major groups.',
+  '3. Clean each group.',
+  '4. Lubricate and reassemble the rifle.',
+].join('\n');
+
+test('a standards source fills the rubric form from Quarry, not from a model', async () => {
+  const payload = await ingestSource(
+    { title: 'Rifle maintenance', sourceId: 'poi-rifle', text: STANDARDS_DOCUMENT },
+    { load: upstream },
+  );
+
+  const suggested = extractedRubricTasks(payload);
+  assert.equal(suggested.origin, 'quarry');
+  assert.equal(suggested.tasks.length, 1);
+
+  const [task] = suggested.tasks;
+  // Every field the rubric form asks for, straight out of the document.
+  assert.equal(task.code, '0311-MNT-1001');
+  assert.equal(task.codeGenerated, false);
+  assert.equal(task.title, 'Maintain an M16 service rifle');
+  assert.match(task.condition, /cleaning kit/);
+  assert.match(task.standard, /without stoppage/);
+  assert.equal(task.performanceSteps.length, 4);
+  assert.equal(task.performanceSteps[0], 'Clear the rifle.');
+});
+
+test('a source with no task block has nothing to extract and falls through', async () => {
+  const payload = await ingestSource(
+    {
+      title: 'Prose source',
+      sourceId: 'prose-1',
+      text: 'A safety check is required before operation. The operator confirms the check before starting.',
+    },
+    { load: upstream },
+  );
+  assert.equal(extractedRubricTasks(payload), null);
+});
+
+test('a task drafted by the model keeps only source-shaped fields and is capped', async () => {
+  const task = await draftRubricTask(
+    { sourceText: 'A safety check is required before operation.' },
+    {
+      ask: async (model, system) => {
+        assert.equal(model, 'rubricon-task');
+        assert.match(system, /ONLY those passages/);
+        return {
+          title: '  Perform a pre-operation safety check  ',
+          condition: 'Given a machine before operation.',
+          standard: 'The check is completed before operation begins.',
+          performanceSteps: Array.from({ length: 30 }, (_, i) => `Step ${i + 1}`),
+          invented: 'dropped',
+        };
+      },
+    },
+  );
+
+  assert.equal(task.title, 'Perform a pre-operation safety check');
+  assert.equal(task.performanceSteps.length, 20);
+  assert.equal(task.invented, undefined);
+});
+
+test('an incomplete drafted task is an explicit failure, never a half-filled form', async () => {
+  await assert.rejects(
+    () => draftRubricTask(
+      { sourceText: 'A safety check is required before operation.' },
+      { ask: async () => ({ title: 'A task', condition: '', standard: '', performanceSteps: [] }) },
+    ),
+    (error) => error.code === 'RUBRIC_TASK_INCOMPLETE' && error.status === 422,
+  );
+
+  await assert.rejects(
+    () => draftRubricTask(
+      { sourceText: 'A safety check is required before operation.' },
+      { ask: async () => ({ refused: true, reason: 'no performable task' }) },
+    ),
+    (error) => error.code === 'RUBRIC_TASK_REFUSED' && error.status === 422,
+  );
+});
+
+test('a task with no code of its own gets a derived one that cannot pass for an official code', () => {
+  const suggested = extractedRubricTasks({
+    tasks: [{
+      title: 'Perform a pre-operation safety check',
+      condition: 'Given a machine before operation.',
+      standard: 'The check is completed before operation begins.',
+      performanceSteps: ['Clear the machine.'],
+    }],
+  });
+
+  const [task] = suggested.tasks;
+  assert.equal(task.codeGenerated, true);
+  assert.equal(task.code, 'SC-PERFORM-PRE-OPERATION-01');
+  // An official task code is 0000-AAA-0000; a derived one must not look like it.
+  assert.doesNotMatch(task.code, /^[0-9X]{4}-[A-Z]{2,4}-[0-9]{4}$/);
 });
