@@ -182,15 +182,47 @@ test(
       assert.equal(exportRows[0].payload.courseId, approvedCourse.id);
       assert.equal(await status(evidence.exportScorm(learner, { query: { courseId: approvedCourse.id } })), 403);
 
-      // Approval materialises the draft into Course/Section/Item, keyed by the
-      // record id, with the source's Anchor id on every citation. Twice is safe.
-      for (let pass = 0; pass < 2; pass += 1) {
-        const approved = await approveCourse(instructor, { params: { id: pendingCourse.id } });
-        assert.equal(approved.json.status, 'APPROVED');
-        assert.deepEqual(approved.json.materialised, { courseId: pendingCourse.id, sections: 1, items: 3 });
-      }
+      // Approval materialises the reviewed draft into Course/Section/Item with
+      // the source's Anchor id on every citation. It is an optimistic-concurrency
+      // write: the reviewed version has to be named, and a version that is not
+      // the one on record is refused before any typed row is created.
+      const draftVersion = (await getLearningRecord(pendingCourse.id)).version;
+      assert.equal(await status(approveCourse(instructor, { params: { id: pendingCourse.id } })), 400);
+      assert.equal(
+        await status(
+          approveCourse(instructor, { params: { id: pendingCourse.id }, body: { version: draftVersion + 1 } }),
+        ),
+        409,
+      );
+
+      const approved = await approveCourse(instructor, {
+        params: { id: pendingCourse.id },
+        body: { version: draftVersion },
+      });
+      assert.equal(approved.json.status, 'APPROVED');
+      // Only the first release reuses the record id as its delivery course id;
+      // every later release mints a new one (below), so the typed rows are read
+      // through the id the handler reports rather than the record id.
+      assert.equal(approved.json.deliveryCourseId, pendingCourse.id);
+      assert.deepEqual(approved.json.materialised, {
+        courseId: approved.json.deliveryCourseId,
+        sections: 1,
+        items: 3,
+      });
+
+      // Approving twice is no longer idempotent. Once a release exists there is
+      // nothing left to release until a revision is pending, and re-running the
+      // materialisation over a live release is exactly what the delivery model
+      // forbids -- Attempts and Schedules point at the rows it would rewrite.
+      assert.equal(
+        await status(
+          approveCourse(instructor, { params: { id: pendingCourse.id }, body: { version: approved.json.version } }),
+        ),
+        409,
+      );
+
       const typed = await db.course.findUnique({
-        where: { id: pendingCourse.id },
+        where: { id: approved.json.deliveryCourseId },
         include: { sections: { include: { items: { orderBy: { id: 'asc' } } } } },
       });
       assert.equal(typed.sourceId, `fixture-approved-source-${suffix}`);
@@ -199,9 +231,56 @@ test(
       // the items in it. Each one still needs an instructor's decision.
       assert.deepEqual(typed.sections[0].items.map((item) => [item.kind, item.status]), [['LESSON', 'PENDING'], ['QUESTION', 'PENDING'], ['QUESTION', 'PENDING']]);
       assert.equal(typed.sections[0].items[0].citation.pubId, `fixture-approved-source-${suffix}`);
-      assert.equal(await status(approveCourse(learner, { params: { id: pendingCourse.id } })), 404);
+
+      // The replacement release. A pending revision is what makes a second
+      // approval legal, and it is materialised on a NEW delivery course id
+      // BESIDE the first release -- the id does not persist across releases,
+      // deliberately, so an Attempt or Schedule earned against the first
+      // release keeps pointing at the rows it was earned against.
+      const revision = await createLearningRecord({
+        ownerId: instructor.id,
+        type: 'COURSE_REVISION',
+        status: 'PENDING',
+        payload: {
+          courseId: pendingCourse.id,
+          baseVersion: approved.json.version,
+          reviewedVersion: approved.json.version + 1,
+          sourceIds: [approvedSource.id],
+          course: { ...pendingCourse.payload, title: `Pending ${suffix} v2` },
+        },
+      });
+      records.push(revision);
+      const released = await getLearningRecord(pendingCourse.id);
+      assert.equal(
+        await updateLearningRecordIfVersion(pendingCourse.id, released.version, {
+          payload: { ...released.payload, pendingRevisionId: revision.id },
+        }),
+        true,
+      );
+      const rereleased = await approveCourse(instructor, {
+        params: { id: pendingCourse.id },
+        body: { version: released.version + 1 },
+      });
+      assert.equal(rereleased.json.deliveryCourseId, `${pendingCourse.id}:release:${revision.id}`);
+      assert.notEqual(rereleased.json.deliveryCourseId, approved.json.deliveryCourseId);
+      assert.equal(rereleased.json.materialised.courseId, rereleased.json.deliveryCourseId);
+      assert.ok(await db.course.findUnique({ where: { id: approved.json.deliveryCourseId } }));
+      const rereleasedItems = await db.item.findMany({
+        where: { section: { courseId: rereleased.json.deliveryCourseId } },
+      });
+      // A new release re-derives its item ids from the new delivery id, so the
+      // whole release starts unratified again rather than inheriting approvals
+      // made against content that has since been rewritten.
+      assert.deepEqual([...new Set(rereleasedItems.map((item) => item.status))], ['PENDING']);
+
+      assert.equal(
+        await status(
+          approveCourse(learner, { params: { id: pendingCourse.id }, body: { version: rereleased.json.version } }),
+        ),
+        404,
+      );
     } finally {
-      await db.course.deleteMany({ where: { id: pendingCourse.id } });
+      await db.course.deleteMany({ where: { id: { startsWith: pendingCourse.id } } });
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((entry) => entry.id) } } });
       await db.user.deleteMany({ where: { id: { in: [instructorRow.id, learnerRow.id] } } });
     }
@@ -541,12 +620,23 @@ test(
       payload: {
         title: `Aiming ${suffix}`,
         sourceIds: [source.id],
+        // Every load-bearing claim has to clear the same deterministic
+        // token-grounding floor approveCourse applies (validateCourseDraft),
+        // so the stems are worded from the cited passage rather than around it.
         sections: [{
           title: 'Aiming',
           cite: `${source.id} p.1`,
           lesson: 'Sight alignment is the relationship between the post and the aperture.',
-          pre: [{ stem: 'Where does the post sit?', options: ['Left of the aperture', 'Centred in the aperture'], answer: 1 }],
-          post: [{ stem: 'Why does alignment matter?', options: ['It does not', 'Angular error grows with range'], answer: 1 }],
+          pre: [{
+            stem: 'Sight alignment describes the relationship between the post and what?',
+            options: ['The stock', 'The aperture'],
+            answer: 1,
+          }],
+          post: [{
+            stem: 'Which relationship does sight alignment describe between the post and the aperture?',
+            options: ['Trigger to sear', 'Post to aperture'],
+            answer: 1,
+          }],
         }],
       },
     });
@@ -563,8 +653,15 @@ test(
       assert.equal(listed.json.deliveryCourseId, deliveryCourseId);
       assert.deepEqual(listed.json.counts, { PENDING: 3, APPROVED: 0, REJECTED: 0 });
       assert.equal(listed.json.readyForLearners, false);
-      const [lesson, pre, post] = listed.json.sections[0].items;
-      assert.deepEqual(listed.json.sections[0].items.map((i) => i.status), ['PENDING', 'PENDING', 'PENDING']);
+      // Addressed by what they are, not by position: every item of a release is
+      // written in one transaction, so their createdAt values tie and the read
+      // order of equal timestamps is not a contract.
+      const items = listed.json.sections[0].items;
+      const lesson = items.find((item) => item.kind === 'LESSON');
+      const pre = items.find((item) => item.stem.startsWith('Sight alignment describes'));
+      const post = items.find((item) => item.stem.startsWith('Which relationship'));
+      assert.ok(lesson && pre && post);
+      assert.deepEqual(items.map((i) => i.status), ['PENDING', 'PENDING', 'PENDING']);
 
       // Another instructor owns neither the draft nor its items.
       assert.equal(await status(listCourseItems(other, { params: { id: course.id } })), 404);
@@ -606,7 +703,10 @@ test(
         where: { id: deliveryCourseId },
         include: { sections: { include: { items: { where: { status: 'APPROVED' }, orderBy: { createdAt: 'asc' } } } } },
       });
-      assert.deepEqual(delivered.sections[0].items.map((item) => item.id), [lesson.id, pre.id]);
+      assert.deepEqual(
+        delivered.sections[0].items.map((item) => item.id).sort(),
+        [lesson.id, pre.id].sort(),
+      );
     } finally {
       await db.course.deleteMany({ where: { id: { startsWith: course.id } } });
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((entry) => entry.id) } } });
