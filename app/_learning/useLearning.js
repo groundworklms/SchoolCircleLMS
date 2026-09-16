@@ -95,6 +95,68 @@ export function useApiMutation(path, method = 'POST') {
  * Browser downloads do not carry the bearer token. Fetch the protected asset
  * first, then hand a blob to the browser.
  */
+/**
+ * POST to an NDJSON endpoint and hand each line to `onEvent` as it arrives.
+ *
+ * Course generation is a minute or more of model calls. A spinner over that
+ * tells an instructor nothing and hides the reason when a section refuses, so
+ * the draft route has a streaming twin that reports every artifact as it lands.
+ *
+ * Deliberately fetch + a stream reader rather than EventSource: EventSource
+ * cannot attach the Authorization header these routes require.
+ */
+export function useApiStream(path) {
+  const [loading, setLoading] = useState(false);
+
+  const start = async (payload, onEvent) => {
+    setLoading(true);
+    try {
+      const res = await authFetch(`${API_BASE}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok || !res.body) {
+        // A failure before the stream opens is an ordinary JSON error body.
+        let json = null;
+        try { json = await res.json(); } catch {}
+        throw json || new Error(`Status ${res.status}`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let last = null;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        // A chunk can split a line, and can carry several.
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let event;
+          try { event = JSON.parse(line); } catch { continue; }
+          last = event;
+          onEvent(event);
+        }
+      }
+      if (buffer.trim()) {
+        try {
+          const event = JSON.parse(buffer);
+          last = event;
+          onEvent(event);
+        } catch {}
+      }
+      return last;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { start, loading };
+}
+
 export async function downloadAuthenticated(path, filename) {
   const response = await authFetch(path);
   if (!response.ok) {
