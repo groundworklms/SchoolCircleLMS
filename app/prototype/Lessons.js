@@ -644,7 +644,13 @@ function Lessons({ course, go, lessonId, page, onOpenLesson, onOpenThread }) {
   const picked = lessonId ? seq.flat.find((l) => l.id === lessonId) || seq.annexes.flatMap((a) => a.lessons).find((l) => l.id === lessonId) : null;
 
   if (picked && isLocked(picked)) {
-    const need = seq.flat.slice(0, seq.flat.findIndex((l) => l.id === picked.id)).reverse().find((l) => !prefs.progress?.[l.id]?.complete);
+    // Name the EARLIEST unsatisfied lesson, using the same rule unlockedLessonIds
+    // applies (schedule-complete or actually completed). A reverse scan on
+    // progress alone pointed at the lesson just before this one, which is
+    // usually locked itself, bouncing the student through a chain of "Locked".
+    const need = seq.flat
+      .slice(0, seq.flat.findIndex((l) => l.id === picked.id))
+      .find((l) => !(l.status === 'complete' || prefs.progress?.[l.id]?.complete));
     return (
       <div className="s-lp-locked">
         <button className="s-crumbs-inline" onClick={() => setPicked(null)}>← All lessons</button>
