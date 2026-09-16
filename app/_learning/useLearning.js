@@ -8,47 +8,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
-import { useAuth } from '../_auth/AuthProvider';
 
 const API_BASE = '/api/learning';
-
-/** The shared Prisma-backed identity for the signed-in Firebase user, or null. */
-export function useAuthUser() {
-  const { profile: user, profileLoading: loading, profileError: error, refreshProfile } = useAuth();
-  return { user, loading, error, refetch: refreshProfile };
-}
-
-/** GET /api/learning/status: auth, persistence, and arsenal readiness. */
-export function useLearningStatus() {
-  const [status, setStatus] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchStatus = useCallback(async (signal) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const response = await authFetch(`${API_BASE}/status`, { signal });
-      const data = await response.json();
-      if (!response.ok) throw data;
-      if (signal?.aborted) return;
-      setStatus(data);
-    } catch (err) {
-      if (err?.name === 'AbortError' || signal?.aborted) return;
-      setError(err);
-    } finally {
-      if (!signal?.aborted) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    fetchStatus(controller.signal);
-    return () => controller.abort();
-  }, [fetchStatus]);
-
-  return { status, error, loading, refetch: () => fetchStatus() };
-}
 
 /** GET `${API_BASE}${path}`; a non-2xx JSON body becomes `error`. */
 export function useApiQuery(path, options) {
