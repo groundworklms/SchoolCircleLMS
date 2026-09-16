@@ -18,9 +18,16 @@ import { accountDisplay } from '../_auth/account-display';
    changes is who is signed in and what is in the rail.
 
    The library is the persisted learning loop: courses, sources and rubrics.
-   A course gets its tools only after it has been resolved from either the
-   learning service or the explicitly labelled sample area below. Legacy
-   manual records remain available to instructors for roster management only. */
+   A course gets its tools only after the learning service has resolved it.
+   There are no sample courses here: an instructor's rail shows the real ones
+   they own, and an unresolved id is an explicit not-found rather than a
+   placeholder standing in for a course. The student shell still carries demo
+   content, which is why the shared resolveCourse is left alone.
+
+   Courses published through the retired manual workflow appear as "Legacy"
+   and expose a roster view only. Authoring them is gone (those endpoints
+   answer 410), but their enrolled learners and results were deliberately
+   preserved, so the roster has to remain reachable. */
 
 const INSTRUCTOR = { name: 'SSgt Okafor', initials: 'SO', role: 'Instructor' };
 
