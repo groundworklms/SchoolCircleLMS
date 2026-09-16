@@ -1,4 +1,5 @@
 import { parsePoi } from '../../../lib/poi-parser';
+import { readPdfUpload } from '../../../lib/pdf-upload';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -7,10 +8,7 @@ export async function POST(req) {
   try {
     const form = await req.formData();
     const file = form.get('file');
-    if (!file || typeof file.arrayBuffer !== 'function') {
-      return Response.json({ error: 'No file uploaded' }, { status: 400 });
-    }
-    const buf = new Uint8Array(await file.arrayBuffer());
+    const buf = await readPdfUpload(file);
     const started = Date.now();
     const parsed = await parsePoi(buf);
     return Response.json({
@@ -20,6 +18,7 @@ export async function POST(req) {
     });
   } catch (err) {
     console.error('[ingest]', err);
-    return Response.json({ error: String(err?.message || err) }, { status: 500 });
+    const status = err?.code === 'BAD_REQUEST' || err instanceof TypeError ? 400 : 500;
+    return Response.json({ error: String(err?.message || err) }, { status });
   }
 }

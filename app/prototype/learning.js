@@ -43,11 +43,17 @@ export function useLearningCourses() {
    demo-only numbers (week, students, topics…) are deliberately absent so a
    screen that needs them can tell it has a real course. */
 export function courseFromRecord(entry) {
+  const hasPendingRevision = Boolean(entry.hasPendingRevision);
   return {
     id: entry.id,
     name: entry.title || 'Untitled course',
-    school: entry.status === 'APPROVED' ? 'Approved · cited course' : 'Draft · awaiting approval',
+    school: hasPendingRevision
+      ? 'Pending review · revised course'
+      : entry.status === 'APPROVED'
+        ? 'Approved · cited course'
+        : 'Draft · awaiting approval',
     status: entry.status,
+    hasPendingRevision,
     sections: entry.sections || 0,
     sourceIds: entry.sourceIds || [],
     record: entry,

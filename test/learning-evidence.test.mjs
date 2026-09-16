@@ -300,6 +300,35 @@ test('Cartridge projects real Coursewright lesson/pre/post content and rejects r
   );
 });
 
+test('Cartridge rejects missing citations and mixed producer projections', async () => {
+  await assert.rejects(
+    () => buildApprovedScorm({
+      course: {
+        id: 'fixture-uncited',
+        title: 'Uncited fixture',
+        approved: true,
+        lessons: [{ text: 'A lesson with no provenance' }],
+        quiz: [],
+      },
+    }),
+    /valid source citation/,
+  );
+  await assert.rejects(
+    () => buildApprovedScorm({
+      course: {
+        id: 'fixture-mixed',
+        title: 'Mixed fixture',
+        approved: true,
+        sections: [
+          { lesson: 'A cited lesson.', cite: 'fixture-source', pre: [{ stem: 'Before?', options: ['A', 'B'], answer: 0 }], post: [{ stem: 'After?', options: ['A', 'B'], answer: 0 }] },
+          { items: [] },
+        ],
+      },
+    }),
+    /incompatible|non-empty items/,
+  );
+});
+
 test('Understudy reports explicit unavailable when no model is injected', async () => {
   const result = await evaluateFidelity({
     cases: [{ id: 'fixture-case', situation: 'Hold position', expect: 'Hold position' }],

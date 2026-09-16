@@ -18,7 +18,7 @@ const complete = (role) => ({
   profileCompletedAt: completedAt,
 });
 
-test('role defaults route instructors to the builder and learners/both to the student dashboard', () => {
+test('role defaults route instructors to the library and learners/both to the student dashboard', () => {
   assert.equal(getDefaultDestination(complete('INSTRUCTOR')), '/prototype/instructor');
   assert.equal(getDefaultDestination(complete('LEARNER')), '/prototype');
   assert.equal(getDefaultDestination(complete('BOTH')), '/prototype');
@@ -34,20 +34,25 @@ test('safe deep links preserve permitted role destinations', () => {
   const learner = complete('LEARNER');
   const both = complete('BOTH');
 
-  assert.equal(isSafeDeepLink('/teach?area=settings', instructor), true);
-  assert.equal(getPostLoginDestination(instructor, '/teach/course/42'), '/teach/course/42');
+  assert.equal(isSafeDeepLink('/prototype/instructor?area=settings', instructor), true);
+  assert.equal(getPostLoginDestination(instructor, '/prototype/instructor/M092721/settings'), '/prototype/instructor/M092721/settings');
   assert.equal(isSafeDeepLink('/prototype/instructor/M092721/settings', instructor), true);
   assert.equal(isSafeDeepLink('/prototype/course/M092721', learner), true);
-  assert.equal(isSafeDeepLink('/teach', both), true);
-  assert.equal(isSafeDeepLink('/learn', both), true);
+  assert.equal(isSafeDeepLink('/prototype/published/course-42', instructor), true);
+  assert.equal(isSafeDeepLink('/prototype/courses', instructor), true);
+  assert.equal(getPostLoginDestination(instructor, '/prototype/published/course-42'), '/prototype/published/course-42');
+  assert.equal(isSafeDeepLink('/prototype/course/M092721', both), true);
 });
 
 test('mismatched or external deep links fall back to the persisted role', () => {
   const instructor = complete('INSTRUCTOR');
   const learner = complete('LEARNER');
 
-  assert.equal(getPostLoginDestination(instructor, '/learn/course/42'), '/prototype/instructor');
-  assert.equal(getPostLoginDestination(learner, '/teach'), '/prototype');
+  assert.equal(getPostLoginDestination(instructor, '/prototype/course/42'), '/prototype/instructor');
+  assert.equal(getPostLoginDestination(learner, '/prototype/instructor/M092721'), '/prototype');
+  assert.equal(isSafeDeepLink('/teach', instructor), false);
+  assert.equal(isSafeDeepLink('/learn', learner), false);
+  assert.equal(isSafeDeepLink('/prototype/published/course-42/lessons', instructor), false);
   assert.equal(isSafeDeepLink('https://evil.example/teach', instructor), false);
   assert.equal(isSafeDeepLink('//evil.example/teach', instructor), false);
   assert.equal(isSafeDeepLink('/teach/../evil', instructor), false);
