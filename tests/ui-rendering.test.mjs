@@ -47,6 +47,12 @@ function loadComponent(relativePath, { queryData = {}, stateValues = [] } = {}) 
     require(request) {
       if (request === 'react') return reactForModule;
       if (request === '../_learning/useLearning') return useLearning;
+      // Sibling components (e.g. LearnerFeatures -> ./LearnerTutor) load through
+      // the same sandbox so their API hooks are shimmed too.
+      if (request.startsWith('./')) {
+        const sibling = path.join(path.dirname(relativePath), `${request}.js`);
+        return loadComponent(sibling, { queryData });
+      }
       return require(request);
     },
   };
@@ -55,23 +61,26 @@ function loadComponent(relativePath, { queryData = {}, stateValues = [] } = {}) 
 }
 
 test('learner progress renders a non-empty mastery record', () => {
-  const { LearnerProgress } = loadComponent('app/learn/LearnerFeatures.js', {
+  // Sextant's real shapes: masteryRollup rows and classGaps rows.
+  const { LearnerProgress } = loadComponent('app/prototype/LearnerFeatures.js', {
     queryData: {
-      '/analytics': {
+      '/analytics?courseId=course-1': {
         scope: 'learner',
-        gain: { overall: 0.5 },
-        gaps: [],
-        mastery: [{ verdict: 'PASS', score: 0.9, courseId: 'course-1' }],
+        gain: { overall: { prePct: 0, postPct: 1, gain: 1, normalizedGain: 1 }, objectives: [] },
+        gaps: [{ objective: 'trigger control', attempts: 4, cohort: 1, missRate: 0.75 }],
+        mastery: [{ competency: 'sight alignment', developing: 0, competent: 1, mastered: 2, n: 3, masteredRate: 0.67 }],
       },
     },
   });
-  const markup = renderToStaticMarkup(React.createElement(LearnerProgress));
-  assert.match(markup, /PASS/);
-  assert.match(markup, /course-1/);
+  const markup = renderToStaticMarkup(React.createElement(LearnerProgress, { courseId: 'course-1' }));
+  assert.match(markup, /sight alignment/);
+  assert.match(markup, /67%/);
+  assert.match(markup, /trigger control/);
+  assert.match(markup, /75% missed/);
 });
 
 test('tutor renders citation and chunk content from non-empty source data', () => {
-  const { LearnerTutor, SourceViewer } = loadComponent('app/learn/LearnerTutor.js', {
+  const { LearnerTutor, SourceViewer } = loadComponent('app/prototype/LearnerTutor.js', {
     queryData: {
       '/sources/source-1': {
         title: 'Field manual',

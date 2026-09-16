@@ -237,6 +237,36 @@
 .s-draft-opts { margin: 0.3rem 0 0; padding-left: 1.2rem; font-size: 0.92em; color: var(--p-dim); }
 .s-draft-opts li.keyed { color: var(--p-good); font-weight: 600; }
 
+/* Approved-course reader (LearnerFeatures.js): section list + one section. */
+.s-reader { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.s-reader-toc { position: sticky; top: 0.5rem; }
+.s-reader-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+.s-reader-row { display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left; padding: 0.5rem 0.6rem; border-radius: 10px; border: 0; background: transparent; color: var(--p-text); cursor: pointer; font: inherit; }
+.s-reader-row:hover { background: var(--p-surface-2); }
+.s-reader-row.on { background: var(--p-surface); box-shadow: var(--p-shadow); font-weight: 600; }
+.s-reader-id { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5em; height: 1.5em; border-radius: 999px; background: var(--p-surface-2); color: var(--p-dim); font-size: 0.78em; font-weight: 600; }
+.s-reader-row.on .s-reader-id { background: var(--p-accent); color: #fff; }
+.s-reader-title { font-size: 0.95em; }
+.s-reader-body { min-width: 0; }
+.s-reader-head { margin-bottom: 1rem; }
+.s-reader-head h2 { margin: 0.2rem 0 0; font-size: 1.6em; letter-spacing: -0.02em; }
+.s-reader-kicker { font-size: 0.8em; color: var(--p-faint); font-weight: 600; }
+.s-reader-p { font-size: 1.02em; line-height: 1.65; margin: 0 0 1.25rem; }
+.s-reader-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.4rem; }
+@media (max-width: 900px) { .s-reader { grid-template-columns: 1fr; } .s-reader-toc { position: static; } }
+
+/* Whetstone session */
+.s-mastery-q { font-size: 1.1em; line-height: 1.5; margin: 0 0 1rem; font-weight: 500; }
+
+/* Waypoint survey: twelve Likert rows */
+.s-waypoint { display: flex; flex-direction: column; gap: 0.9rem; }
+.s-waypoint-q { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; padding-bottom: 0.9rem; border-bottom: 1px solid var(--p-border-soft); }
+.s-waypoint-q:last-of-type { border-bottom: 0; }
+.s-waypoint-scale { display: inline-flex; gap: 0.3rem; }
+.s-waypoint-scale button { width: 2.2rem; height: 2.2rem; border-radius: 999px; border: 1px solid var(--p-border); background: var(--p-surface); color: var(--p-dim); font: inherit; font-weight: 600; cursor: pointer; }
+.s-waypoint-scale button:hover { border-color: var(--p-accent); color: var(--p-accent); }
+.s-waypoint-scale button.on { background: var(--p-accent); border-color: var(--p-accent); color: #fff; }
+
 /* ---------- up next ---------- */
 .s-next { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); margin-bottom: 1.75rem; }
 .s-next-card {
