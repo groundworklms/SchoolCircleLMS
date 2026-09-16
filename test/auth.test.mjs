@@ -157,6 +157,8 @@ test('learningRoute maps thrown errors to the shared status table', async () => 
   assert.equal(errorStatus(Object.assign(new Error(), { code: 'RUBRIC_NOT_APPROVABLE' })), 409);
   assert.equal(errorStatus(Object.assign(new Error(), { code: 'NO_PROVIDER' })), 503);
   assert.equal(errorStatus(Object.assign(new Error(), { code: 'ARSENAL_UNAVAILABLE' })), 503);
+  assert.equal(errorStatus(Object.assign(new Error(), { code: 'STUDENT_GROUNDING_SERVICE_ERROR' })), 503);
+  assert.equal(errorStatus(Object.assign(new Error(), { code: 'STUDENT_GROUNDING_BAD_RESPONSE' })), 502);
   assert.equal(errorStatus(Object.assign(new Error(), { status: 422 })), 422);
   assert.equal(errorStatus(new Error('boom')), 500);
 
@@ -187,5 +189,17 @@ test('learningRoute maps thrown errors to the shared status table', async () => 
     );
     assert.equal(bad.status, 400);
     assert.equal((await bad.json()).code, 'BAD_REQUEST');
+
+    // Tutor-like endpoints cap streaming JSON before parsing it. This is opt-in
+    // so source uploads and unrelated learning requests retain their contracts.
+    const capped = learningRoute({ maxBodyBytes: 20 }, () => ({ json: {} }));
+    const oversized = await capped(
+      new Request('http://localhost/api/learning/tutor', {
+        method: 'POST',
+        body: JSON.stringify({ question: 'x'.repeat(30) }),
+      }),
+    );
+    assert.equal(oversized.status, 413);
+    assert.equal((await oversized.json()).code, 'PAYLOAD_TOO_LARGE');
   });
 });
