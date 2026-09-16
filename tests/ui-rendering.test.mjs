@@ -12,7 +12,7 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-function loadComponent(relativePath, { queryData = {}, stateValues = [] } = {}) {
+function loadComponent(relativePath, { queryData = {}, queryStates = {}, stateValues = [] } = {}) {
   const filename = path.join(workspace, relativePath);
   const transformed = transformSync(fs.readFileSync(filename, 'utf8'), {
     jsc: {
@@ -34,7 +34,16 @@ function loadComponent(relativePath, { queryData = {}, stateValues = [] } = {}) 
   };
   const useLearning = {
     useApiQuery(requestPath) {
-      return { data: queryData[requestPath] ?? null, loading: false, error: null, refetch: () => {} };
+      const configured = queryStates[requestPath] || {};
+      const data = Object.prototype.hasOwnProperty.call(configured, 'data')
+        ? configured.data
+        : queryData[requestPath] ?? null;
+      return {
+        data,
+        loading: configured.loading ?? false,
+        error: configured.error ?? null,
+        refetch: () => {},
+      };
     },
     useApiMutation() {
       return { loading: false, mutate: async () => ({}) };
@@ -51,11 +60,20 @@ function loadComponent(relativePath, { queryData = {}, stateValues = [] } = {}) 
         return { useAuth: () => ({ user: { uid: 'tester' }, ready: true, loading: false }) };
       }
       if (request === '../../lib/auth-fetch') return { authenticatedFetch: async () => ({ ok: false, json: async () => ({}) }) };
+      if (request === '../../lib/firebase') {
+        return { authFetch: async () => { throw new Error('Static rendering must not make authenticated requests'); } };
+      }
+      if (request.endsWith('.css')) return {};
+      if (request.startsWith('../_course/') || request.startsWith('../../_course/')) {
+        const requestedPath = request.endsWith('.js') ? request : `${request}.js`;
+        const sharedPath = path.join(path.dirname(relativePath), requestedPath);
+        return loadComponent(sharedPath, { queryData, queryStates, stateValues });
+      }
       // Sibling components (e.g. LearnerFeatures -> ./SourceViewer) load through
       // the same sandbox so their API hooks are shimmed too.
       if (request.startsWith('./')) {
         const sibling = path.join(path.dirname(relativePath), `${request}.js`);
-        return loadComponent(sibling, { queryData });
+        return loadComponent(sibling, { queryData, queryStates });
       }
       return require(request);
     },
@@ -83,6 +101,41 @@ test('learner progress renders a non-empty mastery record', () => {
   assert.match(markup, /75% missed/);
 });
 
+test('learning course reader reuses shared lesson blocks without exposing answer keys', () => {
+  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: {
+      '/courses/course-1': {
+        status: 'APPROVED',
+        version: 1,
+        course: {
+          sections: [{
+            id: 'section-1',
+            title: 'Movement fundamentals',
+            cite: 'source-1 p. 4',
+            lesson: 'Read the approved movement guidance.',
+            pre: [{
+              id: 'question-1',
+              stem: 'Which principle applies?',
+              options: ['Use cover', 'Ignore terrain'],
+              answer: 0,
+              rationale: 'The answer key must stay server-side.',
+            }],
+          }],
+        },
+      },
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
+    course: { id: 'course-1' },
+  }));
+  assert.match(markup, /Movement fundamentals/);
+  assert.match(markup, /Read the approved movement guidance/);
+  assert.match(markup, /Which principle applies/);
+  assert.match(markup, /course-option/);
+  assert.match(markup, /source-1 p\. 4/);
+  assert.doesNotMatch(markup, /answer key must stay server-side/);
+});
+
 test('source viewer renders chunk content from non-empty source data', () => {
   const { SourceViewer } = loadComponent('app/prototype/SourceViewer.js', {
     queryData: {
@@ -95,6 +148,121 @@ test('source viewer renders chunk content from non-empty source data', () => {
   });
   const sourceMarkup = renderToStaticMarkup(React.createElement(SourceViewer, { sourceId: 'source-1' }));
   assert.match(sourceMarkup, /Chunk evidence/);
+});
+
+test('course library exposes source failures and disables course drafting', () => {
+  const { CoursesLibrary } = loadComponent('app/prototype/Library.js', {
+    queryStates: {
+      '/sources': { error: { error: 'Source service unavailable' } },
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(CoursesLibrary, {
+    courses: [],
+    loading: false,
+    error: null,
+    onOpen: () => {},
+    onDrafted: () => {},
+  }));
+  assert.match(markup, /Source service unavailable/);
+  assert.match(markup, /Retry loading sources/);
+  assert.match(markup, /disabled[^>]*>Draft course/);
+  assert.doesNotMatch(markup, /No approved sources yet/);
+});
+
+test('shared generated course presentation keeps manual question typography and preview feedback', () => {
+  const { default: CourseLesson } = loadComponent('app/_course/CoursePresentation.js');
+  const markup = renderToStaticMarkup(React.createElement(CourseLesson, {
+    preview: true,
+    content: {
+      id: 'lesson-1',
+      title: 'Generated lesson',
+      summary: 'A cited summary.',
+      blocks: [{
+        id: 'question-1',
+        type: 'check',
+        prompt: 'Which answer is grounded?',
+        options: [
+          { id: 'option-a', text: 'The approved answer' },
+          { id: 'option-b', text: 'An unsupported claim' },
+        ],
+        correctOptionId: 'option-a',
+        explanation: 'The first answer is supported by the source.',
+      }],
+    },
+  }));
+  assert.match(markup, /Generated lesson/);
+  assert.match(markup, /Which answer is grounded/);
+  assert.match(markup, /The approved answer/);
+  assert.match(markup, /course-option/);
+  assert.doesNotMatch(markup, /correctOptionId/);
+});
+
+test('AI course draft previews every generated section with targeted revision controls', () => {
+  const { CourseDraft } = loadComponent('app/prototype/Library.js', {
+    queryData: {
+      '/courses/course-1': {
+        id: 'course-1',
+        status: 'PENDING',
+        version: 2,
+        hasPendingRevision: false,
+        course: {
+          title: 'Field movement',
+          sourceIds: ['source-1'],
+          sections: [{
+            id: 'section-1',
+            title: 'Movement fundamentals',
+            lesson: 'Use the approved movement principles.',
+            pre: [{
+              id: 'question-pre-1',
+              stem: 'Which principle is grounded?',
+              options: ['Use cover', 'Ignore terrain'],
+              answer: 0,
+              explanation: 'Cover is named by the source.',
+            }],
+            post: [{
+              id: 'question-post-1',
+              stem: 'What should the learner choose?',
+              options: ['Use cover', 'Ignore terrain'],
+              answer: 0,
+            }],
+          }],
+        },
+        revisionHistory: [],
+      },
+      '/sources': [],
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseDraft, {
+    course: { id: 'course-1', name: 'Field movement', status: 'PENDING', sourceIds: ['source-1'] },
+    onChanged: () => {},
+  }));
+  assert.match(markup, /Generated course preview/);
+  assert.match(markup, /Movement fundamentals/);
+  assert.match(markup, /Which principle is grounded/);
+  assert.match(markup, /Revise whole lesson/);
+  assert.match(markup, /Question review/);
+  assert.match(markup, /Final approval/);
+});
+
+test('rubric generation distinguishes source failures from a successful empty source list', () => {
+  const { RubricsView } = loadComponent('app/prototype/InstructorFeatures.js', {
+    queryStates: {
+      '/sources': { error: { message: 'Source service unavailable' } },
+    },
+  });
+  const failedMarkup = renderToStaticMarkup(React.createElement(RubricsView));
+  assert.match(failedMarkup, /Source service unavailable/);
+  assert.match(failedMarkup, /Retry loading sources/);
+  assert.match(failedMarkup, /disabled[^>]*>Generate rubric/);
+
+  const { RubricsView: EmptyRubricsView } = loadComponent('app/prototype/InstructorFeatures.js', {
+    queryStates: {
+      '/sources': { data: [] },
+    },
+  });
+  const emptyMarkup = renderToStaticMarkup(React.createElement(EmptyRubricsView));
+  assert.match(emptyMarkup, /No approved sources yet/);
+  assert.doesNotMatch(emptyMarkup, /Retry loading sources/);
 });
 
 test('course chat renders Sourcerer and Anchor citations in one shape', () => {

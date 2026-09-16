@@ -29,8 +29,6 @@ function viewLabel(pathname) {
   if (!pathname || pathname === '/') return 'Landing (home)';
   if (pathname.startsWith('/prototype/instructor')) return `App — Instructor (${pathname})`;
   if (pathname.startsWith('/prototype')) return `App — Student (${pathname})`;
-  if (pathname.startsWith('/teach')) return 'App — Instructor (legacy /teach)';
-  if (pathname.startsWith('/learn')) return 'App — Student (legacy /learn)';
   if (pathname === '/login') return 'Sign in';
   if (pathname.startsWith('/plan')) return 'Planning board';
   return pathname;

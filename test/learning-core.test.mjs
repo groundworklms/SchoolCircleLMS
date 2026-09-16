@@ -13,6 +13,7 @@ import {
   terminalSafeScorer,
   tutorAnswer,
   validateCourseDraft,
+  validateCourseOutline,
   validateMasteryPlan,
 } from '../lib/arsenal-core.js';
 import { learnerCourseProjection, savedMasteryView, sourceDocuments } from '../lib/learning/core.js';
@@ -267,6 +268,131 @@ test('Coursewright draft uses an injected model and keeps refusal output', async
   assert.equal(course.sections.length, 1);
   assert.equal(course.sections[0].refused, true);
   assert.equal(course.sections[0].reason, 'contract test refusal');
+});
+
+test('empty objectives derive a grounded outline before Coursewright builds every section', async () => {
+  const calls = [];
+  const ask = async (model, system) => {
+    calls.push({ model, system });
+    if (system.includes('instructional designer')) {
+      return { objectives: ['Safety check', 'Operator confirms check'] };
+    }
+    if (system.includes('micro-lesson')) {
+      return { lesson: 'A safety check is required before operation.' };
+    }
+    if (system.includes('"items"') && system.includes('answerIndex')) {
+      return {
+        items: [
+          {
+            stem: 'When is a safety check required before operation?',
+            options: ['Before operation', 'Never'],
+            answerIndex: 0,
+            rationale: 'The safety check is required before operation.',
+          },
+          {
+            stem: 'What does the operator confirm before starting?',
+            options: ['The safety check', 'Nothing'],
+            answerIndex: 0,
+            rationale: 'The operator confirms the safety check before starting.',
+          },
+        ],
+      };
+    }
+    if (system.includes('"cards"')) {
+      return {
+        cards: [
+          { front: 'What is required before operation?', back: 'A safety check.' },
+          { front: 'What does the operator confirm?', back: 'The safety check.' },
+          { front: 'When does the operator confirm it?', back: 'Before starting.' },
+        ],
+      };
+    }
+    if (system.includes('applied scenario')) {
+      return {
+        situation: 'A safety check is required before operation.',
+        task: 'Confirm the safety check before starting.',
+        coaching: 'The operator confirms the check before starting.',
+      };
+    }
+    if (system.includes('discussion prompts')) {
+      return { prompts: ['Why is a safety check required before operation?'] };
+    }
+    if (system.includes('summarize')) {
+      return { summary: 'The course covers the safety check required before operation.' };
+    }
+    throw new Error(`unexpected Coursewright prompt: ${system}`);
+  };
+  const course = await draftCourse(
+    {
+      title: 'Generated from POI',
+      objectives: [],
+      documents: [{
+        source: 'poi-1',
+        text: 'A safety check is required before operation. The operator confirms the check before starting.',
+      }],
+      diagrams: false,
+    },
+    { load: upstream, ask },
+  );
+
+  assert.equal(calls[0].model, 'coursewright-outline');
+  assert.equal(calls[0].system.includes('approved source passages'), true);
+  assert.deepEqual(course.objectives, ['Safety check', 'Operator confirms check']);
+  assert.equal(course.sections.length, 2);
+  assert.deepEqual(course.sections.map((section) => section.title), [
+    'Safety check',
+    'Operator confirms check',
+  ]);
+});
+
+test('invalid generated outlines are rejected without silently truncating them', async () => {
+  const invalid = validateCourseOutline(
+    { objectives: ['Safety check', 'Safety check'] },
+    {
+      documents: [{ text: 'A safety check is required before operation.' }],
+    },
+  );
+  assert.equal(invalid.valid, false);
+  assert.ok(invalid.issues.some((issue) => issue.includes('duplicates')));
+
+  await assert.rejects(
+    () => draftCourse(
+      {
+        title: 'Invalid outline',
+        objectives: [],
+        documents: [{ text: 'A safety check is required before operation.' }],
+        diagrams: false,
+      },
+      {
+        load: upstream,
+        ask: async () => ({ objectives: [] }),
+      },
+    ),
+    (error) => error.code === 'COURSE_OUTLINE_INVALID' && error.status === 422,
+  );
+});
+
+test('Coursewright skipped objectives fail as partial generation', async () => {
+  await assert.rejects(
+    () => draftCourse(
+      {
+        title: 'Partial course',
+        objectives: ['Safety check', 'Check before operation'],
+        documents: [{ text: 'A safety check is required before operation.' }],
+        diagrams: false,
+      },
+      {
+        load: async () => ({
+          fromDocuments: async () => ({ sections: [{ title: 'Safety check' }] }),
+        }),
+        ask: async () => { throw new Error('partial-result fixture does not call a model'); },
+      },
+    ),
+    (error) =>
+      error.code === 'COURSE_GENERATION_PARTIAL' &&
+      error.validation.expectedSections === 2 &&
+      error.validation.actualSections === 1,
+  );
 });
 
 test('Rubricon validation and traceability run after injected generation', async () => {

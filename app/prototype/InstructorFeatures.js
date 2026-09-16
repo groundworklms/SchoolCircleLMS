@@ -495,8 +495,17 @@ export function InstructorAAR({ courseId }) {
 /* ---------- rubrics (Rubricon) ---------- */
 
 export function RubricsView() {
-  const { data: sources } = useApiQuery('/sources');
-  const approvedSources = sources?.filter((s) => s.status === 'APPROVED') || [];
+  const {
+    data: sources,
+    loading: sourcesLoading,
+    error: sourcesError,
+    refetch: refetchSources,
+  } = useApiQuery('/sources');
+  // A query has no data during its first render. Keep that distinct from a
+  // successful [] response so generation never proceeds without grounding.
+  const sourcesPending = sourcesLoading || (sources == null && !sourcesError);
+  const sourcesUnavailable = sourcesPending || Boolean(sourcesError);
+  const approvedSources = Array.isArray(sources) ? sources.filter((s) => s.status === 'APPROVED') : [];
 
   const [sourceId, setSourceId] = useState('');
   const [taskCode, setTaskCode] = useState('');
@@ -557,20 +566,32 @@ export function RubricsView() {
 
       <div className="p-panel">
         <h3>Generate a rubric</h3>
+        {sourcesPending && <p className="p-src">Loading approved sources…</p>}
+        {sourcesError && (
+          <div className="s-shell-error" role="alert">
+            <p style={{ margin: '0 0 0.5rem' }}>
+              {errText(sourcesError, 'Could not load approved sources.')}
+            </p>
+            <button type="button" className="p-btn ghost" onClick={refetchSources}>Retry loading sources</button>
+          </div>
+        )}
+        {!sourcesPending && !sourcesError && Array.isArray(sources) && approvedSources.length === 0 && (
+          <p className="p-src">No approved sources yet. Add and approve a source before generating a rubric.</p>
+        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <select className="scw-ti" value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+          <select className="scw-ti" value={sourceId} onChange={(e) => setSourceId(e.target.value)} disabled={sourcesUnavailable}>
             <option value="">Select an approved source…</option>
             {approvedSources.map((s) => (
               <option key={s.id} value={s.id}>{s.title}</option>
             ))}
           </select>
-          <input className="scw-ti" placeholder="Task code (e.g. 0311-M16-1001)" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} />
-          <input className="scw-ti" placeholder="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} />
-          <input className="scw-ti" placeholder="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} />
-          <input className="scw-ti" placeholder="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} />
-          <textarea className="scw-ti" placeholder="Performance steps (one per line)" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} />
+          <input className="scw-ti" placeholder="Task code (e.g. 0311-M16-1001)" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} disabled={sourcesUnavailable} />
+          <input className="scw-ti" placeholder="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} disabled={sourcesUnavailable} />
+          <input className="scw-ti" placeholder="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} disabled={sourcesUnavailable} />
+          <input className="scw-ti" placeholder="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
+          <textarea className="scw-ti" placeholder="Performance steps (one per line)" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
           <Err msg={err} />
-          <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
+          <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || sourcesUnavailable || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
             {generateRubric.loading ? 'Generating…' : 'Generate rubric'}
           </button>
         </div>

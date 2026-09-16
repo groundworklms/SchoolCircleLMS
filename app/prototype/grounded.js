@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { authFetch } from '../../lib/firebase';
 
 /* Shared bridge from the prototype screens to the seeded course database (issue #8).
    One place that knows how to reach the real, human-ratified, cited items so every screen
@@ -21,7 +22,7 @@ export function useDoctrineCourse(courseId) {
     const sourceId = COURSE_SOURCE[courseId];
     if (!sourceId) { setState({ status: 'ready', db: null }); return; }
     let alive = true;
-    fetch('/api/courses')
+     authFetch('/api/courses')
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))))
       .then((d) => {
         if (!alive) return;
