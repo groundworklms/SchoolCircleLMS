@@ -10,6 +10,9 @@
   --p-muted: #6b6b70;
   --p-line: rgba(0, 0, 0, 0.08);
   min-height: 100vh;
+  /* Landing and sign-in are deliberately fixed-light, including native
+     inputs and select menus when the OS is in dark mode. */
+  color-scheme: light;
   background:
     radial-gradient(1100px 600px at 80% -10%, rgba(179, 18, 46, 0.10), transparent 60%),
     radial-gradient(900px 500px at -10% 10%, rgba(179, 18, 46, 0.06), transparent 55%),
@@ -183,6 +186,7 @@
   padding: 11px 13px;
   font-size: 15px;
   background: #fbfbfd;
+  color: var(--p-ink);
 }
 .scl-field input:focus { outline: 2px solid rgba(179, 18, 46, 0.35); border-color: transparent; }
 .scl-or {
