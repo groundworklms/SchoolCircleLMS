@@ -28,10 +28,36 @@ function resolve(color, tokens) {
     return tokens[token];
   });
 }
-function luminance(color) {
-  assert.match(color, /^#[0-9a-f]{6}$/i);
-  const rgb = color.slice(1).match(/../g).map((pair) => {
-    const value = parseInt(pair, 16) / 255;
+function parseColor(color) {
+  const hex = color.match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const [r, g, b] = hex[1].match(/../g).map((pair) => parseInt(pair, 16));
+    return { r, g, b, a: 1 };
+  }
+  const rgba = color.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i);
+  assert.ok(rgba, `Unsupported color: ${color}`);
+  return {
+    r: Number(rgba[1]),
+    g: Number(rgba[2]),
+    b: Number(rgba[3]),
+    a: rgba[4] === undefined ? 1 : Number(rgba[4]),
+  };
+}
+function composite(color, backdrop) {
+  const foreground = parseColor(color);
+  if (foreground.a === 1) return foreground;
+  const background = parseColor(backdrop);
+  return {
+    r: foreground.r * foreground.a + background.r * (1 - foreground.a),
+    g: foreground.g * foreground.a + background.g * (1 - foreground.a),
+    b: foreground.b * foreground.a + background.b * (1 - foreground.a),
+    a: 1,
+  };
+}
+function luminance(color, backdrop = '#ffffff') {
+  const { r, g, b } = composite(color, backdrop);
+  const rgb = [r, g, b].map((channel) => {
+    const value = channel / 255;
     return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
   });
   return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
@@ -53,10 +79,25 @@ for (const [css, selector, palettes = appThemes] of states) {
   for (const [index, palette] of palettes.entries()) {
     test(`${selector} has readable text in ${['light', 'dark', 'system dark'][index]} theme`, () => {
       const styles = rule(css, selector);
-      const foreground = luminance(resolve(styles.color || 'var(--p-text)', palette));
-      const background = luminance(resolve(styles.background, palette));
+      const backdrop = palette['--p-surface'] || palette['--scw-surface'] || '#ffffff';
+      const foreground = luminance(resolve(styles.color || 'var(--p-text)', palette), backdrop);
+      const background = luminance(resolve(styles.background, palette), backdrop);
       const contrast = (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
       assert.ok(contrast >= 4.5, `Text contrast ${contrast.toFixed(2)}:1 is below WCAG AA 4.5:1`);
     });
   }
+}
+
+const examTag = rule(student, '.s-root .p-examtag');
+for (const [index, palette] of appThemes.entries()) {
+  test(`student exam tag has readable text in ${['light', 'dark', 'system dark'][index]} theme`, () => {
+    assert.equal(examTag.background, 'var(--p-warning-tint)');
+    assert.equal(examTag['border-color'], 'var(--p-warning-border)');
+    assert.equal(examTag.color, 'var(--p-warning-text)');
+    const backdrop = palette['--p-surface'];
+    const foreground = luminance(resolve(examTag.color, palette), backdrop);
+    const background = luminance(resolve(examTag.background, palette), backdrop);
+    const contrast = (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    assert.ok(contrast >= 4.5, `Text contrast ${contrast.toFixed(2)}:1 is below WCAG AA 4.5:1`);
+  });
 }
