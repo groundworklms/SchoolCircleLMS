@@ -167,7 +167,30 @@ route transitions its own output to approved.
 Coursewright receives the selected source documents and uses the SchoolCircle
 model wrapper as its injectable ask callback. Grounding refusals remain in the
 stored result. The response is `201` with a `PENDING COURSE_DRAFT` record id,
-title, section count, and source ids.
+title, section count, source ids, and `blockers`.
+
+`blockers` is the grounding validator's own result, grouped for review:
+
+```json
+{
+  "valid": false,
+  "issues": ["section 2 lesson is not grounded in its cited source"],
+  "general": [],
+  "sections": [{ "index": 2, "issues": ["lesson is not grounded in its cited source"] }]
+}
+```
+
+A draft whose sections do not all pass grounding is **still persisted as
+`PENDING`** and returned with `valid: false`. Generation is slow and expensive,
+and the instructor is the only one who can repair it; discarding the whole
+course over one ungrounded section left them nothing to review and no way to
+converge. Only a draft with no reviewable content at all — not an object, no
+sections, or no approved source projections — is an outright failure, and that
+answers `422 COURSE_GENERATION_INVALID`.
+
+This does not widen what reaches a learner. `PENDING` is invisible to learners,
+and `POST /api/learning/courses/:id/approve` reruns the same validator and
+refuses (`COURSE_NOT_APPROVABLE`) while any section still fails.
 
 ### `GET /api/learning/courses` and `GET /api/learning/courses/:id` —
 authenticated
@@ -175,6 +198,11 @@ authenticated
 Only approved courses are listed for delivery. An instructor may inspect their
 own pending draft. Learner responses are redacted at the API boundary: answer
 keys, `answerIndex`, rationales, and rubric indicators are not serialized.
+
+For the owner, `GET /api/learning/courses/:id` also carries `blockers` for the
+candidate being reviewed, in the shape above. It is recomputed on every read
+against the current sources rather than stored, so it cannot go stale after a
+revision or after a source changes.
 
 ### `POST /api/learning/courses/:id/approve` — instructor owner
 

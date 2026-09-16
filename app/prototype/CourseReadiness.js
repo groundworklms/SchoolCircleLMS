@@ -4,12 +4,18 @@ import { useState } from 'react';
 
 /** Human acknowledgement is tied to the exact candidate, never a course-wide flag.
  * These are review prompts, not a duplicate of the server's grounding validator. */
-export function CourseReadiness({ courseId, version, candidate, pending, published, busy, unavailable, onApprove }) {
+export function CourseReadiness({ courseId, version, candidate, pending, published, blockers, busy, unavailable, onApprove }) {
   const [reviewedCandidate, setReviewedCandidate] = useState(null);
   const reviewKey = JSON.stringify([courseId, version, candidate]);
   const reviewed = reviewedCandidate === reviewKey;
   const hasContent = Array.isArray(candidate?.sections) && candidate.sections.length > 0;
   const hasSources = Array.isArray(candidate?.sourceIds) && candidate.sourceIds.length > 0;
+  // The server reports the result of the very checks approval will rerun. When
+  // it says this candidate is blocked, approving can only fail, so the button
+  // says why instead of spending a click to find out.
+  const groundingBlocked = blockers ? blockers.valid === false : false;
+  const blockedCount = blockers?.sections?.length || 0;
+  const blockedForm = blockedCount === 1 ? 'lesson' : 'lessons';
 
   return (
     <section className="p-panel" aria-labelledby="course-readiness-title">
@@ -24,7 +30,15 @@ export function CourseReadiness({ courseId, version, candidate, pending, publish
         <li>Persisted source relationships must exist and every selected source must still be approved.</li>
         <li>Lessons and pre/post questions must pass content, answer-key, citation and grounding validation.</li>
       </ul>
-      <p className="p-src">These checks run again when you approve. This panel does not certify that they have passed.</p>
+      {groundingBlocked ? (
+        <p className="s-shell-error" role="status">
+          {blockedCount > 0
+            ? `${blockedCount} ${blockedForm} must be revised before this course can be approved — see "Before this can be published" above.`
+            : 'This candidate does not yet pass the checks approval reruns — see "Before this can be published" above.'}
+        </p>
+      ) : (
+        <p className="p-src">These checks run again when you approve, against the exact version you reviewed.</p>
+      )}
       <h4>Human review</h4>
       <p>Inspect every lesson, cited passage, question and instructor-only answer key below. Request AI revisions where needed, then review the updated version.</p>
       {pending && (
@@ -34,13 +48,18 @@ export function CourseReadiness({ courseId, version, candidate, pending, publish
             <input
               type="checkbox"
               checked={reviewed}
-              disabled={busy || unavailable || !hasContent || !hasSources}
+              disabled={busy || unavailable || !hasContent || !hasSources || groundingBlocked}
               onChange={(event) => setReviewedCandidate(event.target.checked ? reviewKey : null)}
             />
             <span>I reviewed version {version}, including its citations and answer keys.</span>
           </label>
-          <button type="button" className="p-btn" disabled={busy || unavailable || !reviewed || !hasContent || !hasSources} onClick={onApprove}>
-            {busy ? 'Saving…' : 'Approve and publish'}
+          <button
+            type="button"
+            className="p-btn"
+            disabled={busy || unavailable || !reviewed || !hasContent || !hasSources || groundingBlocked}
+            onClick={onApprove}
+          >
+            {busy ? 'Saving…' : groundingBlocked ? `Revise ${blockedCount || ''} ${blockedForm} to publish`.replace('  ', ' ') : 'Approve and publish'}
           </button>
         </>
       )}
