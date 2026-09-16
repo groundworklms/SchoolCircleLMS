@@ -62,6 +62,19 @@ function loadComponent(relativePath, {
         mutate: configured.mutate || (async () => configured.result ?? {}),
       };
     },
+    // Streaming endpoints are keyed the same way; `start` replays the events the
+    // fixture supplies and returns the last one, as the real hook does.
+    useApiStream(requestPath) {
+      const configured = mutationStates[requestPath] || {};
+      return {
+        loading: configured.loading ?? false,
+        start: configured.start || (async (payload, onEvent) => {
+          const events = configured.events || [{ phase: 'saved', record: configured.result ?? {} }];
+          for (const event of events) onEvent(event);
+          return events[events.length - 1];
+        }),
+      };
+    },
   };
   const sandbox = {
     module,
@@ -289,10 +302,15 @@ test('course creation modal keeps ingestion, explicit approval, and approved-onl
   const { DraftCourseModal } = loadComponent('app/prototype/Library.js', {
     expose: ['DraftCourseModal'],
     mutationStates: {
-      '/courses/draft': {
-        mutate: async (payload) => {
+      // Generation streams its progress; the modal reads the stream and takes
+      // the course from the terminal `saved` event.
+      '/courses/draft/stream': {
+        start: async (payload, onEvent) => {
           generationCalls.push(payload);
-          return { id: 'course-created', status: 'PENDING' };
+          const saved = { phase: 'saved', record: { id: 'course-created', status: 'PENDING' } };
+          onEvent({ phase: 'accepted' });
+          onEvent(saved);
+          return saved;
         },
       },
     },
@@ -302,7 +320,7 @@ test('course creation modal keeps ingestion, explicit approval, and approved-onl
       ['Objective one\nObjective two', () => {}],
       [['source-pending', 'source-approved'], () => {}],
       [null, () => {}],
-      [false, () => {}],
+      [null, () => {}],
       [null, () => {}],
     ],
   });
