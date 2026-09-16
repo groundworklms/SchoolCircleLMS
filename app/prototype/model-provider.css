@@ -75,3 +75,68 @@
 .model-provider-active {
   font-variant-numeric: tabular-nums;
 }
+
+/* --- the simple path: a clickable list of models --- */
+
+.model-provider-choices {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.model-provider-choice {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--p-surface, #fff);
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 0.7px rgba(0, 0, 0, 0.14);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* Selection has to be obvious at a glance for a non-expert. */
+.model-provider-choice:has(input:checked) {
+  box-shadow: inset 0 0 0 1.6px var(--p-accent, #0071e3);
+}
+
+.model-provider-choice input[type='radio'] {
+  width: auto;
+  margin: 0.15rem 0 0;
+  flex: none;
+}
+
+.model-provider-choice-body {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.model-provider-choice-name {
+  color: var(--p-text, #1d1d1f);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.model-provider-choice-hint {
+  color: var(--p-dim, #6e6e73);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+/* Advanced is a quiet link, not a button competing with "Use this model". */
+.model-provider-disclose {
+  margin-top: 0.7rem;
+  padding: 0;
+  color: var(--p-dim, #6e6e73);
+  background: none;
+  border: none;
+  font: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.model-provider-disclose:hover {
+  color: var(--p-text, #1d1d1f);
+}

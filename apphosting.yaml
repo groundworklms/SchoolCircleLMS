@@ -80,19 +80,39 @@ env:
     availability:
       - RUNTIME
 
-  # --- Generation provider. Deliberately NOT set here: the model is chosen at
-  # runtime in Settings -> Generation model and stored in the database, so it
-  # changes without a rollout (docs/generation-provider.md). Setting
-  # MODEL_BASE_URL/MODEL_ID here would only supply the fallback used before an
-  # operator has chosen one.
+  # --- Generation provider.
+  # The API key stays in Secret Manager; the MODEL is chosen at runtime in
+  # Settings -> Generation model and stored in the database, so switching models
+  # needs no rollout (docs/generation-provider.md).
   #
-  # These two enable the panel. Create both in Secret Manager and grant the App
-  # Hosting compute service account Secret Accessor, then uncomment:
+  # MODEL_API_KEY is the variable the transport reads. It is fed here by the
+  # existing OPENAI_API_KEY secret rather than a second copy of the same
+  # credential -- `secret:` names the Secret Manager entry, `variable:` names the
+  # environment variable it lands in.
+  - variable: MODEL_API_KEY
+    secret: OPENAI_API_KEY
+    availability:
+      - RUNTIME
+
+  # The default endpoint. An operator can point Settings at a different one
+  # (including a self-hosted model on the local network) without touching this.
+  - variable: MODEL_BASE_URL
+    value: https://api.openai.com/v1
+    availability:
+      - RUNTIME
+
+  # MODEL_ID is deliberately NOT set: leaving it unset means generation reports
+  # an explicit 503 until an operator picks a model in Settings, which is honest,
+  # rather than this file guessing a slug that may not exist on the account.
+  # The panel's "List available models" button reads the real catalogue using the
+  # key above.
+
+  # Optional. SETTINGS_ENCRYPTION_KEY is only needed to TYPE an API key into
+  # Settings; with the key supplied above it is unnecessary. MODEL_SETTINGS_KEY
+  # pins the operator passphrase from configuration instead of letting the first
+  # instructor claim one in the panel.
   #   gcloud secrets create SETTINGS_ENCRYPTION_KEY --data-file=- <<< "$(openssl rand -base64 32)"
   #   gcloud secrets create MODEL_SETTINGS_KEY --data-file=-
-  # SETTINGS_ENCRYPTION_KEY seals an operator-entered API key at rest; rotating
-  # it makes any stored key unreadable, which surfaces as an explicit 503 rather
-  # than a silent unauthenticated call.
   # - variable: SETTINGS_ENCRYPTION_KEY
   #   secret: SETTINGS_ENCRYPTION_KEY
   #   availability:
