@@ -20,9 +20,9 @@ for u in tutor-api tutor-gen tutor-embed tutor-rerank tutor-verify; do
   printf "  %-14s %s\n" "$u" "$(systemctl is-active $u 2>/dev/null)"
 done
 echo "== health =="
-echo -n "  "; curl -s --max-time 4 http://127.0.0.1:8000/api/health; echo
+echo -n "  "; curl -s --max-time 4 http://192.168.55.1:8000/api/health; echo
 echo "== corpus (expect TC 3-22.9 among the pubs) =="
-curl -s --max-time 4 http://127.0.0.1:8000/api/corpus | tr ',' '\n' | grep -i "3-22.9" | head -1 | sed 's/^/  /' || echo "  (could not read corpus)"
+curl -s --max-time 4 http://192.168.55.1:8000/api/corpus | tr ',' '\n' | grep -i "3-22.9" | head -1 | sed 's/^/  /' || echo "  (could not read corpus)"
 REMOTE
 
 echo "== done =="

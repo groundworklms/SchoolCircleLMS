@@ -1,4 +1,4 @@
-import { authoringRoute } from '../../../../lib/authoring/http.js';
+import { authoringRoute, retiredAuthoringRoute } from '../../../../lib/authoring/http.js';
 import { createAuthoringService } from '../../../../lib/authoring/service.js';
 
 export const runtime = 'nodejs';
@@ -9,7 +9,4 @@ export const GET = authoringRoute(
   ({ identity }) => service.listCourses(identity),
 );
 
-export const POST = authoringRoute(
-  { roles: ['INSTRUCTOR'] },
-  ({ identity, body }) => service.createCourse(identity, body),
-);
+export const POST = retiredAuthoringRoute();

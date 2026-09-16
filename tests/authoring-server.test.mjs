@@ -12,21 +12,25 @@ function copy(value) {
   return value === undefined ? undefined : structuredClone(value);
 }
 
-function memoryDb() {
+function memoryDb(initialRows = []) {
   let sequence = 0;
   const rows = [];
+  const seed = (data) => {
+    const now = new Date(++sequence);
+    const row = {
+      ...copy(data),
+      id: data.id || `record-${sequence}`,
+      version: data.version ?? 0,
+      createdAt: data.createdAt || now,
+      updatedAt: data.updatedAt || now,
+    };
+    rows.push(row);
+    return copy(row);
+  };
+  initialRows.forEach(seed);
   const learningRecord = {
     async create({ data }) {
-      const now = new Date(++sequence);
-      const row = {
-        ...copy(data),
-        id: `record-${sequence}`,
-        version: data.version ?? 0,
-        createdAt: now,
-        updatedAt: now,
-      };
-      rows.push(row);
-      return copy(row);
+      return seed(data);
     },
     async findUnique({ where }) {
       return copy(rows.find((row) => row.id === where.id) || null);
@@ -53,7 +57,7 @@ function memoryDb() {
       return callback(db);
     },
   };
-  return { db, rows };
+  return { db, rows, seed };
 }
 
 const validDraft = {
@@ -95,82 +99,152 @@ test('content validation is partial for drafts and strict for publication', () =
   );
 });
 
-test('authoring service enforces CAS, immutable releases, grading, retries, and archive restore', async () => {
-  const { db } = memoryDb();
-  const service = createAuthoringService({ db });
+test('manual writes are removed while seeded playback, grading, and results remain', async () => {
   const instructor = { id: 'instructor-1', role: 'INSTRUCTOR' };
   const learner = { id: 'learner-1', role: 'LEARNER' };
-  await assert.rejects(
-    service.createCourse(learner, { title: 'Not allowed' }),
-    (error) => error.code === 'FORBIDDEN',
-  );
+  const id = 'course-seeded';
+  const releaseId = 'release-seeded';
+  const { db } = memoryDb([
+    {
+      id,
+      ownerId: instructor.id,
+      type: 'MANUAL_COURSE',
+      status: 'PUBLISHED',
+      payload: { ...validDraft, publishedReleaseId: releaseId },
+    },
+    {
+      id: releaseId,
+      ownerId: instructor.id,
+      type: 'MANUAL_RELEASE',
+      status: 'PUBLISHED',
+      payload: { courseId: id, content: validDraft },
+    },
+  ]);
+  const seededService = createAuthoringService({ db });
+  assert.equal(seededService.createCourse, undefined);
+  assert.equal(seededService.saveCourse, undefined);
+  assert.equal(seededService.publishCourse, undefined);
+  assert.equal(seededService.archiveCourse, undefined);
 
-  const created = await service.createCourse(instructor, { title: validDraft.title });
-  const id = created.course.id;
-  const saved = await service.saveCourse(instructor, {
-    params: { id },
-    body: { version: 0, draft: validDraft },
-  });
-  await assert.rejects(
-    service.saveCourse(instructor, { params: { id }, body: { version: 0, draft: validDraft } }),
-    (error) => error.code === 'CONFLICT',
-  );
-  const published = await service.publishCourse(instructor, {
-    params: { id },
-    body: { version: saved.course.version },
-  });
-  const releaseId = published.course.publishedReleaseId;
-  const before = await service.getLibrary(learner, { params: { id }, query: { releaseId } });
+  const course = await seededService.getCourse(instructor, { params: { id } });
+  assert.equal(course.course.status, 'PUBLISHED');
+  assert.equal((await seededService.listCourses(instructor)).courses[0].id, id);
+
+  const before = await seededService.getLibrary(learner, { params: { id }, query: { releaseId } });
   assert.equal(before.release.content.lessons[0].blocks[1].correctOptionId, undefined);
 
-  const wrong = await service.submitAttempt(learner, {
+  const wrong = await seededService.submitAttempt(learner, {
     params: { id },
     body: { releaseId, blockId: 'check-1', optionId: 'option-2', attemptId: 'attempt-1' },
   });
   assert.equal(wrong.result.correct, false);
-  const retry = await service.submitAttempt(learner, {
+  const retry = await seededService.submitAttempt(learner, {
     params: { id },
     body: { releaseId, blockId: 'check-1', optionId: 'option-2', attemptId: 'attempt-1' },
   });
   assert.deepEqual(retry.result, wrong.result);
-  const aggregate = await service.getResults(instructor, { params: { id } });
+  const aggregate = await seededService.getResults(instructor, { params: { id } });
   assert.equal(aggregate.results.learners, 1);
   assert.equal(aggregate.results.blocks.find((block) => block.blockId === 'check-1').accuracy, null);
   await assert.rejects(
-    service.getResults(learner, { params: { id } }),
+    seededService.getResults(learner, { params: { id } }),
     (error) => error.code === 'FORBIDDEN',
   );
   await assert.rejects(
-    service.submitAttempt(learner, {
+    seededService.submitAttempt(learner, {
       params: { id },
       body: { releaseId, blockId: 'check-1', optionId: 'option-1', attemptId: 'attempt-1' },
     }),
     (error) => error.code === 'CONFLICT',
   );
   await assert.rejects(
-    service.completeBlock(learner, { params: { id }, body: { releaseId, blockId: 'check-1' } }),
+    seededService.completeBlock(learner, { params: { id }, body: { releaseId, blockId: 'check-1' } }),
     (error) => error.code === 'BAD_REQUEST',
   );
-  const edited = await service.saveCourse(instructor, {
-    params: { id },
+  assert.equal((await seededService.listLibrary()).courses[0].title, validDraft.title);
+  const pinned = await seededService.getLibrary(learner, { params: { id }, query: { releaseId } });
+  assert.equal(pinned.release.id, releaseId);
+});
+
+test('release-pinned attempts grade the latest snapshot without rewriting old evidence', async () => {
+  const instructor = { id: 'release-instructor', role: 'INSTRUCTOR' };
+  const learner = { id: 'release-learner', role: 'LEARNER' };
+  const courseId = 'release-course';
+  const oldReleaseId = 'release-course:release:old';
+  const latestReleaseId = 'release-course:release:latest';
+  const latestDraft = {
+    ...validDraft,
+    title: 'Latest navigation',
+    lessons: [{
+      ...validDraft.lessons[0],
+      blocks: validDraft.lessons[0].blocks.map((block) =>
+        block.id === 'check-1' ? { ...block, explanation: 'The latest release is correct.' } : block),
+    }],
+  };
+  const { db } = memoryDb([
+    {
+      id: courseId,
+      ownerId: instructor.id,
+      type: 'MANUAL_COURSE',
+      status: 'PUBLISHED',
+      payload: { ...latestDraft, publishedReleaseId: latestReleaseId },
+    },
+    {
+      id: oldReleaseId,
+      ownerId: instructor.id,
+      type: 'MANUAL_RELEASE',
+      status: 'PUBLISHED',
+      payload: { courseId, content: validDraft },
+    },
+    {
+      id: latestReleaseId,
+      ownerId: instructor.id,
+      type: 'MANUAL_RELEASE',
+      status: 'PUBLISHED',
+      payload: { courseId, content: latestDraft },
+    },
+  ]);
+  const service = createAuthoringService({ db });
+
+  const oldAttempt = await service.submitAttempt(learner, {
+    params: { id: courseId },
     body: {
-      version: published.course.version,
-      draft: { ...validDraft, title: 'A newer draft title' },
+      releaseId: oldReleaseId,
+      blockId: 'check-1',
+      optionId: 'option-2',
+      attemptId: 'old-release-attempt',
     },
   });
-  assert.equal((await service.listLibrary()).courses[0].title, validDraft.title);
+  const latestAttempt = await service.submitAttempt(learner, {
+    params: { id: courseId },
+    body: {
+      releaseId: latestReleaseId,
+      blockId: 'check-1',
+      optionId: 'option-1',
+      attemptId: 'latest-release-attempt',
+    },
+  });
+  assert.equal(oldAttempt.result.correct, false);
+  assert.equal(latestAttempt.result.correct, true);
 
-  const archived = await service.archiveCourse(instructor, {
-    params: { id },
-    body: { version: edited.course.version, archived: true },
+  const oldView = await service.getLibrary(learner, {
+    params: { id: courseId },
+    query: { releaseId: oldReleaseId },
   });
-  assert.equal(archived.course.status, 'ARCHIVED');
-  await assert.rejects(service.getLibrary(learner, { params: { id }, query: {} }), (error) => error.code === 'NOT_FOUND');
-  const restored = await service.archiveCourse(instructor, {
-    params: { id },
-    body: { version: archived.course.version, archived: false },
+  const latestView = await service.getLibrary(learner, {
+    params: { id: courseId },
+    query: {},
   });
-  assert.equal(restored.course.status, 'PUBLISHED');
-  const pinned = await service.getLibrary(learner, { params: { id }, query: { releaseId } });
-  assert.equal(pinned.release.id, releaseId);
+  assert.equal(oldView.release.content.title, validDraft.title);
+  assert.equal(latestView.release.content.title, latestDraft.title);
+
+  const attempts = await db.learningRecord.findMany({
+    where: { ownerId: learner.id, type: 'MANUAL_ATTEMPT' },
+  });
+  assert.deepEqual(
+    attempts.map((row) => [row.payload.releaseId, row.payload.result.correct]),
+    [[oldReleaseId, false], [latestReleaseId, true]],
+  );
+  const results = await service.getResults(instructor, { params: { id: courseId } });
+  assert.equal(results.results.blocks.find((block) => block.blockId === 'check-1').responses, 1);
 });

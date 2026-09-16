@@ -5,15 +5,21 @@ import {
   createLearningRecord,
   createLearningEvidenceStore,
   db,
+  getLearningRecord,
+  updateLearningRecordIfVersion,
 } from '../lib/db.js';
 import {
   approveCourse,
+  approveMasteryPlan,
   approveRubric,
+  generateMasteryPlan,
   getMasterySession,
+  getCourse,
   getSource,
   listCourses,
   listMasterySessions,
   listSources,
+  masteryTurn,
 } from '../lib/learning/core.js';
 import { createEvidenceHandlers } from '../lib/learning/evidence.js';
 import { errorStatus } from '../lib/learning/http.js';
@@ -76,7 +82,13 @@ test(
       payload: {
         title: `Pending ${suffix}`,
         sourceIds: [approvedSource.id],
-        sections: [{ title: 'Aiming', cite: `${approvedSource.id} p.1`, lesson: 'A cited lesson.', pre: [{ stem: 'Before?', options: ['A', 'B'], answer: 0 }] }],
+        sections: [{
+          title: 'Source text',
+          cite: `${approvedSource.id} p.1`,
+          lesson: 'Approved fixture source text.',
+          pre: [{ stem: 'Which approved fixture source text applies?', options: ['Approved fixture source text.', 'Unapproved reference.'], answer: 0 }],
+          post: [{ stem: 'Identify the approved fixture source text.', options: ['Approved fixture source text.', 'Unapproved reference.'], answer: 0 }],
+        }],
       },
     });
     records.push(pendingCourse);
@@ -91,6 +103,7 @@ test(
           {
             title: 'Lesson',
             lesson: 'A cited lesson.',
+            cite: 'fixture-approved-source',
             pre: [{ stem: 'Before?', options: ['A', 'B'], answer: 0 }],
             post: [{ stem: 'After?', options: ['A', 'B'], answer: 0 }],
           },
@@ -172,7 +185,7 @@ test(
       for (let pass = 0; pass < 2; pass += 1) {
         const approved = await approveCourse(instructor, { params: { id: pendingCourse.id } });
         assert.equal(approved.json.status, 'APPROVED');
-        assert.deepEqual(approved.json.materialised, { courseId: pendingCourse.id, sections: 1, items: 2 });
+        assert.deepEqual(approved.json.materialised, { courseId: pendingCourse.id, sections: 1, items: 3 });
       }
       const typed = await db.course.findUnique({
         where: { id: pendingCourse.id },
@@ -180,13 +193,308 @@ test(
       });
       assert.equal(typed.sourceId, `fixture-approved-source-${suffix}`);
       assert.equal(typed.sections.length, 1);
-      assert.deepEqual(typed.sections[0].items.map((item) => [item.kind, item.status]), [['LESSON', 'APPROVED'], ['QUESTION', 'APPROVED']]);
+      assert.deepEqual(typed.sections[0].items.map((item) => [item.kind, item.status]), [['LESSON', 'APPROVED'], ['QUESTION', 'APPROVED'], ['QUESTION', 'APPROVED']]);
       assert.equal(typed.sections[0].items[0].citation.pubId, `fixture-approved-source-${suffix}`);
       assert.equal(await status(approveCourse(learner, { params: { id: pendingCourse.id } })), 404);
     } finally {
       await db.course.deleteMany({ where: { id: pendingCourse.id } });
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((entry) => entry.id) } } });
       await db.user.deleteMany({ where: { id: { in: [instructorRow.id, learnerRow.id] } } });
+    }
+  },
+);
+
+test(
+  'shared plan handlers enforce owner/source/duplicate/CAS and revision guards',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `${Date.now()}-plan-${process.pid}`;
+    const users = await Promise.all([
+      db.user.create({
+        data: { name: `Plan Instructor ${suffix}`, role: 'INSTRUCTOR', externalId: `plan-i-${suffix}` },
+      }),
+      db.user.create({
+        data: { name: `Other Instructor ${suffix}`, role: 'INSTRUCTOR', externalId: `plan-o-${suffix}` },
+      }),
+      db.user.create({
+        data: { name: `Plan Learner ${suffix}`, role: 'LEARNER', externalId: `plan-l-${suffix}` },
+      }),
+    ]);
+    const [instructorRow, otherInstructorRow, learnerRow] = users;
+    const instructor = { id: instructorRow.id, role: 'INSTRUCTOR' };
+    const otherInstructor = { id: otherInstructorRow.id, role: 'INSTRUCTOR' };
+    const learner = { id: learnerRow.id, role: 'LEARNER' };
+    const records = [];
+    const source = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Plan source ${suffix}`,
+        sourceId: `plan-source-${suffix}`,
+        text: 'Safety check before operation.',
+        pages: [{ page: 1, text: 'Safety check before operation.' }],
+        chunks: [{ page: 1, text: 'Safety check before operation.' }],
+      },
+    });
+    const secondSource = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Second plan source ${suffix}`,
+        sourceId: `second-plan-source-${suffix}`,
+        text: 'Operation sequence follows the safety check.',
+        pages: [{ page: 1, text: 'Operation sequence follows the safety check.' }],
+        chunks: [{ page: 1, text: 'Operation sequence follows the safety check.' }],
+      },
+    });
+    const pendingSource = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'PENDING',
+      payload: {
+        title: `Pending plan source ${suffix}`,
+        sourceId: `pending-plan-source-${suffix}`,
+        text: 'Pending source text.',
+        pages: [{ page: 1, text: 'Pending source text.' }],
+        chunks: [{ page: 1, text: 'Pending source text.' }],
+      },
+    });
+    records.push(source, secondSource, pendingSource);
+    const approvedPlan = {
+      status: 'APPROVED',
+      sourceId: secondSource.id,
+      revision: 'approved-plan-revision',
+      criteria: [
+        {
+          elo: 'Operation',
+          indicators: {
+            developing: 'Names operation',
+            competent: 'Explains operation',
+            mastered: 'Performs operation',
+          },
+        },
+        {
+          elo: 'Safety check',
+          indicators: {
+            developing: 'Names safety check',
+            competent: 'Explains safety check',
+            mastered: 'Uses safety check',
+          },
+        },
+      ],
+    };
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      status: 'APPROVED',
+      payload: {
+        title: `Plan course ${suffix}`,
+        sourceIds: [source.id, secondSource.id],
+        masteryPlan: { ...approvedPlan, status: 'PENDING' },
+      },
+    });
+    const noPlanCourse = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      status: 'APPROVED',
+      payload: { title: `No plan ${suffix}`, sourceIds: [source.id] },
+    });
+    const pendingCourse = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      status: 'APPROVED',
+      payload: { title: `Pending source ${suffix}`, sourceIds: [pendingSource.id] },
+    });
+    records.push(course, noPlanCourse, pendingCourse);
+    const mismatchedSession = await createLearningRecord({
+      ownerId: learner.id,
+      type: 'MASTERY_SESSION',
+      status: 'ACTIVE',
+      payload: {
+        courseId: course.id,
+        sourceId: secondSource.id,
+        masteryPlanRevision: 'stale-plan-revision',
+        complete: true,
+        currentQuestion: null,
+        rubric: approvedPlan.criteria,
+        criteria: [],
+        report: { complete: true, criteria: [] },
+        transcript: [],
+      },
+    });
+    records.push(mismatchedSession);
+    try {
+      assert.equal(
+        await status(generateMasteryPlan(otherInstructor, { params: { id: course.id }, body: { sourceId: source.id } })),
+        404,
+      );
+      assert.equal(
+        await status(generateMasteryPlan(instructor, { params: { id: noPlanCourse.id }, body: { sourceId: secondSource.id } })),
+        404,
+      );
+      assert.equal(
+        await status(generateMasteryPlan(instructor, { params: { id: pendingCourse.id }, body: { sourceId: pendingSource.id } })),
+        404,
+      );
+      assert.equal(
+        await status(generateMasteryPlan(instructor, { params: { id: course.id }, body: { sourceId: source.id } })),
+        409,
+      );
+
+      const before = await getLearningRecord(noPlanCourse.id);
+      assert.equal(
+        await updateLearningRecordIfVersion(noPlanCourse.id, before.version, {
+          payload: { ...before.payload, touched: true },
+        }),
+        true,
+      );
+      assert.equal(
+        await updateLearningRecordIfVersion(noPlanCourse.id, before.version, {
+          payload: before.payload,
+        }),
+        false,
+      );
+
+      const pendingView = await getCourse(learner, { params: { id: course.id } });
+      assert.equal(pendingView.json.course.masteryPlan, undefined);
+      await updateLearningRecordIfVersion(course.id, (await getLearningRecord(course.id)).version, {
+        payload: { ...course.payload, masteryPlan: approvedPlan },
+      });
+      const approvedView = await getCourse(learner, { params: { id: course.id } });
+      assert.deepEqual(approvedView.json.course.masteryPlan, {
+        status: 'APPROVED',
+        sourceId: secondSource.id,
+        revision: approvedPlan.revision,
+      });
+
+      assert.equal(
+        await status(
+          masteryTurn(learner, { params: { id: mismatchedSession.id }, body: { answer: 'ignored' } }),
+        ),
+        409,
+      );
+    } finally {
+      await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
+      await db.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });
+    }
+  },
+);
+
+test(
+  'BOTH owners keep authoring access while cross-owner views stay learner-safe',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `${Date.now()}-both-plan-${process.pid}`;
+    const users = await Promise.all([
+      db.user.create({
+        data: { name: `Both Plan Owner ${suffix}`, role: 'BOTH', externalId: `both-plan-owner-${suffix}` },
+      }),
+      db.user.create({
+        data: { name: `Other Both Viewer ${suffix}`, role: 'BOTH', externalId: `both-plan-viewer-${suffix}` },
+      }),
+    ]);
+    const [ownerRow, otherRow] = users;
+    const owner = { id: ownerRow.id, role: 'BOTH' };
+    const other = { id: otherRow.id, role: 'BOTH' };
+    const records = [];
+    const source = await createLearningRecord({
+      ownerId: owner.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Both plan source ${suffix}`,
+        sourceId: `both-plan-source-${suffix}`,
+        text: 'Operation follows the safety check before operation.',
+        pages: [{ page: 1, text: 'Operation follows the safety check before operation.' }],
+        chunks: [{ page: 1, text: 'Operation follows the safety check before operation.' }],
+      },
+    });
+    records.push(source);
+    const pendingPlan = {
+      status: 'PENDING',
+      sourceId: source.id,
+      revision: `both-plan-revision-${suffix}`,
+      criteria: [
+        {
+          elo: 'Operation',
+          indicators: {
+            developing: 'Names the operation.',
+            competent: 'Explains the operation.',
+            mastered: 'Performs the operation.',
+          },
+        },
+        {
+          elo: 'Safety check',
+          indicators: {
+            developing: 'Names the safety check.',
+            competent: 'Explains the safety check.',
+            mastered: 'Uses the safety check.',
+          },
+        },
+      ],
+    };
+    const course = await createLearningRecord({
+      ownerId: owner.id,
+      type: 'COURSE_DRAFT',
+      status: 'APPROVED',
+      payload: {
+        title: `Both plan course ${suffix}`,
+        sourceIds: [source.id],
+        sections: [{
+          title: 'Operation',
+          lesson: 'Operation follows the safety check.',
+          pre: [{
+            stem: 'What follows the safety check?',
+            options: ['Operation', 'Nothing'],
+            answer: 0,
+            indicators: { mastered: 'Performs operation.' },
+          }],
+        }],
+        masteryPlan: pendingPlan,
+      },
+    });
+    records.push(course);
+
+    try {
+      // The duplicate guard proves an owning BOTH identity reaches generation
+      // without making a paid model call.
+      assert.equal(
+        await status(
+          generateMasteryPlan(owner, {
+            params: { id: course.id },
+            body: { sourceId: source.id },
+          }),
+        ),
+        409,
+      );
+
+      const approved = await approveMasteryPlan(owner, {
+        params: { id: course.id },
+        body: { revision: pendingPlan.revision },
+      });
+      assert.equal(approved.json.masteryPlan.status, 'APPROVED');
+
+      const ownView = await getCourse(owner, { params: { id: course.id } });
+      assert.equal(ownView.json.course.sections[0].pre[0].answer, 0);
+      assert.equal(
+        ownView.json.course.masteryPlan.criteria[0].indicators.mastered,
+        'Performs the operation.',
+      );
+
+      const crossOwnerView = await getCourse(other, { params: { id: course.id } });
+      assert.deepEqual(crossOwnerView.json.course.masteryPlan, {
+        status: 'APPROVED',
+        sourceId: source.id,
+        revision: pendingPlan.revision,
+      });
+      assert.equal(crossOwnerView.json.course.sections[0].pre[0].answer, undefined);
+      assert.equal(crossOwnerView.json.course.sections[0].pre[0].indicators, undefined);
+      assert.equal(JSON.stringify(crossOwnerView).includes('Performs the operation.'), false);
+    } finally {
+      await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
+      await db.user.deleteMany({ where: { id: { in: users.map((user) => user.id) } } });
     }
   },
 );

@@ -1,7 +1,5 @@
 import { isProfileComplete } from '../../lib/profile-options.js';
-
-const LEARNER_ROLES = new Set(['LEARNER', 'BOTH']);
-const INSTRUCTOR_ROLES = new Set(['INSTRUCTOR', 'BOTH']);
+import { canAccessLocation, parse } from '../prototype/routes.js';
 
 function cleanPath(value) {
   if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return null;
@@ -17,22 +15,13 @@ function pathPart(value) {
   return path;
 }
 
-function isPath(path, root) {
-  return path === root || path.startsWith(`${root}/`);
-}
-
-function roleAllows(profile, role) {
-  if (role === 'instructor') return INSTRUCTOR_ROLES.has(profile?.role);
-  if (role === 'learner') return LEARNER_ROLES.has(profile?.role);
-  return false;
-}
-
 /**
  * The destination for a profile with no explicit same-site deep link.
  * Incomplete profiles always enter the AuthGuard-owned prototype onboarding
  * page; that page can then redirect to the selected role's shell. Completed
  * profiles land in the role's shell of the one app (see prototype/nav.js):
- * instructors in the builder, learners (and BOTH) on the student dashboard.
+ * instructors in the course library, learners (and BOTH) on the student
+ * dashboard.
  */
 export function getDefaultDestination(profile) {
   if (!isProfileComplete(profile)) return '/prototype';
@@ -48,14 +37,11 @@ export function isSafeDeepLink(next, profile) {
   if (!isProfileComplete(profile)) return false;
   const path = pathPart(next);
   if (!path) return false;
-
-  // /teach and /learn are the legacy entry points; they redirect into the
-  // prototype shells, so they stay accepted here with the same role rules.
-  if (isPath(path, '/teach')) return roleAllows(profile, 'instructor');
-  if (isPath(path, '/learn')) return roleAllows(profile, 'learner');
-  if (isPath(path, '/prototype/instructor')) return roleAllows(profile, 'instructor');
-  if (isPath(path, '/prototype')) return roleAllows(profile, 'learner');
-  return false;
+  const location = parse(path);
+  if (location.area === 'not-found') return false;
+  // `canAccessLocation` contains the one intentional exception: an
+  // instructor may preview only the published reader or student library.
+  return canAccessLocation(profile, location, true);
 }
 
 /**
