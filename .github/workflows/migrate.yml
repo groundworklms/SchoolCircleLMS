@@ -65,9 +65,15 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Fetch DATABASE_URL from Secret Manager
+      # The secret carries user/password/database for App Hosting, where the host is
+      # ignored (lib/db.js goes through the Cloud SQL connector). Prisma's CLI does
+      # NOT: db:deploy and migrate diff connect to whatever host the URL names, so
+      # point it at the proxy started below. Both values are masked.
+      - name: Fetch DATABASE_URL from Secret Manager and route it through the proxy
         run: |
-          URL="$(gcloud secrets versions access latest --secret=DATABASE_URL --project "$GCP_PROJECT")"
+          RAW="$(gcloud secrets versions access latest --secret=DATABASE_URL --project "$GCP_PROJECT")"
+          echo "::add-mask::$RAW"
+          URL="$(node -e 'const u = new URL(process.argv[1]); u.hostname = "127.0.0.1"; u.port = "5433"; process.stdout.write(u.href);' "$RAW")"
           echo "::add-mask::$URL"
           echo "DATABASE_URL=$URL" >> "$GITHUB_ENV"
 
