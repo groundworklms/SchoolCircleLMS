@@ -1,7 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { COURSES } from './data';
+import { usePrefs, setPref } from './prefs';
+
+const ME = 'Cpl Rivera';
 
 /* Student inbox. Message list + reading pane. Everything here is mock — the
    point is what lands in a Marine's inbox: instructor announcements, reminders
@@ -136,7 +139,26 @@ const FILTERS = [
   { id: 'reminder', label: 'Reminders' },
 ];
 
-export default function StudentInbox({ onOpen, onArea, msgs, onMarkRead }) {
+/* Read state (and instructor messages themselves) live in prefs so a read
+   receipt is real — the rail's unread badge, the inbox list, and reopening
+   the app all agree, instead of resetting whenever this component remounts. */
+export function useInboxMessages() {
+  const prefs = usePrefs();
+  const fromInstructors = useMemo(
+    () => (prefs.inboxMessages || []).filter((m) => (m.recipients || []).includes(ME)),
+    [prefs.inboxMessages]
+  );
+  const readIds = prefs.readMessageIds || [];
+  return useMemo(
+    () => [...fromInstructors, ...MESSAGES].map((m) => (m.unread && readIds.includes(m.id) ? { ...m, unread: false } : m)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [fromInstructors, readIds.join(',')]
+  );
+}
+
+export default function StudentInbox({ onOpen, onArea }) {
+  const prefs = usePrefs();
+  const msgs = useInboxMessages();
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [reply, setReply] = useState('');
@@ -152,7 +174,8 @@ export default function StudentInbox({ onOpen, onArea, msgs, onMarkRead }) {
   const openMsg = (id) => {
     setSelectedId(id);
     setReply('');
-    onMarkRead(id);
+    const cur = prefs.readMessageIds || [];
+    if (!cur.includes(id)) setPref('readMessageIds', [...cur, id]);
   };
 
   const act = (a) => {

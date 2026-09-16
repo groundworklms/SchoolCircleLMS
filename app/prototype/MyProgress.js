@@ -7,7 +7,7 @@ import { band, MasteryPanel } from './shared';
 // without randomness (which would break SSR hydration).
 const MY_OFFSETS = [-3, 6, -9, 4, -14, 8, -6, 11];
 
-function MyProgress({ course }) {
+function MyProgress({ course, go }) {
   const mine = useMemo(
     () =>
       course.topics.map((t, i) => ({
@@ -80,7 +80,7 @@ function MyProgress({ course }) {
                 <span style={{ color: 'var(--p-faint)', fontSize: '0.9em' }}> — {t.mastery}%</span>
               </span>
               <span className="p-plnote">
-                <button className="p-btn ghost" style={{ fontSize: '0.85em', padding: '0.15rem 0.6rem' }}>
+                <button className="p-btn ghost" style={{ fontSize: '0.85em', padding: '0.15rem 0.6rem' }} onClick={() => go('materials')}>
                   Practice set
                 </button>
               </span>

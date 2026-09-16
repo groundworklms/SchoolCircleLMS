@@ -34,6 +34,54 @@
   -webkit-font-smoothing: antialiased;
 }
 
+/* Dark theme (Settings → Display → Theme, #51). Explicit choice always wins;
+   "Match system" (no data-theme attribute) follows prefers-color-scheme. */
+html[data-theme="dark"] .p-root,
+html:not([data-theme="light"]):not([data-theme="dark"]) .p-root {
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) .p-root { color-scheme: light; }
+}
+html[data-theme="dark"] .p-root {
+  --p-bg: #1c1c1e;
+  --p-surface: #2c2c2e;
+  --p-surface-2: #3a3a3c;
+  --p-border: rgba(255, 255, 255, 0.10);
+  --p-border-soft: rgba(255, 255, 255, 0.07);
+  --p-text: #f5f5f7;
+  --p-dim: #a1a1a6;
+  --p-faint: #8e8e93;
+  --p-rail: rgba(28, 28, 30, 0.72);
+  --p-accent-tint: rgba(224, 51, 79, 0.16);
+  --p-good: #3ac262;
+  --p-warning: #e0983a;
+  --p-critical: #ff7a45;
+  --p-critical-tint: rgba(255, 122, 69, 0.12);
+  --p-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
+  --p-shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]):not([data-theme="dark"]) .p-root {
+    --p-bg: #1c1c1e;
+    --p-surface: #2c2c2e;
+    --p-surface-2: #3a3a3c;
+    --p-border: rgba(255, 255, 255, 0.10);
+    --p-border-soft: rgba(255, 255, 255, 0.07);
+    --p-text: #f5f5f7;
+    --p-dim: #a1a1a6;
+    --p-faint: #8e8e93;
+    --p-rail: rgba(28, 28, 30, 0.72);
+    --p-accent-tint: rgba(224, 51, 79, 0.16);
+    --p-good: #3ac262;
+    --p-warning: #e0983a;
+    --p-critical: #ff7a45;
+    --p-critical-tint: rgba(255, 122, 69, 0.12);
+    --p-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
+    --p-shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  }
+}
+
 /* ---------- prototype banner ---------- */
 .p-banner {
   display: flex;
