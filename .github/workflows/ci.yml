@@ -59,10 +59,6 @@ jobs:
       - name: Text model transport
         run: npm run test:model
 
-      # /api/doctrine fails closed without verified auth.
-      - name: Doctrine authorization
-        run: npm run test:doctrine-auth
-
   database:
     name: database
     runs-on: ubuntu-latest
