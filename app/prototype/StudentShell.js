@@ -10,7 +10,7 @@ import StudyMaterials from './StudyMaterials';
 import LiveSession from './LiveSession';
 import MyProgress from './MyProgress';
 import StudentCalendar from './StudentCalendar';
-import StudentInbox from './StudentInbox';
+import StudentInbox, { useInboxMessages } from './StudentInbox';
 import Assignments, { dueSoon } from './Assignments';
 import Lessons, { currentLesson } from './Lessons';
 import CourseChat from './CourseChat';
@@ -399,6 +399,7 @@ export default function StudentShell({ nav, onSwitchRole }) {
   const { area, courseId, view, lessonId, page, threadId } = nav;
   const prefs = usePrefs();
   const course = courseId ? COURSES[courseId] : null;
+  const inboxUnread = useInboxMessages().filter((m) => m.unread).length;
 
   // Remember the lesson + page you were on per course, so leaving Lessons for
   // another screen and coming back resumes where you left off instead of the
@@ -458,7 +459,7 @@ export default function StudentShell({ nav, onSwitchRole }) {
         <RailButton icon={I.dashboard} label="Dashboard" on={area === 'dashboard'} onClick={() => setArea('dashboard')} />
         <RailButton icon={I.courses} label="Courses" on={area === 'courses'} onClick={() => setArea('courses')} />
         <RailButton icon={I.calendar} label="Calendar" on={area === 'calendar'} onClick={() => setArea('calendar')} />
-        <RailButton icon={I.inbox} label="Inbox" on={area === 'inbox'} onClick={() => setArea('inbox')} badge={2} />
+        <RailButton icon={I.inbox} label="Inbox" on={area === 'inbox'} onClick={() => setArea('inbox')} badge={inboxUnread} />
 
         {area === 'course' && course ? (
           <>

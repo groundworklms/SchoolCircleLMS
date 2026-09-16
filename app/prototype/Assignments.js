@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { usePrefs, setPref } from './prefs';
 
 /* Student · Assignments for one course. Mock, like the rest of the student
    side. Instructor-assigned work with due dates, status, and grades — the
@@ -151,10 +152,70 @@ function dueSoon(courseId, n = 3) {
   return (ASSIGNMENTS[courseId] || []).filter(isOpen).sort((a, b) => a.due.localeCompare(b.due)).slice(0, n);
 }
 
+/* Student's own submissions overlay a course's static assignment list —
+   status, response text, and attached file names — same localStorage-backed
+   pattern as Discussions, since there is no backend yet. */
+function useSubmissions(course) {
+  const prefs = usePrefs();
+  const local = prefs.submissions?.[course.id] || {};
+  const save = (id, patch) => setPref(`submissions.${course.id}`, { ...local, [id]: { ...(local[id] || {}), ...patch } });
+  return { local, save };
+}
+
+/* Inline "start" flow: type a response and/or attach files, then submit —
+   moves the assignment to the Submitted tab. */
+function Composer({ a, onSubmit, onCancel }) {
+  const [response, setResponse] = useState('');
+  const [files, setFiles] = useState([]);
+  const fileInput = useRef(null);
+
+  const addFiles = (list) => {
+    const picked = Array.from(list || []);
+    if (picked.length) setFiles((f) => [...f, ...picked.map((file) => file.name)]);
+  };
+
+  return (
+    <div className="s-asg-composer">
+      <textarea
+        rows={4}
+        placeholder="Type your response here, or attach a file below."
+        value={response}
+        onChange={(e) => setResponse(e.target.value)}
+      />
+      {files.length > 0 && (
+        <div className="s-asg-files">
+          {files.map((name, i) => (
+            <div className="p-filerow" key={`${name}-${i}`}>
+              <span>📎</span>
+              <span className="p-fname">{name}</span>
+              <button className="p-btn ghost" onClick={() => setFiles((f) => f.filter((_, j) => j !== i))}>Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <input ref={fileInput} type="file" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
+      <div className="p-btnrow" style={{ marginTop: '0.7rem' }}>
+        <button className="p-btn" disabled={!response.trim() && files.length === 0} onClick={() => onSubmit({ response: response.trim(), files })}>
+          Submit assignment
+        </button>
+        <button className="p-btn ghost" onClick={() => fileInput.current?.click()}>Attach files</button>
+        <button className="p-btn ghost" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 function Assignments({ course, go }) {
-  const list = ASSIGNMENTS[course.id] || [];
+  const baseList = ASSIGNMENTS[course.id] || [];
+  const { local: submissions, save: saveSubmission } = useSubmissions(course);
+  const list = baseList.map((a) => {
+    const s = submissions[a.id];
+    if (!s) return a;
+    return { ...a, status: 'submitted', submitted: s.submittedAt, response: s.response, files: s.files, feedback: a.feedback };
+  });
   const [tab, setTab] = useState('open');
   const [openId, setOpenId] = useState(null);
+  const [composingId, setComposingId] = useState(null);
 
   const shown = list
     .filter((a) => (tab === 'all' ? true : tab === 'open' ? isOpen(a) : a.status === tab))
@@ -263,17 +324,39 @@ function Assignments({ course, go }) {
                         {a.feedback}
                       </div>
                     )}
-                    {a.status === 'submitted' && !a.feedback && <p className="p-src">Submitted {a.submitted}. Waiting on the instructor.</p>}
-                    <div className="p-btnrow" style={{ marginTop: '0.8rem' }}>
-                      {isOpen(a) && <button className="p-btn">{a.status === 'in-progress' ? 'Continue' : 'Start'}</button>}
-                      {isOpen(a) && <button className="p-btn ghost">Upload file</button>}
-                      {a.view && (
-                        <button className="p-btn ghost" onClick={() => go(a.view)}>
-                          Open Study Materials
-                        </button>
-                      )}
-                      {a.status === 'graded' && <button className="p-btn ghost">View submission</button>}
-                    </div>
+                    {a.status === 'submitted' && !a.feedback && (
+                      <p className="p-src">
+                        Submitted {a.submitted}. Waiting on the instructor.
+                        {a.response && <><br />Your response: “{a.response}”</>}
+                        {a.files?.length > 0 && <><br />Attached: {a.files.join(', ')}</>}
+                      </p>
+                    )}
+
+                    {composingId === a.id ? (
+                      <Composer
+                        a={a}
+                        onCancel={() => setComposingId(null)}
+                        onSubmit={({ response, files }) => {
+                          saveSubmission(a.id, { submittedAt: 'Just now', response, files });
+                          setComposingId(null);
+                          setTab('submitted');
+                        }}
+                      />
+                    ) : (
+                      <div className="p-btnrow" style={{ marginTop: '0.8rem' }}>
+                        {isOpen(a) && (
+                          <button className="p-btn" onClick={() => setComposingId(a.id)}>
+                            {a.status === 'in-progress' ? 'Continue' : 'Start'}
+                          </button>
+                        )}
+                        {a.view && (
+                          <button className="p-btn ghost" onClick={() => go(a.view)}>
+                            Open Study Materials
+                          </button>
+                        )}
+                        {a.status === 'graded' && <button className="p-btn ghost">View submission</button>}
+                      </div>
+                    )}
                   </div>
                 )}
               </li>
