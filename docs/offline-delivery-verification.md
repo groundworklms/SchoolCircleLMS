@@ -47,7 +47,7 @@ silently relabeled as Anchor. No report can set `offlineSuccess: true`.
   network interruption; a recovery path that does not depend on the pulled link.
 - Device powered and physically connected; approved private SSH/tunnel access.
   Obtain the current procedure from the owner. Do not reuse archived usernames,
-  keys or addresses from `.migration-backup/ops/{orin-check,tunnel}.sh`.
+  keys or addresses from `ops/{orin-check,tunnel}.sh`.
 - Anchor retrieval, generation, embedding, reranking and verification services
   inspected in **one authorized remote session**. Record only role and
   active/inactive state. HHEM can fail open: unavailable verification must be
