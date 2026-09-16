@@ -9,6 +9,7 @@ import Curriculum from './Curriculum';
 import LiveControl from './LiveControl';
 import Mastery from './Mastery';
 import AAR from './AAR';
+import Roster from './Roster';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
 
@@ -20,13 +21,14 @@ const INSTRUCTOR = { name: 'SSgt Okafor', initials: 'SO', role: 'Instructor' };
 
 const VIEWS = [
   { id: 'builder', label: 'Curriculum' },
+  { id: 'roster', label: 'Roster' },
   { id: 'control', label: 'Run Live Session' },
   { id: 'mastery', label: 'Class Mastery' },
   { id: 'aar', label: 'Course AAR' },
   { id: 'settings', label: 'Course settings' },
 ];
 
-const SCREENS = { builder: Curriculum, control: LiveControl, mastery: Mastery, aar: AAR, settings: InstructorSettings };
+const SCREENS = { builder: Curriculum, roster: Roster, control: LiveControl, mastery: Mastery, aar: AAR, settings: InstructorSettings };
 
 export default function InstructorShell({ nav, onSwitchRole }) {
   const { ready: authReady, profile, signOut, signOutError } = useAuth();
@@ -116,7 +118,7 @@ export default function InstructorShell({ nav, onSwitchRole }) {
                 {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
               </div>
             )}
-            <Screen key={course.id} course={course} account={profile} authenticated={authenticated} />
+            <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} />
           </div>
         </main>
       </div>

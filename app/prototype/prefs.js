@@ -13,10 +13,12 @@ const DEFAULTS = {
   // per course: does the student see their class standing?
   showStanding: { M092721: true, M09CVS1: false },
   // student reminder channels
-  reminders: { outlook: true, email: true, text: false, quietFrom: '2200', quietTo: '0600' },
+  reminders: { outlook: true, email: true, text: false, quietFrom: '2200', quietTo: '0600', phone: '' },
   // learner profile survey result (null until taken)
   learnerProfile: null,
   textScale: 1,
+  // 'light' | 'dark' | 'system'
+  theme: 'system',
 };
 
 let cache = null;

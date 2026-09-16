@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import './prototype.css';
 import { canAccessRole, useNav } from './nav';
+import { usePrefs } from './prefs';
 import StudentShell from './StudentShell';
 import InstructorShell from './InstructorShell';
 import { useAuth } from '../_auth/AuthProvider';
@@ -11,8 +12,18 @@ import { useAuth } from '../_auth/AuthProvider';
    from the same rail and content column, so switching roles changes what is
    in the rail, not the chrome around it. */
 
+function useThemeEffect() {
+  const { theme } = usePrefs();
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light' || theme === 'dark') root.dataset.theme = theme;
+    else delete root.dataset.theme;
+  }, [theme]);
+}
+
 export default function Prototype() {
   const nav = useNav();
+  useThemeEffect();
   const { ready, profile } = useAuth();
   const canTeach = canAccessRole(profile, 'instructor', ready);
   const canLearn = canAccessRole(profile, 'student', ready);

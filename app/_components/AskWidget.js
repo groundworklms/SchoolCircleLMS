@@ -8,9 +8,13 @@
  * a calm note when grounding isn't wired — and NEVER fabricate an answer to fill a gap.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '../_auth/AuthProvider';
 import { authenticatedFetch } from '../../lib/auth-fetch';
+import { COURSES } from '../prototype/data';
+import { unlockedLessonIds } from '../prototype/Lessons';
+import { usePrefs } from '../prototype/prefs';
 
 const SUGGESTIONS = [
   { label: 'Sight alignment?', q: 'What is sight alignment?' },
@@ -22,6 +26,35 @@ const GREETING = {
   who: 'ai',
   text: 'Ask me anything from the marksmanship corpus — I answer with a citation, or say plainly when it isn’t covered.',
 };
+
+// A student has to have reached a lesson before the tutor will answer from it —
+// study aid for reinforcement, not a shortcut around the lesson (#63). There is
+// no real link between this corpus and a course's lesson content, so this is a
+// best-effort keyword match on lesson titles, scoped to whichever course the
+// student is currently browsing; outside a course there is nothing to gate.
+const STOPWORDS = new Set([
+  'about', 'above', 'after', 'again', 'before', 'their', 'there', 'these', 'those',
+  'which', 'while', 'would', 'could', 'should', 'where', 'when', 'what', 'with', 'from', 'into',
+]);
+function keywordsOf(title) {
+  return title.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 4 && !STOPWORDS.has(w));
+}
+
+function useLockedLessons() {
+  const pathname = usePathname();
+  const prefs = usePrefs();
+  const courseId = pathname?.match(/\/prototype\/course\/([^/]+)/)?.[1];
+  const course = courseId ? COURSES[courseId] : null;
+  return useMemo(() => {
+    if (!course) return [];
+    const { ids, flat } = unlockedLessonIds(course, prefs.progress);
+    const unlockedKeywords = new Set(flat.filter((l) => ids.has(l.id)).flatMap((l) => keywordsOf(l.title)));
+    return flat
+      .filter((l) => !ids.has(l.id))
+      .map((lesson) => ({ lesson, keywords: keywordsOf(lesson.title).filter((k) => !unlockedKeywords.has(k)) }))
+      .filter((x) => x.keywords.length > 0);
+  }, [course, prefs.progress]);
+}
 
 export default function AskWidget() {
   const { user, loading, ready } = useAuth();
@@ -37,6 +70,13 @@ function SignedInAskWidget() {
   const [busy, setBusy] = useState(false);
   const chatRef = useRef(null);
   const inputRef = useRef(null);
+  const lockedLessons = useLockedLessons();
+
+  function findLockedLesson(question) {
+    const q = ` ${question.toLowerCase().replace(/[^a-z0-9\s]/g, ' ')} `;
+    const hit = lockedLessons.find(({ keywords }) => keywords.some((k) => q.includes(` ${k} `)));
+    return hit?.lesson || null;
+  }
   const requestRef = useRef(null);
 
   useEffect(() => () => requestRef.current?.abort(), []);
@@ -60,6 +100,16 @@ function SignedInAskWidget() {
     if (!q || busy) return;
     setInput('');
     setMessages((m) => [...m, { who: 'me', text: q }]);
+
+    const locked = findLockedLesson(q);
+    if (locked) {
+      setMessages((m) => [...m, {
+        who: 'ai', note: true,
+        text: `That's covered in a lesson you haven't reached yet — ${locked.title} (${locked.id}). Work through it first, then I can help you review it.`,
+      }]);
+      return;
+    }
+
     setBusy(true);
     try {
       const controller = new AbortController();

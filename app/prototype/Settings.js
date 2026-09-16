@@ -139,11 +139,22 @@ function Survey({ result, onDone }) {
   );
 }
 
+/* Accepts only characters that actually appear in a phone number, and only
+   counts it as "entered" once it has a real area code + number (10 digits
+   for a US number, up to 15 for a country-code-prefixed one). */
+function cleanPhoneInput(raw) {
+  return raw.replace(/[^0-9()+\-\s]/g, '');
+}
+function isValidPhone(phone) {
+  const digits = phone.replace(/\D/g, '');
+  return digits.length >= 10 && digits.length <= 15;
+}
+
 /* ---------- student ---------- */
 
 export function StudentSettings({ onSignOut, account, authenticated = false }) {
   const prefs = usePrefs();
-  const r = prefs.reminders;
+  const r = { ...prefs.reminders, phone: prefs.reminders.phone || '' };
   const displayName = account?.name || (authenticated ? 'Account' : 'Cpl Rivera');
   const displayEmail = account?.email || (authenticated ? 'signed-in account' : 'rivera.j@usmc.mil');
 
@@ -157,7 +168,7 @@ export function StudentSettings({ onSignOut, account, authenticated = false }) {
       </div>
 
       <section className="p-panel">
-        <h3>How do I learn?</h3>
+        <h3>What&apos;s my learning style?</h3>
         <Survey result={prefs.learnerProfile} onDone={(res) => setPref('learnerProfile', res)} />
       </section>
 
@@ -166,7 +177,31 @@ export function StudentSettings({ onSignOut, account, authenticated = false }) {
         <p className="s-settings-p">Study-plan blocks and due dates go to the channels you pick. Instructors cannot see these.</p>
         <Toggle label="Outlook calendar" note="Plan blocks appear as calendar events" on={r.outlook} onChange={(v) => setPref('reminders.outlook', v)} />
         <Toggle label="Email" note="A morning summary of what is due" on={r.email} onChange={(v) => setPref('reminders.email', v)} />
-        <Toggle label="Text message" note="15 minutes before a plan block" on={r.text} onChange={(v) => setPref('reminders.text', v)} />
+        <Toggle
+          label="Text message"
+          note={isValidPhone(r.phone) ? `15 minutes before a plan block, to ${r.phone}` : 'Enter a valid phone number below to turn this on'}
+          on={r.text}
+          onChange={(v) => { if (v && !isValidPhone(r.phone)) return; setPref('reminders.text', v); }}
+        />
+        <div className="s-settings-row">
+          <span>Phone number</span>
+          <span className="s-settings-val" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.3rem' }}>
+            <input
+              className="s-dq-select small"
+              type="tel"
+              placeholder="(555) 555-0100"
+              value={r.phone}
+              onChange={(e) => {
+                const phone = cleanPhoneInput(e.target.value);
+                setPref('reminders.phone', phone);
+                if (r.text && !isValidPhone(phone)) setPref('reminders.text', false);
+              }}
+            />
+            {r.phone && !isValidPhone(r.phone) && (
+              <span style={{ fontSize: '0.78em', color: 'var(--p-critical)' }}>Enter a valid phone number (10 digits).</span>
+            )}
+          </span>
+        </div>
         <div className="s-settings-row">
           <span>Quiet hours</span>
           <span className="s-settings-val" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -183,6 +218,18 @@ export function StudentSettings({ onSignOut, account, authenticated = false }) {
 
       <section className="p-panel">
         <h3>Display</h3>
+        <div className="s-settings-row">
+          <span>Theme</span>
+          <span className="p-diff">
+            {[
+              ['light', 'Light'],
+              ['dark', 'Dark'],
+              ['system', 'Match system'],
+            ].map(([v, l]) => (
+              <button key={v} className={prefs.theme === v ? 'on' : ''} onClick={() => setPref('theme', v)}>{l}</button>
+            ))}
+          </span>
+        </div>
         <div className="s-settings-row">
           <span>Text size</span>
           <span className="p-diff">
