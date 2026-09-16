@@ -99,6 +99,16 @@ export default function InstructorShell({ nav, onSwitchRole }) {
   let body;
   if (pending) {
     body = <p>Loading course…</p>;
+  } else if (inLibrary && !learning.enabled) {
+    body = (
+      <>
+        <h2 className="p-h">Sign in required</h2>
+        <p className="p-sub">
+          The library — sources, course drafts and rubrics — is the persisted learning loop, and it needs a
+          verified identity. Sign in to use it; the demo courses below work without one.
+        </p>
+      </>
+    );
   } else if (inLibrary) {
     if (libraryView === 'sources') body = <SourcesView />;
     else if (libraryView === 'rubrics') body = <RubricsView />;
