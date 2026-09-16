@@ -36,6 +36,11 @@ export function isMockCourseId(id) {
    library filter out `manual` records. */
 function useManualCourses(enabled) {
   const [state, setState] = useState({ courses: [], loading: false, error: null });
+  // This list is fetched by hand rather than through useApiQuery, so it needs
+  // its own reload trigger. Without one it loads once and never updates --
+  // removing a legacy course succeeded on the server while its row stayed on
+  // screen, which is indistinguishable from the delete not working.
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     if (!enabled) {
@@ -66,9 +71,9 @@ function useManualCourses(enabled) {
         setState({ courses: [], loading: false, error });
       });
     return () => controller.abort();
-  }, [enabled]);
+  }, [enabled, reload]);
 
-  return state;
+  return { ...state, refetch: () => setReload((n) => n + 1) };
 }
 
 export function useLearningCourses({ includeManual = false } = {}) {
@@ -94,7 +99,15 @@ export function useLearningCourses({ includeManual = false } = {}) {
     manualError: manualEnabled ? manual.error : null,
     manualEnabled,
     enabled,
-    refetch,
+    // Refresh BOTH lists. Callers use this after a change that could touch
+    // either -- a removal especially -- and refreshing only the generated
+    // courses left legacy rows behind.
+    refetch: async () => {
+      const generated = refetch();
+      manual.refetch?.();
+      return generated;
+    },
+    refetchGenerated: refetch,
   };
 }
 
