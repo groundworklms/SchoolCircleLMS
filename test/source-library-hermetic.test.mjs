@@ -77,6 +77,12 @@ const dbMock = {
     }
     return { records: deleted, courses: 0 };
   },
+  // Per-item ratification (#863f724) reaches Item rows through db.js. These
+  // suites never exercise that path, so the seams answer empty rather than
+  // the module failing to link.
+  async listDeliveryCourseItems() { return []; },
+  async getDeliveryCourseItem() { return null; },
+  async updateDeliveryCourseItem() { return null; },
   async courseEvidenceCount() {
     return { attempts: 0, schedules: 0, total: 0 };
   },
