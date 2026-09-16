@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApiQuery, useApiMutation } from '../_learning/useLearning';
 
 /* Instructor-side arsenal features for a real (LearningRecord) course:
@@ -15,6 +15,169 @@ function errText(e, fallback) {
 
 function Err({ msg }) {
   return msg ? <p className="s-shell-error" role="alert">{msg}</p> : null;
+}
+
+/*
+ * A mastery plan is a course-level contract.  It is deliberately rendered
+ * here, rather than hidden behind the generation request: instructors must be
+ * able to inspect the exact criteria and the immutable revision before they
+ * approve it.  There is no "replace" action after approval; a new course
+ * revision is the boundary for changing the contract.
+ */
+export function InstructorMasteryPlan({ courseId, course, approvedSources = [], onUpdated }) {
+  const sourceIds = Array.isArray(course?.sourceIds) ? course.sourceIds : [];
+  const [selectedSourceId, setSelectedSourceId] = useState(sourceIds[0] || '');
+  const [plan, setPlan] = useState(course?.masteryPlan || null);
+  const generatePlan = useApiMutation(`/courses/${courseId}/mastery-plan`, 'POST');
+  const approvePlan = useApiMutation(`/courses/${courseId}/mastery-plan/approve`, 'POST');
+
+  // Course detail is loaded after the shell mounts.  Keep a locally generated
+  // plan stable, but pick up the persisted plan when a refreshed detail lands.
+  useEffect(() => {
+    if (course?.masteryPlan) setPlan(course.masteryPlan);
+  }, [course?.masteryPlan]);
+
+  useEffect(() => {
+    if (!selectedSourceId && sourceIds.length > 0) setSelectedSourceId(sourceIds[0]);
+  }, [selectedSourceId, sourceIds]);
+
+  const sourceOptions = sourceIds.map((sourceId) => {
+    const source = approvedSources.find((item) => item.id === sourceId);
+    return {
+      id: sourceId,
+      label: source?.title ? `${source.title} (${sourceId})` : sourceId,
+    };
+  });
+  const mutationError = generatePlan.error || approvePlan.error;
+  const errorText = mutationError?.error || mutationError?.message || 'Unable to update the shared mastery plan.';
+
+  const handleGenerate = async () => {
+    if (!selectedSourceId) return;
+    try {
+      const response = await generatePlan.mutate({ sourceId: selectedSourceId });
+      const nextPlan = response?.masteryPlan || response?.plan || (response?.revision ? response : null);
+      if (nextPlan) setPlan(nextPlan);
+      await onUpdated?.();
+    } catch {
+      // The mutation hook exposes the explicit API failure below.
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!plan?.revision || plan.status !== 'PENDING') return;
+    try {
+      const response = await approvePlan.mutate({ revision: plan.revision });
+      const nextPlan = response?.masteryPlan || response?.plan || (response?.revision ? response : null);
+      if (nextPlan) setPlan(nextPlan);
+      await onUpdated?.();
+    } catch {
+      // Keep the pending review visible so a stale revision is not hidden.
+    }
+  };
+
+  return (
+    <div className="p-panel" data-testid="instructor-mastery-plan" style={{ marginTop: '1rem' }}>
+      <h3>Shared mastery plan</h3>
+      <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
+        One reviewed set of criteria keeps learner outcomes comparable across the cohort.
+        Once approved, this revision is locked for the course.
+      </p>
+
+      {mutationError && <Err msg={`Mastery plan update failed: ${errorText}`} />}
+
+      {!plan ? (
+        <div>
+          <label style={{ display: 'block', fontSize: '0.85em', marginBottom: '0.5rem' }}>
+            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Approved course source</span>
+            <select
+              className="scw-ti"
+              aria-label="Approved course source"
+              value={selectedSourceId}
+              onChange={(event) => setSelectedSourceId(event.target.value)}
+              disabled={sourceOptions.length === 0 || generatePlan.loading}
+              style={{ width: '100%', padding: '0.45rem' }}
+            >
+              {sourceOptions.length === 0 ? (
+                <option value="">No approved course source available</option>
+              ) : (
+                sourceOptions.map((source) => (
+                  <option key={source.id} value={source.id}>{source.label}</option>
+                ))
+              )}
+            </select>
+          </label>
+          <button
+            className="p-btn"
+            onClick={handleGenerate}
+            disabled={!selectedSourceId || sourceOptions.length === 0 || generatePlan.loading}
+          >
+            {generatePlan.loading ? 'Generating shared mastery plan…' : 'Generate shared mastery plan'}
+          </button>
+        </div>
+      ) : (
+        <div>
+          <p style={{ fontSize: '0.85em', margin: '0 0 0.65rem' }}>
+            Status: <strong>{plan.status || 'PENDING'}</strong>
+            {plan.sourceId && <span className="p-src"> · Source {plan.sourceId}</span>}
+            {plan.revision && <span className="p-src"> · Revision {plan.revision}</span>}
+          </p>
+          <MasteryPlanCriteria criteria={plan.criteria} />
+          {plan.status === 'PENDING' ? (
+            <button
+              className="p-btn"
+              onClick={handleApprove}
+              disabled={!plan.revision || approvePlan.loading}
+            >
+              {approvePlan.loading ? 'Approving shared mastery plan…' : 'Approve shared mastery plan'}
+            </button>
+          ) : plan.status === 'APPROVED' ? (
+            <p className="p-src" style={{ color: 'var(--p-good)', margin: '0.65rem 0 0' }}>
+              Reviewed criteria are approved and locked for this course.
+            </p>
+          ) : (
+            <p className="p-src">This plan is not available for learner sessions.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MasteryPlanCriteria({ criteria }) {
+  if (!Array.isArray(criteria) || criteria.length === 0) {
+    return <p className="p-src">No criteria were returned for review.</p>;
+  }
+
+  const indicatorLevels = [
+    ['developing', 'Developing'],
+    ['competent', 'Competent'],
+    ['mastered', 'Mastered'],
+  ];
+
+  return (
+    <div data-testid="mastery-plan-criteria" style={{ marginBottom: '0.75rem' }}>
+      <strong style={{ fontSize: '0.85em' }}>Reviewed criteria</strong>
+      <ul style={{ paddingLeft: '1.25rem', margin: '0.35rem 0 0' }}>
+        {criteria.map((criterion, index) => (
+          <li key={`${criterion.elo || 'criterion'}-${index}`} style={{ marginBottom: '0.35rem', fontSize: '0.85em' }}>
+            <strong>{criterion.elo || criterion.competency || `Criterion ${index + 1}`}</strong>
+            {criterion.indicators && typeof criterion.indicators === 'object' && !Array.isArray(criterion.indicators) ? (
+              <ul style={{ paddingLeft: '1.25rem', marginTop: '0.2rem' }}>
+                {indicatorLevels.map(([level, label]) => (
+                  <li key={level}>
+                    <strong>{label}:</strong>{' '}
+                    {criterion.indicators[level] || <span className="p-src">Not supplied</span>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <span className="p-src"> · No indicators supplied</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 /* ---------- syllabus (Cadence) ---------- */

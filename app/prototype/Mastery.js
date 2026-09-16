@@ -50,12 +50,20 @@ function CohortMastery({ course }) {
         From saved mastery sessions and attempts for this course. Aggregates appear only once
         {privacy?.cohortSuppressedBelow ? ` ${privacy.cohortSuppressedBelow}` : ' enough'} distinct learners have contributed — never any one Marine&apos;s answers.
       </p>
+      <p className="p-src" role="status">
+        Privacy-safe cohort aggregate only. Individual learner sessions and IDs are never shown here.
+      </p>
 
       <div className="p-tiles">
         <div className="p-tile">
           <div className="p-tilelab">Learners observed</div>
           <div className="p-tileval">{privacy?.observedLearners ?? '—'}</div>
           <div className="p-tilenote">with saved evidence</div>
+        </div>
+        <div className="p-tile">
+          <div className="p-tilelab">Contributors</div>
+          <div className="p-tileval">{masteryRows ? (privacy?.observedContributors ?? '—') : '—'}</div>
+          <div className="p-tilenote">per competency, privacy-gated</div>
         </div>
         <div className="p-tile">
           <div className="p-tilelab">Learning gain</div>

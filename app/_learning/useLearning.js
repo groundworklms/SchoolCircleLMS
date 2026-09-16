@@ -65,10 +65,11 @@ export function useApiMutation(path, method = 'POST') {
     setLoading(true);
     setError(null);
     try {
+      const isFormData = typeof FormData !== 'undefined' && payload instanceof FormData;
       const res = await authFetch(`${API_BASE}${path}`, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: payload ? JSON.stringify(payload) : undefined,
+        ...(isFormData ? {} : { headers: { 'Content-Type': 'application/json' } }),
+        body: payload ? (isFormData ? payload : JSON.stringify(payload)) : undefined,
       });
       let json;
       try {

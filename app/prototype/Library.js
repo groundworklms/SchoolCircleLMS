@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning/useLearning';
-import { InstructorSyllabus } from './InstructorFeatures';
+import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
+import { SourceViewer } from './SourceViewer';
 
 /* The instructor library — the parts of the persisted learning loop that are
    not tied to one course on screen: source documents (Quarry) and the course
@@ -55,10 +56,8 @@ export function SourcesView() {
 }
 
 function SourceCard({ source, onApproved }) {
-  const [open, setOpen] = useState(false);
   const [err, setErr] = useState(null);
   const approve = useApiMutation(`/sources/${source.id}/approve`, 'POST');
-  const { data: sourceDetail } = useApiQuery(`/sources/${source.id}`, { enabled: open });
 
   const handleApprove = async () => {
     setErr(null);
@@ -77,20 +76,7 @@ function SourceCard({ source, onApproved }) {
         <code>{source.id}</code> · <StatusTag status={source.status} />
       </p>
 
-      {!open ? (
-        <button className="p-btn ghost" onClick={() => setOpen(true)} style={{ marginBottom: '1rem', marginRight: '0.5rem' }}>Inspect source</button>
-      ) : (
-        <div style={{ background: 'var(--p-surface-2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.85em' }}>
-          <button className="p-btn ghost" onClick={() => setOpen(false)} style={{ marginBottom: '1rem' }}>Close source</button>
-          {sourceDetail ? (
-            <div style={{ maxHeight: '300px', overflowY: 'auto', whiteSpace: 'pre-wrap' }}>
-              {sourceDetail.text || sourceDetail.pages?.map((p) => p.text).join('\n\n') || 'No content.'}
-            </div>
-          ) : (
-            <p>Loading details…</p>
-          )}
-        </div>
-      )}
+      <SourceViewer sourceId={source.id} compact />
 
       {err && <p className="s-shell-error" role="alert">{err}</p>}
       {source.status === 'PENDING' && (
@@ -106,8 +92,11 @@ function IngestSourceModal({ onIngested }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
+  const [sourceId, setSourceId] = useState('');
+  const [file, setFile] = useState(null);
   const [err, setErr] = useState(null);
   const ingest = useApiMutation('/sources', 'POST');
+  const pdfUpload = useApiMutation('/sources/pdf', 'POST');
 
   const handleSubmit = async () => {
     if (!title || !text) return;
@@ -117,9 +106,35 @@ function IngestSourceModal({ onIngested }) {
       setOpen(false);
       setTitle('');
       setText('');
+      setSourceId('');
+      setFile(null);
       onIngested();
     } catch (e) {
       setErr(errText(e, 'Failed to ingest source'));
+    }
+  };
+
+  const handlePdfUpload = async () => {
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      setErr('Select a PDF file.');
+      return;
+    }
+    const form = new FormData();
+    form.append('file', file);
+    if (title.trim()) form.append('title', title.trim());
+    if (sourceId.trim()) form.append('sourceId', sourceId.trim());
+    setErr(null);
+    try {
+      await pdfUpload.mutate(form);
+      setOpen(false);
+      setTitle('');
+      setText('');
+      setSourceId('');
+      setFile(null);
+      onIngested();
+    } catch (e) {
+      setErr(errText(e, 'Failed to upload PDF'));
     }
   };
 
@@ -131,11 +146,43 @@ function IngestSourceModal({ onIngested }) {
         <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Ingest new source</h3>
         <input
           className="scw-ti"
-          placeholder="Source title"
+          placeholder="Source title (optional for PDF)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
         />
+        <input
+          className="scw-ti"
+          aria-label="Source identifier"
+          placeholder="Source identifier (optional)"
+          value={sourceId}
+          onChange={(e) => setSourceId(e.target.value)}
+          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem' }}
+        />
+        <div style={{ padding: '0.75rem', background: 'var(--p-surface-2)', borderRadius: '8px', marginBottom: '0.75rem' }}>
+          <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Upload a PDF</strong>
+          <p className="p-src" style={{ margin: '0 0 0.5rem' }}>
+            Pages are preserved so instructors and learners can inspect a cited passage.
+          </p>
+          <input
+            type="file"
+            accept="application/pdf,.pdf"
+            aria-label="PDF source file"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+          />
+          {file && <p className="p-src" style={{ margin: '0.5rem 0 0' }}>Selected: {file.name}</p>}
+          <button
+            type="button"
+            className="p-btn"
+            onClick={handlePdfUpload}
+            disabled={pdfUpload.loading || !file}
+            style={{ marginTop: '0.75rem' }}
+          >
+            {pdfUpload.loading ? 'Uploading…' : 'Upload PDF'}
+          </button>
+        </div>
+        <div style={{ borderTop: '1px solid var(--p-border)', paddingTop: '0.75rem' }}>
+          <p className="p-src" style={{ margin: '0 0 0.5rem' }}>Or add a text source</p>
         <textarea
           className="scw-ti"
           placeholder="Paste source text here…"
@@ -144,6 +191,7 @@ function IngestSourceModal({ onIngested }) {
           rows={6}
           style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
         />
+        </div>
         {err && <p className="s-shell-error" role="alert">{err}</p>}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button className="p-btn ghost" onClick={() => setOpen(false)}>Cancel</button>
@@ -266,9 +314,37 @@ function DraftCourseModal({ sources, onDrafted }) {
 /* The Coursewright draft as the instructor reviews it: sections with their
    lesson text and pre/post items, approve, syllabus (Cadence), SCORM export
    (Cartridge). Fidelity and the AAR are their own views in the shell. */
+function draftReadinessIssues(sections) {
+  const issues = [];
+  if (!Array.isArray(sections) || sections.length === 0) {
+    return ['At least one generated section is required.'];
+  }
+  sections.forEach((section, index) => {
+    const label = section?.title || `Section ${index + 1}`;
+    if (!section || section.refused === true || section.error) {
+      issues.push(`${label} is refused or unavailable.`);
+      return;
+    }
+    if (typeof section.lesson !== 'string' || !section.lesson.trim()) {
+      issues.push(`${label} needs lesson text.`);
+    }
+    if (!Array.isArray(section.pre) || section.pre.length === 0) {
+      issues.push(`${label} needs a pre-check.`);
+    }
+    if (!Array.isArray(section.post) || section.post.length === 0) {
+      issues.push(`${label} needs a post-check.`);
+    }
+    if (!(section.cite || section.citation)) {
+      issues.push(`${label} needs a source citation.`);
+    }
+  });
+  return issues;
+}
+
 export function CourseDraft({ course, onChanged }) {
   const [err, setErr] = useState(null);
-  const { data: envelope, loading, refetch } = useApiQuery(`/courses/${course.id}`);
+  const { data: envelope, loading, error: draftError, refetch } = useApiQuery(`/courses/${course.id}`);
+  const { data: sources } = useApiQuery('/sources');
   const approve = useApiMutation(`/courses/${course.id}/approve`, 'POST');
 
   const handleApprove = async () => {
@@ -292,6 +368,16 @@ export function CourseDraft({ course, onChanged }) {
   const status = envelope?.status || course.status;
   const sections = draft?.sections || [];
   const nSources = course.sourceIds?.length || 0;
+  const draftSourceIds = draft?.sourceIds || course.sourceIds;
+  const readinessIssues = draft
+    ? [
+        ...(Array.isArray(draftSourceIds) && draftSourceIds.length > 0
+          ? []
+          : ['At least one approved source is required for grounding.']),
+        ...draftReadinessIssues(sections),
+      ]
+    : [draftError ? 'The course draft could not be loaded.' : 'Draft details are still loading.'];
+  const approvedSources = sources?.filter((s) => s.status === 'APPROVED') || [];
 
   return (
     <>
@@ -302,10 +388,16 @@ export function CourseDraft({ course, onChanged }) {
       </p>
 
       {err && <p className="s-shell-error" role="alert">{err}</p>}
+      {draftError && <p className="s-shell-error" role="alert">{draftError.error || draftError.message || 'Could not load course draft.'}</p>}
 
       <div className="p-btnrow" style={{ marginBottom: '1.25rem' }}>
         {status === 'PENDING' && (
-          <button className="p-btn" onClick={handleApprove} disabled={approve.loading}>
+          <button
+            className="p-btn"
+            onClick={handleApprove}
+            disabled={approve.loading || loading || readinessIssues.length > 0}
+            title={readinessIssues.length > 0 ? 'Resolve the draft readiness checks before approval.' : undefined}
+          >
             {approve.loading ? 'Approving…' : 'Approve course'}
           </button>
         )}
@@ -321,6 +413,23 @@ export function CourseDraft({ course, onChanged }) {
         <h3>Sections</h3>
         {loading && <p>Loading draft…</p>}
         {!loading && sections.length === 0 && <p className="p-src">This draft has no sections.</p>}
+        {!loading && status === 'PENDING' && (
+          <div
+            role={readinessIssues.length > 0 ? 'alert' : 'status'}
+            style={{
+              marginBottom: '0.85rem',
+              color: readinessIssues.length > 0 ? 'var(--p-warning)' : 'var(--p-good)',
+              fontSize: '0.85em',
+            }}
+          >
+            <strong>{readinessIssues.length > 0 ? 'Draft is not learner-ready.' : 'Draft passes the local readiness checks.'}</strong>
+            {readinessIssues.length > 0 && (
+              <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.25rem' }}>
+                {readinessIssues.map((issue) => <li key={issue}>{issue}</li>)}
+              </ul>
+            )}
+          </div>
+        )}
         {sections.map((s, i) => (
           <details key={s.title || i} className="s-draft-sec" open={i === 0}>
             <summary>
@@ -359,6 +468,15 @@ export function CourseDraft({ course, onChanged }) {
       </div>
 
       {status === 'PENDING' && <InstructorSyllabus courseId={course.id} />}
+      <InstructorMasteryPlan
+        courseId={course.id}
+        course={draft || course}
+        approvedSources={approvedSources}
+        onUpdated={async () => {
+          await refetch();
+          await onChanged?.();
+        }}
+      />
     </>
   );
 }

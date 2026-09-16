@@ -73,6 +73,7 @@ export default function Prototype() {
       ) : (
         <InstructorShell
           nav={nav}
+          role={profile?.role}
           onSwitchRole={canLearn
             ? () => nav.go({ role: 'student', area: 'dashboard', courseId: null, view: null })
             : null}

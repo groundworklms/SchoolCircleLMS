@@ -61,7 +61,7 @@ const SCREENS = {
   settings: InstructorSettings,
 };
 
-export default function InstructorShell({ nav, onSwitchRole }) {
+export default function InstructorShell({ nav, onSwitchRole, role: profileRole }) {
   const { ready: authReady, profile, signOut, signOutError } = useAuth();
   const {
     authenticated,
@@ -154,7 +154,7 @@ export default function InstructorShell({ nav, onSwitchRole }) {
       <nav className="s-rail">
         <UserMenu
           name={displayName}
-          role={INSTRUCTOR.role}
+          role={!profileRole ? INSTRUCTOR.role : profileRole === 'BOTH' ? 'Learner · Instructor' : INSTRUCTOR.role}
           rank={displayRank}
           initials={initials}
           inst
