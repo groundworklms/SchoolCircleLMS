@@ -72,6 +72,26 @@
   color: var(--p-dim);
   font-size: 0.9em;
 }
+
+/* At a short viewport, rail content (courses + nav + spacer) can exceed the
+   available height; without this, items below the fold are clipped by
+   .p-root's overflow:hidden with no way to reach them (#80).
+
+   Scoped off the instructor rail, which has its own three-zone layout
+   (pinned account, scrolling middle, pinned footer) from #87. Unscoped, the
+   two nest: the inner scroller takes the overflow, this one goes inert, and
+   at very short heights you get two scrollbars. The student rail still needs
+   this until it gets the same three-zone treatment -- it renders an unbounded
+   course list plus every demo sample, so it overflows sooner. */
+.s-rail:not(.s-rail-instructor) {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--p-faint) transparent;
+}
+.s-rail:not(.s-rail-instructor)::-webkit-scrollbar { width: 6px; }
+.s-rail:not(.s-rail-instructor)::-webkit-scrollbar-track { background: transparent; }
+.s-rail:not(.s-rail-instructor)::-webkit-scrollbar-thumb { background: var(--p-faint); border-radius: 999px; }
 .s-rail-user { display: flex; align-items: center; gap: 0.65rem; padding: 0.3rem 0.6rem 1.1rem; }
 .s-avatar {
   width: 2.2rem; height: 2.2rem; flex: none;
