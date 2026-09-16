@@ -130,7 +130,7 @@ JSON body:
 Multipart body with `file` and optional `title`/`sourceId`. This uses Quarry's
 existing PDF extraction seam, preserves printed page text, and persists the
 same `PENDING SOURCE` shape. Uploads must be `application/pdf`, begin with the
-`%PDF-` signature, and be no larger than 10 MiB. The legacy `POST /api/ingest`
+`%PDF-` signature, and be no larger than 50 MiB. The legacy `POST /api/ingest`
 parse-only response uses the same upload guard.
 
 ### `GET /api/learning/sources` — authenticated
