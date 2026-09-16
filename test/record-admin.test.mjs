@@ -300,3 +300,84 @@ test('a record of the wrong type is not reachable through the course handlers', 
   );
   assert.equal(records.has('src-1'), true);
 });
+
+/* --------------------- permanent removal (second decision) -------------------- */
+
+test('permanent removal is refused without the exact title, even though the UI asks for it', async () => {
+  seed('course-1', 'COURSE_DRAFT', {
+    title: 'Delivered course', deliveryCourseId: 'course-1',
+  }, { status: 'APPROVED' });
+  courses.set('course-1', { id: 'course-1' });
+  evidence.set('course-1', 5);
+
+  // The guard lives on the server, so a scripted DELETE cannot skip the
+  // confirmation the UI presents.
+  for (const query of [
+    { permanent: '1' },
+    { permanent: '1', confirm: '' },
+    { permanent: '1', confirm: 'delivered course' },  // case differs
+    { permanent: '1', confirm: 'Delivered cours' },   // truncated
+    { permanent: 'true', confirm: 'something else' },
+  ]) {
+    await assert.rejects(
+      () => core.deleteCourse(OWNER, { params: { id: 'course-1' }, query }),
+      (e) => {
+        assert.equal(e.code, 'CONFIRMATION_REQUIRED');
+        assert.equal(e.status, 409);
+        // The refusal has to state the cost, or confirming is blind.
+        assert.match(e.message, /5 learner attempt/);
+        return true;
+      },
+      `expected refusal for ${JSON.stringify(query)}`,
+    );
+    assert.equal(courses.has('course-1'), true, 'nothing was destroyed');
+  }
+});
+
+test('permanent removal with the exact title destroys the course and reports the cost', async () => {
+  seed('course-1', 'COURSE_DRAFT', {
+    title: 'Delivered course',
+    deliveryCourseId: 'release-2',
+    revisionHistory: [{ id: 'rev-1', deliveryCourseId: 'course-1' }],
+  }, { status: 'APPROVED' });
+  seed('rev-1', 'COURSE_REVISION', { courseId: 'course-1' });
+  courses.set('course-1', { id: 'course-1' });
+  courses.set('release-2', { id: 'release-2' });
+  evidence.set('course-1', 4);
+  evidence.set('release-2', 3);
+
+  const result = await core.deleteCourse(OWNER, {
+    params: { id: 'course-1' },
+    query: { permanent: '1', confirm: 'Delivered course' },
+  });
+  assert.equal(result.json.deleted, true);
+  assert.equal(result.json.permanent, true);
+  assert.equal(result.json.destroyed.attempts, 7, 'counts across every release');
+  assert.equal(records.has('course-1'), false);
+  assert.equal(records.has('rev-1'), false);
+  assert.equal(courses.has('course-1'), false);
+  assert.equal(courses.has('release-2'), false);
+});
+
+test('a first removal still archives and reports what permanent removal would cost', async () => {
+  seed('course-1', 'COURSE_DRAFT', { title: 'Delivered', deliveryCourseId: 'course-1' }, { status: 'APPROVED' });
+  courses.set('course-1', { id: 'course-1' });
+  evidence.set('course-1', 2);
+
+  // No permanent flag: the first click must never destroy anything.
+  const result = await core.deleteCourse(OWNER, { params: { id: 'course-1' }, query: {} });
+  assert.equal(result.json.archived, true);
+  assert.equal(result.json.canDeletePermanently, true);
+  assert.equal(result.json.evidence.total, 2);
+  assert.equal(courses.has('course-1'), true);
+});
+
+test('an untouched course needs no confirmation and reports nothing to destroy', async () => {
+  seed('course-1', 'COURSE_DRAFT', { title: 'Untouched', deliveryCourseId: 'course-1' }, { status: 'APPROVED' });
+  courses.set('course-1', { id: 'course-1' });
+
+  const result = await core.deleteCourse(OWNER, { params: { id: 'course-1' }, query: {} });
+  assert.equal(result.json.deleted, true, 'no learner work means a plain delete');
+  assert.equal(result.json.permanent, undefined);
+  assert.equal(courses.has('course-1'), false);
+});
