@@ -164,8 +164,6 @@ export default function Board() {
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           {[
             ['/prototype', 'Prototype', 'var(--accent)'],
-            ['/learn', 'Learn app', 'var(--accent-2)'],
-            ['/teach', 'Teach app', '#f87171'],
           ].map(([href, label, color]) => (
             <a
               key={href}

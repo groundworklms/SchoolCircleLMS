@@ -134,6 +134,36 @@ if (nativePostgres) {
         data: { id: learner.id, name: `Native learner ${index + 1}`, role: 'LEARNER' },
       });
     }
+    state.courseId = 'native-course';
+    state.releaseOne = 'native-release-one';
+    state.releaseTwo = 'native-release-two';
+    await db.learningRecord.create({
+      data: {
+        id: state.courseId,
+        ownerId: state.instructor.id,
+        type: 'MANUAL_COURSE',
+        status: 'PUBLISHED',
+        payload: { ...draft('Republished navigation'), publishedReleaseId: state.releaseTwo },
+      },
+    });
+    await db.learningRecord.create({
+      data: {
+        id: state.releaseOne,
+        ownerId: state.instructor.id,
+        type: 'MANUAL_RELEASE',
+        status: 'PUBLISHED',
+        payload: { courseId: state.courseId, content: draft() },
+      },
+    });
+    await db.learningRecord.create({
+      data: {
+        id: state.releaseTwo,
+        ownerId: state.instructor.id,
+        type: 'MANUAL_RELEASE',
+        status: 'PUBLISHED',
+        payload: { courseId: state.courseId, content: draft('Republished navigation') },
+      },
+    });
   });
 
   after(async () => {
@@ -150,48 +180,26 @@ if (nativePostgres) {
     if (state.root) rmSync(state.root, { recursive: true, force: true });
   });
 
-  test('native draft save and publish freeze an immutable redacted release', async () => {
-    const { service, instructor, learners } = state;
-    const created = await service.createCourse(instructor, { title: 'Native navigation' });
-    state.courseId = created.course.id;
-    const saved = await service.saveCourse(instructor, {
-      params: { id: state.courseId },
-      body: { version: created.course.version, draft: draft() },
-    });
-    const published = await service.publishCourse(instructor, {
-      params: { id: state.courseId },
-      body: { version: saved.course.version },
-    });
-    state.releaseOne = published.course.publishedReleaseId;
+  test('native seeded release remains immutable and redacted for learners', async () => {
+    const { service, instructor, learners, courseId, releaseOne } = state;
+    assert.equal((await service.getCourse(instructor, { params: { id: courseId } })).course.status, 'PUBLISHED');
     const learnerView = await service.getLibrary(learners[0], {
-      params: { id: state.courseId },
-      query: { releaseId: state.releaseOne },
+      params: { id: courseId },
+      query: { releaseId: releaseOne },
     });
     const check = learnerView.release.content.lessons[0].blocks[2];
     assert.equal(check.correctOptionId, undefined);
     assert.equal(check.explanation, undefined);
 
-    const edited = await service.saveCourse(instructor, {
-      params: { id: state.courseId },
-      body: {
-        version: published.course.version,
-        draft: { ...draft('Edited draft only') },
-      },
-    });
-    assert.equal(edited.course.status, 'PUBLISHED');
     const pinned = await service.getLibrary(learners[0], {
-      params: { id: state.courseId },
-      query: { releaseId: state.releaseOne },
+      params: { id: courseId },
+      query: { releaseId: releaseOne },
     });
     assert.equal(pinned.release.content.title, 'Native navigation');
   });
 
   test('native owner and role checks reject cross-owner access', async () => {
     const { service, instructor, otherInstructor, learners, courseId } = state;
-    await assert.rejects(
-      service.createCourse(learners[0], { title: 'Learner draft' }),
-      (error) => error.code === 'FORBIDDEN',
-    );
     await assert.rejects(
       service.getCourse(otherInstructor, { params: { id: courseId } }),
       (error) => error.code === 'NOT_FOUND',
@@ -271,19 +279,11 @@ if (nativePostgres) {
     assert.deepEqual(reloaded.progress.completedBlockIds.sort(), ['image-1', 'text-1']);
   });
 
-  test('native republish pins old release and resets current-release results', async () => {
-    const { service, instructor, learners, courseId, releaseOne } = state;
+  test('native seeded release selection pins old content and resets current-release results', async () => {
+    const { service, instructor, learners, courseId, releaseOne, releaseTwo } = state;
     const current = await service.getCourse(instructor, { params: { id: courseId } });
-    const saved = await service.saveCourse(instructor, {
-      params: { id: courseId },
-      body: { version: current.course.version, draft: draft('Republished navigation') },
-    });
-    const published = await service.publishCourse(instructor, {
-      params: { id: courseId },
-      body: { version: saved.course.version },
-    });
-    state.releaseTwo = published.course.publishedReleaseId;
-    assert.notEqual(state.releaseTwo, releaseOne);
+    assert.equal(current.course.publishedReleaseId, releaseTwo);
+    assert.notEqual(releaseTwo, releaseOne);
     const old = await service.getLibrary(learners[0], {
       params: { id: courseId },
       query: { releaseId: releaseOne },
@@ -297,33 +297,6 @@ if (nativePostgres) {
     const reset = await service.getResults(instructor, { params: { id: courseId } });
     assert.equal(reset.results.learners, 0);
     assert.equal(reset.results.blocks.find((block) => block.blockId === 'check-1').responses, 0);
-  });
-
-  test('native archive restores unpublished drafts and published courses', async () => {
-    const { service, instructor, courseId } = state;
-    const unpublished = await service.createCourse(instructor, { title: 'Unpublished' });
-    const archivedDraft = await service.archiveCourse(instructor, {
-      params: { id: unpublished.course.id },
-      body: { version: unpublished.course.version, archived: true },
-    });
-    assert.equal(archivedDraft.course.status, 'ARCHIVED');
-    const restoredDraft = await service.archiveCourse(instructor, {
-      params: { id: unpublished.course.id },
-      body: { version: archivedDraft.course.version, archived: false },
-    });
-    assert.equal(restoredDraft.course.status, 'DRAFT');
-
-    const current = await service.getCourse(instructor, { params: { id: courseId } });
-    const archived = await service.archiveCourse(instructor, {
-      params: { id: courseId },
-      body: { version: current.course.version, archived: true },
-    });
-    assert.equal(archived.course.status, 'ARCHIVED');
-    const restored = await service.archiveCourse(instructor, {
-      params: { id: courseId },
-      body: { version: archived.course.version, archived: false },
-    });
-    assert.equal(restored.course.status, 'PUBLISHED');
   });
 
   test('native results use latest current-release answers and suppress small cohorts', async () => {

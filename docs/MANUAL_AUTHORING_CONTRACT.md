@@ -1,4 +1,12 @@
-# Manual authoring contract
+# Manual authoring contract (RETIRED)
+
+> **Retired — historical record only.** Source-grounded AI generation is now the
+> only course-authoring path; see [AI course authoring](ai-course-authoring.md).
+> The mutating endpoints below answer `410 MANUAL_AUTHORING_RETIRED` and reach
+> neither authentication nor the database. `GET /api/authoring/courses` and
+> `GET /api/authoring/courses/[id]/results` still serve saved records, and every
+> course published through this workflow keeps its playback, progress, grading
+> and results. Nothing here describes a writable API any more.
 
 Manual creation is independent of AI services. Keep Next.js. Store this additive
 workflow in existing LearningRecord rows with distinct MANUAL_* types, not in

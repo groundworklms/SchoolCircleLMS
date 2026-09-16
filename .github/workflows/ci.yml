@@ -48,6 +48,17 @@ jobs:
       - name: Manual course authoring contracts
         run: npm run test:authoring
 
+      # The AI authoring path is the only authoring path (#78), so its revision,
+      # immutable-release and learner-redaction contracts gate merges like the
+      # rest. Needs --experimental-test-module-mocks; the script carries the flag.
+      - name: AI course authoring, releases and redaction
+        run: npm run test:ai-authoring
+
+      # Transport contract for the text model: a key alone never selects a cloud
+      # provider, and prose seams must not inherit the JSON response format.
+      - name: Text model transport
+        run: npm run test:model
+
   database:
     name: database
     runs-on: ubuntu-latest
