@@ -1,3 +1,4 @@
+import { primeModelSettings } from '../../../lib/model-settings.js';
 import { generateJSON, providerStatus } from '../../../lib/model';
 
 export const runtime = 'nodejs';
@@ -51,11 +52,13 @@ Rules:
 - Output is a DRAFT for instructor review. Write accordingly.`;
 
 export async function GET() {
+  await primeModelSettings();
   return Response.json(providerStatus());
 }
 
 export async function POST(req) {
   try {
+    await primeModelSettings();
     const { course, annex, lesson, count = 3 } = await req.json();
     if (!course || !lesson) {
       return Response.json({ error: 'course and lesson are required' }, { status: 400 });
