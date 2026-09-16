@@ -395,6 +395,7 @@ mock.module('../lib/arsenal-core.js', {
     answerMasterySession: async () => null,
     deriveMasteryPlan: async () => null,
     draftCourse: async () => null,
+    draftRubricTask: async () => null,
     generateRubric: async () => null,
     ingestSource: async () => null,
     learningModelStatus: () => ({ model: { ready: false } }),
