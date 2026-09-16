@@ -50,9 +50,9 @@
   background: var(--p-surface);
 }
 .s-root .p-examtag {
-  background: var(--p-surface-2);
-  border-color: var(--p-border);
-  color: var(--p-warning);
+  background: var(--p-warning-tint);
+  border-color: var(--p-warning-border);
+  color: var(--p-warning-text);
 }
 .s-root .p-anskey { background: var(--p-surface-2); }
 .s-root .p-ans.correct { background: var(--p-surface-2); }

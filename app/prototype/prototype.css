@@ -188,6 +188,13 @@ html[data-theme="dark"] .p-root {
 }
 .p-btn:hover { filter: brightness(1.12); }
 .p-btn:disabled { opacity: 0.45; cursor: default; filter: none; }
+.p-not-found {
+  margin: auto;
+  padding: 2rem;
+  max-width: 40rem;
+  text-align: center;
+}
+.p-not-found .p-btn { margin: 0.5rem; }
 .p-btn.ghost { background: var(--p-control); border: none; color: var(--p-text); font-weight: 500; }
 .p-btn.ghost:hover { background: var(--p-control-hover); filter: none; }
 .p-btnrow { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
