@@ -12,11 +12,9 @@ function LoadingState({ label = 'Loading published course library…' }) {
 
 function SignInState() {
   return (
-    <div className="manual-library-state manual-auth-notice">
-      <h2>Sign-in required</h2>
-      <p>Sign in with any SchoolCircle account to view published courses.</p>
-      <a className="manual-reader-back" href="/login?next=%2Fprototype%2Fcourses">Sign in</a>
-    </div>
+    <p className="p-src">
+      <a href="/login?next=%2Fprototype%2Fcourses">Sign in</a> to view published courses.
+    </p>
   );
 }
 
@@ -33,7 +31,7 @@ function CourseCard({ course, onOpen }) {
       <h2>{course.title || 'Untitled published course'}</h2>
       <p>{course.summary || 'Open this published course to begin.'}</p>
       <div className="manual-course-card-footer">
-        <span>{course.publishedReleaseId ? 'Published manual course' : 'Published course'}</span>
+        <span>Published course</span>
         <span>Open course&nbsp; →</span>
       </div>
     </a>
@@ -99,12 +97,8 @@ export function LibraryList({ request, user: providedUser, onOpen } = {}) {
   }
 
   return (
-    <section className="manual-library" aria-labelledby="published-course-library-title">
+    <section className="manual-library" aria-label="Published courses">
       <div className="manual-library-inner">
-        <header className="manual-library-header">
-          <h2 id="published-course-library-title">Published manual courses</h2>
-          <p>Published lessons from your SchoolCircle instructors.</p>
-        </header>
         {error ? (
           <div className="manual-library-error" role="alert">
             {messageForError(error, 'We could not refresh the published course library.')}
@@ -119,8 +113,7 @@ export function LibraryList({ request, user: providedUser, onOpen } = {}) {
           </div>
         ) : (
           <div className="manual-library-state">
-            <h3>No published manual courses yet</h3>
-            <p>Your instructors’ published courses will appear here.</p>
+            <p>No published courses.</p>
           </div>
         )}
       </div>

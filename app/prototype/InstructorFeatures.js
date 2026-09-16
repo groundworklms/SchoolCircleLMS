@@ -49,7 +49,7 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
     };
   });
   const mutationError = generatePlan.error || approvePlan.error;
-  const errorText = mutationError?.error || mutationError?.message || 'Unable to update the shared mastery plan.';
+  const errorText = mutationError?.error || mutationError?.message || 'Unable to update the mastery plan.';
 
   const handleGenerate = async () => {
     if (!selectedSourceId) return;
@@ -79,8 +79,7 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
     <div className="p-panel" data-testid="instructor-mastery-plan" style={{ marginTop: '1rem' }}>
       <h3>Shared mastery plan</h3>
       <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
-        One reviewed set of criteria keeps learner outcomes comparable across the cohort.
-        Once approved, this revision is locked for the course.
+        Approve one set of criteria for the cohort; this revision then locks for the course.
       </p>
 
       {mutationError && <Err msg={`Mastery plan update failed: ${errorText}`} />}
@@ -88,17 +87,17 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
       {!plan ? (
         <div>
           <label style={{ display: 'block', fontSize: '0.85em', marginBottom: '0.5rem' }}>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Approved course source</span>
+            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Approved source</span>
             <select
               className="scw-ti"
-              aria-label="Approved course source"
+              aria-label="Approved source"
               value={selectedSourceId}
               onChange={(event) => setSelectedSourceId(event.target.value)}
               disabled={sourceOptions.length === 0 || generatePlan.loading}
               style={{ width: '100%', padding: '0.45rem' }}
             >
               {sourceOptions.length === 0 ? (
-                <option value="">No approved course source available</option>
+                <option value="">No approved source available</option>
               ) : (
                 sourceOptions.map((source) => (
                   <option key={source.id} value={source.id}>{source.label}</option>
@@ -111,7 +110,7 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
             onClick={handleGenerate}
             disabled={!selectedSourceId || sourceOptions.length === 0 || generatePlan.loading}
           >
-            {generatePlan.loading ? 'Generating shared mastery plan…' : 'Generate shared mastery plan'}
+            {generatePlan.loading ? 'Generating…' : 'Generate plan'}
           </button>
         </div>
       ) : (
@@ -128,11 +127,11 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
               onClick={handleApprove}
               disabled={!plan.revision || approvePlan.loading}
             >
-              {approvePlan.loading ? 'Approving shared mastery plan…' : 'Approve shared mastery plan'}
+              {approvePlan.loading ? 'Approving…' : 'Approve plan'}
             </button>
           ) : plan.status === 'APPROVED' ? (
             <p className="p-src" style={{ color: 'var(--p-good)', margin: '0.65rem 0 0' }}>
-              Reviewed criteria are approved and locked for this course.
+              Criteria are approved and locked for this course.
             </p>
           ) : (
             <p className="p-src">This plan is not available for learner sessions.</p>
@@ -206,7 +205,7 @@ export function InstructorSyllabus({ courseId }) {
     <div className="p-panel">
       <h3>Syllabus</h3>
       <p className="p-src" style={{ marginBottom: '0.75rem' }}>
-        Dated blocks Cadence paces a learner&apos;s study plan against. One row per lesson or exam.
+        Add one dated row per lesson or exam.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {syllabus.map((item, i) => (
@@ -280,7 +279,7 @@ export function InstructorFidelity({ courseId }) {
         <div className="p-panel">
           <h3>Benchmark cases</h3>
           <p className="p-src" style={{ marginBottom: '0.75rem' }}>
-            Situations a learner might raise, and what doctrine says should come back. Understudy runs each through the tutor and grades the answer against the approved sources.
+            Add learner situations and expected doctrine; use approved source IDs.
           </p>
           <input className="scw-ti" placeholder="Source IDs (comma-separated)" value={sourceIdsStr} onChange={(e) => setSourceIdsStr(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
           <input className="scw-ti" placeholder="Persona (e.g. a new Lance Corporal on the range)" value={persona} onChange={(e) => setPersona(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
@@ -354,7 +353,7 @@ export function InstructorFidelity({ courseId }) {
         ) : (
           <>
             <p className="p-src" style={{ marginBottom: '1rem' }}>
-              No saved report. Save benchmark cases, then run the check against the approved doctrine.
+              Save cases, then run the check against approved doctrine.
             </p>
             <button className="p-btn" onClick={handleRunFidelity} disabled={runFidelity.loading}>
               {runFidelity.loading ? 'Running…' : 'Run fidelity check'}
@@ -424,7 +423,7 @@ export function InstructorAAR({ courseId }) {
       <div className="p-panel">
         <h3>Record a critique</h3>
         <p className="p-src" style={{ marginBottom: '0.75rem' }}>
-          Sustains and improves from instructors and end-of-course surveys. The AAR is built only from what is recorded here.
+          Record instructor or survey feedback here to build the AAR.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <input className="scw-ti" placeholder="Area (e.g. Annex B practical)" value={critiqueArea} onChange={(e) => setCritiqueArea(e.target.value)} style={{ flex: 1 }} />
@@ -561,7 +560,7 @@ export function RubricsView() {
     <>
       <div className="s-pagehead">
         <h1>Rubrics</h1>
-        <p>Rubricon drafts a behaviourally-anchored rubric from a task and an approved source, then traces every element back to the text.</p>
+        <p>Generate a rubric from a task and approved source.</p>
       </div>
 
       <div className="p-panel">
@@ -576,7 +575,7 @@ export function RubricsView() {
           </div>
         )}
         {!sourcesPending && !sourcesError && Array.isArray(sources) && approvedSources.length === 0 && (
-          <p className="p-src">No approved sources yet. Add and approve a source before generating a rubric.</p>
+          <p className="p-src">No approved sources. Add and approve one before generating.</p>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <select className="scw-ti" value={sourceId} onChange={(e) => setSourceId(e.target.value)} disabled={sourcesUnavailable}>
