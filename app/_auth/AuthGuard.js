@@ -26,7 +26,6 @@ export default function AuthGuard({ children }) {
     loading,
     ready,
     signOut,
-    signOutError,
     refreshProfile,
   } = useAuth();
   const router = useRouter();
@@ -72,21 +71,5 @@ export default function AuthGuard({ children }) {
   // pay-grade/rank pair. Older completed timestamps must not bypass it.
   if (!isProfileComplete(profile)) return <AccountProfile onboarding />;
 
-  return (
-    <>
-      <div className="scl-authpill">
-        <span>
-          {profile?.name || user.displayName || user.email || 'Signed in'}
-          {profile?.rank ? ` · ${profile.rank}` : ''}
-        </span>
-        <button onClick={() => void signOut().catch(() => {})}>Sign out</button>
-        {(profileError || signOutError) && (
-          <span role="alert" title={profileError?.message || signOutError?.message}>
-            {profileError?.error || signOutError?.error || 'Account action failed'}
-          </span>
-        )}
-      </div>
-      {children}
-    </>
-  );
+  return children;
 }

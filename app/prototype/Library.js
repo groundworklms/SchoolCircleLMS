@@ -5,6 +5,7 @@ import { downloadAuthenticated, useApiQuery, useApiMutation, useApiStream } from
 import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { CourseReadiness } from './CourseReadiness';
+import { CourseItemReview } from './ItemReview';
 import { GenerationProgress } from './GenerationProgress';
 import { RowActions } from './RowActions';
 import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
@@ -843,6 +844,13 @@ export function CourseDraft({ course, onChanged }) {
         unavailable={showingLoading || Boolean(draftError) || !envelope}
         onApprove={handleApprove}
       />
+
+      {/* Approving the course released this snapshot; it did not release the
+          items in it. Every materialised item starts PENDING and a learner only
+          ever sees APPROVED, so the gate stays open until a human closes it. */}
+      {status === 'APPROVED' && !showingLoading && (
+        <CourseItemReview courseId={course.id} onChanged={onChanged} />
+      )}
 
       {showingLoading && <p>Loading generated course…</p>}
       {!showingLoading && (

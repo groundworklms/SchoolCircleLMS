@@ -1,49 +1,43 @@
 import assert from 'node:assert/strict';
 import { mock, test } from 'node:test';
 
-// The SDK verifies signatures/issuer/audience/expiry; these tests exercise our
-// request boundary without accounts, credentials, or a live doctrine service.
-const calls = [];
-const verifyIdToken = mock.fn(async (token) => {
-  if (token !== 'verified-test-token') throw new Error('Invalid token');
-  return { uid: 'test-user' };
-});
-mock.module('firebase-admin/app', {
-  namedExports: {
-    getApps: () => [],
-    initializeApp: (options, name) => {
-      calls.push({ options, name });
-      return { options, name };
-    },
+// Doctrine is now only a backwards-compatible route alias. Its auth and
+// response rules belong to learningRoute/core; mock that chain so this route
+// test cannot accidentally revive an unauthenticated global Anchor call.
+const tutor = mock.fn(async (_identity, { body }) => ({
+  json: {
+    id: 'turn-1',
+    courseId: body.courseId,
+    answer: body.question,
+    refused: false,
+    citations: [],
+    stages: [{ stage: 'answer', ok: true }],
   },
+}));
+const learningRoute = mock.fn((options, handler) => async (request) => {
+  const body = await request.json();
+  return Response.json(
+    (await handler({
+      identity: { id: 'learner-1', role: 'LEARNER' },
+      body,
+      params: {},
+      query: {},
+      request,
+    })).json,
+  );
 });
-mock.module('firebase-admin/auth', {
-  namedExports: { getAuth: () => ({ verifyIdToken }) },
-});
-const askDoctrine = mock.fn(async ({ question }) => ({ answer: question, citations: [] }));
-mock.module('../lib/doctrine.js', {
-  namedExports: {
-    askDoctrine,
-    doctrineProvider: () => ({ ready: true }),
-    // The route primes the runtime endpoint before asking, and
-    // lib/doctrine-settings.js imports this setter from the real module. A mock
-    // that omits it fails the import rather than the assertion, so it has to
-    // mirror the module's surface.
-    setStoredDoctrineBaseUrl: () => {},
-  },
-});
-// The endpoint is settable at runtime; this test is about the auth gate, so the
-// settings read is stubbed to a no-op rather than reaching for a database.
-mock.module('../lib/doctrine-settings.js', {
-  namedExports: { primeDoctrineSettings: async () => null },
-});
+mock.module('../lib/learning/http.js', { namedExports: { learningRoute } });
+mock.module('../lib/learning/core.js', { namedExports: { tutor } });
 const auth = { currentUser: null };
 mock.module('../lib/firebase.js', { namedExports: { auth } });
 
 const { POST } = await import('../app/api/doctrine/route.js');
 const { authenticatedFetch } = await import('../lib/auth-fetch.js');
 
-function request(authorization, body = { question: 'What is sight alignment?' }) {
+function request(authorization, body = {
+  question: 'What is sight alignment?',
+  courseId: 'course-1',
+}) {
   return new Request('http://example.test/api/doctrine', {
     method: 'POST',
     headers: authorization ? { authorization } : {},
@@ -51,37 +45,18 @@ function request(authorization, body = { question: 'What is sight alignment?' })
   });
 }
 
-test('doctrine rejects anonymous/malformed/invalid sessions before calling Anchor', async () => {
-  // A synthetic project ID is configuration, not a credential.
-  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = 'doctrine-auth-test';
-  for (const header of [null, 'Basic abc', 'Bearer', 'Bearer a b', 'Bearer forged', 'Bearer expired']) {
-    const response = await POST(request(header));
-    assert.equal(response.status, 401);
-    assert.equal((await response.json()).code, 'UNAUTHENTICATED');
-  }
-  assert.equal(askDoctrine.mock.callCount(), 0);
-  assert.equal(verifyIdToken.mock.callCount(), 2);
-});
-
-test('missing auth configuration fails closed', async () => {
-  delete process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const response = await POST(request('Bearer verified-test-token'));
-  assert.equal(response.status, 503);
-  assert.equal((await response.json()).code, 'AUTH_NOT_CONFIGURED');
-  assert.equal(askDoctrine.mock.callCount(), 0);
-});
-
-test('verified users reach the existing question and answer behavior', async () => {
-  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = 'doctrine-auth-test';
+test('doctrine aliases the authenticated course tutor, including its course scope', async () => {
   const response = await POST(request('Bearer verified-test-token'));
   assert.equal(response.status, 200);
   assert.equal((await response.json()).answer, 'What is sight alignment?');
-  assert.equal(askDoctrine.mock.callCount(), 1);
-  assert.deepEqual(calls.at(-1), {
-    options: { projectId: 'doctrine-auth-test' }, name: 'doctrine-auth',
+  assert.deepEqual(learningRoute.mock.calls[0].arguments[0], {
+    roles: ['LEARNER', 'INSTRUCTOR'],
+    maxBodyBytes: 16 * 1024,
   });
-  assert.equal((await POST(request('Bearer verified-test-token', {}))).status, 400);
-  assert.equal(askDoctrine.mock.callCount(), 1);
+  assert.equal(tutor.mock.callCount(), 1);
+  assert.equal(tutor.mock.calls[0].arguments[1].body.courseId, 'course-1');
+  assert.equal(tutor.mock.calls[0].arguments[1].body.sourceIds, undefined);
+  assert.equal(typeof POST, 'function');
 });
 
 test('client sends a Firebase ID token and preserves request options', async () => {
