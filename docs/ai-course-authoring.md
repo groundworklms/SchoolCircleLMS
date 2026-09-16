@@ -12,11 +12,26 @@ Instructor previews and student lessons share the retained manual-course visual
 template: content blocks, typography, question choices and feedback presentation.
 The model supplies structured course content, not executable HTML or styles.
 
+A generated draft that does not pass grounding everywhere is saved as `PENDING`
+and returned with its blockers, rather than discarded. The review screen names
+the lessons standing between the draft and publication, and the instructor
+repairs them with the revision controls already on each lesson. Only a draft
+with no reviewable content at all is an outright generation failure.
+
 Instructors can request a question or whole-lesson revision. Requests carry the
 reviewed version and stable target IDs. The server validates saved sources and
 grounding, updates only the selected scope, and commits the candidate, root pointer
 and history together. A stale request is rejected. Successive candidates supersede
 the prior pending candidate without changing released material.
+
+Repair is iterative, so a revision is not required to make the whole course
+valid at once — the sections the instructor has not reached yet are still
+blocked. A revision is saved when it leaves the course publishable, or when it
+reduces the blocking issues without blocking a section that passed before. A
+revision that would unground a passing section, or that resolves nothing, is
+refused. This is a rule about what is worth saving for review, not about what
+may be published: approval reruns the full validator and refuses while any
+section fails, so nothing ungrounded reaches a learner.
 
 Final approval includes the exact reviewed version. Approval and typed delivery
 materialization commit together. Replacement releases have their own delivery IDs;

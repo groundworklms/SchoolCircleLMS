@@ -333,3 +333,40 @@
   .course-preview-banner { display: block; }
   .course-preview-banner span { display: block; margin-top: 0.25rem; }
 }
+/* ---- publication blockers ----
+   What stands between a generated draft and approval. A blocked draft is
+   saved and reviewable; these styles mark the work, not an error. */
+.course-blockers { border-left: 3px solid var(--p-warning, #b0731a); }
+.course-blockers.ok { border-left-color: var(--p-good, #1e7a3c); }
+.course-blockers h4 {
+  margin: 0.9rem 0 0.3rem;
+  font-size: 0.92rem;
+}
+.course-blockers h4 a { color: inherit; }
+.course-blocker-item + .course-blocker-item { margin-top: 0.2rem; }
+.course-blocker-issues {
+  margin: 0.2rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--p-dim, #6e6e73);
+  font-size: 0.9rem;
+}
+.course-blocker-issues li { margin: 0.15rem 0; }
+.course-blocker-inline {
+  padding: 0.65rem 0.8rem;
+  background: var(--p-surface-2, #ececef);
+  border-left: 3px solid var(--p-warning, #b0731a);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.course-preview-lesson.blocked { border-color: var(--p-warning, #b0731a); }
+.course-preview-flag {
+  flex: none;
+  padding: 0.12rem 0.5rem;
+  color: var(--p-warning, #b0731a);
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}

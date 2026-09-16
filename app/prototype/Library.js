@@ -66,7 +66,7 @@ function SourceCard({ source, onApproved }) {
     setErr(null);
     try {
       await approve.mutate();
-      onApproved();
+      onApproved(source.id);
     } catch (e) {
       setErr(errText(e, 'Failed to approve source'));
     }
@@ -114,13 +114,13 @@ function IngestSourceModal({ onIngested }) {
     if (!title || !text) return;
     setErr(null);
     try {
-      await ingest.mutate({ title, text });
+      const created = await ingest.mutate({ title, text });
       setOpen(false);
       setTitle('');
       setText('');
       setSourceId('');
       setFile(null);
-      onIngested();
+      onIngested(created);
     } catch (e) {
       setErr(errText(e, 'Failed to ingest source'));
     }
@@ -138,13 +138,13 @@ function IngestSourceModal({ onIngested }) {
     if (sourceId.trim()) form.append('sourceId', sourceId.trim());
     setErr(null);
     try {
-      await pdfUpload.mutate(form);
+      const created = await pdfUpload.mutate(form);
       setOpen(false);
       setTitle('');
       setText('');
       setSourceId('');
       setFile(null);
-      onIngested();
+      onIngested(created);
     } catch (e) {
       setErr(errText(e, 'Failed to upload PDF'));
     }
@@ -312,7 +312,25 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const [err, setErr] = useState(null);
   const draft = useApiMutation('/courses/draft', 'POST');
   const approvedSources = sources.filter((source) => source.status === 'APPROVED');
+  const pendingSources = sources.filter((source) => source.status === 'PENDING');
   const selectedIds = sourceIds.filter((id) => approvedSources.some((source) => source.id === id));
+
+  /* Adding a source and then approving it are the two steps between an
+     instructor and their first course. Selecting it for them afterwards means
+     the only thing left to do is press Generate. */
+  const selectSource = (id) => {
+    if (typeof id === 'string' && id.trim()) {
+      setSourceIds((current) => (current.includes(id) ? current : [...current, id]));
+    }
+  };
+  const handleIngested = (created) => {
+    selectSource(created?.id);
+    onRetrySources();
+  };
+  const handleSourceApproved = (id) => {
+    selectSource(id);
+    onRetrySources();
+  };
 
   const handleSubmit = async () => {
     if (selectedIds.length === 0 || draft.loading) return;
@@ -355,11 +373,21 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
         <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Create course</h3>
         <p className="p-src">1. Sources → 2. Generate → 3. Review → 4. Approve and publish</p>
         <p>Add a PDF or paste text, review and approve it below, then select it for this course. Existing approved sources can be reused.</p>
-        <IngestSourceModal onIngested={onRetrySources} />
-        {sources.filter((source) => source.status === 'PENDING').map((source) => (
-          <details key={source.id} style={{ margin: '0.75rem 0' }}>
+        <IngestSourceModal onIngested={handleIngested} />
+        {pendingSources.length > 0 && (
+          <p className="p-check bad" style={{ marginTop: '0.75rem' }} role="status">
+            <strong>
+              {pendingSources.length} source{pendingSources.length === 1 ? '' : 's'} waiting for your
+              approval. A course can only be generated from approved sources.
+            </strong>
+          </p>
+        )}
+        {pendingSources.map((source) => (
+          /* Open by default: a source sitting unapproved behind a closed
+             disclosure is the most common reason Generate stays disabled. */
+          <details key={source.id} open style={{ margin: '0.75rem 0' }}>
             <summary>{source.title} · Review and approve source</summary>
-            <SourceCard source={source} onApproved={onRetrySources} />
+            <SourceCard source={source} onApproved={handleSourceApproved} />
           </details>
         ))}
         <h4>Generate from selected sources</h4>
@@ -429,6 +457,16 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           <p className="p-src" style={{ marginBottom: '1rem' }}>No approved sources yet. Add a source above, then open its review and approve it.</p>
         )}
         {err && <p className="s-shell-error" role="alert">{err}</p>}
+        {/* Drafting a whole course runs the model over every section and can
+            take a couple of minutes. Saying so keeps an instructor from
+            reading a working request as a hung one and reloading. */}
+        {draft.loading && (
+          <p className="p-src" role="status" style={{ marginBottom: '0.5rem' }}>
+            Writing the outline, lessons and questions from {selectedIds.length} source
+            {selectedIds.length === 1 ? '' : 's'}. This usually takes a minute or two — leave this
+            open. You will land on the review screen when it is done.
+          </p>
+        )}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button className="p-btn ghost" onClick={() => setOpen(false)} disabled={draft.loading}>Cancel</button>
           <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
@@ -667,25 +705,127 @@ function QuestionRevisionControl({ question, version, onSubmit, busy }) {
   );
 }
 
-function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevision, revisionsDisabled }) {
+/* ---------- what is blocking publication ---------- */
+
+/** The server groups its grounding issues by index into `course.sections`.
+    Lessons usually render straight from those sections, but a payload carrying
+    its own `lessons` array need not line up -- rather than label the wrong
+    lesson, fall back to the course-level list in that case. */
+function lessonBlockersAlign(course, lessons) {
+  const sections = Array.isArray(course?.sections) ? course.sections : [];
+  return sections.length > 0 && sections.length === lessons.length;
+}
+
+function blockersForLesson(blockers, lessonNumber) {
+  const entry = blockers?.sections?.find((section) => section.index === lessonNumber);
+  return entry?.issues || [];
+}
+
+function BlockerList({ issues }) {
+  return (
+    <ul className="course-blocker-issues">
+      {issues.map((issue) => <li key={issue}>{issue}</li>)}
+    </ul>
+  );
+}
+
+/**
+ * The gap between "generated" and "publishable", stated plainly. The same
+ * validator runs again on approve, so this is the actual list an instructor
+ * has to clear -- not a guess at it.
+ */
+function CourseBlockers({ blockers, lessons }) {
+  if (!blockers) return null;
+  const blocked = blockers.sections || [];
+  const general = blockers.general || [];
+
+  if (blockers.valid) {
+    return (
+      <div className="p-panel course-blockers ok">
+        <h3>Ready to publish</h3>
+        <p className="p-check ok">
+          <strong>
+            Every section cites an approved source and is grounded in it. Review the content below,
+            then approve and publish.
+          </strong>
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-panel course-blockers" role="status">
+      <h3>Before this can be published</h3>
+      <p>
+        This draft is saved and yours to work on. {blocked.length > 0 && (
+          <>
+            <strong>{blocked.length}</strong> of <strong>{lessons.length}</strong>{' '}
+            {blocked.length === 1 ? 'lesson needs' : 'lessons need'} a revision before the course
+            can be approved.{' '}
+          </>
+        )}
+        Use the revision box inside a lesson to tell the model what to change — asking it to stay
+        closer to the wording of the cited source usually clears a grounding failure.
+      </p>
+      {general.length > 0 && (
+        <>
+          <h4>Course-wide</h4>
+          <BlockerList issues={general} />
+        </>
+      )}
+      {blocked.map((section) => (
+        <div key={section.index} className="course-blocker-item">
+          <h4>
+            <a href={`#lesson-${section.index}`}>
+              Lesson {section.index + 1}
+              {lessons[section.index]?.title ? ` · ${lessons[section.index].title}` : ''}
+            </a>
+          </h4>
+          <BlockerList issues={section.issues} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevision, revisionsDisabled, blockers }) {
   const lessons = courseLessons(course);
   if (!lessons.length) {
     return <p className="p-src">No lessons to preview yet.</p>;
   }
+  const aligned = lessonBlockersAlign(course, lessons);
+  const lessonBlockers = aligned ? blockers : null;
+  const firstBlocked = lessonBlockers?.sections?.[0]?.index;
   return (
     <div className="course-generated-preview">
       <div className="course-preview-banner">
         <strong>Generated course preview</strong>
         <span>Review each lesson and question before approval. Answer keys are instructor-only.</span>
       </div>
-      {lessons.map((lesson, lessonNumber) => (
-        <details key={lesson.id} open={lessonNumber === 0} className="course-preview-lesson">
+      {lessons.map((lesson, lessonNumber) => {
+        const issues = blockersForLesson(lessonBlockers, lessonNumber);
+        return (
+        /* Open the first lesson that needs work rather than always the first
+           lesson: on a blocked draft that is where the instructor is headed. */
+        <details
+          key={lesson.id}
+          id={`lesson-${lessonNumber}`}
+          open={lessonNumber === (firstBlocked ?? 0)}
+          className={`course-preview-lesson${issues.length ? ' blocked' : ''}`}
+        >
           <summary>
             <span className="course-preview-number">{lessonNumber + 1}</span>
             <span>{lesson.title}</span>
+            {issues.length > 0 && <span className="course-preview-flag">Needs revision</span>}
             <small>{lesson.questionRefs?.length || 0} questions</small>
           </summary>
           <div className="course-preview-body">
+            {issues.length > 0 && (
+              <div className="course-blocker-inline" role="status">
+                <strong>This lesson is blocking publication:</strong>
+                <BlockerList issues={issues} />
+              </div>
+            )}
             <CourseLesson content={lesson} preview />
             <div className="course-lesson-revision">
               <RevisionForm
@@ -707,7 +847,8 @@ function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevi
             ))}
           </div>
         </details>
-      ))}
+    );
+      })}
     </div>
   );
 }
@@ -775,6 +916,10 @@ export function CourseDraft({ course, onChanged }) {
 
   const sourceCount = draft?.sourceIds?.length || course.sourceIds?.length || 0;
   const sections = draft?.sections || [];
+  // Recomputed by the server on every read of this candidate, so it stays true
+  // after a revision without the client tracking it.
+  const blockers = envelope?.blockers || null;
+  const draftLessons = courseLessons(draft || {});
   const approvedSources = Array.isArray(sources) ? sources.filter((source) => source.status === 'APPROVED') : [];
   const showingLoading = loading || (!envelope && !draftError);
   // A pendingRevision key only ever matches the one form it names, so blocking
@@ -812,12 +957,17 @@ export function CourseDraft({ course, onChanged }) {
         )}
       </div>
 
+      {!showingLoading && hasPendingRevision && (
+        <CourseBlockers blockers={blockers} lessons={draftLessons} />
+      )}
+
       <CourseReadiness
         courseId={course.id}
         version={version}
         candidate={draft}
         pending={hasPendingRevision}
         published={status === 'APPROVED'}
+        blockers={blockers}
         busy={approve.loading || Boolean(pendingRevision)}
         unavailable={showingLoading || Boolean(draftError) || !envelope}
         onApprove={handleApprove}
@@ -832,6 +982,7 @@ export function CourseDraft({ course, onChanged }) {
             onSubmitRevision={submitRevision}
             pendingRevision={pendingRevision}
             revisionsDisabled={revisionsDisabled}
+            blockers={blockers}
           />
         </div>
       )}
