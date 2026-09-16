@@ -13,13 +13,18 @@ import { usePathname, useRouter } from 'next/navigation';
      /prototype/course/:courseId/:view            lessons | path | materials | assignments | live | progress
      /prototype/course/:courseId/lessons/:lessonId/:page   page number inside the lesson (1-based)
      /prototype/course/:courseId/discussions/:threadId
-     /prototype/instructor/:courseId/:view        builder | control | mastery | aar | settings
+     /prototype/instructor/:courseId/:view        builder | control | fidelity | mastery | aar | settings
+     /prototype/instructor/courses | sources | rubrics    the instructor library (not tied to a course)
+
+   A courseId is either a mock course key (data.js) or a LearningRecord id
+   from /api/learning/courses; the shells resolve which (see learning.js).
 
    `parse` turns a pathname into a location object; `href` turns one back into
    a pathname. Screens never touch the router directly — they call `go`. */
 
 const BASE = '/prototype';
 const STUDENT_AREAS = new Set(['courses', 'calendar', 'inbox', 'settings']);
+const INSTRUCTOR_LIBRARY = new Set(['courses', 'sources', 'rubrics']);
 const DEFAULT_COURSE = 'M092721';
 
 export function canAccessRole(profile, role, ready = true) {
@@ -36,7 +41,10 @@ export function parse(pathname) {
   const seg = (pathname || '').replace(/^\/prototype\/?/, '').split('/').filter(Boolean);
 
   if (seg[0] === 'instructor') {
-    return { role: 'instructor', courseId: seg[1] || DEFAULT_COURSE, view: seg[2] || 'builder' };
+    if (INSTRUCTOR_LIBRARY.has(seg[1])) {
+      return { role: 'instructor', area: 'library', courseId: null, view: seg[1] };
+    }
+    return { role: 'instructor', area: 'course', courseId: seg[1] || DEFAULT_COURSE, view: seg[2] || 'builder' };
   }
   if (seg[0] === 'course' && seg[1]) {
     const view = seg[2] || 'home';
@@ -58,6 +66,7 @@ export function parse(pathname) {
 
 export function href(loc) {
   if (loc.role === 'instructor') {
+    if (loc.area === 'library') return `${BASE}/instructor/${loc.view || 'courses'}`;
     return `${BASE}/instructor/${loc.courseId || DEFAULT_COURSE}/${loc.view || 'builder'}`;
   }
   if (loc.area === 'course' && loc.courseId) {

@@ -1,6 +1,23 @@
 'use client';
 
+import { InstructorAAR } from './InstructorFeatures';
+
+/* Real course: Hotwash builds the AAR from persisted critiques. Mock course:
+   the hand-written demo findings below. */
 function AAR({ course }) {
+  if (course.record) {
+    return (
+      <>
+        <h2 className="p-h">Course AAR</h2>
+        <p className="p-sub">
+          Built by Hotwash from the critiques recorded for this course. The thing being assessed is
+          the course, not the student — and nothing is asserted without a critique behind it.
+        </p>
+        <InstructorAAR courseId={course.id} />
+      </>
+    );
+  }
+
   const short = course.aar.filter((f) => f.term === 'Short term');
   const long = course.aar.filter((f) => f.term === 'Long term');
   const max = Math.max(...course.trend);
