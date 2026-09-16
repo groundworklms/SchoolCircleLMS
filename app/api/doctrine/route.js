@@ -1,4 +1,5 @@
 import { askDoctrine, doctrineProvider } from '../../../lib/doctrine.js';
+import { primeDoctrineSettings } from '../../../lib/doctrine-settings.js';
 import { requireFirebaseUser } from '../../../lib/firebase-server.js';
 
 export const runtime = 'nodejs';
@@ -6,6 +7,9 @@ export const maxDuration = 60;
 
 /** Status, so the capabilities screen can show whether grounding is actually available. */
 export async function GET() {
+  // This route is not a learningRoute, so it primes the operator-chosen address
+  // itself. Never throws: an unreadable settings row falls back to the env.
+  await primeDoctrineSettings();
   return Response.json(doctrineProvider());
 }
 
@@ -14,6 +18,7 @@ export async function POST(req) {
   if (denied) return denied;
 
   try {
+    await primeDoctrineSettings();
     const { question } = await req.json();
     if (!question) {
       return Response.json({ error: 'question is required' }, { status: 400 });

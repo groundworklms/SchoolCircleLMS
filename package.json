@@ -8,10 +8,13 @@
     "test:doctrine-auth": "node --experimental-test-module-mocks --test tests/doctrine-auth.test.mjs",
     "test:account-profile": "node --test test/account-profile.test.mjs tests/account-profile-race.test.mjs tests/account-profile-behavior.test.mjs tests/profile-options.test.mjs tests/role-destination.test.mjs",
     "test:model": "node --experimental-test-module-mocks --test test/model-openrouter.test.mjs test/model-settings.test.mjs test/model-catalog.test.mjs",
+    "test:doctrine": "node --experimental-test-module-mocks --test test/doctrine-settings.test.mjs",
     "test:ui-rendering": "node --test tests/ui-rendering.test.mjs tests/inbox-filter-contrast.test.mjs",
     "test:ai-authoring": "node --experimental-test-module-mocks --test test/course-revisions.test.mjs test/course-revision-handlers.test.mjs test/course-revision-transaction.test.mjs test/delivery.test.mjs test/delivery-route.test.mjs tests/learner-redaction.test.mjs tests/authoring-retired.test.mjs",
     "test:authoring": "node --test tests/authoring-server.test.mjs tests/authoring-retired.test.mjs tests/authoring-player.test.mjs",
-    "test:navigation": "node --test tests/navigation.test.mjs tests/role-destination.test.mjs tests/legacy-route-removal.mjs tests/auth-redirect.test.mjs",
+    "test:navigation": "node --test tests/navigation.test.mjs tests/instructor-shell.test.mjs tests/role-destination.test.mjs tests/legacy-route-removal.mjs tests/auth-redirect.test.mjs",
+    "test:roster": "node --test tests/roster-server.test.mjs tests/roster-ui-utils.mjs",
+    "test:roster-db": "node tests/roster-postgres.mjs",
     "test:authoring-db": "node tests/authoring-postgres.mjs",
     "start": "next start -p 3111",
     "db:generate": "prisma generate",
@@ -24,7 +27,8 @@
     "db:proxy": "node scripts/cloud-sql-proxy.mjs",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "test": "node --test test/auth.test.mjs test/project-course.test.mjs test/learning-core.test.mjs test/learning-evidence.test.mjs test/learning-handlers.test.mjs test/learning-persistence.test.mjs test/pdf-upload.test.mjs tests/navigation.test.mjs tests/role-destination.test.mjs tests/legacy-route-removal.mjs tests/auth-redirect.test.mjs"
+    "test": "node --test test/arsenal-packaging.test.mjs test/auth.test.mjs test/project-course.test.mjs test/learning-core.test.mjs test/learning-evidence.test.mjs test/learning-handlers.test.mjs test/learning-persistence.test.mjs test/pdf-upload.test.mjs tests/navigation.test.mjs tests/role-destination.test.mjs tests/legacy-route-removal.mjs tests/auth-redirect.test.mjs",
+    "test:record-admin": "node --experimental-test-module-mocks --test test/record-admin.test.mjs"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

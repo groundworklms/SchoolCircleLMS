@@ -6,9 +6,37 @@ import { usePrefs, setPref } from './prefs';
 import AccountProfile from '../_auth/AccountProfile';
 import { WaypointSurvey } from './LearnerFeatures';
 import { ModelProviderSettings } from './ModelProviderSettings';
+import { DoctrineSettings } from './DoctrineSettings';
 
 /* Settings, both roles. Preferences persist in the browser (prefs.js) so the
    instructor's per-course toggles show up on the student side in a demo. */
+
+/**
+ * Tab chrome for the one Settings destination. The active tab lives in the URL
+ * (app/prototype/routes.js), not in component state, so a tab is linkable and
+ * the back button works. `onTab` null renders the tabs as static labels, which
+ * is what a course-scoped visit wants -- it has no account-wide context to
+ * switch to.
+ */
+function SettingsTabs({ tabs, active, onTab }) {
+  return (
+    <div className="s-settings-tabs" role="tablist" aria-label="Settings sections">
+      {tabs.map(({ id, label }) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          aria-selected={active === id}
+          className={`s-settings-tab${active === id ? ' is-active' : ''}`}
+          onClick={onTab ? () => onTab(id) : undefined}
+          disabled={!onTab && active !== id}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function Toggle({ on, onChange, label, note }) {
   return (
@@ -154,11 +182,12 @@ function isValidPhone(phone) {
 
 /* ---------- student ---------- */
 
-export function StudentSettings({ onSignOut, account, authenticated = false }) {
+export function StudentSettings({ onSignOut, account, authenticated = false, tab, onTab }) {
   const prefs = usePrefs();
   const r = { ...prefs.reminders, phone: prefs.reminders.phone || '' };
   const displayName = account?.name || (authenticated ? 'Account' : 'Cpl Rivera');
   const displayEmail = account?.email || (authenticated ? 'signed-in account' : 'rivera.j@usmc.mil');
+  const active = tab === 'app' ? 'app' : 'account';
 
   return (
     <div className="s-settings">
@@ -169,6 +198,40 @@ export function StudentSettings({ onSignOut, account, authenticated = false }) {
         </p>
       </div>
 
+      <SettingsTabs
+        active={active}
+        onTab={onTab}
+        tabs={[
+          { id: 'account', label: 'Account' },
+          { id: 'app', label: 'App' },
+        ]}
+      />
+
+      {active === 'account' && (
+        <>
+      <section className="p-panel">
+        <h3>Account</h3>
+        {authenticated && <AccountProfile />}
+        <div className="s-settings-row">
+          <span>Identity</span>
+          <span className="s-settings-val">
+            {account?.name || (authenticated ? 'Account' : 'MCeLE / MarineNet SSO')}
+            {account?.rank ? ` · ${account.rank}` : ''}
+          </span>
+        </div>
+        <div className="s-settings-row">
+          <span>Courses</span>
+          <span className="s-settings-val">{Object.values(COURSES).map((c) => c.id).join(' · ')}</span>
+        </div>
+        <div className="p-btnrow" style={{ marginTop: '0.8rem' }}>
+          <button className="p-btn ghost" onClick={onSignOut}>Sign out</button>
+        </div>
+      </section>
+        </>
+      )}
+
+      {active === 'app' && (
+        <>
       <section className="p-panel">
         <h3>What&apos;s my learning style?</h3>
         {authenticated ? (
@@ -250,46 +313,94 @@ export function StudentSettings({ onSignOut, account, authenticated = false }) {
         </div>
       </section>
 
-      <section className="p-panel">
-        <h3>Account</h3>
-        {authenticated && <AccountProfile />}
-        <div className="s-settings-row">
-          <span>Identity</span>
-          <span className="s-settings-val">
-            {account?.name || (authenticated ? 'Account' : 'MCeLE / MarineNet SSO')}
-            {account?.rank ? ` · ${account.rank}` : ''}
-          </span>
-        </div>
-        <div className="s-settings-row">
-          <span>Courses</span>
-          <span className="s-settings-val">{Object.values(COURSES).map((c) => c.id).join(' · ')}</span>
-        </div>
-        <div className="p-btnrow" style={{ marginTop: '0.8rem' }}>
-          <button className="p-btn ghost" onClick={onSignOut}>Sign out</button>
-        </div>
-      </section>
+        </>
+      )}
     </div>
   );
 }
 
 /* ---------- instructor ---------- */
 
-export function InstructorSettings({ course, account, authenticated = false }) {
+export function InstructorSettings({
+  course,
+  account,
+  authenticated = false,
+  tab,
+  onTab,
+  courseScoped = false,
+}) {
   const prefs = usePrefs();
-  const show = !!prefs.showStanding?.[course.id];
+  // A course-scoped visit (…/:courseId/settings) lands on Course; otherwise the
+  // page opens on Account, which is what the single Settings button points at.
+  const requested = tab === 'app' || tab === 'course' || tab === 'account' ? tab : 'account';
+  const active = courseScoped ? 'course' : requested;
+  const show = !!prefs.showStanding?.[course?.id];
 
   return (
     <div className="s-settings">
-      <h2 className="p-h">Course settings</h2>
-      <p className="p-sub">{course.name} · {course.id}. These apply to this course only.</p>
+      <div className="s-pagehead">
+        <h1>Settings</h1>
+        <p>
+          {account?.name || 'Instructor account'}
+          {account?.email ? ` · ${account.email}` : ''}
+        </p>
+      </div>
+
+      <SettingsTabs
+        active={active}
+        onTab={courseScoped ? null : onTab}
+        tabs={[
+          { id: 'account', label: 'Account' },
+          { id: 'app', label: 'App' },
+          { id: 'course', label: 'Course' },
+        ]}
+      />
+
+      {active === 'account' && (
+        authenticated ? (
+          <section className="p-panel">
+            <h3>Account profile</h3>
+            <AccountProfile />
+          </section>
+        ) : (
+          <section className="p-panel">
+            <h3>Account profile</h3>
+            <p className="s-settings-p">Sign in to manage your account profile.</p>
+          </section>
+        )
+      )}
+
+      {active === 'app' && (
+        <>
+      <section className="p-panel">
+        <h3>Generation</h3>
+        <Toggle label="Instructor approval before students see generated items" note="Cannot be turned off." on onChange={() => {}} />
+        <Toggle label="Cite sources on every generated question" note="Requires the doctrine service." on onChange={() => {}} />
+      </section>
 
       {authenticated && (
         <section className="p-panel">
-          <h3>Account profile</h3>
-          <AccountProfile />
+          <h3>Generation model</h3>
+          <ModelProviderSettings />
         </section>
       )}
 
+      {authenticated && (
+        <section className="p-panel">
+          <h3>Doctrine engine</h3>
+          <DoctrineSettings />
+        </section>
+      )}
+        </>
+      )}
+
+      {active === 'course' && (
+        course ? (
+          <>
+            <p className="s-settings-p">
+              These apply to <strong>{course.name}</strong>
+              {course.id ? ` (${course.id})` : ''} only.
+            </p>
       <section className="p-panel">
         <h3>What students see</h3>
         <Toggle
@@ -318,17 +429,16 @@ export function InstructorSettings({ course, account, authenticated = false }) {
         </div>
       </section>
 
-      <section className="p-panel">
-        <h3>Generation</h3>
-        <Toggle label="Instructor approval before students see generated items" note="Cannot be turned off." on onChange={() => {}} />
-        <Toggle label="Cite sources on every generated question" note="Requires the doctrine service." on onChange={() => {}} />
-      </section>
-
-      {authenticated && (
-        <section className="p-panel">
-          <h3>Generation model</h3>
-          <ModelProviderSettings />
-        </section>
+          </>
+        ) : (
+          <section className="p-panel">
+            <h3>Course settings</h3>
+            <p className="s-settings-p">
+              Open a course from the library, then choose Settings to change what its students
+              see. Nothing on this tab applies account-wide.
+            </p>
+          </section>
+        )
       )}
     </div>
   );
