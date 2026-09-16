@@ -1,0 +1,120 @@
+.manual-library {
+  min-height: 100vh;
+  padding: 2.5rem clamp(1rem, 4vw, 4rem);
+  color: var(--text, #e6edf3);
+  background: var(--bg, #0d1117);
+}
+
+.manual-library-inner { width: min(72rem, 100%); margin: 0 auto; }
+.manual-library-header { margin-bottom: 1.5rem; }
+.manual-library-header h1 { margin: 0; font-size: clamp(1.8rem, 4vw, 2.7rem); letter-spacing: -0.04em; }
+.manual-library-header p { max-width: 40rem; color: var(--text-dim, #9aa7b8); }
+
+.manual-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+}
+.manual-course-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 12rem;
+  padding: 1.2rem;
+  color: inherit;
+  text-decoration: none;
+  background: var(--bg-card, #161b22);
+  border: 1px solid var(--border, #2a3240);
+  border-radius: 0.85rem;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.manual-course-card:hover, .manual-course-card:focus-visible {
+  border-color: var(--accent, #6ea8fe);
+  transform: translateY(-1px);
+}
+.manual-course-card h2 { margin: 0 0 0.6rem; font-size: 1.2rem; }
+.manual-course-card p { margin: 0; color: var(--text-dim, #9aa7b8); }
+.manual-course-card-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-top: auto;
+  padding-top: 1.2rem;
+  color: var(--accent, #6ea8fe);
+  font-size: 0.88rem;
+}
+
+.manual-library-state {
+  padding: 1.2rem;
+  background: var(--bg-card, #161b22);
+  border: 1px solid var(--border, #2a3240);
+  border-radius: 0.75rem;
+}
+.manual-library-state h2 { margin-top: 0; }
+.manual-library-error { border-color: #b45309; }
+.manual-library-state button, .manual-reader-back {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.55rem 0.8rem;
+  color: #fff;
+  background: var(--accent, #2563eb);
+  border: 0;
+  border-radius: 0.45rem;
+  cursor: pointer;
+  text-decoration: none;
+}
+.manual-library-state button:disabled { opacity: 0.65; cursor: wait; }
+.manual-auth-notice { max-width: 32rem; margin: 5rem auto; text-align: center; }
+
+.manual-reader {
+  min-height: 100vh;
+  padding: 1.5rem clamp(1rem, 4vw, 4rem) 4rem;
+  color: var(--text, #e6edf3);
+  background: var(--bg, #0d1117);
+}
+.manual-reader-inner { width: min(76rem, 100%); margin: 0 auto; }
+.manual-reader-top {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.2rem;
+}
+.manual-reader-top .manual-reader-back { flex: 0 0 auto; }
+.manual-reader-top h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 2.1rem); }
+.manual-reader-summary { margin: 0.35rem 0 1.4rem; color: var(--text-dim, #9aa7b8); }
+.manual-reader-layout {
+  display: grid;
+  grid-template-columns: minmax(11rem, 15rem) minmax(0, 54rem);
+  gap: 1.5rem;
+  align-items: start;
+}
+.manual-reader-nav {
+  position: sticky;
+  top: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-card, #161b22);
+  border: 1px solid var(--border, #2a3240);
+  border-radius: 0.7rem;
+}
+.manual-reader-nav h2 { margin: 0 0 0.65rem; font-size: 0.8rem; color: var(--text-dim, #9aa7b8); text-transform: uppercase; letter-spacing: 0.08em; }
+.manual-reader-nav button {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  color: inherit;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 0.35rem;
+  cursor: pointer;
+}
+.manual-reader-nav button:hover, .manual-reader-nav button.is-active { color: var(--accent, #6ea8fe); background: var(--bg-card-2, #1c2330); }
+.manual-reader-progress { margin: 0.75rem 0 0; padding-top: 0.75rem; border-top: 1px solid var(--border, #2a3240); color: var(--text-dim, #9aa7b8); font-size: 0.85rem; }
+.manual-reader-content { min-width: 0; }
+.manual-reader-saving { margin: 0 0 0.8rem; color: var(--text-dim, #9aa7b8); font-size: 0.88rem; }
+.manual-reader-error { margin: 0 0 0.8rem; padding: 0.7rem; color: #fecaca; background: #451a03; border-radius: 0.45rem; }
+
+@media (max-width: 48rem) {
+  .manual-reader-layout { grid-template-columns: 1fr; }
+  .manual-reader-nav { position: static; }
+  .manual-reader-nav button { display: inline-block; width: auto; margin: 0.1rem; }
+}
