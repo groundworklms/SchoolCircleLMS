@@ -12,6 +12,18 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+test('shared instructor shell omits breadcrumbs while retaining course status and navigation', () => {
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/InstructorShell.js'), 'utf8');
+  assert.doesNotMatch(source, /s-crumb|crumbTail/);
+  assert.match(source, /aria-label="Instructor navigation"/);
+  // The status the breadcrumb used to carry must survive its removal, and it
+  // must use courseHeaderStatus so a pending revision still reads as needing
+  // review rather than flattening to Approved/Draft.
+  assert.match(source, /<main className="s-main">[\s\S]*courseHeaderStatus\(course\)/);
+  // A legacy manual course keeps the school label the breadcrumb showed.
+  assert.match(source, /isManual && course\.school/);
+});
+
 function loadComponent(relativePath, {
   queryData = {},
   queryStates = {},
@@ -60,6 +72,19 @@ function loadComponent(relativePath, {
       return {
         loading: configured.loading ?? false,
         mutate: configured.mutate || (async () => configured.result ?? {}),
+      };
+    },
+    // Streaming endpoints are keyed the same way; `start` replays the events the
+    // fixture supplies and returns the last one, as the real hook does.
+    useApiStream(requestPath) {
+      const configured = mutationStates[requestPath] || {};
+      return {
+        loading: configured.loading ?? false,
+        start: configured.start || (async (payload, onEvent) => {
+          const events = configured.events || [{ phase: 'saved', record: configured.result ?? {} }];
+          for (const event of events) onEvent(event);
+          return events[events.length - 1];
+        }),
       };
     },
   };
@@ -289,10 +314,15 @@ test('course creation modal keeps ingestion, explicit approval, and approved-onl
   const { DraftCourseModal } = loadComponent('app/prototype/Library.js', {
     expose: ['DraftCourseModal'],
     mutationStates: {
-      '/courses/draft': {
-        mutate: async (payload) => {
+      // Generation streams its progress; the modal reads the stream and takes
+      // the course from the terminal `saved` event.
+      '/courses/draft/stream': {
+        start: async (payload, onEvent) => {
           generationCalls.push(payload);
-          return { id: 'course-created', status: 'PENDING' };
+          const saved = { phase: 'saved', record: { id: 'course-created', status: 'PENDING' } };
+          onEvent({ phase: 'accepted' });
+          onEvent(saved);
+          return saved;
         },
       },
     },
@@ -302,7 +332,7 @@ test('course creation modal keeps ingestion, explicit approval, and approved-onl
       ['Objective one\nObjective two', () => {}],
       [['source-pending', 'source-approved'], () => {}],
       [null, () => {}],
-      [false, () => {}],
+      [null, () => {}],
       [null, () => {}],
     ],
   });
