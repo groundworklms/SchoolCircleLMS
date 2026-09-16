@@ -1,16 +1,24 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAuth } from '../_auth/AuthProvider';
 import { useApiQuery } from '../_learning/useLearning';
+import { authFetch } from '../../lib/firebase';
 import { COURSES } from './data';
+import { courseFromRecord } from './learning-course-utils';
+
+export { courseFromRecord } from './learning-course-utils';
 
 /* Bridge from the shells to the persisted learning loop (/api/learning/*).
 
-   A course on screen is one of two things:
+   A course on screen is one of three things:
      - a mock course from data.js, keyed like 'M092721', with hand-written
        mastery / AAR / lesson content for the click-through demo; or
      - a real COURSE_DRAFT LearningRecord (Coursewright output an instructor
-       drafted and approved), keyed by its record id.
+       drafted and approved), keyed by its record id; or
+      - a legacy instructor-owned MANUAL_COURSE from the read-only authoring
+        service list. Legacy records remain available to the roster, but are
+        never sent to the AI course editor.
    `resolveCourse` returns a shell-shaped object for either. Real courses carry
    `record` so a screen can tell which it has and draw from the API instead of
    the mock. Mock screens never call the API with a mock id; real screens never
@@ -21,42 +29,72 @@ export function isMockCourseId(id) {
 }
 
 /* The learning API's course list for the signed-in account. Learners see
-   APPROVED courses; instructors also see their own PENDING drafts. Off (empty)
-   when Firebase is not configured or nobody is signed in — the learning routes
-   answer 401 without a verified identity, so there is nothing to ask for. */
-export function useLearningCourses() {
-  const { ready, user } = useAuth();
-  const enabled = Boolean(ready && user);
-  const { data, loading, error, refetch } = useApiQuery('/courses', { enabled });
-  const list = enabled && Array.isArray(data) ? data : [];
-  return {
-    courses: list.map(courseFromRecord),
-    loading: enabled && loading,
-    error: enabled ? error : null,
-    enabled,
-    refetch,
-  };
+   APPROVED courses; instructors also see their own PENDING drafts. The
+   legacy manual list is opt-in because StudentShell must never receive an
+   instructor's unpublished manual courses. The merged `courses` array is
+   convenient for instructor navigation; callers that render the AI draft
+   library filter out `manual` records. */
+function useManualCourses(enabled) {
+  const [state, setState] = useState({ courses: [], loading: false, error: null });
+
+  useEffect(() => {
+    if (!enabled) {
+      setState({ courses: [], loading: false, error: null });
+      return undefined;
+    }
+    const controller = new AbortController();
+    setState({ courses: [], loading: true, error: null });
+    authFetch('/api/authoring/courses', { signal: controller.signal })
+      .then(async (response) => {
+        let body = null;
+        try {
+          body = await response.json();
+        } catch {
+          // The explicit status below is more useful than a JSON parse error.
+        }
+        if (controller.signal.aborted) return;
+        if (!response.ok) throw new Error(body?.error || body?.message || `Unable to load manual courses (${response.status})`);
+        if (!Array.isArray(body?.courses)) throw new Error('Authoring service returned an invalid course list.');
+        setState({
+          courses: body.courses.map((entry) => courseFromRecord(entry, 'manual')),
+          loading: false,
+          error: null,
+        });
+      })
+      .catch((error) => {
+        if (error?.name === 'AbortError' || controller.signal.aborted) return;
+        setState({ courses: [], loading: false, error });
+      });
+    return () => controller.abort();
+  }, [enabled]);
+
+  return state;
 }
 
-/* Shell-shaped view of a course list entry from GET /api/learning/courses. The
-   fields the rail and crumbs read (id, name, school) are always present; the
-   demo-only numbers (week, students, topics…) are deliberately absent so a
-   screen that needs them can tell it has a real course. */
-export function courseFromRecord(entry) {
-  const hasPendingRevision = Boolean(entry.hasPendingRevision);
+export function useLearningCourses({ includeManual = false } = {}) {
+  const { ready, user, profile } = useAuth();
+  const enabled = Boolean(ready && user);
+  const manualEnabled = Boolean(includeManual && enabled && ['INSTRUCTOR', 'BOTH'].includes(profile?.role));
+  const { data, loading, error, refetch } = useApiQuery('/courses', { enabled });
+  const manual = useManualCourses(manualEnabled);
+  const list = enabled && Array.isArray(data) ? data : [];
+  const learningCourses = list.map((entry) => courseFromRecord(entry));
+  const manualCourses = manualEnabled ? manual.courses : [];
+  const byId = new Map();
+  [...learningCourses, ...manualCourses].forEach((course) => {
+    if (!byId.has(course.id)) byId.set(course.id, course);
+  });
   return {
-    id: entry.id,
-    name: entry.title || 'Untitled course',
-    school: hasPendingRevision
-      ? 'Pending review · revised course'
-      : entry.status === 'APPROVED'
-        ? 'Approved · cited course'
-        : 'Draft · awaiting approval',
-    status: entry.status,
-    hasPendingRevision,
-    sections: entry.sections || 0,
-    sourceIds: entry.sourceIds || [],
-    record: entry,
+    courses: [...byId.values()],
+    learningCourses,
+    manualCourses,
+    loading: enabled && loading,
+    error: enabled ? error : null,
+    manualLoading: manualEnabled && manual.loading,
+    manualError: manualEnabled ? manual.error : null,
+    manualEnabled,
+    enabled,
+    refetch,
   };
 }
 
