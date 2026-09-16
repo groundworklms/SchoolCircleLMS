@@ -63,8 +63,7 @@ export default function InstructorShell({ nav, onSwitchRole }) {
           inst
           items={[
             { label: 'Settings', hint: course.id, onClick: () => go({ view: 'settings' }) },
-            { label: 'View as student', onClick: onSwitchRole },
-            'divider',
+            ...(onSwitchRole ? [{ label: 'View as student', onClick: onSwitchRole }, 'divider'] : ['divider']),
             { label: 'Sign out', danger: true, onClick: handleSignOut },
           ]}
         />
@@ -90,7 +89,9 @@ export default function InstructorShell({ nav, onSwitchRole }) {
         ))}
 
         <div className="s-rail-spacer" />
-        <RailButton icon={I.swap} label="View as student" onClick={onSwitchRole} />
+        {onSwitchRole && (
+          <RailButton icon={I.swap} label="View as student" onClick={onSwitchRole} />
+        )}
         <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/'; }} />
       </nav>
 

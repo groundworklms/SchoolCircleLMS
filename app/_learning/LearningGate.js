@@ -1,10 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '../_auth/AuthProvider';
 import AccountProfile from '../_auth/AccountProfile';
 import AccountRecovery from '../_auth/AccountRecovery';
 import { useLearningStatus } from './useLearning';
+import { isProfileComplete } from '../../lib/profile-options.js';
 
 /* Gates the Learn / Teach apps. Unlike the prototype's AuthGuard (a no-op when
    Firebase is unconfigured), the learning API cannot work without a verified
@@ -27,6 +30,19 @@ export default function LearningGate({ returnTo, requireInstructor = false, chil
     loading: statusLoading,
     refetch: retryStatus,
   } = useLearningStatus();
+  const router = useRouter();
+
+  // A user can change role from the profile editor embedded in either app.
+  // Once the save publishes the new persisted role, leave the now-forbidden
+  // shell automatically instead of making them discover the switch link.
+  useEffect(() => {
+    if (!user || !isProfileComplete(user)) return;
+    if (requireInstructor && !['INSTRUCTOR', 'BOTH'].includes(user.role)) {
+      router.replace('/learn');
+    } else if (!requireInstructor && !['LEARNER', 'BOTH'].includes(user.role)) {
+      router.replace('/teach');
+    }
+  }, [user, requireInstructor, router]);
 
   if (firebaseLoading || statusLoading || userLoading) {
     return <div className="s-root" style={{ padding: '2rem' }}>Loading…</div>;
@@ -60,15 +76,24 @@ export default function LearningGate({ returnTo, requireInstructor = false, chil
     );
   }
 
-  if (!user.profileCompletedAt) {
+  if (!isProfileComplete(user)) {
     return <AccountProfile onboarding />;
   }
 
-  if (requireInstructor && user.role !== 'INSTRUCTOR') {
+  if (requireInstructor && !['INSTRUCTOR', 'BOTH'].includes(user.role)) {
     return (
       <Notice title="Instructor access required">
-        <p>You are signed in as a learner. This area is restricted to instructors.</p>
+        <p>You are signed in as a learner. This area is restricted to instructor profiles.</p>
         <Link href="/learn" className="p-btn" style={{ width: 'max-content' }}>Go to the learner app</Link>
+      </Notice>
+    );
+  }
+
+  if (!requireInstructor && !['LEARNER', 'BOTH'].includes(user.role)) {
+    return (
+      <Notice title="Learner access required">
+        <p>This area is for learner profiles. Your instructor tools are ready in the teaching app.</p>
+        <Link href="/teach" className="p-btn" style={{ width: 'max-content' }}>Go to the instructor app</Link>
       </Notice>
     );
   }

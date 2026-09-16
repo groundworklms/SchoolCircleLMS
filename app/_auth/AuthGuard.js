@@ -6,6 +6,7 @@ import { useAuth } from './AuthProvider';
 import AccountProfile from './AccountProfile';
 import AccountRecovery from './AccountRecovery';
 import { isAllowedEmail } from '../../lib/allowlist';
+import { isProfileComplete } from '../../lib/profile-options.js';
 
 /* Gates a route behind Firebase auth. Critically, if Firebase is NOT configured
    (`ready` false), this is a NO-OP — the app stays fully usable and nobody is
@@ -61,7 +62,10 @@ export default function AuthGuard({ children }) {
 
   if (!profile) return <div className="scl-fullcenter">Loading your account…</div>;
 
-  if (!profile.profileCompletedAt) return <AccountProfile onboarding />;
+  // profileCompletedAt is retained for audit/history, but the onboarding
+  // contract now includes role, branch, and (for military branches) a valid
+  // pay-grade/rank pair. Older completed timestamps must not bypass it.
+  if (!isProfileComplete(profile)) return <AccountProfile onboarding />;
 
   return (
     <>

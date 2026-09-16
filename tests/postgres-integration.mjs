@@ -14,8 +14,6 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { PrismaClient } from '@prisma/client';
-import { accountProfileHandlers } from '../lib/account-profile.js';
-import { resolveFirebaseUser } from '../lib/auth.js';
 import { firebaseExternalId } from '../lib/firebase-auth.js';
 import { runDatabaseSeedIntegration } from './database-seed-integration.mjs';
 import { seedDemo, DEMO_IDS } from '../prisma/seed.js';
@@ -69,7 +67,24 @@ function deployLegacyMigrations() {
 let started = false;
 let db;
 const previousFirebaseProjectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+const previousDatabaseUrl = process.env.DATABASE_URL;
+const previousCloudInstance = process.env.CLOUD_SQL_CONNECTION_NAME;
+let stage = 'isolated PostgreSQL setup';
 try {
+  // The core handlers use lib/db's singleton. Point that singleton at this
+  // private socket before importing the handlers; never use the caller's
+  // workspace/cloud URL for this test.
+  process.env.DATABASE_URL = url;
+  delete process.env.CLOUD_SQL_CONNECTION_NAME;
+  const [accountProfile, auth, core] = await Promise.all([
+    import('../lib/account-profile.js'),
+    import('../lib/auth.js'),
+    import('../lib/learning/core.js'),
+  ]);
+  const { accountProfileHandlers } = accountProfile;
+  const { hasRole, resolveFirebaseUser } = auth;
+  const { getCourse, masteryTurn } = core;
+
   run('initdb', ['-D', data, '-U', 'schoolcircle_test', '--auth-local=trust', '--auth-host=reject', '--no-locale', '-E', 'UTF8']);
   run('pg_ctl', ['-D', data, '-l', join(root, 'server.log'), '-o', `-k ${socket} -c listen_addresses=''`, '-w', 'start']);
   started = true;
@@ -135,6 +150,8 @@ try {
   assert.equal(instructorBeforeProfile.role, 'INSTRUCTOR');
   assert.equal(instructorBeforeProfile.externalId, 'firebase:native-pg-test:legacy-instructor');
   assert.equal(instructorBeforeProfile.rank, null);
+  assert.equal(instructorBeforeProfile.branch, null);
+  assert.equal(instructorBeforeProfile.payGrade, null);
   assert.equal(instructorBeforeProfile.profileCompletedAt, null);
 
   const firebaseInstructor = await resolveFirebaseUser(
@@ -158,22 +175,30 @@ try {
   const profileResponse = await PATCH(new Request('http://example.test/api/account/profile', {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name: 'Preferred Instructor', rank: 'Maj' }),
+    body: JSON.stringify({
+      name: 'Preferred Instructor',
+      role: 'BOTH',
+      branch: 'ARMY',
+      payGrade: 'O-4',
+      rank: 'Major',
+    }),
   }));
   assert.equal(profileResponse.status, 200);
   assert.equal((await profileResponse.json()).user.name, 'Preferred Instructor');
 
   // A fresh Prisma client is a separate session, not a cached object. Profile
-  // fields and the authoritative instructor role must survive the reconnect.
+  // fields and the authoritative combined role must survive the reconnect.
   await db.$disconnect();
   db = client();
   const persistedInstructor = await db.user.findUniqueOrThrow({
     where: { id: DEMO_IDS.users.instructor },
   });
   assert.equal(persistedInstructor.name, 'Preferred Instructor');
-  assert.equal(persistedInstructor.rank, 'Maj');
+  assert.equal(persistedInstructor.rank, 'Major');
+  assert.equal(persistedInstructor.branch, 'ARMY');
+  assert.equal(persistedInstructor.payGrade, 'O-4');
   assert.ok(persistedInstructor.profileCompletedAt instanceof Date);
-  assert.equal(persistedInstructor.role, 'INSTRUCTOR');
+  assert.equal(persistedInstructor.role, 'BOTH');
   const firebaseInstructorAfterReconnect = await resolveFirebaseUser(
     'synthetic-existing-token',
     db.user,
@@ -184,7 +209,176 @@ try {
     }),
   );
   assert.equal(firebaseInstructorAfterReconnect.name, 'Preferred Instructor');
-  assert.equal(firebaseInstructorAfterReconnect.role, 'INSTRUCTOR');
+  assert.equal(firebaseInstructorAfterReconnect.role, 'BOTH');
+  assert.equal(firebaseInstructorAfterReconnect.branch, 'ARMY');
+  assert.equal(firebaseInstructorAfterReconnect.payGrade, 'O-4');
+  assert.equal(hasRole(firebaseInstructorAfterReconnect.role, 'LEARNER'), true);
+  assert.equal(hasRole(firebaseInstructorAfterReconnect.role, 'INSTRUCTOR'), true);
+
+  // BOTH is allowed to use learner mastery against an approved course owned by
+  // somebody else. The course response remains learner-safe even though the
+  // same identity can enter instructor-gated endpoints.
+  stage = 'cross-owner BOTH course setup';
+  const crossOwnerSource = await db.learningRecord.create({
+    data: {
+      ownerId: learner.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: 'Another instructor source',
+        sourceId: 'native-cross-owner-source',
+        text: 'Approved source text.',
+        pages: [{ page: 1, text: 'Approved source text.' }],
+        chunks: [{ page: 1, text: 'Approved source text.' }],
+      },
+    },
+  });
+  const crossOwnerCourse = await db.learningRecord.create({
+    data: {
+      ownerId: learner.id,
+      type: 'COURSE_DRAFT',
+      status: 'APPROVED',
+      payload: {
+        title: 'Another instructor course',
+        sourceIds: [crossOwnerSource.id],
+        sections: [{
+          title: 'Cross-owner lesson',
+          lesson: 'Learner-safe lesson text.',
+          pre: [{ stem: 'Question', answer: 0, rationale: 'Private rationale.' }],
+        }],
+      },
+    },
+  });
+  stage = 'cross-owner BOTH redacted course handler';
+  const bothCourseView = await getCourse(firebaseInstructorAfterReconnect, {
+    params: { id: crossOwnerCourse.id },
+  });
+  assert.equal(bothCourseView.json.course.sections[0].lesson, 'Learner-safe lesson text.');
+  assert.equal(bothCourseView.json.course.sections[0].pre[0].answer, undefined);
+  assert.equal(bothCourseView.json.course.sections[0].pre[0].rationale, undefined);
+
+  const crossOwnerSession = await db.learningRecord.create({
+    data: {
+      ownerId: firebaseInstructorAfterReconnect.id,
+      type: 'MASTERY_SESSION',
+      status: 'ACTIVE',
+      payload: {
+        courseId: crossOwnerCourse.id,
+        sourceId: crossOwnerSource.id,
+        objectives: 'Cross-owner mastery',
+        source: 'Approved source text.',
+        complete: true,
+        rubric: [],
+        criteria: [],
+        transcript: [],
+        results: [],
+      },
+    },
+  });
+  stage = 'cross-owner BOTH mastery handler';
+  await assert.rejects(
+    masteryTurn(
+      firebaseInstructorAfterReconnect,
+      { params: { id: crossOwnerSession.id }, body: { answer: '' } },
+    ),
+    (error) => {
+      // Before the BOTH union fix approvedCourseFor rejected this as a
+      // cross-owner instructor request. It may still require Whetstone, but
+      // authorization must no longer be the failure.
+      assert.notEqual(error.code, 'NOT_FOUND');
+      return true;
+    },
+  );
+
+  // A profile can explicitly remove instructor access. The next request resolves
+  // the persisted role again rather than trusting a stale Firebase claim or
+  // cached identity.
+  stage = 'profile downgrade';
+  const { PATCH: downgrade } = accountProfileHandlers({
+    identityFor: async () => firebaseInstructorAfterReconnect,
+    users: db.user,
+  });
+  const downgradeResponse = await downgrade(new Request('http://example.test/api/account/profile', {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      name: 'Preferred Instructor',
+      role: 'LEARNER',
+      branch: 'CIVILIAN',
+      payGrade: null,
+      rank: null,
+    }),
+  }));
+  assert.equal(downgradeResponse.status, 200);
+  assert.equal((await downgradeResponse.json()).user.role, 'LEARNER');
+
+  const beforeInvalid = await db.user.findUniqueOrThrow({
+    where: { id: DEMO_IDS.users.instructor },
+  });
+  const invalidResponses = await Promise.all([
+    downgrade(new Request('http://example.test/api/account/profile', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Should Not Save',
+        role: 'BOTH',
+        branch: 'ARMY',
+        payGrade: 'E-5',
+        rank: 'Major',
+      }),
+    })),
+    downgrade(new Request('http://example.test/api/account/profile', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Should Not Save',
+        role: 'BOTH',
+        branch: 'CIVILIAN',
+        payGrade: 'E-1',
+        rank: null,
+      }),
+    })),
+    downgrade(new Request('http://example.test/api/account/profile', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Should Not Save',
+        role: 'BOTH',
+        branch: 'CIVILIAN',
+        payGrade: null,
+        rank: null,
+        externalId: 'firebase:native-pg-test:other-user',
+      }),
+    })),
+  ]);
+  for (const response of invalidResponses) assert.equal(response.status, 400);
+  const afterInvalid = await db.user.findUniqueOrThrow({
+    where: { id: DEMO_IDS.users.instructor },
+  });
+  assert.equal(afterInvalid.name, beforeInvalid.name);
+  assert.equal(afterInvalid.role, beforeInvalid.role);
+  assert.equal(afterInvalid.branch, beforeInvalid.branch);
+  assert.equal(afterInvalid.payGrade, beforeInvalid.payGrade);
+  assert.equal(afterInvalid.rank, beforeInvalid.rank);
+  assert.equal(afterInvalid.profileCompletedAt.getTime(), beforeInvalid.profileCompletedAt.getTime());
+
+  await db.$disconnect();
+  db = client();
+  const firebaseInstructorAfterDowngrade = await resolveFirebaseUser(
+    'synthetic-existing-token',
+    db.user,
+    async () => ({
+      uid: 'legacy-instructor',
+      name: 'A Stale Firebase Name',
+      role: 'INSTRUCTOR',
+    }),
+  );
+  assert.equal(firebaseInstructorAfterDowngrade.role, 'LEARNER');
+  assert.equal(firebaseInstructorAfterDowngrade.branch, 'CIVILIAN');
+  assert.equal(firebaseInstructorAfterDowngrade.payGrade, null);
+  assert.equal(firebaseInstructorAfterDowngrade.rank, null);
+  assert.equal(hasRole(firebaseInstructorAfterDowngrade.role, 'INSTRUCTOR'), false);
+  assert.equal(hasRole(firebaseInstructorAfterDowngrade.role, 'LEARNER'), true);
 
   const newIdentity = await resolveFirebaseUser(
     'synthetic-new-token',
@@ -198,6 +392,9 @@ try {
   assert.equal(newIdentity.name, 'New Firebase Identity');
   assert.equal(newIdentity.role, 'LEARNER');
   assert.equal(newIdentity.externalId, firebaseExternalId('new-native-user', 'native-pg-test'));
+  assert.equal(newIdentity.branch, null);
+  assert.equal(newIdentity.payGrade, null);
+  assert.equal(newIdentity.rank, null);
   assert.equal(
     (await db.user.findUniqueOrThrow({ where: { id: newIdentity.id } })).name,
     'New Firebase Identity',
@@ -211,11 +408,15 @@ try {
   assert.equal(drift.status, 0);
   console.log('PASS: isolated PostgreSQL migrations, repeatable seeds, safety guards, reconnect persistence, approved-only query, and zero schema drift.');
 } catch {
-  console.error('FAIL: isolated PostgreSQL integration. Check native PostgreSQL binaries and the failing assertion locally; detailed errors suppressed.');
+  console.error(`FAIL: isolated PostgreSQL integration at stage "${stage}". Detailed errors suppressed.`);
   process.exitCode = 1;
 } finally {
   if (previousFirebaseProjectId === undefined) delete process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   else process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID = previousFirebaseProjectId;
+  if (previousDatabaseUrl === undefined) delete process.env.DATABASE_URL;
+  else process.env.DATABASE_URL = previousDatabaseUrl;
+  if (previousCloudInstance === undefined) delete process.env.CLOUD_SQL_CONNECTION_NAME;
+  else process.env.CLOUD_SQL_CONNECTION_NAME = previousCloudInstance;
   if (db) await db.$disconnect().catch(() => {});
   if (started) spawnSync('pg_ctl', ['-D', data, '-m', 'immediate', '-w', 'stop'], { stdio: 'ignore' });
   rmSync(root, { recursive: true, force: true });

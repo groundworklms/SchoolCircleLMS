@@ -6,7 +6,7 @@
     "dev": "next dev -p 3111",
     "build": "next build",
     "test:doctrine-auth": "node --experimental-test-module-mocks --test tests/doctrine-auth.test.mjs",
-    "test:account-profile": "node --test test/account-profile.test.mjs tests/account-profile-race.test.mjs tests/account-profile-behavior.test.mjs",
+    "test:account-profile": "node --test test/account-profile.test.mjs tests/account-profile-race.test.mjs tests/account-profile-behavior.test.mjs tests/profile-options.test.mjs tests/role-destination.test.mjs",
     "test:ui-rendering": "node --test tests/ui-rendering.test.mjs",
     "start": "next start -p 3111",
     "db:generate": "prisma generate",

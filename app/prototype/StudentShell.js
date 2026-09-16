@@ -398,7 +398,7 @@ function CourseHome({ course, go, onOpen }) {
 
 /* ---------- shell ---------- */
 
-export default function StudentShell({ nav, onSwitchRole }) {
+export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const { ready: authReady, profile, signOut, signOutError } = useAuth();
   const {
     authenticated,
@@ -485,7 +485,7 @@ export default function StudentShell({ nav, onSwitchRole }) {
       <nav className="s-rail">
         <UserMenu
           name={displayName}
-          role="Student"
+          role={!profileRole ? 'Student' : profileRole === 'BOTH' ? 'Learner · Instructor' : 'Learner'}
           rank={displayRank}
           initials={initials}
           items={[
@@ -526,7 +526,9 @@ export default function StudentShell({ nav, onSwitchRole }) {
         )}
 
         <div className="s-rail-spacer" />
-        <RailButton icon={I.swap} label="View as instructor" onClick={onSwitchRole} />
+        {onSwitchRole && (
+          <RailButton icon={I.swap} label="View as instructor" onClick={onSwitchRole} />
+        )}
         <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/'; }} />
       </nav>
 

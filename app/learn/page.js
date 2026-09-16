@@ -43,7 +43,7 @@ function LearnApp({ user }) {
       <nav className="s-rail">
         <UserMenu
           name={learnerName}
-          role={user.role || 'Learner'}
+          role={user.role === 'BOTH' ? 'Learner · Instructor' : 'Learner'}
           rank={user.rank}
           initials={learnerInitials}
           inst={false}
@@ -82,7 +82,9 @@ function LearnApp({ user }) {
         ))}
 
         <div className="s-rail-spacer" />
-        <RailButton icon={I.swap} label="View as instructor" onClick={() => router.push('/teach')} />
+        {['INSTRUCTOR', 'BOTH'].includes(user.role) && (
+          <RailButton icon={I.swap} label="View as instructor" onClick={() => router.push('/teach')} />
+        )}
         <RailButton icon={I.back} label="Planning board" onClick={() => router.push('/plan')} />
       </nav>
 
