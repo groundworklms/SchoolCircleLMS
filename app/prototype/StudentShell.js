@@ -619,6 +619,8 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
         onSignOut={handleSignOut}
         account={profile}
         authenticated={authenticated}
+        tab={nav.tab}
+        onTab={(t) => nav.go({ area: 'settings', courseId: null, view: null, tab: t })}
       />
     );
   }
