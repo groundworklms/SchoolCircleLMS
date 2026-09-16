@@ -54,14 +54,20 @@ and never reach learner delivery until an instructor approves them.
 
 `MODEL_BASE_URL` **and** `MODEL_ID` are both required for model-backed
 operations. Missing configuration returns `503 NO_PROVIDER`; there is no mock
-or cloud fallback. Rubricon and Whetstone currently expose no raw chat
-injection in their upstream releases, so production generation additionally
-requires their isolated `RUBRICON_ENDPOINT`/`RUBRICON_MODEL`/`RUBRICON_API_KEY`
-or `WHETSTONE_ENDPOINT`/`WHETSTONE_MODEL`/`WHETSTONE_API_KEY` triplets. A
-missing triplet returns `503` rather than intercepting global environment or
-fetch state. Anchor remains an independent grounded HTTP service at
-`DOCTRINE_BASE_URL`; the existing `/api/doctrine` route returns its explicit
-unavailable state when that variable is absent.
+or cloud fallback. An explicitly selected
+`https://openrouter.ai/api/v1` may use the runtime `OPENROUTER_API_KEY` for
+authorized development/testing only; a key alone never selects that provider.
+Rubricon and Whetstone currently expose no raw chat injection in their upstream
+releases, so each production generation path additionally requires its own
+isolated `RUBRICON_ENDPOINT`/`RUBRICON_MODEL` or
+`WHETSTONE_ENDPOINT`/`WHETSTONE_MODEL` configuration. A dedicated
+`*_API_KEY` is accepted for any explicit endpoint; the shared
+`OPENROUTER_API_KEY` is accepted only when that endpoint is exactly
+`https://openrouter.ai/api/v1/chat/completions`. Missing configuration returns
+`503` rather than intercepting global environment or fetch state. Anchor
+remains an independent grounded HTTP service at `DOCTRINE_BASE_URL`; the
+existing `/api/doctrine` route returns its explicit unavailable state when that
+variable is absent.
 
 ## Persistence boundary
 
@@ -73,7 +79,7 @@ not yet have dedicated LMS tables:
 | `ownerId` | authenticated Prisma `User.id` |
 | `type` | `SOURCE`, `COURSE_DRAFT`, `RUBRIC`, `TUTOR_TURN`, `MASTERY_SESSION`, `MASTERY_ATTEMPT`, `STUDY_PLAN`, `CRITIQUE_SET`, `AAR`, `FIDELITY_CASES`, or `FIDELITY` |
 | `status` | `PENDING`, `APPROVED`, `ACTIVE`, `COMPLETE`, or `RECORDED` |
-| `payload` | JSON containing source pages/chunks, citations, model output, transcript, or session state |
+| `payload` | JSON containing source pages/chunks, citations, model output, transcript, shared-plan source/revision snapshot, or session state |
 | `version` | Monotonic compare-and-set version for stateful mastery turns |
 
 The checked-in migrations (`prisma/migrations/`) first establish the existing
@@ -122,8 +128,9 @@ JSON body:
 
 Multipart body with `file` and optional `title`/`sourceId`. This uses Quarry's
 existing PDF extraction seam, preserves printed page text, and persists the
-same `PENDING SOURCE` shape. The legacy `POST /api/ingest` parse-only response
-is unchanged.
+same `PENDING SOURCE` shape. Uploads must be `application/pdf`, begin with the
+`%PDF-` signature, and be no larger than 10 MiB. The legacy `POST /api/ingest`
+parse-only response uses the same upload guard.
 
 ### `GET /api/learning/sources` — authenticated
 
@@ -134,10 +141,10 @@ needs.
 ### `GET /api/learning/sources/:id` — authenticated
 
 Returns persisted page text and Quarry passages when the caller is the source
-owner or the source is `APPROVED`. Citation `source` values use this persisted
-record id (with `sourceId` retained as display metadata), so a client can open
-the cited text through this authenticated endpoint. A learner cannot open
-pending material.
+owner or the source is `APPROVED`. Course citations use this persisted record
+id with a `p.N` page suffix (with `sourceId` retained as display metadata), so
+a client can open the cited text through this authenticated endpoint. A learner
+cannot open pending material.
 
 ### `POST /api/learning/sources/:id/approve` — instructor owner
 
@@ -184,6 +191,84 @@ projection leaves the draft `PENDING`; approving again replaces the rows.
 
 A learner attempting to open a pending or unowned draft receives `404` rather
 than a pending-content leak.
+
+## Shared mastery plan review
+
+An approved course may have one or more reviewed shared mastery-plan revisions.
+The plan is generated and reviewed separately from the course approval so the
+instructor can inspect the canonical competency indicators before learners
+start new sessions. Only the instructor who owns the approved course may create
+or approve a plan. A plan is always tied to an approved source; the route does
+not accept learner-supplied indicators or an unapproved source.
+
+### `POST /api/learning/courses/:id/mastery-plan` — instructor owner
+
+```json
+{
+  "sourceId": "approved-source-record-id"
+}
+```
+
+The route creates a reviewed shared mastery-plan revision in `PENDING` state.
+The instructor review projection contains canonical criteria in the
+Whetstone-compatible shape:
+
+```json
+{
+  "courseId": "approved-course-record-id",
+  "sourceId": "approved-source-record-id",
+  "revision": "revision-token",
+  "status": "PENDING",
+  "criteria": [
+    {
+      "elo": "Inspect and record a safe library checkout",
+      "indicators": {
+        "developing": "…",
+        "competent": "…",
+        "mastered": "…"
+      }
+    }
+  ]
+}
+```
+
+The `developing`, `competent`, and `mastered` indicators are canonical review
+content, not learner answer keys. The response must remain pending until the
+course owner has inspected the criteria.
+
+### `POST /api/learning/courses/:id/mastery-plan/approve` — instructor owner
+
+```json
+{
+  "revision": "revision-token"
+}
+```
+
+Approves exactly the reviewed pending revision selected by the course owner.
+An approved revision is immutable: later plan work creates a new pending
+revision rather than changing the plan copied into existing sessions. The
+endpoint rejects a revision from another course/source, a non-owner, a
+non-pending revision, or a course/source that is no longer approved. Approval
+does not alter prior mastery sessions or their saved reports.
+
+### Learner-safe course metadata
+
+An authenticated learner opening an approved course may receive only the
+shared plan metadata needed to start a session:
+
+```json
+{
+  "masteryPlan": {
+    "status": "APPROVED",
+    "sourceId": "approved-source-record-id",
+    "revision": "revision-token"
+  }
+}
+```
+
+Learner responses do not serialize the canonical indicators. In the course
+detail UI this metadata is represented by **Shared mastery plan**; it does not
+expose the instructor review projection or answer-key content.
 
 ### `POST /api/learning/courses/:id/syllabus` — instructor owner
 
@@ -293,11 +378,20 @@ fallback to an ungrounded answer.
 }
 ```
 
-The route constructs the upstream Whetstone `Session` using its configured
-model-backed `deriveRubric`, `firstQuestion`, and `scoreTurn` functions,
-persists its transcript and state as an `ACTIVE
-MASTERY_SESSION`, and returns the opening question and learner-safe report.
-Rubric indicators are intentionally not returned as an answer key.
+For an approved course with an approved shared mastery plan, a new session
+resolves that plan server-side and copies its immutable criteria, `sourceId`,
+and `revision` into the session snapshot. The learner starts it from **Start
+new session** in the course detail UI; the learner does not submit or choose
+canonical indicators. The session response exposes only learner-safe plan
+metadata (`sourceId` and `revision`), not the indicator text.
+
+The pinned Whetstone scorer and its progression contract are unchanged. The
+route constructs the upstream Whetstone `Session` using its configured
+model-backed `deriveRubric`, `firstQuestion`, and `scoreTurn` functions, then
+persists its transcript and state as an `ACTIVE MASTERY_SESSION`. Existing
+sessions retain their prior copied plan (or legacy course/source state) and
+are never silently re-based onto a newly approved revision. Rubric indicators
+are intentionally not returned as an answer key.
 
 ### `POST /api/learning/mastery/sessions/:id/turn` — session owner
 
@@ -314,10 +408,23 @@ invent `correct` or `phase`. The response contains Whetstone's verdict,
 feedback, next question, score, `complete`, and `stalled`. The session always
 terminates at its configured caps. No autonomous proctoring is performed.
 
+## Shared-plan cohort boundary
+
+`GET /api/learning/analytics/cohort?courseId=<course-id>` must compare only
+sessions whose copied shared-plan `sourceId` **and** `revision` both match.
+Sessions from another source, another plan revision, or a legacy session
+without the shared-plan metadata are not combined into that cohort result.
+The existing privacy threshold remains **five distinct learners per
+competency**; a smaller or mixed-revision population is reported as
+privacy-suppressed/insufficient evidence rather than lowering the threshold or
+blending incompatible plans. No individual transcript, raw answer, learner ID,
+or canonical indicator text is returned.
+
 ## Error contract
 
 `400` indicates an invalid request shape; `401` missing verified identity; `403`
 insufficient role; `404` inaccessible or missing approved content; `409` a
-stale mastery turn or a rubric that failed human-approval gates; `503`
+stale mastery turn, an invalid/non-pending mastery-plan revision, or a rubric
+that failed human-approval gates; `503`
 unavailable identity, model, or installed upstream package. The API does not
 convert unavailable services into fabricated content.
