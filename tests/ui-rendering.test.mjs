@@ -949,3 +949,19 @@ test('a source card exposes rename and remove', () => {
   assert.match(markup, /row-actions-trigger/);
   assert.match(markup, /Actions for source/);
 });
+
+test('the course hook refreshes the legacy list too, not just generated courses', async () => {
+  // Removing a legacy course succeeded on the server while its row stayed on
+  // screen, because the manual list was fetched once with no reload path and
+  // the shared refetch only covered /courses. That is indistinguishable from
+  // the delete not working.
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/learning.js'), 'utf8');
+
+  // The manual list must expose a way to reload.
+  assert.match(source, /refetch:\s*\(\)\s*=>\s*setReload/, 'useManualCourses exposes no refetch');
+  assert.match(source, /\[enabled,\s*reload\]/, 'the manual effect does not depend on a reload trigger');
+
+  // And the hook's shared refetch must drive it.
+  const returned = source.slice(source.indexOf('    manualEnabled,'));
+  assert.match(returned, /manual\.refetch/, 'the shared refetch does not refresh the manual list');
+});
