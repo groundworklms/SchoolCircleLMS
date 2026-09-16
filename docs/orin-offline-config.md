@@ -8,6 +8,23 @@ no SSH key, no tunnel, and no network.
 Anchor used to bind the Orin's loopback (`127.0.0.1:8000`), so a laptop could only reach it through
 an SSH tunnel. It now binds the **USB device-mode interface** (`l4tbr0 = 192.168.55.1`) instead.
 
+> **Where the bind actually comes from.** Not the YAML. `server.host` in
+> `/opt/tutor/config/default.yaml` is decorative — `main.py` never reads it. The real control is the
+> `--host` CLI flag (`main.py`: `ap.add_argument("--host", default="127.0.0.1")`, consumed by
+> `uvicorn.run(app, host=args.host, ...)`). The systemd unit did not pass it, so it defaulted to
+> loopback. **Already applied** via a drop-in — note the directory must be `<unit>.service.d`, not
+> `<unit>.d`, or systemd silently ignores it:
+>
+> ```
+> /etc/systemd/system/tutor-api.service.d/bind-usb.conf
+> [Service]
+> ExecStart=
+> ExecStart=/usr/bin/python3 /opt/tutor/api/main.py --db ... --items ... --host 192.168.55.1
+> ```
+>
+> Revert: `sudo rm -rf /etc/systemd/system/tutor-api.service.d && sudo systemctl daemon-reload &&
+> sudo systemctl restart tutor-api`
+
 That is **not** `0.0.0.0`. The USB link is point-to-point to the single attached laptop — it is not
 reachable from any real network, so the air-gap holds. It just removes the tunnel from the path.
 
@@ -18,11 +35,10 @@ laptop  ──USB device-mode──  Orin
 
 ## Level 1 — grounding offline (the demo path)
 
-**Activate once** (needs the team sudo password; run from a laptop that has `~/.ssh/gameday_orin`):
-
-```bash
-ssh -t -i ~/.ssh/gameday_orin vanguard@192.168.55.1 'sudo systemctl restart tutor-api'
-```
+**Already applied and verified** (16 Sep 2026): the drop-in above is in place and Anchor listens on
+`192.168.55.1:8000`. Confirmed from a laptop with the SSH tunnel killed — health ok, 14 publications
+/ 4,731 chunks, a cited answer from TC 3-22.9, and a correct refusal on an out-of-corpus question.
+Nothing below needs running again unless the Orin is reimaged.
 
 **Verify from any plugged-in laptop** — nothing else running, no tunnel:
 
@@ -57,8 +73,8 @@ apply both together or Anchor loses its own generator:
 
 ```bash
 # 1. bind llama-server to the USB interface
-sudo mkdir -p /etc/systemd/system/tutor-gen.d
-sudo tee /etc/systemd/system/tutor-gen.d/bind-usb.conf >/dev/null <<'EOF'
+sudo mkdir -p /etc/systemd/system/tutor-gen.service.d
+sudo tee /etc/systemd/system/tutor-gen.service.d/bind-usb.conf >/dev/null <<'EOF'
 [Service]
 ExecStart=
 ExecStart=/opt/tutor/llama.cpp/build/bin/llama-server -m /opt/tutor/models/gemma-4-E2B_q4_0-it.gguf \
@@ -80,12 +96,41 @@ whole loop (generate → ground → deliver) runs on the board with the network 
 **Leave `tutor-embed` (8081), `tutor-rerank` (8082) and `tutor-verify` (8083) on loopback.** Anchor
 calls them locally on the Orin; exposing them buys nothing and widens the surface.
 
+### Optional: student-chat local model
+
+Student chat keeps its hosted GPT 6 Astra selection as primary. For a locally
+running SchoolCircle installation, its bounded offline retry is configured
+separately from generation:
+
+```bash
+STUDENT_LOCAL_BASE_URL=http://192.168.55.1:8080/v1
+STUDENT_LOCAL_MODEL_ID=<exact id returned by http://192.168.55.1:8080/v1/models>
+# STUDENT_LOCAL_API_KEY=<only if llama-server was configured to require one>
+```
+
+Do **not** infer `STUDENT_LOCAL_MODEL_ID` from
+`gemma-4-E2B_q4_0-it.gguf`: that filename is not a documented API model ID.
+The student adapter permits only private/localhost HTTP(S) URLs with no URL
+credentials, query, or fragment, and never reuses `OPENAI_API_KEY` for this
+endpoint. It retries only an unreachable/timed-out hosted transport, once, by
+rerunning the full scoped Anchor → strict Sourcerer → Understudy pipeline
+local-only. The whole turn is bounded to 110 seconds (30 seconds hosted, then
+75 seconds local); local catalog and model calls are bounded to 5 and 15
+seconds. Refusals, auth/rate-limit responses, malformed output, and missing
+models do not trigger it.
+
+Do not set these Orin addresses in Replit or expect this server fallback to
+make a cloud-hosted browser session offline. The SchoolCircle app/auth/data
+services and scoped Anchor `/api/ground` must themselves be locally reachable
+to the browser and server for an air-gapped student turn.
+
 ## Revert
 
 ```bash
-cp /opt/tutor/config/default.yaml.bak_prebind /opt/tutor/config/default.yaml   # restores 127.0.0.1
-sudo systemctl restart tutor-api
-# Level 2: sudo rm -rf /etc/systemd/system/tutor-gen.d && sudo systemctl daemon-reload \
+# Level 1 (the bind comes from the drop-in, NOT the YAML):
+sudo rm -rf /etc/systemd/system/tutor-api.service.d
+sudo systemctl daemon-reload && sudo systemctl restart tutor-api
+# Level 2: sudo rm -rf /etc/systemd/system/tutor-gen.service.d && sudo systemctl daemon-reload \
 #          && sudo systemctl restart tutor-gen
 ```
 
