@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning/useLearning';
+import { downloadAuthenticated, useApiQuery, useApiMutation, useApiStream } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { SourceViewer } from './SourceViewer';
 import { CourseReadiness } from './CourseReadiness';
+import { GenerationProgress } from './GenerationProgress';
 import { RowActions } from './RowActions';
 
 /* The instructor library — the parts of the persisted learning loop that are
@@ -310,31 +311,48 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const [objective, setObjective] = useState('');
   const [sourceIds, setSourceIds] = useState([]);
   const [err, setErr] = useState(null);
-  const draft = useApiMutation('/courses/draft', 'POST');
+  // Generation is a minute or more of model calls. Rather than a spinner over
+  // it, the stream reports every objective and artifact as it lands and the
+  // modal shows the course being written.
+  const [events, setEvents] = useState(null);
+  const draft = useApiStream('/courses/draft/stream');
   const approvedSources = sources.filter((source) => source.status === 'APPROVED');
   const selectedIds = sourceIds.filter((id) => approvedSources.some((source) => source.id === id));
 
   const handleSubmit = async () => {
     if (selectedIds.length === 0 || draft.loading) return;
     setErr(null);
+    setEvents([]);
     try {
       // Title and objectives are overrides, not requirements. Left empty they
       // are written from the selected sources; an empty string would read as an
       // instructor asking for a blank title, so send neither unless typed.
-      const created = await draft.mutate({
-        ...(title.trim() ? { title: title.trim() } : {}),
-        objectives: objective.split('\n').map((line) => line.trim()).filter(Boolean),
-        sourceIds: selectedIds,
-        diagrams: false,
-      });
+      const last = await draft.start(
+        {
+          ...(title.trim() ? { title: title.trim() } : {}),
+          objectives: objective.split('\n').map((line) => line.trim()).filter(Boolean),
+          sourceIds: selectedIds,
+          diagrams: false,
+        },
+        (event) => setEvents((current) => [...(current || []), event]),
+      );
+      // The stream carries its own failure so the partial progress stays on
+      // screen next to the reason, rather than collapsing to one error line.
+      if (last?.phase !== 'saved') return;
       setOpen(false);
       setTitle('');
       setObjective('');
       setSourceIds([]);
-      onDrafted(created);
+      setEvents(null);
+      onDrafted(last.record);
     } catch (e) {
       setErr(errText(e, 'Failed to draft course'));
     }
+  };
+
+  const closeModal = () => {
+    setOpen(false);
+    setEvents(null);
   };
 
   const sourceUnavailable = sourcesLoading || Boolean(sourcesError);
@@ -429,10 +447,26 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           <p className="p-src" style={{ marginBottom: '1rem' }}>No approved sources yet. Add a source above, then open its review and approve it.</p>
         )}
         {err && <p className="s-shell-error" role="alert">{err}</p>}
+        {Array.isArray(events) && (
+          <section
+            aria-label="Course generation progress"
+            aria-live="polite"
+            style={{
+              border: '1px solid var(--p-border)',
+              borderRadius: '10px',
+              padding: '0.75rem 0.9rem',
+              margin: '1rem 0',
+            }}
+          >
+            <GenerationProgress events={events} />
+          </section>
+        )}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button className="p-btn ghost" onClick={() => setOpen(false)} disabled={draft.loading}>Cancel</button>
+          <button className="p-btn ghost" onClick={closeModal} disabled={draft.loading}>
+            {Array.isArray(events) && !draft.loading ? 'Close' : 'Cancel'}
+          </button>
           <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
-            {draft.loading ? 'Generating…' : 'Generate course'}
+            {draft.loading ? 'Generating…' : Array.isArray(events) ? 'Try again' : 'Generate course'}
           </button>
         </div>
       </div>

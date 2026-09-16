@@ -45,7 +45,7 @@ function Toggle({ on, onChange, label, note }) {
         <span>{label}</span>
         {note && <span className="s-toggle-note">{note}</span>}
       </span>
-      <button type="button" role="switch" aria-checked={on} className={`s-toggle${on ? ' on' : ''}`} onClick={() => onChange(!on)}>
+      <button type="button" role="switch" aria-label={label} aria-checked={on} className={`s-toggle${on ? ' on' : ''}`} onClick={() => onChange(!on)}>
         <span className="s-toggle-knob" />
       </button>
     </label>
@@ -287,6 +287,12 @@ export function StudentSettings({ onSignOut, account, authenticated = false, tab
 
       <section className="p-panel">
         <h3>Display</h3>
+        <Toggle
+          label="Show Calendar in sidebar"
+          note="Hide or show the Calendar link. Your calendar events are not changed. Saved in this browser."
+          on={prefs.showCalendar !== false}
+          onChange={(value) => setPref('showCalendar', value)}
+        />
         <div className="s-settings-row">
           <span>Theme</span>
           <span className="p-diff">

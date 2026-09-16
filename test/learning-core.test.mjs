@@ -146,6 +146,9 @@ test('real production scorer: restored and fresh sessions finish, then reload co
     env: {
       MODEL_BASE_URL: 'https://whetstone.invalid',
       MODEL_ID: 'fixture-model',
+      // Production Whetstone now rides the shared model, so the shared credential
+      // is what authenticates that path.
+      MODEL_API_KEY: 'fixture-not-a-credential',
       WHETSTONE_ENDPOINT: 'https://whetstone.invalid/chat/completions',
       WHETSTONE_MODEL: 'fixture-model',
       WHETSTONE_API_KEY: 'fixture-not-a-credential',
@@ -380,26 +383,65 @@ test('invalid generated outlines are rejected without silently truncating them',
   );
 });
 
-test('Coursewright skipped objectives fail as partial generation', async () => {
+// Two pages of one source, each with its own citation.
+const TWO_PAGES = [
+  { source: 'record-1 p.1', text: 'Clear the rifle and confirm the chamber is empty before disassembly begins.' },
+  { source: 'record-1 p.2', text: 'Carbon buildup on the bolt tail causes a failure to extract during sustained fire.' },
+];
+
+// "chamber carbon" is grounded in the sources as a whole -- both words appear --
+// so it passes outline validation, but neither page carries enough of it for
+// retrieval to ground a section in one passage. That gap is the production
+// path: the model wrote twelve objectives and retrieval covered eleven.
+function twoPageAsk(objectives) {
+  return async (model, system) => {
+    if (system.includes('instructional designer')) {
+      return { title: 'Rifle maintenance', objectives };
+    }
+    if (system.includes('micro-lesson')) {
+      return { refused: false, lesson: 'Clear the rifle and confirm the chamber is empty before disassembly begins.' };
+    }
+    if (system.includes('"items"')) {
+      return { refused: false, items: [{
+        stem: 'What is confirmed before disassembly begins?',
+        options: ['The chamber is empty', 'The rifle is loaded'],
+        answerIndex: 0,
+        rationale: 'Confirm the chamber is empty before disassembly begins.',
+      }] };
+    }
+    if (system.includes('"cards"')) {
+      return { refused: false, cards: [{ front: 'What is confirmed before disassembly?', back: 'The chamber is empty.' }] };
+    }
+    return { refused: true, reason: 'not needed for this fixture' };
+  };
+}
+
+test('an uncovered objective is named, not a reason to throw the whole course away', async () => {
+  // An instructor saw "Coursewright generated 11 sections for 12 requested
+  // objectives" and no course at all: one objective retrieval could not ground
+  // discarded eleven finished sections. The draft is PENDING and needs their
+  // review anyway, so keep what was built and name what was not -- the opposite
+  // of dropping sections quietly.
+  const course = await draftCourse(
+    { objectives: [], documents: TWO_PAGES, diagrams: false },
+    { load: upstream, ask: twoPageAsk(['Clear the rifle before disassembly begins', 'chamber carbon']) },
+  );
+
+  assert.equal(course.sections.length, 1);
+  assert.deepEqual(course.objectives, ['Clear the rifle before disassembly begins']);
+  assert.deepEqual(course.skippedObjectives, ['chamber carbon']);
+});
+
+test('nothing grounded at all is still an explicit failure, never an empty course', async () => {
   await assert.rejects(
     () => draftCourse(
-      {
-        title: 'Partial course',
-        objectives: ['Safety check', 'Check before operation'],
-        documents: [{ text: 'A safety check is required before operation.' }],
-        diagrams: false,
-      },
-      {
-        load: async () => ({
-          fromDocuments: async () => ({ sections: [{ title: 'Safety check' }] }),
-        }),
-        ask: async () => { throw new Error('partial-result fixture does not call a model'); },
-      },
+      { objectives: [], documents: TWO_PAGES, diagrams: false },
+      { load: upstream, ask: twoPageAsk(['chamber carbon']) },
     ),
     (error) =>
-      error.code === 'COURSE_GENERATION_PARTIAL' &&
-      error.validation.expectedSections === 2 &&
-      error.validation.actualSections === 1,
+      error.code === 'COURSE_GENERATION_EMPTY' &&
+      error.status === 422 &&
+      /chamber carbon/.test(error.message),
   );
 });
 
@@ -1068,4 +1110,121 @@ test('a task with no code of its own gets a derived one that cannot pass for an 
   assert.equal(task.code, 'SC-PERFORM-PRE-OPERATION-01');
   // An official task code is 0000-AAA-0000; a derived one must not look like it.
   assert.doesNotMatch(task.code, /^[0-9X]{4}-[A-Z]{2,4}-[0-9]{4}$/);
+});
+
+/* ---------- grounding a section in what its citation denotes ---------- */
+
+// Two persisted chunks of one page. They carry the same citation label, which
+// is what validateCourseDraft resolves a section's cite against.
+const PAGE_CHUNKS = [
+  {
+    source: 'record-1 p.1',
+    text: 'Clear the rifle and confirm the chamber is empty before any disassembly begins. Disassemble the rifle into its major groups: upper receiver, lower receiver, and bolt carrier group.',
+  },
+  {
+    source: 'record-1 p.1',
+    text: 'Carbon build-up on the bolt tail is the most common cause of a failure to extract. A rifle that is cleaned but under-lubricated will short-stroke under sustained fire, so lubrication is not optional.',
+  },
+];
+
+// A lesson that draws on both chunks of the page it cites -- which is exactly
+// what an instructor wants and what the cited page supports.
+const PAGE_LESSON = 'Clear the rifle and confirm the chamber is empty before any disassembly begins. Disassemble the rifle into its major groups: upper receiver, lower receiver, and bolt carrier group. Carbon build-up on the bolt tail is the most common cause of a failure to extract. A rifle that is cleaned but under-lubricated will short-stroke under sustained fire, so lubrication is not optional.';
+
+function pageAsk(lesson = PAGE_LESSON) {
+  return async (model, system) => {
+    if (system.includes('micro-lesson')) return { refused: false, lesson };
+    if (system.includes('"items"')) {
+      return { refused: false, items: [{
+        stem: 'What is the most common cause of a failure to extract?',
+        options: ['Carbon build-up on the bolt tail', 'An empty chamber'],
+        answerIndex: 0,
+        rationale: 'Carbon build-up on the bolt tail is the most common cause of a failure to extract.',
+      }] };
+    }
+    if (system.includes('"cards"')) {
+      return { refused: false, cards: [{ front: 'Most common cause of a failure to extract?', back: 'Carbon build-up on the bolt tail.' }] };
+    }
+    if (system.includes('applied scenario')) return { refused: true, reason: 'not needed for this fixture' };
+    if (system.includes('discussion prompts')) return { refused: true, reason: 'not needed for this fixture' };
+    if (system.includes('summarize')) return { refused: true, reason: 'not needed for this fixture' };
+    throw new Error(`unexpected prompt: ${system.slice(0, 60)}`);
+  };
+}
+
+test('a lesson drawing on the whole cited page is not refused for missing one chunk of it', async () => {
+  // Regression. Coursewright re-chunked the documents to ~180 words and graded
+  // the lesson against the single best chunk, while validateCourseDraft grades
+  // it against everything the citation resolves to. A lesson grounded in the
+  // page but spread across two chunks measured 37.5% against the chunk and
+  // 66.7% against the page, so it was refused despite being grounded.
+  const course = await draftCourse(
+    {
+      title: 'Rifle maintenance',
+      objectives: ['Clear the rifle before disassembly'],
+      documents: PAGE_CHUNKS,
+      diagrams: false,
+    },
+    { load: upstream, ask: pageAsk() },
+  );
+
+  assert.equal(course.sections.length, 1);
+  assert.equal(course.sections[0].refused, undefined, course.sections[0].reason);
+  assert.equal(course.sections[0].cite, 'record-1 p.1');
+});
+
+test('a refused section carries its reason out of validation, not just its index', async () => {
+  // Twelve lines of "section N is refused" is what an instructor actually saw.
+  const validation = validateCourseDraft(
+    {
+      title: 'Rifle maintenance',
+      sections: [{ title: 'Clean the bolt', cite: 'record-1 p.1', refused: true, reason: 'lesson not grounded in the passage' }],
+    },
+    { sources: [{ id: 'record-1', status: 'APPROVED', payload: { sourceId: 'record-1', title: 'POI', pages: [{ page: 1, text: PAGE_CHUNKS[0].text }] } }] },
+  );
+
+  assert.equal(validation.valid, false);
+  const refusal = validation.issues.find((issue) => issue.includes('is refused'));
+  assert.match(refusal, /lesson not grounded in the passage/);
+  assert.match(refusal, /Clean the bolt/);
+});
+
+test('generation reports each phase and artifact as it lands', async () => {
+  const events = [];
+  await draftCourse(
+    {
+      title: 'Rifle maintenance',
+      objectives: ['Clear the rifle before disassembly'],
+      documents: PAGE_CHUNKS,
+      diagrams: false,
+    },
+    { load: upstream, ask: pageAsk(), emit: (event) => events.push(event) },
+  );
+
+  // What the live generation view renders.
+  assert.equal(events.find((e) => e.phase === 'sources')?.documents, 2);
+  assert.deepEqual(
+    events.filter((e) => e.phase === 'sections')[0],
+    { phase: 'sections', status: 'start', total: 1 },
+  );
+  const landed = events.filter((e) => e.phase === 'coursewright' && e.ok === true).map((e) => e.kind);
+  assert.deepEqual(landed.sort(), ['flashcards', 'lesson', 'post-test', 'pre-test']);
+  // A refusal reaches the view with its reason, live, rather than only in a
+  // summary after the whole build is discarded.
+  const refused = events.filter((e) => e.phase === 'coursewright' && e.ok === false);
+  assert.ok(refused.every((e) => typeof e.reason === 'string' && e.reason));
+  assert.equal(events.at(-1).step, 'done');
+});
+
+test('a throwing progress listener never aborts a generation that is going fine', async () => {
+  const course = await draftCourse(
+    {
+      title: 'Rifle maintenance',
+      objectives: ['Clear the rifle before disassembly'],
+      documents: PAGE_CHUNKS,
+      diagrams: false,
+    },
+    { load: upstream, ask: pageAsk(), emit: () => { throw new Error('listener exploded'); } },
+  );
+  assert.equal(course.sections.length, 1);
 });
