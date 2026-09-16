@@ -354,6 +354,18 @@ const dbMock = {
   async getLearningRecord(id) {
     return snapshot(records.get(id) || null);
   },
+  async listDeliveryCourseItems() {
+    // Per-item ratification (863f724) added these to lib/db.js. The mock has
+    // to offer every export core.js imports or the module fails to link and
+    // the whole suite reports one failure with no useful assertion.
+    return [];
+  },
+  async getDeliveryCourseItem() {
+    return null;
+  },
+  async updateDeliveryCourseItem() {
+    return null;
+  },
   async courseEvidenceCount() {
     // No typed delivery rows in this fixture, so no learner evidence. The
     // delete path reads this to decide archive-vs-remove.
