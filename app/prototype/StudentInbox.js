@@ -241,7 +241,38 @@ function useRosterInbox() {
     return true;
   }, [prefs.readMessageIds, user]);
 
-  return { messages, loading: Boolean(user && loading), error, live: Boolean(user), ready, markRead };
+  // A recipient must be able to get rid of a message. The server scopes the delete
+  // to the caller's own User row, so this can only ever remove the learner's own
+  // copy. Locally-stored demo messages are simply dropped from this browser.
+  const removeMessage = useCallback(async (message) => {
+    // Only a persisted roster message can be deleted. The hand-written demo
+    // messages have no server row, so the button is not offered for them.
+    if (!user || message.localOnly || !message.serverId) return false;
+    const response = await authFetch('/api/roster/messages', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: message.serverId }),
+    });
+    let body = null;
+    try {
+      body = await response.json();
+    } catch {
+      // Preserve the status in the explicit error below.
+    }
+    if (!response.ok) throw new Error(body?.error || body?.message || `Unable to delete message (${response.status})`);
+    setServerMessages((current) => current.filter((item) => item.id !== message.id));
+    return true;
+  }, [user]);
+
+  return {
+    messages,
+    loading: Boolean(user && loading),
+    error,
+    live: Boolean(user),
+    ready,
+    markRead,
+    removeMessage,
+  };
 }
 
 /* The rail uses this same source, so its unread badge follows the persisted
@@ -251,7 +282,7 @@ export function useInboxMessages() {
 }
 
 export default function StudentInbox({ onOpen, onArea }) {
-  const { messages: msgs, loading, error, live, ready, markRead } = useRosterInbox();
+  const { messages: msgs, loading, error, live, ready, markRead, removeMessage } = useRosterInbox();
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [reply, setReply] = useState('');
@@ -278,6 +309,15 @@ export default function StudentInbox({ onOpen, onArea }) {
   const act = (a) => {
     if (a.area) onArea(a.area);
     else onOpen(a.courseId, a.view);
+  };
+
+  const removeMsg = (message) => {
+    setReadError('');
+    removeMessage(message)
+      .then(() => {
+        setSelectedId((current) => (current === message.id ? null : current));
+      })
+      .catch((caught) => setReadError(caught.message || 'Unable to delete this message.'));
   };
 
   return (
@@ -361,14 +401,19 @@ export default function StudentInbox({ onOpen, onArea }) {
                 </p>
               ))}
             </div>
-            {selected.actions?.length > 0 && (
-              <div className="p-btnrow s-read-actions">
-                {selected.actions.map((a) => (
-                  <button key={a.label} className="p-btn" onClick={() => act(a)}>
-                    {a.label}
-                  </button>
-                ))}
-              </div>
+            {(selected.actions?.length > 0 || (!selected.localOnly && selected.serverId)) && (
+            <div className="p-btnrow s-read-actions">
+              {(selected.actions || []).map((a) => (
+                <button key={a.label} className="p-btn" onClick={() => act(a)}>
+                  {a.label}
+                </button>
+              ))}
+              {!selected.localOnly && selected.serverId && (
+                <button className="p-btn ghost" onClick={() => removeMsg(selected)}>
+                  Delete
+                </button>
+              )}
+            </div>
             )}
             {selected.kind === 'announcement' && (
               <div className="s-reply">
