@@ -6,6 +6,7 @@ import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { SourceViewer } from './SourceViewer';
 import { CourseReadiness } from './CourseReadiness';
+import { RowActions } from './RowActions';
 
 /* The instructor library — the parts of the persisted learning loop that are
    not tied to one course on screen: source documents (Quarry) and the course
@@ -73,7 +74,16 @@ function SourceCard({ source, onApproved }) {
 
   return (
     <div className="p-panel">
-      <h3>{source.title}</h3>
+      <div className="p-panel-head">
+        <h3>{source.title}</h3>
+        <RowActions
+          label="source"
+          title={source.title}
+          endpoint={`/api/learning/sources/${source.id}`}
+          onChanged={onApproved}
+          removeNote="A source that any course still cites cannot be removed."
+        />
+      </div>
       <p className="p-src" style={{ marginBottom: '1rem' }}>
         <code>{source.id}</code> · <StatusTag status={source.status} />
       </p>
@@ -257,15 +267,37 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
       {courses.length > 0 && (
         <div className="s-courselist">
           {courses.map((c) => (
-            <button className="s-courserow" key={c.id} onClick={() => onOpen(c.id)}>
-              <div className="s-courserow-main">
-                <div className="s-card-title">{c.name || c.title}</div>
-                <div className="s-card-school">
-                  {c.sections} sections · <strong>{c.hasPendingRevision || c.record?.hasPendingRevision ? `${c.status === 'APPROVED' ? 'Published' : 'Draft'} · revision needs review` : c.status === 'APPROVED' ? 'Published' : 'Needs review'}</strong>
+            /* A row-actions button cannot nest inside the row's own button, so
+               the open affordance is its own element and the menu is a
+               sibling. */
+            <div className="s-courserow s-courserow-managed" key={c.id}>
+              <button className="s-courserow-open" onClick={() => onOpen(c.id)}>
+                <div className="s-courserow-main">
+                  <div className="s-card-title">
+                    {c.name || c.title}
+                    {c.manual && <span className="s-legacy-tag">Legacy</span>}
+                  </div>
+                  <div className="s-card-school">
+                    {c.manual
+                      ? 'Published through the retired manual workflow · roster only'
+                      : <>{c.sections} sections · <strong>{c.hasPendingRevision || c.record?.hasPendingRevision ? `${c.status === 'APPROVED' ? 'Published' : 'Draft'} · revision needs review` : c.status === 'APPROVED' ? 'Published' : 'Needs review'}</strong></>}
+                  </div>
                 </div>
-              </div>
-              <span className="s-quick-arrow">→</span>
-            </button>
+                <span className="s-quick-arrow">→</span>
+              </button>
+              <RowActions
+                label="course"
+                title={c.name || c.title}
+                /* Legacy courses live on the authoring API, where renaming is
+                   retired (410), so only removal is offered for them. */
+                endpoint={c.manual
+                  ? `/api/authoring/courses/${c.id}`
+                  : `/api/learning/courses/${c.id}`}
+                canRename={!c.manual}
+                onChanged={onDrafted}
+                removeNote="A course learners have worked in is archived instead, and their work is kept."
+              />
+            </div>
           ))}
         </div>
       )}
