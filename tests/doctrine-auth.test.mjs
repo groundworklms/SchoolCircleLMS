@@ -22,7 +22,20 @@ mock.module('firebase-admin/auth', {
 });
 const askDoctrine = mock.fn(async ({ question }) => ({ answer: question, citations: [] }));
 mock.module('../lib/doctrine.js', {
-  namedExports: { askDoctrine, doctrineProvider: () => ({ ready: true }) },
+  namedExports: {
+    askDoctrine,
+    doctrineProvider: () => ({ ready: true }),
+    // The route primes the runtime endpoint before asking, and
+    // lib/doctrine-settings.js imports this setter from the real module. A mock
+    // that omits it fails the import rather than the assertion, so it has to
+    // mirror the module's surface.
+    setStoredDoctrineBaseUrl: () => {},
+  },
+});
+// The endpoint is settable at runtime; this test is about the auth gate, so the
+// settings read is stubbed to a no-op rather than reaching for a database.
+mock.module('../lib/doctrine-settings.js', {
+  namedExports: { primeDoctrineSettings: async () => null },
 });
 const auth = { currentUser: null };
 mock.module('../lib/firebase.js', { namedExports: { auth } });

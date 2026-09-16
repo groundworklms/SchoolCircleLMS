@@ -5,6 +5,7 @@ import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning
 import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { CourseReadiness } from './CourseReadiness';
+import { RowActions } from './RowActions';
 import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
 import './source-library.css';
 
@@ -18,12 +19,6 @@ const MODAL_BACKDROP = {
   background: 'rgba(0,0,0,0.5)', zIndex: 100,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
 };
-
-function StatusTag({ status }) {
-  return (
-    <strong style={{ color: status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }}>{status}</strong>
-  );
-}
 
 function errText(e, fallback) {
   return e?.error || e?.message || fallback;
@@ -230,7 +225,6 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
       <div className="s-pagehead s-pagehead-row">
         <div>
           <h1>Courses</h1>
-          <p>Sources → Generate → Review → Approve and publish. Only your approved version reaches learners.</p>
         </div>
         <DraftCourseModal
           sources={Array.isArray(sources) ? sources : []}
@@ -259,15 +253,37 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
       {courses.length > 0 && (
         <div className="s-courselist">
           {courses.map((c) => (
-            <button className="s-courserow" key={c.id} onClick={() => onOpen(c.id)}>
-              <div className="s-courserow-main">
-                <div className="s-card-title">{c.name || c.title}</div>
-                <div className="s-card-school">
-                  {c.sections} sections · <strong>{c.hasPendingRevision || c.record?.hasPendingRevision ? `${c.status === 'APPROVED' ? 'Published' : 'Draft'} · revision needs review` : c.status === 'APPROVED' ? 'Published' : 'Needs review'}</strong>
+            /* A row-actions button cannot nest inside the row's own button, so
+               the open affordance is its own element and the menu is a
+               sibling. */
+            <div className="s-courserow s-courserow-managed" key={c.id}>
+              <button className="s-courserow-open" onClick={() => onOpen(c.id)}>
+                <div className="s-courserow-main">
+                  <div className="s-card-title">
+                    {c.name || c.title}
+                    {c.manual && <span className="s-legacy-tag">Legacy</span>}
+                  </div>
+                  <div className="s-card-school">
+                    {c.manual
+                      ? 'Published through the retired manual workflow · roster only'
+                      : <>{c.sections} sections · <strong>{c.hasPendingRevision || c.record?.hasPendingRevision ? `${c.status === 'APPROVED' ? 'Published' : 'Draft'} · revision needs review` : c.status === 'APPROVED' ? 'Published' : 'Needs review'}</strong></>}
+                  </div>
                 </div>
-              </div>
-              <span className="s-quick-arrow">→</span>
-            </button>
+                <span className="s-quick-arrow">→</span>
+              </button>
+              <RowActions
+                label="course"
+                title={c.name || c.title}
+                /* Legacy courses live on the authoring API, where renaming is
+                   retired (410), so only removal is offered for them. */
+                endpoint={c.manual
+                  ? `/api/authoring/courses/${c.id}`
+                  : `/api/learning/courses/${c.id}`}
+                canRename={!c.manual}
+                onChanged={onDrafted}
+                removeNote="A course learners have worked in is archived instead, and their work is kept."
+              />
+            </div>
           ))}
         </div>
       )}
@@ -286,11 +302,14 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const selectedIds = sourceIds.filter((id) => approvedSources.some((source) => source.id === id));
 
   const handleSubmit = async () => {
-    if (!title.trim() || selectedIds.length === 0 || draft.loading) return;
+    if (selectedIds.length === 0 || draft.loading) return;
     setErr(null);
     try {
+      // Title and objectives are overrides, not requirements. Left empty they
+      // are written from the selected sources; an empty string would read as an
+      // instructor asking for a blank title, so send neither unless typed.
       const created = await draft.mutate({
-        title: title.trim(),
+        ...(title.trim() ? { title: title.trim() } : {}),
         objectives: objective.split('\n').map((line) => line.trim()).filter(Boolean),
         sourceIds: selectedIds,
         diagrams: false,
@@ -331,9 +350,13 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           </details>
         ))}
         <h4>Generate from selected sources</h4>
+        <p className="p-src">
+          The title and objectives are written from the sources you select. Fill either in only to
+          override what the model would choose.
+        </p>
         <input
           className="scw-ti"
-          placeholder="Course title"
+          placeholder="Course title (optional — written from the sources)"
           aria-label="Course title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -342,7 +365,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
         <textarea
           className="scw-ti"
           aria-label="Course objectives"
-          placeholder="Optional objectives, one per line."
+          placeholder="Objectives, one per line (optional — written from the sources)"
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
           rows={4}
@@ -395,7 +418,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
         {err && <p className="s-shell-error" role="alert">{err}</p>}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button className="p-btn ghost" onClick={() => setOpen(false)} disabled={draft.loading}>Cancel</button>
-          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || !title.trim() || selectedIds.length === 0}>
+          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
             {draft.loading ? 'Generating…' : 'Generate course'}
           </button>
         </div>

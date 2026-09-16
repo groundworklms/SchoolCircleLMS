@@ -3,12 +3,10 @@ import test from 'node:test';
 
 import { createLearningRecord, db } from '../lib/db.js';
 import {
-  draftCourseRecord,
-  generateRubricRecord,
+  deleteSource,
   getSource,
   getSourcePdf,
   listSources,
-  removeSource,
 } from '../lib/learning/core.js';
 import { errorStatus } from '../lib/learning/http.js';
 import {
@@ -109,23 +107,23 @@ test('source summaries expose only boolean PDF and removal capabilities', () => 
 const databaseReady = process.env.RUN_DB_TESTS === '1' && Boolean(process.env.DATABASE_URL);
 
 test(
-  'source ownership, removal, archived citations, and PDF authorization stay separated',
+  'source ownership, deletion, and PDF authorization stay separated',
   { skip: !databaseReady },
   async () => {
     const owner = { id: `source-owner-${Date.now()}-${process.pid}`, role: 'INSTRUCTOR' };
     const learner = { id: `source-learner-${Date.now()}-${process.pid}`, role: 'LEARNER' };
-    const sourceIds = [];
+    const recordIds = [];
     try {
       const approved = await createLearningRecord({
         ownerId: owner.id,
         type: 'SOURCE',
         status: 'APPROVED',
         payload: {
-          title: 'Archived source',
-          sourceId: 'archived-source',
-          text: 'Approved archived text.',
-          pages: [{ page: 1, text: 'Approved archived text.' }],
-          chunks: [{ page: 1, text: 'Approved archived text.' }],
+          title: 'Cited source',
+          sourceId: 'cited-source',
+          text: 'Approved cited text.',
+          pages: [{ page: 1, text: 'Approved cited text.' }],
+          chunks: [{ page: 1, text: 'Approved cited text.' }],
         },
       });
       const pending = await createLearningRecord({
@@ -146,15 +144,17 @@ test(
         status: 'APPROVED',
         payload: { title: 'Existing course', sourceIds: [approved.id] },
       });
-      const pdfBytes = new TextEncoder().encode('%PDF-1.7\narchived');
-      const pendingPdfBytes = new TextEncoder().encode('%PDF-1.7\npending');
+      const pdfBytes = new TextEncoder().encode('%PDF-1.7
+cited');
+      const pendingPdfBytes = new TextEncoder().encode('%PDF-1.7
+pending');
       const pdf = await createLearningRecord({
         ownerId: owner.id,
         type: 'SOURCE_PDF',
         status: 'STORED',
         payload: {
           sourceRecordId: approved.id,
-          filename: 'archived.pdf',
+          filename: 'cited.pdf',
           bytesBase64: Buffer.from(pdfBytes).toString('base64'),
         },
       });
@@ -168,7 +168,7 @@ test(
           bytesBase64: Buffer.from(pendingPdfBytes).toString('base64'),
         },
       });
-      sourceIds.push(approved.id, pending.id, course.id, pdf.id, pendingPdf.id);
+      recordIds.push(approved.id, pending.id, course.id, pdf.id, pendingPdf.id);
 
       const ownerList = await listSources(owner);
       assert.equal(ownerList.json.find((entry) => entry.id === approved.id).canRemove, true);
@@ -196,43 +196,39 @@ test(
       })(), 404);
       assert.equal(await (async () => {
         try {
-          await removeSource(learner, { params: { id: approved.id } });
+          await deleteSource(learner, { params: { id: approved.id } });
           return 200;
         } catch (error) {
           return errorStatus(error);
         }
       })(), 404);
 
-      await removeSource(owner, { params: { id: approved.id } });
-      const afterRemoval = await getSource(learner, { params: { id: approved.id } });
-      assert.equal(afterRemoval.json.status, 'REMOVED');
-      assert.equal(afterRemoval.json.text, 'Approved archived text.');
-      assert.equal((await listSources(owner)).json.some((entry) => entry.id === approved.id), false);
-      const archivedPdf = await getSourcePdf(learner, { params: { id: approved.id } });
-      assert.deepEqual([...archivedPdf.body], [...pdfBytes]);
+      // Still cited by an approved course: refused, not silently broken.
+      assert.equal(await (async () => {
+        try {
+          await deleteSource(owner, { params: { id: approved.id } });
+          return 200;
+        } catch (error) {
+          return errorStatus(error);
+        }
+      })(), 409);
 
+      // Uncited: the source and its stored original both go.
+      await deleteSource(owner, { params: { id: pending.id } });
       assert.equal(await (async () => {
         try {
-          await draftCourseRecord(owner, {
-            body: { title: 'New course', objectives: [], sourceIds: [approved.id] },
-          });
+          await getSource(owner, { params: { id: pending.id } });
           return 200;
         } catch (error) {
           return errorStatus(error);
         }
       })(), 404);
-      assert.equal(await (async () => {
-        try {
-          await generateRubricRecord(owner, {
-            body: { task: 'New rubric', sourceId: approved.id },
-          });
-          return 200;
-        } catch (error) {
-          return errorStatus(error);
-        }
-      })(), 404);
+      assert.equal(
+        await db.learningRecord.count({ where: { id: { in: [pending.id, pendingPdf.id] } } }),
+        0,
+      );
     } finally {
-      await db.learningRecord.deleteMany({ where: { id: { in: sourceIds } } });
+      await db.learningRecord.deleteMany({ where: { id: { in: recordIds } } });
     }
   },
 );
