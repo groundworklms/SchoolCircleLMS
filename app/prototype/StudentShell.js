@@ -147,7 +147,7 @@ function RealCourseCard({ c, onOpen }) {
         </div>
       </div>
       <div className="s-card-foot">
-        <span>{c.sections} sections · {c.status === 'APPROVED' ? 'approved by your instructor' : 'generated course'}</span>
+        <span>{c.sections} sections · {c.status === 'APPROVED' ? 'approved by your instructor' : 'available course'}</span>
       </div>
     </button>
   );
@@ -159,11 +159,7 @@ function Dashboard({
   learningLoading = false,
   learningError = null,
 }) {
-  const { ready, profile } = useAuth();
-  const identity = accountDisplay({ ready, profile, demo: STUDENT });
   const list = Object.values(COURSES);
-  const hour = new Date().getHours();
-  const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   // Up next: anything overdue, then the first due item per course.
   const upNext = [
@@ -175,19 +171,19 @@ function Dashboard({
     <div className="s-two">
       <div>
         <div className="s-pagehead">
-          <h1>{greet}, {[identity.rank, identity.name].filter(Boolean).join(' ')}</h1>
+          <h1>Dashboard</h1>
           {learningLoading ? (
-            <p role="status">Loading enrolled courses…</p>
+            <p role="status">Loading courses…</p>
           ) : learningError ? (
             <p className="s-shell-error" role="alert">
-              Unable to load enrolled courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
+              Unable to load courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
             </p>
           ) : (
-            <p>{realCourses.length} enrolled courses · {list.length} demo samples · 1 requirement overdue</p>
+            <p>{realCourses.length} available courses</p>
           )}
         </div>
 
-        <h4 className="s-label">Up next</h4>
+        <h4 className="s-label">Up next · Demo</h4>
         <div className="s-next">
           {upNext.map((t) => (
             <button
@@ -205,53 +201,49 @@ function Dashboard({
           ))}
         </div>
 
-        <h4 className="s-label">Enrolled courses</h4>
+        <h4 className="s-label">Available courses</h4>
         <div className="s-cards">
           {realCourses.map((c) => (
             <RealCourseCard key={c.id} c={c} onOpen={onOpen} />
           ))}
           {!realCourses.length && !learningLoading && !learningError && (
-            <p className="s-cal-empty">No generated courses are currently enrolled.</p>
+            <p className="s-cal-empty">No courses available.</p>
           )}
         </div>
 
-        <h4 className="s-label">Demo samples (not enrolled)</h4>
-        <div className="s-cards">
-          {list.map((c) => {
-            const avg = courseAvg(c);
-            const weakest = [...c.topics].sort((a, b) => a.mastery - b.mastery)[0];
-            const pct = Math.round((c.week / c.weeks) * 100);
-            const next = UPCOMING.find((u) => u.courseId === c.id);
-            return (
-              <button className="s-card" key={c.id} onClick={() => onOpen(c.id, 'home')}>
-                <div className="s-card-head">
-                  <div>
-                    <div className="s-card-title">
-                      {c.name} <code>{c.id}</code>
+        <details>
+          <summary className="s-label">Demo courses (not enrolled)</summary>
+          <div className="s-cards">
+            {list.map((c) => {
+              const avg = courseAvg(c);
+              const pct = Math.round((c.week / c.weeks) * 100);
+              const next = UPCOMING.find((u) => u.courseId === c.id);
+              return (
+                <button className="s-card" key={c.id} onClick={() => onOpen(c.id, 'home')}>
+                  <div className="s-card-head">
+                    <div>
+                      <div className="s-card-title">
+                        {c.name} <code>{c.id}</code>
+                      </div>
+                      <div className="s-card-school">Demo · {c.school}</div>
                     </div>
-                    <div className="s-card-school">Demo · sample data · {c.school}</div>
+                    <div className="s-card-avg">
+                      <span>{avg}%</span>
+                      <small>demo mastery</small>
+                    </div>
                   </div>
-                  <div className="s-card-avg">
-                    <span>{avg}%</span>
-                    <small>mastery</small>
+                  <div className="s-prog">
+                    <div className="s-prog-track"><div className="s-prog-fill" style={{ width: `${pct}%` }} /></div>
+                    <span>Week {c.week} of {c.weeks}</span>
                   </div>
-                </div>
-                <div className="s-prog">
-                  <div className="s-prog-track"><div className="s-prog-fill" style={{ width: `${pct}%` }} /></div>
-                  <span>Week {c.week} of {c.weeks}</span>
-                </div>
-                <div className="s-card-foot">
-                  <span>
-                    Demo only · needs work: <b style={{ color: 'var(--p-critical)' }}>{weakest.name}</b> ({weakest.mastery}%)
-                  </span>
-                  {next && <span>Next: {next.title.split(' — ')[0]} · {next.when}</span>}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                  {next && <div className="s-card-foot"><span>Next: {next.title.split(' — ')[0]} · {next.when}</span></div>}
+                </button>
+              );
+            })}
+          </div>
+        </details>
 
-        <h4 className="s-label">Required training</h4>
+        <h4 className="s-label">Required training · Demo</h4>
         <div className="s-req">
           {[
             ['Annual cyber awareness', 'Complete', 'var(--p-good)'],
@@ -266,9 +258,6 @@ function Dashboard({
               <span style={{ color, fontSize: '0.85em' }}>{state}</span>
             </div>
           ))}
-          <p className="p-src" style={{ margin: '0.5rem 0 0' }}>
-            Auto-enrolled from CY/FY training and EPME requirements — no manual roster entry.
-          </p>
         </div>
       </div>
 
@@ -290,14 +279,13 @@ function Courses({
       <div>
         <div className="s-pagehead">
           <h1>Courses</h1>
-          <p>Generated courses, published manual courses, and clearly marked demo samples.</p>
         </div>
 
-        <h4 className="s-label">Generated courses</h4>
-        {learningLoading && <p role="status">Loading generated courses…</p>}
+        <h4 className="s-label">Available courses</h4>
+        {learningLoading && <p role="status">Loading courses…</p>}
         {learningError && (
           <div className="s-shell-error" role="alert">
-            Unable to load generated courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
+            Unable to load courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
           </div>
         )}
         <div className="s-courselist">
@@ -316,41 +304,41 @@ function Courses({
             </button>
           ))}
           {!realCourses.length && !learningLoading && !learningError && (
-            <p className="s-cal-empty">No generated courses are currently available.</p>
+            <p className="s-cal-empty">No courses available.</p>
           )}
         </div>
 
-        <h4 className="s-label">Published manual courses</h4>
+        <h4 className="s-label">Published courses</h4>
         <LibraryList onOpen={onOpenPublished} />
 
-        <h4 className="s-label">Demo samples (not enrolled)</h4>
-        <div className="s-courselist">
-          {list.map((c) => {
-            const avg = courseAvg(c);
-            const pct = Math.round((c.week / c.weeks) * 100);
-            const next = UPCOMING.find((u) => u.courseId === c.id);
-            return (
-              <button className="s-courserow" key={c.id} onClick={() => onOpen(c.id, 'home')}>
-                <div className="s-courserow-main">
-                  <div className="s-card-title">
-                    {c.name} <code>{c.id}</code>
+        <details>
+          <summary className="s-label">Demo courses and training (not enrolled)</summary>
+          <div className="s-courselist">
+            {list.map((c) => {
+              const avg = courseAvg(c);
+              const pct = Math.round((c.week / c.weeks) * 100);
+              const next = UPCOMING.find((u) => u.courseId === c.id);
+              return (
+                <button className="s-courserow" key={c.id} onClick={() => onOpen(c.id, 'home')}>
+                  <div className="s-courserow-main">
+                    <div className="s-card-title">
+                      {c.name} <code>{c.id}</code>
+                    </div>
+                    <div className="s-card-school">Demo · {c.school}</div>
+                    <div className="s-prog">
+                      <div className="s-prog-track"><div className="s-prog-fill" style={{ width: `${pct}%` }} /></div>
+                      <span>Week {c.week} of {c.weeks}{next ? ` · Next: ${next.title.split(' — ')[0]} · ${next.when}` : ''}</span>
+                    </div>
                   </div>
-                  <div className="s-card-school">Demo · sample data · {c.school}</div>
-                  <div className="s-prog">
-                    <div className="s-prog-track"><div className="s-prog-fill" style={{ width: `${pct}%` }} /></div>
-                    <span>Week {c.week} of {c.weeks}{next ? ` · Next: ${next.title.split(' — ')[0]} · ${next.when}` : ''}</span>
+                  <div className="s-card-avg">
+                    <span>{avg}%</span>
+                    <small>demo mastery</small>
                   </div>
-                </div>
-                <div className="s-card-avg">
-                  <span>{avg}%</span>
-                  <small>demo mastery</small>
-                </div>
-                <span className="s-quick-arrow">→</span>
-              </button>
-            );
-          })}
-        </div>
-
+                  <span className="s-quick-arrow">→</span>
+                </button>
+              );
+            })}
+          </div>
         <h4 className="s-label">Required training</h4>
         <div className="s-courselist">
           {[
@@ -385,9 +373,13 @@ function Courses({
             </div>
           ))}
         </div>
+        </details>
       </div>
 
-      <Agenda courseId={null} onOpen={onOpen} />
+      <details>
+        <summary className="s-label">Demo schedule</summary>
+        <Agenda courseId={null} onOpen={onOpen} />
+      </details>
     </div>
   );
 }
@@ -510,7 +502,7 @@ function CourseUnavailable({ courseId, error }) {
       <h2>Course unavailable</h2>
       <p>
         {courseId
-          ? `No accessible generated or demo course matches “${courseId}”.`
+          ? `No accessible course matches “${courseId}”.`
           : 'A course ID is required to open this course.'}
       </p>
       {error ? <p>{error.error || error.message || 'The course service did not return this record.'}</p> : null}
@@ -676,7 +668,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
           </>
         ) : (
           <>
-            <div className="s-rail-sec">Enrolled generated courses</div>
+            <div className="s-rail-sec">Available courses</div>
             {learning.courses.map((c) => (
               <RailButton
                 key={c.id}
