@@ -147,7 +147,7 @@ function RealCourseCard({ c, onOpen }) {
         </div>
       </div>
       <div className="s-card-foot">
-        <span>{c.sections} sections · {c.status === 'APPROVED' ? 'approved by your instructor' : 'available course'}</span>
+        <span>{c.sections} sections · {c.status === 'APPROVED' ? 'approved by your instructor' : 'generated course'}</span>
       </div>
     </button>
   );
@@ -179,7 +179,7 @@ function Dashboard({
               Unable to load courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
             </p>
           ) : (
-            <p>{realCourses.length} available courses</p>
+            <p>{realCourses.length} available course{realCourses.length === 1 ? '' : 's'}</p>
           )}
         </div>
 
@@ -339,6 +339,8 @@ function Courses({
               );
             })}
           </div>
+        </details>
+
         <h4 className="s-label">Required training</h4>
         <div className="s-courselist">
           {[
@@ -373,7 +375,6 @@ function Courses({
             </div>
           ))}
         </div>
-        </details>
       </div>
 
       <details>

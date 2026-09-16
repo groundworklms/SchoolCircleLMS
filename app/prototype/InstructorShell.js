@@ -155,7 +155,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   } else if (inCourse && courseUnavailable) {
     body = (
       <CourseUnavailable courseId={nav.courseId}>
-        Sign in with an instructor account to load this course. Sample courses are available below.
+        Sign in with an instructor account to load this course. Sample courses are listed in the sidebar.
       </CourseUnavailable>
     );
   } else if (inCourse && courseNotFound) {
@@ -163,7 +163,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   } else if (inLibrary && !libraryEntry) {
     body = (
       <StatusMessage title="Library page not found">
-        Choose a page from the instructor library.
+        Choose Courses, Sources, Rubrics or Settings.
       </StatusMessage>
     );
   } else if (inLibrary && libraryView === 'settings') {
