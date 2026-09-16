@@ -59,8 +59,9 @@ function TeachApp({ user }) {
         />
 
         <div className="s-rail-sec">Library</div>
+        <RailButton icon={I.courses} label="Course builder" onClick={() => router.push('/teach/courses')} />
         <RailButton icon={I.dashboard} label="Sources" on={area === 'sources'} onClick={() => setArea('sources')} />
-        <RailButton icon={I.courses} label="Courses" on={area === 'courses'} onClick={() => setArea('courses')} />
+        <RailButton icon={I.courses} label="AI course tools" on={area === 'courses'} onClick={() => setArea('courses')} />
         <RailButton icon={I.dashboard} label="Rubrics" on={area === 'rubrics'} onClick={() => setArea('rubrics')} />
 
         <div className="s-rail-spacer" />

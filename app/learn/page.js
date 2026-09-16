@@ -65,6 +65,7 @@ function LearnApp({ user }) {
           ]}
         />
         <RailButton icon={I.dashboard} label="Dashboard" on={area === 'dashboard'} onClick={() => setArea('dashboard')} />
+        <RailButton icon={I.courses} label="Interactive courses" onClick={() => router.push('/learn/library')} />
         <RailButton icon={I.calendar} label="Study Plan" on={area === 'study-plan'} onClick={() => setArea('study-plan')} />
         <RailButton icon={I.dashboard} label="Progress" on={area === 'progress'} onClick={() => setArea('progress')} />
         <RailButton icon={I.dashboard} label="Profile" on={area === 'profile'} onClick={() => setArea('profile')} />

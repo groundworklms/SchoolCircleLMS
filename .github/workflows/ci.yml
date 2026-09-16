@@ -45,6 +45,9 @@ jobs:
       - name: Non-empty learning views
         run: npm run test:ui-rendering
 
+      - name: Manual course authoring contracts
+        run: npm run test:authoring
+
   database:
     name: database
     runs-on: ubuntu-latest
@@ -79,3 +82,5 @@ jobs:
           pg_ctl -D "$PGDATA" -w stop > /dev/null
       - name: Isolated PostgreSQL persistence
         run: npm run test:db
+      - name: Manual publication and learner persistence
+        run: npm run test:authoring-db
