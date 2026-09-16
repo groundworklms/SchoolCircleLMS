@@ -12,6 +12,13 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+test('shared instructor shell omits breadcrumbs while retaining course status and navigation', () => {
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/InstructorShell.js'), 'utf8');
+  assert.doesNotMatch(source, /s-crumb|crumbTail/);
+  assert.match(source, /aria-label="Instructor navigation"/);
+  assert.match(source, /<main className="s-main">[\s\S]*course\.sections[\s\S]*'Approved' : 'Draft'/);
+});
+
 function loadComponent(relativePath, { queryData = {}, queryStates = {}, stateValues = [] } = {}) {
   const filename = path.join(workspace, relativePath);
   const transformed = transformSync(fs.readFileSync(filename, 'utf8'), {
