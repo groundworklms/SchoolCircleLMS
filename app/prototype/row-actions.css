@@ -181,3 +181,15 @@
   gap: 0.5rem;
 }
 .p-panel-head > h3 { margin: 0; min-width: 0; }
+
+/* The irreversible step has to look different from the reversible one. */
+.row-actions-danger {
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  color: var(--p-bad, #d70015);
+  background: rgba(215, 0, 21, 0.08);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
