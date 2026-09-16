@@ -1,1 +1,3 @@
 - [Git-pinned packages](git-package-install.md) — package helpers may reject GitHub specs; preserve locked sources rather than substitute registry namesakes.
+- [Next.js production boundary](nextjs-production-boundary.md) — preserve Firebase-hosted Next.js and keep focused work on feature branches.
+- [Roster messaging boundary](roster-messaging-boundary.md) — email-addressed inboxes require verified email ownership, not just a signed Firebase token.
