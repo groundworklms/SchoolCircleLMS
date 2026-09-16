@@ -451,13 +451,14 @@
 .s-courserow .s-prog { margin-top: 0.3rem; max-width: 34rem; }
 
 /* ---------- inbox ---------- */
-.s-inbox-filters { display: inline-flex; gap: 0; padding: 2px; background: rgba(0,0,0,0.05); border-radius: 9px; }
+.s-inbox-filters { display: inline-flex; gap: 0; padding: 2px; background: var(--p-surface-2); border-radius: 9px; }
 .s-inbox-filters button {
   display: flex; align-items: center; gap: 0.4rem;
   background: none; border: none; border-radius: 7px;
-  padding: 0.35rem 0.9rem; font: inherit; font-size: 0.85em; font-weight: 500; color: var(--p-dim); cursor: pointer;
+  padding: 0.35rem 0.9rem; font: inherit; font-size: 0.85em; font-weight: 500; color: var(--p-text); cursor: pointer;
 }
-.s-inbox-filters button.on { background: #fff; color: var(--p-text); box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; }
+.s-inbox-filters button.on { background: var(--p-surface); color: var(--p-text); box-shadow: var(--p-shadow); font-weight: 600; }
+.s-inbox-filters button:focus-visible { outline: 2px solid var(--p-text); outline-offset: 2px; }
 .s-inbox-pill { background: var(--p-accent); color: #fff; border-radius: 980px; font-size: 0.75em; padding: 0 0.5em; line-height: 1.5; }
 
 .s-inbox {
