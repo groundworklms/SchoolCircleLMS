@@ -1,14 +1,17 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { authFetch } from '../../lib/firebase';
+import { useAuth } from '../_auth/AuthProvider';
 import { COURSES } from './data';
 import { usePrefs, setPref } from './prefs';
+import './roster.css';
 
 const ME = 'Cpl Rivera';
 
-/* Student inbox. Message list + reading pane. Everything here is mock — the
-   point is what lands in a Marine's inbox: instructor announcements, reminders
-   the platform generates from the plan, and requirement notices. */
+/* Student inbox. The hand-written entries below are explicitly local demo
+   messages. Authenticated students get the persisted roster messages from the
+   server instead; a failed live request never silently falls back to these. */
 
 export const MESSAGES = [
   {
@@ -139,29 +142,120 @@ const FILTERS = [
   { id: 'reminder', label: 'Reminders' },
 ];
 
-/* Read state (and instructor messages themselves) live in prefs so a read
-   receipt is real — the rail's unread badge, the inbox list, and reopening
-   the app all agree, instead of resetting whenever this component remounts. */
-export function useInboxMessages() {
+function formatServerDate(value) {
+  if (!value) return 'Recently';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function serverMessage(message) {
+  return {
+    ...message,
+    id: `roster-${message.id}`,
+    serverId: message.id,
+    from: message.senderName || 'Instructor',
+    role: 'Instructor',
+    courseId: null,
+    courseName: message.courseName || '',
+    kind: 'announcement',
+    when: formatServerDate(message.createdAt),
+    unread: !message.read,
+    localOnly: false,
+  };
+}
+
+function useRosterInbox() {
+  const { ready, user } = useAuth();
   const prefs = usePrefs();
+  const [serverMessages, setServerMessages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const fromInstructors = useMemo(
     () => (prefs.inboxMessages || []).filter((m) => (m.recipients || []).includes(ME)),
     [prefs.inboxMessages]
   );
   const readIds = prefs.readMessageIds || [];
-  return useMemo(
-    () => [...fromInstructors, ...MESSAGES].map((m) => (m.unread && readIds.includes(m.id) ? { ...m, unread: false } : m)),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fromInstructors, readIds.join(',')]
-  );
+  useEffect(() => {
+    if (!ready || !user) {
+      setServerMessages([]);
+      setLoading(false);
+      setError('');
+      return undefined;
+    }
+    const controller = new AbortController();
+    setLoading(true);
+    setError('');
+    authFetch('/api/roster/messages', { signal: controller.signal })
+      .then(async (response) => {
+        let body = null;
+        try {
+          body = await response.json();
+        } catch {
+          // readApiError below supplies a useful status for non-JSON errors.
+        }
+        if (controller.signal.aborted) return;
+        if (!response.ok) throw new Error(body?.error || body?.message || `Unable to load inbox (${response.status})`);
+        if (!Array.isArray(body?.messages)) throw new Error('Inbox service returned an invalid message list.');
+        setServerMessages(body.messages.map(serverMessage));
+      })
+      .catch((caught) => {
+        if (caught?.name === 'AbortError' || controller.signal.aborted) return;
+        setServerMessages([]);
+        setError(caught.message || 'Unable to load your inbox.');
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [ready, user]);
+
+  const messages = useMemo(() => {
+    if (!ready) return [];
+    if (user) return serverMessages;
+    return [...fromInstructors, ...MESSAGES].map((message) => (
+      message.unread && readIds.includes(message.id) ? { ...message, unread: false } : { ...message, localOnly: true }
+    ));
+  }, [ready, user, serverMessages, fromInstructors, readIds]);
+
+  const markRead = useCallback(async (message) => {
+    if (!message.unread) return true;
+    if (!user) {
+      const current = prefs.readMessageIds || [];
+      if (!current.includes(message.id)) setPref('readMessageIds', [...current, message.id]);
+      return true;
+    }
+    const response = await authFetch('/api/roster/messages', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: message.serverId, read: true }),
+    });
+    let body = null;
+    try {
+      body = await response.json();
+    } catch {
+      // Preserve the status in the explicit error below.
+    }
+    if (!response.ok) throw new Error(body?.error || body?.message || `Unable to mark message read (${response.status})`);
+    setServerMessages((current) => current.map((item) => item.id === message.id ? { ...item, unread: false, read: true } : item));
+    return true;
+  }, [prefs.readMessageIds, user]);
+
+  return { messages, loading: Boolean(user && loading), error, live: Boolean(user), ready, markRead };
+}
+
+/* The rail uses this same source, so its unread badge follows the persisted
+   server read state rather than a separate local approximation. */
+export function useInboxMessages() {
+  return useRosterInbox().messages;
 }
 
 export default function StudentInbox({ onOpen, onArea }) {
-  const prefs = usePrefs();
-  const msgs = useInboxMessages();
+  const { messages: msgs, loading, error, live, ready, markRead } = useRosterInbox();
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [reply, setReply] = useState('');
+  const [readError, setReadError] = useState('');
 
   const visible = msgs.filter((m) => {
     if (filter === 'all') return true;
@@ -174,8 +268,11 @@ export default function StudentInbox({ onOpen, onArea }) {
   const openMsg = (id) => {
     setSelectedId(id);
     setReply('');
-    const cur = prefs.readMessageIds || [];
-    if (!cur.includes(id)) setPref('readMessageIds', [...cur, id]);
+    setReadError('');
+    const message = msgs.find((item) => item.id === id);
+    if (message?.unread) {
+      markRead(message).catch((caught) => setReadError(caught.message || 'Unable to mark this message read.'));
+    }
   };
 
   const act = (a) => {
@@ -202,6 +299,10 @@ export default function StudentInbox({ onOpen, onArea }) {
           ))}
         </div>
       </div>
+      {ready && !live && !loading && <div className="s-ro-demo" role="status"><strong>LOCAL DEMO ONLY</strong> These hand-written messages are stored in this browser. Live roster messages appear here after sign-in.</div>}
+      {loading && <div className="s-ro-state" role="status">Loading your inbox…</div>}
+      {error && <div className="s-ro-error" role="alert">{error}</div>}
+      {readError && <div className="s-ro-error" role="alert">{readError}</div>}
 
       <div className="s-inbox">
         <ul className="s-msglist">
@@ -218,7 +319,7 @@ export default function StudentInbox({ onOpen, onArea }) {
                 </span>
                 <span className="s-msg-subject">{m.subject}</span>
                 <span className="s-msg-meta">
-                  {m.courseId ? <code>{COURSES[m.courseId].id}</code> : <span className="s-msg-kind">{m.role}</span>}
+                  {m.courseId ? <code>{COURSES[m.courseId]?.id || m.courseId}</code> : m.courseName ? <span className="s-msg-kind">{m.courseName}</span> : <span className="s-msg-kind">{m.role}</span>}
                   {m.courseId && <span className="s-msg-kind"> · {m.role}</span>}
                 </span>
               </button>
@@ -236,10 +337,12 @@ export default function StudentInbox({ onOpen, onArea }) {
                 </div>
                 <div className="s-read-meta">
                   {selected.when}
-                  {selected.courseId && (
+                  {(selected.courseId || selected.courseName) && (
                     <>
                       {' · '}
-                      <code>{COURSES[selected.courseId].id}</code> {COURSES[selected.courseId].name}
+                      {selected.courseId
+                        ? <><code>{COURSES[selected.courseId]?.id || selected.courseId}</code> {COURSES[selected.courseId]?.name}</>
+                        : selected.courseName}
                     </>
                   )}
                 </div>
