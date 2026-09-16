@@ -94,6 +94,27 @@ test('Firebase identity is namespaced and the Prisma role wins over token claims
     assert.equal(query.update.role, undefined);
     assert.equal(Object.hasOwn(user, 'uid'), false);
     assert.equal(user.email, 'learner@example.test');
+    assert.equal(user.emailVerified, false);
+  });
+});
+
+test('email ownership is carried only from a strict verified profile claim', async () => {
+  await withEnv({ NEXT_PUBLIC_FIREBASE_PROJECT_ID: 'schoolcircle-auth-test' }, async () => {
+    for (const claim of [true, false, undefined, 'true']) {
+      const identity = await resolveFirebaseUser('test-token', {
+        upsert: async ({ create }) => ({
+          id: 'verified-email-test',
+          externalId: create.externalId,
+          role: 'LEARNER',
+          emailVerified: true, // Never trust a stored/profile-side override.
+        }),
+      }, async () => ({
+        uid: 'email-claim-test',
+        email: 'learner@example.test',
+        emailVerified: claim,
+      }));
+      assert.equal(identity.emailVerified, claim === true);
+    }
   });
 });
 
