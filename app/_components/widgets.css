@@ -17,6 +17,27 @@
   --scw-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* Follows the prototype's Settings → Display → Theme choice (#51), since
+   these widgets float on top of every page including the themed app. */
+:root[data-theme="dark"] {
+  --scw-surface: #2c2c2e;
+  --scw-bg: #1c1c1e;
+  --scw-text: #f5f5f7;
+  --scw-dim: #a1a1a6;
+  --scw-faint: #8e8e93;
+  --scw-border: rgba(255, 255, 255, 0.10);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]):not([data-theme="dark"]) {
+    --scw-surface: #2c2c2e;
+    --scw-bg: #1c1c1e;
+    --scw-text: #f5f5f7;
+    --scw-dim: #a1a1a6;
+    --scw-faint: #8e8e93;
+    --scw-border: rgba(255, 255, 255, 0.10);
+  }
+}
+
 /* ---- FAB ---- */
 .scw-fab {
   position: fixed; bottom: 1.3rem; width: 3.4rem; height: 3.4rem; border-radius: 50%;
@@ -27,14 +48,16 @@
 .scw-fab:hover { transform: translateY(-2px); filter: brightness(1.08); }
 .scw-fab svg { width: 1.5rem; height: 1.5rem; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .scw-fab.ask { right: 1.3rem; background: var(--scw-accent); }
-.scw-fab.issue { left: 1.3rem; background: var(--scw-ink); }
+/* Stacked above "Ask", both on the right — the app's left rail (nav, settings,
+   sign out) reaches the bottom-left corner, so a left-side FAB there sits on
+   top of and blocks those nav buttons (#56). */
+.scw-fab.issue { right: 1.3rem; bottom: 5.4rem; background: var(--scw-ink); }
 .scw-fab .flab {
   position: absolute; bottom: calc(100% + .4rem); background: var(--scw-ink); color: #fff;
   font-size: .7rem; padding: .2rem .5rem; border-radius: 6px; white-space: nowrap;
   opacity: 0; pointer-events: none; transition: opacity .15s;
 }
-.scw-fab.ask .flab { right: 0; }
-.scw-fab.issue .flab { left: 0; }
+.scw-fab.ask .flab, .scw-fab.issue .flab { right: 0; }
 .scw-fab:hover .flab { opacity: 1; }
 
 /* ---- panel ---- */
@@ -48,7 +71,7 @@
 }
 @keyframes scw-bloom { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
 .scw-wgt.ask { right: 1.3rem; height: 30rem; max-height: calc(100vh - 8rem); }
-.scw-wgt.issue { left: 1.3rem; max-height: calc(100vh - 8rem); }
+.scw-wgt.issue { right: 1.3rem; bottom: 9.5rem; max-height: calc(100vh - 12rem); }
 
 .scw-head { display: flex; align-items: center; gap: .7rem; padding: .85rem 1.1rem; border-bottom: .5px solid var(--scw-border); flex: none; }
 .scw-head .wi { width: 2rem; height: 2rem; border-radius: 9px; display: grid; place-items: center; flex: none; color: #fff; }
@@ -107,7 +130,7 @@ textarea.scw-field { min-height: 5.5rem; resize: vertical; }
 @media (max-width: 520px) {
   .scw-wgt { width: calc(100vw - 1.6rem); }
   .scw-wgt.ask { right: .8rem; }
-  .scw-wgt.issue { left: .8rem; }
+  .scw-wgt.issue { right: .8rem; }
   .scw-fab.ask { right: .9rem; }
-  .scw-fab.issue { left: .9rem; }
+  .scw-fab.issue { right: .9rem; }
 }

@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import './prototype.css';
 import { useNav } from './nav';
+import { usePrefs } from './prefs';
 import StudentShell from './StudentShell';
 import InstructorShell from './InstructorShell';
 
@@ -9,8 +11,18 @@ import InstructorShell from './InstructorShell';
    from the same rail and content column, so switching roles changes what is
    in the rail, not the chrome around it. */
 
+function useThemeEffect() {
+  const { theme } = usePrefs();
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light' || theme === 'dark') root.dataset.theme = theme;
+    else delete root.dataset.theme;
+  }, [theme]);
+}
+
 export default function Prototype() {
   const nav = useNav();
+  useThemeEffect();
 
   return (
     <div className="p-root">

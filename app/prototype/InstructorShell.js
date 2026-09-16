@@ -9,6 +9,7 @@ import Curriculum from './Curriculum';
 import LiveControl from './LiveControl';
 import Mastery from './Mastery';
 import AAR from './AAR';
+import Roster from './Roster';
 
 /* Instructor shell. Same rail and content column as the student side; what
    changes is who is signed in and what is in the rail. The four instructor
@@ -18,13 +19,14 @@ const INSTRUCTOR = { name: 'SSgt Okafor', initials: 'SO', role: 'Instructor' };
 
 const VIEWS = [
   { id: 'builder', label: 'Curriculum' },
+  { id: 'roster', label: 'Roster' },
   { id: 'control', label: 'Run Live Session' },
   { id: 'mastery', label: 'Class Mastery' },
   { id: 'aar', label: 'Course AAR' },
   { id: 'settings', label: 'Course settings' },
 ];
 
-const SCREENS = { builder: Curriculum, control: LiveControl, mastery: Mastery, aar: AAR, settings: InstructorSettings };
+const SCREENS = { builder: Curriculum, roster: Roster, control: LiveControl, mastery: Mastery, aar: AAR, settings: InstructorSettings };
 
 export default function InstructorShell({ nav, onSwitchRole }) {
   const courseId = COURSES[nav.courseId] ? nav.courseId : 'M092721';
@@ -92,7 +94,7 @@ export default function InstructorShell({ nav, onSwitchRole }) {
               <strong>Instructor view</strong>
               <span>Every AI output lands here for review before it reaches a student.</span>
             </div>
-            <Screen key={course.id} course={course} />
+            <Screen key={course.id} course={course} instructorName={INSTRUCTOR.name} />
           </div>
         </main>
       </div>
