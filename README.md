@@ -62,7 +62,12 @@ hardware, with the same Prisma schema and a `DATABASE_URL` change. Data is not
 automatically synchronized. See [cloud/local database setup](docs/CLOUD_POSTGRES.md)
 for secure credentials, migrations, safe seeding, and the approval/rollout checklist.
 
-## The learning loop (`/learn`, `/teach`, `/api/learning`)
+## The learning loop (`/prototype`, `/api/learning`)
+
+One app, two shells: learners at `/prototype`, instructors at `/prototype/instructor` (the
+library — sources, course drafts, rubrics — lives at `/prototype/instructor/{courses,sources,rubrics}`).
+`/learn` and `/teach` redirect there. Approved `LearningRecord` courses appear alongside the mock demo
+courses and get the views the API can back; see `app/prototype/learning.js`.
 
 ### Manual interactive course creation
 
