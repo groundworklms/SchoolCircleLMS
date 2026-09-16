@@ -9,6 +9,7 @@ import { CourseItemReview } from './ItemReview';
 import { GenerationProgress } from './GenerationProgress';
 import { RowActions } from './RowActions';
 import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
+import { collectionFromFilename, isPdfFile, isZipFile, pdfEntriesFromZip, zipEntryForm } from './source-upload';
 import './source-library.css';
 
 /* The instructor library — the parts of the persisted learning loop that are
@@ -28,11 +29,32 @@ function errText(e, fallback) {
 
 /* ---------- sources ---------- */
 
+const NO_COLLECTION = 'Other documents';
+
+/* Sources grouped by the collection they were uploaded under -- "Lesson plans",
+   "Student material" -- with the ungrouped ones last. Order inside a group puts
+   what still needs a decision first. */
+export function groupSourcesByCollection(sources) {
+  const groups = new Map();
+  for (const source of Array.isArray(sources) ? sources : []) {
+    const key = source.collection || NO_COLLECTION;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(source);
+  }
+  const named = [...groups.keys()].filter((key) => key !== NO_COLLECTION).sort((a, b) => a.localeCompare(b));
+  const keys = groups.has(NO_COLLECTION) ? [...named, NO_COLLECTION] : named;
+  return keys.map((name) => {
+    const items = groups.get(name);
+    const pending = items.filter((source) => source.status !== 'APPROVED');
+    const approved = items.filter((source) => source.status === 'APPROVED');
+    return { name, sources: [...pending, ...approved], pending, approved };
+  });
+}
+
 export function SourcesView() {
   const { data: sources, loading, error, refetch } = useApiQuery('/sources');
   const [previewSource, setPreviewSource] = useState(null);
-  const approved = Array.isArray(sources) ? sources.filter((source) => source.status === 'APPROVED') : [];
-  const pending = Array.isArray(sources) ? sources.filter((source) => source.status !== 'APPROVED') : [];
+  const groups = groupSourcesByCollection(sources);
   const pendingState = loading || (sources == null && !error);
 
   return (
@@ -48,12 +70,20 @@ export function SourcesView() {
       {error && <div className="s-shell-error source-library-error" role="alert"><p>{errText(error, 'Could not load sources.')}</p><button className="p-btn ghost" onClick={refetch}>Try again</button></div>}
       {!pendingState && !error && (
         <div className="source-library">
-          <SourceShelf title="Approved documents" count={approved.length} empty="No approved documents.">
-            {approved.map((src) => <SourceLibraryCard key={src.id} source={src} onPreview={setPreviewSource} onRefresh={refetch} />)}
-          </SourceShelf>
-          <SourceShelf title="Needs approval" count={pending.length} empty="Nothing is waiting for your review.">
-            {pending.map((src) => <SourceLibraryCard key={src.id} source={src} onPreview={setPreviewSource} onRefresh={refetch} />)}
-          </SourceShelf>
+          {groups.length === 0 && <SourceShelf title="Source documents" count={0} empty="No documents yet. Add a PDF, a zip of PDFs, or pasted text." />}
+          {groups.map((group) => (
+            <SourceShelf
+              key={group.name}
+              title={group.name}
+              count={group.sources.length}
+              pendingCount={group.pending.length}
+              actions={group.pending.length > 0 && (
+                <ApproveAllButton collection={group.name} pending={group.pending} onApproved={refetch} />
+              )}
+            >
+              {group.sources.map((src) => <SourceLibraryCard key={src.id} source={src} onPreview={setPreviewSource} onRefresh={refetch} />)}
+            </SourceShelf>
+          ))}
         </div>
       )}
       <SourcePreviewDialog source={previewSource} onClose={() => setPreviewSource(null)} onRefresh={refetch} />
@@ -61,12 +91,69 @@ export function SourcesView() {
   );
 }
 
-function SourceShelf({ title, count, empty, children }) {
+function SourceShelf({ title, count, pendingCount = 0, empty, actions, children }) {
+  const caption = pendingCount > 0
+    ? `${count} ${count === 1 ? 'document' : 'documents'} · ${pendingCount} ${pendingCount === 1 ? 'needs' : 'need'} approval`
+    : `${count} ${count === 1 ? 'document' : 'documents'}`;
   return (
     <section className="source-shelf" aria-label={title}>
-      <div className="source-shelf-heading"><h2>{title}</h2><span>{count} {count === 1 ? 'document' : 'documents'}</span></div>
+      <div className="source-shelf-heading">
+        <div className="source-shelf-title"><h2>{title}</h2><span>{caption}</span></div>
+        {actions}
+      </div>
       {count === 0 ? <div className="source-shelf-empty">{empty}</div> : <div className="source-card-list">{children}</div>}
     </section>
+  );
+}
+
+/* Approve every pending document in a collection. It is a second, explicit
+   click: the first shows how many documents it covers, and anything the server
+   refuses (a scanned PDF with no text) is listed by name afterwards. */
+function ApproveAllButton({ collection, pending, onApproved }) {
+  const [confirming, setConfirming] = useState(false);
+  const [failed, setFailed] = useState([]);
+  const [err, setErr] = useState(null);
+  const approveAll = useApiMutation('/sources/approve', 'POST');
+  const count = pending.length;
+
+  const run = async () => {
+    setErr(null);
+    setFailed([]);
+    try {
+      const result = await approveAll.mutate({ ids: pending.map((source) => source.id) });
+      const titleOf = (id) => pending.find((source) => source.id === id)?.title || id;
+      setFailed((result?.failed || []).map((item) => ({ ...item, title: titleOf(item.id) })));
+      setConfirming(false);
+      await onApproved();
+    } catch (e) {
+      setErr(errText(e, 'The documents could not be approved.'));
+    }
+  };
+
+  return (
+    <div className="source-approve-all">
+      {!confirming && (
+        <button type="button" className="p-btn" onClick={() => setConfirming(true)} disabled={approveAll.loading}>
+          Approve all pending ({count})
+        </button>
+      )}
+      {confirming && (
+        <div className="source-approve-confirm" role="group" aria-label={`Approve all pending in ${collection}`}>
+          <span>Approve {count} {count === 1 ? 'document' : 'documents'} in {collection}?</span>
+          <button type="button" className="p-btn" onClick={run} disabled={approveAll.loading}>
+            {approveAll.loading ? 'Approving…' : `Approve ${count}`}
+          </button>
+          <button type="button" className="p-btn ghost" onClick={() => setConfirming(false)} disabled={approveAll.loading}>Cancel</button>
+        </div>
+      )}
+      {err && <p className="s-shell-error source-action-error" role="alert">{err}</p>}
+      {failed.length > 0 && (
+        <div className="s-shell-error source-action-error" role="alert">
+          <p>{failed.length} {failed.length === 1 ? 'document was' : 'documents were'} not approved:</p>
+          <ul>{failed.map((item) => <li key={item.id}><strong>{item.title}</strong> — {item.error}</li>)}</ul>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -96,19 +183,32 @@ function IngestSourceModal({ onIngested }) {
   const [sourceId, setSourceId] = useState('');
   const [file, setFile] = useState(null);
   const [err, setErr] = useState(null);
+  const [collection, setCollection] = useState('');
+  // A zip is many uploads. `batch` is the running tally shown while they post
+  // one by one, and what is left on screen if some of them were refused.
+  const [batch, setBatch] = useState(null);
   const ingest = useApiMutation('/sources', 'POST');
   const pdfUpload = useApiMutation('/sources/pdf', 'POST');
+  const busy = ingest.loading || pdfUpload.loading || Boolean(batch?.running);
+  const zipSelected = isZipFile(file);
+  const effectiveCollection = collection.trim() || (zipSelected ? collectionFromFilename(file.name) : '');
+
+  const reset = () => {
+    setOpen(false);
+    setTitle('');
+    setText('');
+    setSourceId('');
+    setFile(null);
+    setCollection('');
+    setBatch(null);
+  };
 
   const handleSubmit = async () => {
     if (!title || !text) return;
     setErr(null);
     try {
-      await ingest.mutate({ title, text });
-      setOpen(false);
-      setTitle('');
-      setText('');
-      setSourceId('');
-      setFile(null);
+      await ingest.mutate({ title, text, ...(collection.trim() ? { collection: collection.trim() } : {}) });
+      reset();
       onIngested();
     } catch (e) {
       setErr(errText(e, 'Failed to ingest source'));
@@ -117,7 +217,7 @@ function IngestSourceModal({ onIngested }) {
 
   const handlePdfUpload = async () => {
     if (!file) return;
-    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+    if (!isPdfFile(file)) {
       setErr('Select a PDF file.');
       return;
     }
@@ -125,18 +225,47 @@ function IngestSourceModal({ onIngested }) {
     form.append('file', file);
     if (title.trim()) form.append('title', title.trim());
     if (sourceId.trim()) form.append('sourceId', sourceId.trim());
+    if (collection.trim()) form.append('collection', collection.trim());
     setErr(null);
     try {
       await pdfUpload.mutate(form);
-      setOpen(false);
-      setTitle('');
-      setText('');
-      setSourceId('');
-      setFile(null);
+      reset();
       onIngested();
     } catch (e) {
       setErr(errText(e, 'Failed to upload PDF'));
     }
+  };
+
+  const handleZipUpload = async () => {
+    if (!file || !zipSelected) return;
+    setErr(null);
+    let entries;
+    try {
+      entries = pdfEntriesFromZip(new Uint8Array(await file.arrayBuffer()));
+    } catch (e) {
+      setErr(errText(e, 'That zip could not be read.'));
+      return;
+    }
+    if (entries.length === 0) {
+      setErr('That zip holds no PDF documents.');
+      return;
+    }
+    const failed = [];
+    setBatch({ running: true, done: 0, total: entries.length, failed });
+    for (const entry of entries) {
+      try {
+        await pdfUpload.mutate(zipEntryForm(entry, effectiveCollection));
+      } catch (e) {
+        failed.push({ path: entry.path, error: errText(e, 'Upload failed') });
+      }
+      setBatch((current) => ({ ...current, done: (current?.done || 0) + 1, failed: [...failed] }));
+    }
+    onIngested();
+    if (failed.length === 0) {
+      reset();
+      return;
+    }
+    setBatch({ running: false, done: entries.length, total: entries.length, failed });
   };
 
   if (!open) return <button className="p-btn" onClick={() => setOpen(true)}>Add source</button>;
@@ -151,6 +280,7 @@ function IngestSourceModal({ onIngested }) {
           placeholder="Source title (optional for PDF)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          disabled={zipSelected}
           style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
         />
         <input
@@ -159,28 +289,46 @@ function IngestSourceModal({ onIngested }) {
           placeholder="Source identifier (optional)"
           value={sourceId}
           onChange={(e) => setSourceId(e.target.value)}
+          disabled={zipSelected}
+          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
+        />
+        <input
+          className="scw-ti"
+          aria-label="Collection"
+          placeholder={zipSelected ? `Collection (defaults to "${collectionFromFilename(file.name)}")` : 'Collection, e.g. Lesson plans (optional)'}
+          value={collection}
+          onChange={(e) => setCollection(e.target.value)}
+          maxLength={80}
           style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem' }}
         />
         <div style={{ padding: '0.75rem', background: 'var(--p-surface-2)', borderRadius: '8px', marginBottom: '0.75rem' }}>
-          <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Upload a PDF</strong>
+          <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Upload a PDF, or a zip of PDFs</strong>
           <p className="p-src" style={{ margin: '0 0 0.5rem' }}>
-            Pages are preserved so instructors and learners can inspect a cited passage.
+            Pages are preserved so instructors and learners can inspect a cited passage. A zip becomes one document per PDF, grouped under its collection.
           </p>
           <input
             type="file"
-            accept="application/pdf,.pdf"
-            aria-label="PDF source file"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
+            accept="application/pdf,.pdf,application/zip,application/x-zip-compressed,.zip"
+            aria-label="PDF or zip source file"
+            onChange={(e) => { setFile(e.target.files?.[0] || null); setBatch(null); setErr(null); }}
           />
           {file && <p className="p-src" style={{ margin: '0.5rem 0 0' }}>Selected: {file.name}</p>}
+          {batch && (
+            <div className="source-batch" role="status" aria-live="polite">
+              <p>{batch.running ? `Uploading ${batch.done} of ${batch.total}…` : `Uploaded ${batch.total - batch.failed.length} of ${batch.total}.`}</p>
+              {batch.failed.length > 0 && (
+                <ul>{batch.failed.map((item) => <li key={item.path}><strong>{item.path}</strong> — {item.error}</li>)}</ul>
+              )}
+            </div>
+          )}
           <button
             type="button"
             className="p-btn"
-            onClick={handlePdfUpload}
-            disabled={pdfUpload.loading || ingest.loading || !file}
+            onClick={zipSelected ? handleZipUpload : handlePdfUpload}
+            disabled={busy || !file}
             style={{ marginTop: '0.75rem' }}
           >
-            {pdfUpload.loading ? 'Uploading…' : 'Upload PDF'}
+            {busy && file ? 'Uploading…' : zipSelected ? 'Upload zip' : 'Upload PDF'}
           </button>
         </div>
         <div style={{ borderTop: '1px solid var(--p-border)', paddingTop: '0.75rem' }}>
@@ -196,8 +344,8 @@ function IngestSourceModal({ onIngested }) {
         </div>
         {err && <p className="s-shell-error" role="alert">{err}</p>}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button className="p-btn ghost" onClick={() => setOpen(false)} disabled={ingest.loading || pdfUpload.loading}>Cancel</button>
-          <button className="p-btn" onClick={handleSubmit} disabled={ingest.loading || pdfUpload.loading || !title.trim() || !text.trim()}>
+          <button className="p-btn ghost" onClick={reset} disabled={busy}>{batch && !batch.running ? 'Close' : 'Cancel'}</button>
+          <button className="p-btn" onClick={handleSubmit} disabled={busy || !title.trim() || !text.trim()}>
             {ingest.loading ? 'Saving…' : 'Save text source'}
           </button>
         </div>
@@ -305,6 +453,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const [events, setEvents] = useState(null);
   const draft = useApiStream('/courses/draft/stream');
   const approvedSources = sources.filter((source) => source.status === 'APPROVED');
+  const approvedGroups = groupSourcesByCollection(approvedSources).length;
   const selectedIds = sourceIds.filter((id) => approvedSources.some((source) => source.id === id));
 
   const handleSubmit = async () => {
@@ -402,22 +551,44 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           <legend style={{ padding: '0 0.3rem', fontSize: '0.84em', color: 'var(--p-dim)' }}>
             Approved sources
           </legend>
-          {approvedSources.map((s) => (
-            <label key={s.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.25rem 0', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                value={s.id}
-                checked={selectedIds.includes(s.id)}
-                onChange={(e) => setSourceIds((current) => e.target.checked
-                  ? [...current, s.id]
-                  : current.filter((id) => id !== s.id))}
-              />
-              <span>
-                <strong>{s.title}</strong>
-                <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages</small>
-              </span>
-            </label>
-          ))}
+          {groupSourcesByCollection(approvedSources).map((group) => {
+            const groupIds = group.sources.map((source) => source.id);
+            const allSelected = groupIds.every((id) => selectedIds.includes(id));
+            return (
+              <div key={group.name} className="source-pick-group">
+                {approvedGroups > 1 && (
+                  <div className="source-pick-heading">
+                    <strong>{group.name}</strong>
+                    <button
+                      type="button"
+                      className="p-btn ghost"
+                      onClick={() => setSourceIds((current) => allSelected
+                        ? current.filter((id) => !groupIds.includes(id))
+                        : [...current, ...groupIds.filter((id) => !current.includes(id))])}
+                    >
+                      {allSelected ? 'Clear' : `Select all ${groupIds.length}`}
+                    </button>
+                  </div>
+                )}
+                {group.sources.map((s) => (
+                  <label key={s.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.25rem 0', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      value={s.id}
+                      checked={selectedIds.includes(s.id)}
+                      onChange={(e) => setSourceIds((current) => e.target.checked
+                        ? [...current, s.id]
+                        : current.filter((id) => id !== s.id))}
+                    />
+                    <span>
+                      <strong>{s.title}</strong>
+                      <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            );
+          })}
           {approvedSources.length > 0 && (
             <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--p-faint)' }}>
               {selectedIds.length} source{selectedIds.length === 1 ? '' : 's'} selected

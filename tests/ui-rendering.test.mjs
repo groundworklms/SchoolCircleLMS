@@ -150,16 +150,23 @@ function collectReactElements(node, elements = []) {
   return elements;
 }
 
-test('source library groups documents without technical IDs or repeated approval badges', () => {
+test('source library groups documents by collection without technical IDs or repeated approval badges', () => {
   const { SourcesView } = loadComponent('app/prototype/Library.js', {
     queryData: { '/sources': [
       { id: 'private-record-id-approved', title: 'Approved field manual', status: 'APPROVED', pages: 4, hasPdf: true, canRemove: true },
       { id: 'private-record-id-pending', title: 'New reference', status: 'PENDING', pages: 2, hasPdf: false, canRemove: true },
+      { id: 'private-record-id-lp1', title: 'Lesson 1', status: 'PENDING', pages: 2, hasPdf: true, canRemove: true, collection: 'Lesson plans' },
+      { id: 'private-record-id-lp2', title: 'Lesson 2', status: 'APPROVED', pages: 2, hasPdf: true, canRemove: true, collection: 'Lesson plans' },
     ] },
   });
   const markup = renderToStaticMarkup(React.createElement(SourcesView));
-  assert.match(markup, /Approved documents/);
-  assert.match(markup, /Needs approval/);
+  // Named collections come first, the ungrouped shelf last, and each shelf
+  // states how many still need a decision.
+  assert.match(markup, /aria-label="Lesson plans"[\s\S]*aria-label="Other documents"/);
+  assert.match(markup, /Lesson plans<\/h2><span>2 documents · 1 needs approval/);
+  assert.match(markup, /Other documents<\/h2><span>2 documents · 1 needs approval/);
+  // Approve-all is offered per collection, and only where something is pending.
+  assert.equal((markup.match(/Approve all pending \(1\)/g) || []).length, 2);
   assert.match(markup, /Approved field manual/);
   assert.match(markup, /New reference/);
   assert.doesNotMatch(markup, /private-record-id|>APPROVED</);
