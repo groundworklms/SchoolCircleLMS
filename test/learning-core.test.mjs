@@ -14,6 +14,7 @@ import {
   tutorAnswer,
   validateCourseDraft,
   draftRubricTask,
+  looksLikeFrontMatter,
   validateCourseOutline,
   validateMasteryPlan,
 } from '../lib/arsenal-core.js';
@@ -910,23 +911,38 @@ const SAFETY_DOCUMENT = {
   text: 'A safety check is required before operation. The operator confirms the check before starting.',
 };
 
-test('the outline prompt states the objective character limit the validator enforces', () => {
+test('the outline prompt states the objective limits the validator enforces', () => {
   // The limit went unstated once and every generated objective came back a
   // paragraph, so all twelve failed at once and the instructor saw only
-  // "outline.objectives[0] exceeds 280 characters" twelve times over.
+  // "outline.objectives[0] exceeds 200 characters" twelve times over.
   const { ask, calls } = coursewrightAsk(() => ({ objectives: ['Safety check'] }));
   return draftCourse(
     { title: 'Stated limits', objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
     { load: upstream, ask },
   ).then(() => {
-    assert.match(calls[0].system, /280 characters/);
-    assert.match(calls[0].system, /at most 12 objectives/);
+    assert.match(calls[0].system, /200 characters/);
+    assert.match(calls[0].system, /at most 20 objectives/);
+  });
+});
+
+test('the outline prompt demands one teaching point per objective', () => {
+  // Eight of twelve MCDP 2 sections were refused as "the passage supports X,
+  // but does not cover Y and Z". No validator can catch a compound objective --
+  // five teaching points fit inside the character cap -- so the prompt has to,
+  // and the cap alone is not the instruction.
+  const { ask, calls } = coursewrightAsk(() => ({ objectives: ['Safety check'] }));
+  return draftCourse(
+    { title: 'One point each', objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
+    { load: upstream, ask },
+  ).then(() => {
+    assert.match(calls[0].system, /exactly ONE point/);
+    assert.match(calls[0].system, /SEVERAL narrow objectives/);
   });
 });
 
 test('an outline the validator rejects is repaired once with the reasons, not failed outright', async () => {
   const tooLong = 'The learner will be able to describe, in complete detail and with reference to every applicable authority, the full sequence of the standard safety check that is required before operation, including the confirmation the operator performs before starting, so that operation never begins without it having been carried out first.';
-  assert.ok(tooLong.length > 280, 'fixture must exceed the objective limit');
+  assert.ok(tooLong.length > 200, 'fixture must exceed the objective limit');
 
   const { ask, calls } = coursewrightAsk((call) =>
     call === 1 ? { objectives: [tooLong] } : { objectives: ['Safety check'] });
@@ -940,7 +956,161 @@ test('an outline the validator rejects is repaired once with the reasons, not fa
   const repair = calls[1];
   assert.equal(repair.model, 'coursewright-outline');
   assert.match(repair.prompt, /A previous attempt was rejected/);
-  assert.match(repair.prompt, /exceeds 280 characters/);
+  assert.match(repair.prompt, /exceeds 200 characters/);
+});
+
+/* ---------- front matter is not grounding ---------- */
+
+// A contents page with the classic dot leaders.
+const CONTENTS_WITH_LEADERS = [
+  'Table of Contents',
+  'Chapter 1. Intelligence and the Marine Corps ............ 1',
+  'Chapter 2. The Nature of Intelligence ................... 17',
+  'Chapter 3. Intelligence Requirements .................... 33',
+  "Chapter 4. Commander's Critical Information Requirements  49",
+  'Chapter 5. Collection Management ........................ 65',
+  'Appendix A. Intelligence Products ....................... A-1',
+].join('\n');
+
+// The same page from an extractor that aligned the page numbers with spaces
+// instead. No leaders at all, so only the entry/shape signals are left.
+const CONTENTS_WITHOUT_LEADERS = [
+  'CONTENTS',
+  'Chapter 1  Intelligence and the Marine Corps   1',
+  'Chapter 2  The Nature of Intelligence   17',
+  'Chapter 3  Intelligence Requirements   33',
+  'Chapter 4  Collection Management   49',
+  'Chapter 5  Counterintelligence   65',
+  'Appendix A  Intelligence Products   A-1',
+].join('\n');
+
+// A real page of doctrine, plus the running footer the extractor keeps.
+const DOCTRINE_PROSE = [
+  'Intelligence is knowledge about the enemy or the surrounding environment needed to support decisionmaking.',
+  'It is the product of the collection, processing, and analysis of information. The commander drives intelligence, and the intelligence effort is focused by the intent of the commander.',
+  "Commander's critical information requirements are the information requirements the commander identifies as critical to timely decisionmaking.",
+  'A priority intelligence requirement is an intelligence requirement associated with a decision that will affect the overall success of the mission.',
+  'The latest time the information is of value establishes when a requirement must be answered if the commander is to act on it.',
+  'Collection management matches requirements against available capabilities and tasks those capabilities.',
+  'MCDP 2 Intelligence',
+  '2-7',
+].join('\n');
+
+test('front matter is recognised by several agreeing signals, never by one', () => {
+  assert.equal(looksLikeFrontMatter(CONTENTS_WITH_LEADERS), true);
+  assert.equal(looksLikeFrontMatter(CONTENTS_WITHOUT_LEADERS), true);
+  // A contents page extracted as one unbroken blob has no lines to count, but
+  // its leaders survive.
+  assert.equal(
+    looksLikeFrontMatter(
+      'Contents Chapter 1. Intelligence....1 Chapter 2. The Nature of Intelligence....17 ' +
+        'Chapter 3. Intelligence Requirements....33 Chapter 4. Collection Management....49',
+    ),
+    true,
+  );
+});
+
+test('genuine prose is never mistaken for front matter', () => {
+  // The expensive error. A false positive silently deletes real doctrine from a
+  // course; a false negative only lets one bad passage compete. The running
+  // footer and the page number on their own lines must not tip it.
+  assert.equal(looksLikeFrontMatter(DOCTRINE_PROSE), false);
+  assert.equal(looksLikeFrontMatter(SAFETY_DOCUMENT.text), false);
+
+  // Short lines, numbered headings, no prose sentences -- everything a contents
+  // page has except page numbers, which is the signal that actually separates
+  // them. A task's performance steps must survive.
+  assert.equal(
+    looksLikeFrontMatter([
+      'PERFORMANCE STEPS:',
+      '1. Clear the rifle and confirm the chamber is empty.',
+      '2. Disassemble the rifle into its major groups.',
+      '3. Clean each group with solvent and a bore brush.',
+      '4. Lubricate the bolt carrier group.',
+      '5. Reassemble the rifle and perform a function check.',
+    ].join('\n')),
+    false,
+  );
+
+  // Too few lines to judge. Withholding a passage on this little evidence is
+  // the error that costs doctrine, so it is not withheld.
+  assert.equal(
+    looksLikeFrontMatter('Chapter 1  Intelligence  1\nChapter 2  Requirements  17'),
+    false,
+  );
+});
+
+// A contents page whose headings echo the prose page's distinctive wording --
+// which is exactly why it wins IDF-weighted retrieval, and exactly the shape
+// that refused two live MCDP 2 sections with "the passage is only a table of
+// contents". It is listed first so a tie goes to it.
+const CONTENTS_DOCUMENT = {
+  source: 'poi-1 p.2',
+  text: [
+    'Table of Contents',
+    'Chapter 1. The Safety Check Before Operation ............ 1',
+    'Chapter 2. Operator Confirmation Before Starting ........ 17',
+    'Chapter 3. Starting and Shutdown ........................ 33',
+    'Chapter 4. Maintenance Intervals ........................ 49',
+    'Appendix A. Safety Check Worksheet ...................... A-1',
+  ].join('\n'),
+};
+
+test('a contents page is withheld from both the outline prompt and retrieval', async () => {
+  const { ask, calls } = coursewrightAsk(() => ({ objectives: ['Safety check'] }));
+  const course = await draftCourse(
+    {
+      title: 'Grounded in prose',
+      objectives: [],
+      documents: [CONTENTS_DOCUMENT, SAFETY_DOCUMENT],
+      diagrams: false,
+    },
+    { load: upstream, ask },
+  );
+
+  // Withholding it from only one of the two leaves the loop intact: hidden from
+  // retrieval it still teaches the model to write heading-shaped objectives,
+  // hidden from the outline it still wins retrieval on IDF.
+  assert.equal(calls[0].prompt.includes('Maintenance Intervals'), false);
+  assert.ok(calls[0].prompt.includes('A safety check is required before operation.'));
+  assert.equal(course.sections[0].cite, 'poi-1');
+});
+
+test('a document that is all front matter is used unfiltered rather than left with nothing', async () => {
+  // The safety rail. Either the heuristic is wrong about this document or the
+  // document really is all front matter; either way an instructor can read and
+  // reject a generation, and can do nothing at all with an empty one.
+  const calls = [];
+  const ask = async (model, system, prompt) => {
+    calls.push({ model, system, prompt });
+    if (system.includes('instructional designer')) {
+      return { title: 'Operations safety', objectives: ['The safety check before operation'] };
+    }
+    if (system.includes('micro-lesson')) {
+      return { refused: false, lesson: 'Chapter 1 covers the safety check before operation.' };
+    }
+    if (system.includes('"items"')) {
+      return { refused: false, items: [{
+        stem: 'Which chapter covers the safety check before operation?',
+        options: ['Chapter 1', 'Chapter 4'],
+        answerIndex: 0,
+        rationale: 'Chapter 1 covers the safety check before operation.',
+      }] };
+    }
+    if (system.includes('"cards"')) {
+      return { refused: false, cards: [{ front: 'Safety check before operation?', back: 'Chapter 1.' }] };
+    }
+    return { refused: true, reason: 'not needed for this fixture' };
+  };
+
+  const course = await draftCourse(
+    { objectives: [], documents: [CONTENTS_DOCUMENT], diagrams: false },
+    { load: upstream, ask },
+  );
+
+  assert.ok(calls[0].prompt.includes('Maintenance Intervals'), 'the filter was abandoned');
+  assert.equal(course.sections.length, 1);
+  assert.equal(course.sections[0].cite, 'poi-1 p.2');
 });
 
 test('the outline repair pass is bounded at one retry', async () => {
