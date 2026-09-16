@@ -134,7 +134,9 @@ test('Rubricon rejects malformed model output rather than returning a bad rubric
         generateRubric({ task: TASK, sourceText: STANDARD_TEXT }),
       ),
     (error) => {
-      assert.equal(error.code, 'RUBRICON_UNAVAILABLE');
+      // Malformed model output is a bad response (422), not an unavailable helper.
+      assert.equal(error.code, 'RUBRICON_BAD_RESPONSE');
+      assert.equal(error.status, 422);
       return true;
     },
   );
