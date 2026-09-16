@@ -5,7 +5,6 @@ import './student.css';
 import { COURSES } from './data';
 import { I, RailButton, UserMenu } from './shell';
 import { InstructorSettings } from './Settings';
-import Curriculum from './Curriculum';
 import LiveControl from './LiveControl';
 import Mastery from './Mastery';
 import AAR from './AAR';
@@ -19,24 +18,21 @@ import { accountDisplay } from '../_auth/account-display';
 /* Instructor shell. Same rail and content column as the student side; what
    changes is who is signed in and what is in the rail.
 
-   The rail has two halves. The library (courses, sources, rubrics) is the
-   persisted learning loop and is not tied to a course. Teaching lists the
-   courses: real drafts and approved courses from /api/learning first, then the
-   mock demo courses. A real course gets the views the API can back (draft,
-   fidelity, class mastery, AAR); a mock course keeps the click-through set. */
+   The library is the persisted learning loop: courses, sources and rubrics.
+   A course gets its tools only after it has been resolved from either the
+   learning service or the explicitly labelled sample area below. */
 
 const INSTRUCTOR = { name: 'SSgt Okafor', initials: 'SO', role: 'Instructor' };
 
 const LIBRARY = [
-  { id: 'courses', label: 'AI course drafts', icon: I.courses },
+  { id: 'courses', label: 'Courses', icon: I.courses },
   { id: 'sources', label: 'Sources', icon: I.dashboard },
   { id: 'rubrics', label: 'Rubrics', icon: I.dashboard },
+  { id: 'settings', label: 'Settings', icon: I.dashboard },
 ];
-// The manual course builder (app/_authoring, PR #73) is its own page for now.
-const MANUAL_BUILDER = '/teach/courses';
 
 const MOCK_VIEWS = [
-  { id: 'builder', label: 'Curriculum' },
+  { id: 'builder', label: 'Sample overview' },
   { id: 'roster', label: 'Roster' },
   { id: 'control', label: 'Run Live Session' },
   { id: 'mastery', label: 'Class Mastery' },
@@ -53,13 +49,46 @@ const REAL_VIEWS = [
 ];
 
 const SCREENS = {
-  builder: Curriculum,
+  builder: SampleCourse,
   roster: Roster,
   control: LiveControl,
   mastery: Mastery,
   aar: AAR,
   settings: InstructorSettings,
 };
+
+function SampleCourse({ course }) {
+  return (
+    <StatusMessage title={course?.name || 'Sample course'}>
+      <span>
+        This sample course is view-only. AI-generated courses are created and reviewed from the
+        signed-in Courses library; sample data never creates or edits an authoring record.
+      </span>
+    </StatusMessage>
+  );
+}
+
+function StatusMessage({ title, children }) {
+  return (
+    <>
+      <h2 className="p-h">{title}</h2>
+      {children && <p className="p-sub">{children}</p>}
+    </>
+  );
+}
+
+function CourseUnavailable({ courseId, title = 'Course unavailable', children }) {
+  return (
+    <StatusMessage title={title}>
+      {children || (
+        <>
+          Course <code>{courseId || 'unknown'}</code> is not available in this instructor account.
+          Return to Courses to choose an available course.
+        </>
+      )}
+    </StatusMessage>
+  );
+}
 
 export default function InstructorShell({ nav, onSwitchRole, role: profileRole }) {
   const { ready: authReady, profile, signOut, signOutError } = useAuth();
@@ -72,19 +101,21 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   const learning = useLearningCourses();
 
   const inLibrary = nav.area === 'library';
-  const libraryView = inLibrary && LIBRARY.find((l) => l.id === nav.view) ? nav.view : 'courses';
+  const inCourse = nav.area === 'course';
+  const libraryEntry = inLibrary ? LIBRARY.find((l) => l.id === nav.view) : null;
+  const libraryView = libraryEntry?.id || null;
+  const invalidArea = !inLibrary && !inCourse;
 
   // Which course is on screen. A real id that has not loaded yet resolves to
-  // null; while the list is loading we hold rather than bounce to the default.
-  const resolved = resolveCourse(nav.courseId, learning.courses);
-  const pending = !inLibrary && !resolved && learning.loading;
-  const course = resolved || COURSES['M092721'];
-  const isReal = Boolean(course.record);
+  // null; while the list is loading we hold rather than bounce to a sample
+  // course. An unresolved id is an explicit service/not-found state below.
+  const course = inCourse ? resolveCourse(nav.courseId, learning.courses) : null;
+  const isReal = Boolean(course?.record);
   const VIEWS = isReal ? REAL_VIEWS : MOCK_VIEWS;
-  const view = VIEWS.find((v) => v.id === nav.view) ? nav.view : 'builder';
-  const current = VIEWS.find((v) => v.id === view);
+  const current = course ? VIEWS.find((v) => v.id === nav.view) || (nav.view ? null : VIEWS[0]) : null;
+  const view = current?.id || null;
 
-  const go = (patch) => nav.go({ role: 'instructor', area: 'course', courseId: course.id, view, ...patch });
+  const go = (patch) => nav.go({ role: 'instructor', area: 'course', courseId: course?.id || nav.courseId, view: view || 'builder', ...patch });
   const goLibrary = (v) => nav.go({ role: 'instructor', area: 'library', courseId: null, view: v });
   const openCourse = (id) => nav.go({ role: 'instructor', area: 'course', courseId: id, view: 'builder' });
   const handleSignOut = async () => {
@@ -96,16 +127,63 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     }
   };
 
+  const courseLookupLoading = inCourse && !course && Boolean(nav.courseId) && (
+    !authReady || (learning.enabled && learning.loading)
+  );
+  const courseServiceError = inCourse && !course && !courseLookupLoading && Boolean(learning.error);
+  const courseUnavailable = inCourse && !course && !courseLookupLoading && !courseServiceError && !learning.enabled;
+  const courseNotFound = inCourse && !course && !courseLookupLoading && !courseServiceError && !courseUnavailable;
+  const unsupportedRealView = Boolean(course?.record && nav.view && !current);
+  const accountSettingsCourse = {
+    id: `instructor-account${profile?.id ? `-${profile.id}` : ''}`,
+    name: 'Instructor account',
+  };
+
   let body;
-  if (pending) {
+  if (invalidArea) {
+    body = (
+      <StatusMessage title="Page not found">
+        This instructor page does not exist. Choose Courses, Sources, Rubrics or Settings from the library.
+      </StatusMessage>
+    );
+  } else if (inCourse && courseLookupLoading) {
     body = <p>Loading course…</p>;
+  } else if (inCourse && courseServiceError) {
+    body = (
+      <CourseUnavailable courseId={nav.courseId} title="Course service unavailable">
+        The course service could not be reached. Try again, or return to Courses when the service is available.
+      </CourseUnavailable>
+    );
+  } else if (inCourse && courseUnavailable) {
+    body = (
+      <CourseUnavailable courseId={nav.courseId}>
+        Sign in with an instructor account to load this course. Sample courses are available in the clearly labelled
+        sample area.
+      </CourseUnavailable>
+    );
+  } else if (inCourse && courseNotFound) {
+    body = <CourseUnavailable courseId={nav.courseId} title="Course not found" />;
+  } else if (inLibrary && !libraryEntry) {
+    body = (
+      <StatusMessage title="Library page not found">
+        This library page does not exist. Choose Courses, Sources, Rubrics or Settings.
+      </StatusMessage>
+    );
+  } else if (inLibrary && libraryView === 'settings') {
+    body = (
+      <InstructorSettings
+        course={accountSettingsCourse}
+        account={profile}
+        authenticated={authenticated}
+      />
+    );
   } else if (inLibrary && !learning.enabled) {
     body = (
       <>
         <h2 className="p-h">Sign in required</h2>
         <p className="p-sub">
           The library — sources, course drafts and rubrics — is the persisted learning loop, and it needs a
-          verified identity. Sign in to use it; the demo courses below work without one.
+          verified identity. Sign in to use it; the clearly labelled sample courses below work without one.
         </p>
       </>
     );
@@ -123,6 +201,13 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
         />
       );
     }
+  } else if (inCourse && unsupportedRealView) {
+    body = (
+      <CourseUnavailable courseId={course.id} title="Course tool unavailable">
+        This tool is not available for this service-backed course. Choose one of the tools listed under the selected
+        course.
+      </CourseUnavailable>
+    );
   } else if (isReal) {
     if (view === 'builder') body = <CourseDraft key={course.id} course={course} onChanged={learning.refetch} />;
     else if (view === 'fidelity') {
@@ -142,12 +227,16 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     }
   } else {
     const Screen = SCREENS[view];
-    body = <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} />;
+    body = Screen ? (
+      <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} />
+    ) : (
+      <CourseUnavailable courseId={course.id} title="Course tool not found" />
+    );
   }
 
   const crumbTail = inLibrary
-    ? LIBRARY.find((l) => l.id === libraryView).label
-    : current.label;
+    ? (libraryEntry?.label || 'Not found')
+    : (current?.label || (inCourse ? 'Course' : 'Not found'));
 
   return (
     <div className="s-root">
@@ -159,41 +248,30 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
           initials={initials}
           inst
           items={[
-            { label: 'Settings', hint: inLibrary ? 'Course settings' : course.id, onClick: () => go({ view: 'settings' }) },
+            { label: 'Settings', hint: 'Account settings', onClick: () => goLibrary('settings') },
             ...(onSwitchRole ? [{ label: 'View as student', onClick: onSwitchRole }, 'divider'] : ['divider']),
             { label: 'Sign out', danger: true, onClick: handleSignOut },
           ]}
         />
 
         <div className="s-rail-sec" style={{ paddingTop: '0.2rem' }}>Library</div>
-        <RailButton icon={I.courses} label="Course builder" onClick={() => { window.location.href = MANUAL_BUILDER; }} />
         {LIBRARY.map((l) => (
           <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
         ))}
 
-        <div className="s-rail-sec">Teaching</div>
-        {learning.courses.map((c) => (
-          <RailButton
-            key={c.id}
-            sub
-            on={!inLibrary && c.id === course.id}
-            icon={<span className="s-rail-dot" style={{ background: c.status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }} />}
-            label={c.name}
-            onClick={() => openCourse(c.id)}
-          />
-        ))}
+        <div className="s-rail-sec">Sample courses</div>
         {Object.values(COURSES).map((c) => (
           <RailButton
             key={c.id}
             sub
-            on={!inLibrary && c.id === course.id}
+            on={inCourse && c.id === course?.id}
             icon={<span className="s-rail-dot" style={{ background: c.id === 'M092721' ? 'var(--p-accent)' : 'var(--p-dim)' }} />}
             label={c.name.replace(' Course', '')}
             onClick={() => openCourse(c.id)}
           />
         ))}
 
-        {!inLibrary && (
+        {inCourse && course && (
           <>
             <div className="s-rail-sec">
               <span className="s-rail-sec-name">{course.name}</span>
@@ -218,16 +296,18 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
           <span className="s-crumb-sep">/</span>
           {inLibrary ? (
             <span className="s-crumb-cur">Library</span>
-          ) : (
+          ) : inCourse && course ? (
             <button onClick={() => go({ view: 'builder' })}>{course.name}</button>
+          ) : (
+            <span className="s-crumb-cur">Not found</span>
           )}
           <span className="s-crumb-sep">/</span>
           <span className="s-crumb-cur">{crumbTail}</span>
           <span className="s-crumb-spacer" />
-          {!inLibrary && !isReal && (
+          {inCourse && course && !isReal && (
             <span className="s-lastlogin">{course.students} students · Week {course.week} of {course.weeks}</span>
           )}
-          {!inLibrary && isReal && (
+          {inCourse && course && isReal && (
             <span className="s-lastlogin">{course.sections} sections · {course.status === 'APPROVED' ? 'Approved' : 'Draft'}</span>
           )}
         </div>

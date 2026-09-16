@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning/useLearning';
+import CourseLesson from '../_course/CoursePresentation';
 import { SourceViewer } from './SourceViewer';
 
 /* Learner-side arsenal features for a real (LearningRecord) course: the
@@ -121,13 +122,42 @@ export function CourseReader({ course }) {
   if (error) return <Err msg={errText(error, 'Could not load this course.')} />;
   if (!sections.length) return <p className="p-src">This course has no sections yet.</p>;
 
+  const lesson = {
+    id: String(cur.id || `section-${i + 1}`),
+    title: cur.title || `Section ${i + 1}`,
+    citation: cur.cite || cur.citation || '',
+    blocks: [
+      ...(cur.lesson ? [{
+        id: `${cur.id || `section-${i + 1}`}:lesson`,
+        type: 'text',
+        body: cur.lesson,
+      }] : []),
+      ...['pre', 'post'].flatMap((phase) => (Array.isArray(cur[phase]) ? cur[phase] : []).map((question, questionIndex) => {
+        const questionId = String(question.id || `${cur.id || `section-${i + 1}`}:${phase}${questionIndex + 1}`);
+        const options = Array.isArray(question.options)
+          ? question.options.map((option, optionIndex) => ({
+              id: String(option?.id || `${questionId}-option-${optionIndex + 1}`),
+              text: typeof option === 'string' ? option : option?.text || '',
+            }))
+          : [];
+        return {
+          id: questionId,
+          type: 'check',
+          title: phase === 'pre' ? 'Before you read' : 'After you read',
+          prompt: question.stem || question.prompt || '',
+          options,
+        };
+      })),
+    ],
+  };
+
   return (
     <div className="s-reader">
       <aside className="s-reader-toc">
         <h4 className="s-label">Sections</h4>
         <ol className="s-reader-list">
           {sections.map((s, j) => (
-            <li key={s.title || j}>
+            <li key={s.id || s.sectionId || s.title || `section-${j + 1}`}>
               <button className={`s-reader-row${j === i ? ' on' : ''}`} onClick={() => setI(j)}>
                 <span className="s-reader-id">{j + 1}</span>
                 <span className="s-reader-title">{s.title || `Section ${j + 1}`}</span>
@@ -142,33 +172,7 @@ export function CourseReader({ course }) {
           <span className="s-reader-kicker">Section {i + 1} of {sections.length}</span>
           <h2>{cur.title || `Section ${i + 1}`}</h2>
         </div>
-        {cur.lesson ? <p className="s-reader-p" style={{ whiteSpace: 'pre-wrap' }}>{cur.lesson}</p> : <p className="p-src">No lesson text in this section.</p>}
-
-        {[['pre', 'Before you read — check yourself'], ['post', 'After — check yourself']].map(([k, label]) =>
-          cur[k]?.length ? (
-            <div className="p-panel" key={k}>
-              <h3>{label}</h3>
-              <ol className="s-obj">
-                {cur[k].map((q, qi) => (
-                  <li key={qi}>
-                    {q.stem}
-                    {Array.isArray(q.options) && (
-                      <ul className="s-draft-opts">
-                        {q.options.map((o, oi) => (
-                          <li key={oi}>{typeof o === 'string' ? o : o.text}</li>
-                        ))}
-                      </ul>
-                    )}
-                    {q.citation && (
-                      <span className="p-src"> {typeof q.citation === 'string' ? q.citation : q.citation.citation}</span>
-                    )}
-                  </li>
-                ))}
-              </ol>
-              <p className="p-src">Answer keys stay with your instructor. Grading happens in a mastery session.</p>
-            </div>
-          ) : null,
-        )}
+        <CourseLesson content={lesson} />
 
         <div className="s-reader-nav">
           <button className="s-lesson-navbtn" disabled={i === 0} onClick={() => setI(i - 1)}>← Previous</button>

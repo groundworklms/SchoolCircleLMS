@@ -179,18 +179,39 @@ keys, `answerIndex`, rationales, and rubric indicators are not serialized.
 ### `POST /api/learning/courses/:id/approve` — instructor owner
 
 Transitions a generated course draft to `APPROVED` and materialises it into the
-first-class `Course` / `Section` / `Item` tables (`Course.id` is the record id;
-every item is `APPROVED` and carries its section's citation with the source's
-Anchor id as `pubId`). The rows land before the status flips, so a failed
-projection leaves the draft `PENDING`; approving again replaces the rows.
-`GET /api/courses` then serves the course to learners. Response:
+first-class `Course` / `Section` / `Item` tables. The initial `Course.id` is
+the record id; approving a reviewed revision creates an immutable replacement
+whose id is `record-id:release:<revision-record-id>`. The authoring record's
+`deliveryCourseId` points at the current replacement. Existing Item/Attempt/
+Schedule rows are never deleted. The rows land in the same transaction as the
+course compare-and-set, so a stale or failed projection cannot publish.
+`GET /api/courses` then serves the current release to authenticated learners
+and instructors. Learner item projections omit answer keys, rationales, and
+support scores; instructor projections retain review fields.
 
 ```json
-{ "id": "record-id", "status": "APPROVED", "materialised": { "courseId": "record-id", "sections": 3, "items": 11 } }
+{
+  "id": "record-id",
+  "status": "APPROVED",
+  "version": 2,
+  "deliveryCourseId": "record-id:release:revision-record-id",
+  "materialised": {
+    "courseId": "record-id:release:revision-record-id",
+    "sections": 3,
+    "items": 11
+  }
+}
 ```
 
-A learner attempting to open a pending or unowned draft receives `404` rather
-than a pending-content leak.
+`GET /api/courses/:id` accepts the generated root id and resolves the current
+immutable delivery release. `?releaseId=<approved-release-id>` pins a
+historical release; direct release ids from the list response are also
+accepted. Both routes require a verified `LEARNER`, `INSTRUCTOR`, or `BOTH`
+identity. A learner attempting to open a pending or unowned draft receives
+`404` rather than a pending-content leak. SCORM export accepts the same
+optional `releaseId`; mastery sessions persist the selected `releaseId` and
+analytics default to the current release while retaining explicit historical
+selection.
 
 ## Shared mastery plan review
 
@@ -372,6 +393,7 @@ fallback to an ungrounded answer.
 ```json
 {
   "courseId": "approved-course-record-id",
+  "releaseId": "approved-course-record-id:release:revision-record-id",
   "sourceId": "approved-source-id",
   "objectives": ["Explain the standard"],
   "maxTurns": 12

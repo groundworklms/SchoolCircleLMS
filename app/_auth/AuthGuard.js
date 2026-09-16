@@ -7,6 +7,7 @@ import AccountProfile from './AccountProfile';
 import AccountRecovery from './AccountRecovery';
 import { isAllowedEmail } from '../../lib/allowlist';
 import { isProfileComplete } from '../../lib/profile-options.js';
+import { currentPathAndQuery, loginHref } from './login-return.js';
 
 /* Gates a route behind Firebase auth. Critically, if Firebase is NOT configured
    (`ready` false), this is a NO-OP — the app stays fully usable and nobody is
@@ -43,7 +44,11 @@ export default function AuthGuard({ children }) {
       void signOut().catch(() => {});
       router.replace('/login?denied=1');
     } else if (!user) {
-      router.replace('/login');
+      // Read the browser location only when the redirect runs.  This keeps
+      // pathname + query (including a published release/lesson deep link)
+      // without introducing useSearchParams and its CSR bailout.
+      const returnTo = currentPathAndQuery(window.location);
+      router.replace(loginHref(returnTo));
     }
   }, [ready, loading, user, denied, router, signOut]);
 

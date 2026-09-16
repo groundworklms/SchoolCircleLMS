@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning/useLearning';
+import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { SourceViewer } from './SourceViewer';
 
@@ -209,8 +210,16 @@ function IngestSourceModal({ onIngested }) {
 /* Every course the account can see: own drafts and approved courses. Opening
    one goes to its builder view in the shell (onOpen). */
 export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
-  const { data: sources } = useApiQuery('/sources');
-  const approvedSources = sources?.filter((s) => s.status === 'APPROVED') || [];
+  const {
+    data: sources,
+    loading: sourcesLoading,
+    error: sourcesError,
+    refetch: refetchSources,
+  } = useApiQuery('/sources');
+  // useApiQuery starts with no data before its first effect runs. Treat that
+  // state as pending rather than presenting it as a successful empty library.
+  const sourcesPending = sourcesLoading || (sources == null && !sourcesError);
+  const approvedSources = Array.isArray(sources) ? sources.filter((s) => s.status === 'APPROVED') : [];
 
   return (
     <>
@@ -219,11 +228,29 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
           <h1>Courses</h1>
           <p>Cited drafts from approved sources. A draft reaches students only after you approve it.</p>
         </div>
-        <DraftCourseModal sources={approvedSources} onDrafted={onDrafted} />
+        <DraftCourseModal
+          sources={approvedSources}
+          sourcesLoading={sourcesPending}
+          sourcesError={sourcesError}
+          onRetrySources={refetchSources}
+          onDrafted={onDrafted}
+        />
       </div>
 
       {loading && <p>Loading courses…</p>}
       {error && <p className="s-shell-error" role="alert">{errText(error, 'Could not load courses.')}</p>}
+      {sourcesPending && <p>Loading approved sources…</p>}
+      {sourcesError && (
+        <div className="s-shell-error" role="alert">
+          <p style={{ margin: '0 0 0.5rem' }}>
+            {errText(sourcesError, 'Could not load approved sources.')}
+          </p>
+          <button type="button" className="p-btn ghost" onClick={refetchSources}>Retry loading sources</button>
+        </div>
+      )}
+      {!sourcesPending && !sourcesError && Array.isArray(sources) && approvedSources.length === 0 && (
+        <p>No approved sources yet. Add and approve a source before drafting a course.</p>
+      )}
       {!loading && !error && courses.length === 0 && <p>No course drafts yet. Approve a source, then draft from it.</p>}
       {courses.length > 0 && (
         <div className="s-courselist">
@@ -231,7 +258,9 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
             <button className="s-courserow" key={c.id} onClick={() => onOpen(c.id)}>
               <div className="s-courserow-main">
                 <div className="s-card-title">{c.name}</div>
-                <div className="s-card-school">{c.sections} sections · <StatusTag status={c.status} /></div>
+                <div className="s-card-school">
+                  {c.sections} sections · <StatusTag status={c.hasPendingRevision || c.record?.hasPendingRevision ? 'PENDING_REVIEW' : c.status} />
+                </div>
               </div>
               <span className="s-quick-arrow">→</span>
             </button>
@@ -242,30 +271,47 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
   );
 }
 
-function DraftCourseModal({ sources, onDrafted }) {
+function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySources, onDrafted }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [objective, setObjective] = useState('');
-  const [sourceId, setSourceId] = useState('');
+  const [sourceIds, setSourceIds] = useState([]);
   const [err, setErr] = useState(null);
   const draft = useApiMutation('/courses/draft', 'POST');
 
   const handleSubmit = async () => {
-    if (!title || !objective || !sourceId) return;
+    if (!title.trim() || sourceIds.length === 0) return;
     setErr(null);
     try {
-      await draft.mutate({ title, objectives: [objective], sourceIds: [sourceId], diagrams: false });
+      await draft.mutate({
+        title: title.trim(),
+        objectives: objective.split('\n').map((line) => line.trim()).filter(Boolean),
+        sourceIds,
+        diagrams: false,
+      });
       setOpen(false);
       setTitle('');
       setObjective('');
-      setSourceId('');
+      setSourceIds([]);
       onDrafted();
     } catch (e) {
       setErr(errText(e, 'Failed to draft course'));
     }
   };
 
-  if (!open) return <button className="p-btn" onClick={() => setOpen(true)}>Draft course</button>;
+  const sourceUnavailable = sourcesLoading || Boolean(sourcesError);
+  if (!open) {
+    return (
+      <button
+        className="p-btn"
+        onClick={() => setOpen(true)}
+        disabled={sourceUnavailable}
+        title={sourcesError ? 'Approved sources are unavailable.' : undefined}
+      >
+        {sourcesLoading ? 'Loading sources…' : 'Draft course'}
+      </button>
+    );
+  }
 
   return (
     <div style={MODAL_BACKDROP}>
@@ -278,29 +324,62 @@ function DraftCourseModal({ sources, onDrafted }) {
           onChange={(e) => setTitle(e.target.value)}
           style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
         />
-        <input
+        <textarea
           className="scw-ti"
-          placeholder="Primary objective (e.g. Explain the standard)"
+          aria-label="Course objectives"
+          placeholder="Optional objectives, one per line. Leave blank to generate the full outline from your POI and sources."
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
+          rows={4}
           style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
         />
-        <select
-          className="scw-ti"
-          value={sourceId}
-          onChange={(e) => setSourceId(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+        <fieldset
+          disabled={sourceUnavailable}
+          style={{
+            border: '1px solid var(--p-border)',
+            borderRadius: '10px',
+            padding: '0.65rem 0.8rem',
+            margin: '0 0 1rem',
+          }}
         >
-          <option value="">Select an approved source…</option>
+          <legend style={{ padding: '0 0.3rem', fontSize: '0.84em', color: 'var(--p-dim)' }}>
+            Ground this course in approved sources
+          </legend>
           {sources.map((s) => (
-            <option key={s.id} value={s.id}>{s.title}</option>
+            <label key={s.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.25rem 0', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                value={s.id}
+                checked={sourceIds.includes(s.id)}
+                onChange={(e) => setSourceIds((current) => e.target.checked
+                  ? [...current, s.id]
+                  : current.filter((id) => id !== s.id))}
+              />
+              <span>
+                <strong>{s.title}</strong>
+                <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages · {s.id}</small>
+              </span>
+            </label>
           ))}
-        </select>
-        {sources.length === 0 && <p className="p-src" style={{ marginBottom: '1rem' }}>No approved sources yet — approve one under Sources first.</p>}
+          {sources.length > 0 && (
+            <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--p-faint)' }}>
+              {sourceIds.length} source{sourceIds.length === 1 ? '' : 's'} selected
+            </small>
+          )}
+        </fieldset>
+        {sourcesError && (
+          <div className="s-shell-error" role="alert">
+            <p style={{ margin: '0 0 0.5rem' }}>{errText(sourcesError, 'Could not load approved sources.')}</p>
+            <button type="button" className="p-btn ghost" onClick={onRetrySources}>Retry loading sources</button>
+          </div>
+        )}
+        {!sourcesLoading && !sourcesError && sources.length === 0 && (
+          <p className="p-src" style={{ marginBottom: '1rem' }}>No approved sources yet — approve one under Sources first.</p>
+        )}
         {err && <p className="s-shell-error" role="alert">{err}</p>}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button className="p-btn ghost" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || !title || !objective || !sourceId}>
+          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || !title.trim() || sourceIds.length === 0}>
             {draft.loading ? 'Drafting…' : 'Draft'}
           </button>
         </div>
@@ -309,99 +388,371 @@ function DraftCourseModal({ sources, onDrafted }) {
   );
 }
 
-/* ---------- one real course: the builder view ---------- */
+/* ---------- AI course review ---------- */
 
-/* The Coursewright draft as the instructor reviews it: sections with their
-   lesson text and pre/post items, approve, syllabus (Cadence), SCORM export
-   (Cartridge). Fidelity and the AAR are their own views in the shell. */
-function draftReadinessIssues(sections) {
-  const issues = [];
-  if (!Array.isArray(sections) || sections.length === 0) {
-    return ['At least one generated section is required.'];
+function stableTextId(value, fallback) {
+  const text = String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return text ? text.slice(0, 48) : fallback;
+}
+
+function sectionStableId(section, sectionNumber) {
+  // Matches the backend's one-time legacy normalisation. New payloads always
+  // carry persisted ids; this fallback only keeps pre-id records addressable.
+  return String(section?.id || section?.sectionId || `section-${sectionNumber + 1}`);
+}
+
+function questionStableId(question, sectionId, phase, questionNumber) {
+  return String(
+    question?.id
+      || question?.questionId
+      || `${sectionId}:${phase}${questionNumber + 1}`,
+  );
+}
+
+function optionStableId(option, questionId, optionNumber) {
+  return String(option?.id || `${questionId}-option-${stableTextId(option?.text, String(optionNumber + 1))}`);
+}
+
+function questionOptions(question, questionId) {
+  const source = Array.isArray(question?.options)
+    ? question.options
+    : Array.isArray(question?.answers)
+      ? question.answers
+      : [];
+  return source.map((option, index) => (
+    typeof option === 'string'
+      ? { id: optionStableId({ text: option }, questionId, index), text: option }
+      : {
+          ...option,
+          id: optionStableId(option, questionId, index),
+          text: option.text ?? option.label ?? '',
+        }
+  ));
+}
+
+function questionBlock(question, sectionId, phase, questionNumber) {
+  const id = questionStableId(question, sectionId, phase, questionNumber);
+  const options = questionOptions(question, id);
+  const answerIndex = Number.isInteger(question?.answer) ? question.answer : null;
+  const sourceCorrectId = question?.correctOptionId || question?.correctAnswerId;
+  const correctOptionId = sourceCorrectId
+    || (answerIndex !== null ? options[answerIndex]?.id : undefined)
+    || options.find((option, index) => question?.answers?.[index]?.correct || option.correct)?.id;
+  return {
+    id,
+    type: question?.type === 'scenario' ? 'scenario' : 'check',
+    title: question?.title,
+    prompt: question?.prompt || question?.stem || question?.q || '',
+    body: question?.body || question?.scenario || '',
+    options,
+    correctOptionId,
+    explanation: question?.explanation || question?.rationale || '',
+  };
+}
+
+function lessonFromSection(section, sectionNumber) {
+  const sectionId = sectionStableId(section, sectionNumber);
+  const rawLesson = section?.lesson;
+  const lessonObject = rawLesson && typeof rawLesson === 'object' ? rawLesson : null;
+  const lessonId = String(lessonObject?.id || section?.lessonId || sectionId);
+  const blocks = Array.isArray(lessonObject?.blocks)
+    ? lessonObject.blocks.map((block, blockNumber) => ({
+        ...block,
+        id: String(block?.id || `${lessonId}-block-${stableTextId(block?.title || block?.type, String(blockNumber + 1))}`),
+      }))
+    : Array.isArray(section?.blocks)
+      ? section.blocks.map((block, blockNumber) => ({
+          ...block,
+          id: String(block?.id || `${lessonId}-block-${stableTextId(block?.title || block?.type, String(blockNumber + 1))}`),
+        }))
+      : [];
+  const questionRefs = [];
+  if (typeof rawLesson === 'string' && rawLesson.trim()) {
+    blocks.push({ id: `${lessonId}-lesson`, type: 'text', body: rawLesson });
   }
-  sections.forEach((section, index) => {
-    const label = section?.title || `Section ${index + 1}`;
-    if (!section || section.refused === true || section.error) {
-      issues.push(`${label} is refused or unavailable.`);
-      return;
-    }
-    if (typeof section.lesson !== 'string' || !section.lesson.trim()) {
-      issues.push(`${label} needs lesson text.`);
-    }
-    if (!Array.isArray(section.pre) || section.pre.length === 0) {
-      issues.push(`${label} needs a pre-check.`);
-    }
-    if (!Array.isArray(section.post) || section.post.length === 0) {
-      issues.push(`${label} needs a post-check.`);
-    }
-    if (!(section.cite || section.citation)) {
-      issues.push(`${label} needs a source citation.`);
+  for (const phase of ['pre', 'post']) {
+    const questions = Array.isArray(section?.[phase]) ? section[phase] : [];
+    questions.forEach((question, questionNumber) => {
+      const block = questionBlock(question, sectionId, phase, questionNumber);
+      blocks.push(block);
+      questionRefs.push({ ...block, sectionId, phase, questionId: block.id });
+    });
+  }
+  // New course payloads can put checks directly in lesson.blocks. Keep their
+  // stable IDs and expose them to the same inline revision control.
+  blocks.forEach((block) => {
+    if ((block.type === 'check' || block.type === 'scenario') && !questionRefs.some((item) => item.questionId === block.id)) {
+      questionRefs.push({
+        ...block,
+        sectionId,
+        phase: block.phase === 'post' ? 'post' : 'pre',
+        questionId: block.id,
+      });
     }
   });
-  return issues;
+  return {
+    ...lessonObject,
+    id: lessonId,
+    sectionId,
+    title: lessonObject?.title || section?.title || `Lesson ${sectionNumber + 1}`,
+    summary: lessonObject?.summary || section?.summary || '',
+    objectives: lessonObject?.objectives || section?.objectives || [],
+    citation: lessonObject?.citation || lessonObject?.cite || section?.citation || section?.cite || '',
+    blocks,
+    questionRefs,
+  };
+}
+
+function courseLessons(course) {
+  const explicitLessons = Array.isArray(course?.lessons) ? course.lessons : null;
+  if (explicitLessons) {
+    return explicitLessons.map((lesson, lessonNumber) => {
+      const sectionId = String(lesson?.sectionId || lesson?.id || `section-${lessonNumber + 1}`);
+      const lessonId = String(lesson?.id || sectionId);
+      const blocks = Array.isArray(lesson?.blocks)
+        ? lesson.blocks.map((block, blockNumber) => ({
+            ...block,
+            id: String(block?.id || `${lessonId}-block-${stableTextId(block?.title || block?.type, String(blockNumber + 1))}`),
+          }))
+        : [];
+      const questionRefs = blocks
+        .filter((block) => block.type === 'check' || block.type === 'scenario')
+        .map((block) => ({
+          ...block,
+          sectionId,
+          phase: block.phase === 'post' ? 'post' : 'pre',
+          questionId: block.id,
+        }));
+      return { ...lesson, id: lessonId, sectionId, blocks, questionRefs };
+    });
+  }
+  const sections = Array.isArray(course?.sections) ? course.sections : [];
+  return sections.map(lessonFromSection);
+}
+
+function revisionHistoryKey(entry, version) {
+  return String(entry?.id || entry?.revisionId || entry?.createdAt || `revision-${version || stableTextId(entry?.scope, 'entry')}`);
+}
+
+function RevisionForm({
+  scope,
+  version,
+  sectionId,
+  phase,
+  questionId,
+  onSubmit,
+  busy,
+}) {
+  const [open, setOpen] = useState(false);
+  const [instructions, setInstructions] = useState('');
+  const label = scope === 'lesson' ? 'Revise whole lesson' : `Revise ${phase || 'pre'} question`;
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!instructions.trim() || busy) return;
+    try {
+      await onSubmit({
+        version,
+        scope,
+        sectionId,
+        ...(phase ? { phase } : {}),
+        ...(questionId ? { questionId } : {}),
+        instructions: instructions.trim(),
+      });
+      setInstructions('');
+      setOpen(false);
+    } catch {
+      // The parent displays the explicit API error and keeps the form usable.
+    }
+  };
+
+  if (!open) {
+    return (
+      <button type="button" className="p-btn ghost" onClick={() => setOpen(true)} disabled={busy}>
+        {label}
+      </button>
+    );
+  }
+  return (
+    <form className="course-revision-form" onSubmit={submit}>
+      <label>
+        <span>{label} instructions</span>
+        <textarea
+          value={instructions}
+          onChange={(event) => setInstructions(event.target.value)}
+          rows={3}
+          maxLength={4000}
+          placeholder="Tell the AI what to improve without changing the source evidence…"
+          autoFocus
+        />
+      </label>
+      <div className="p-btnrow">
+        <button type="submit" className="p-btn" disabled={busy || !instructions.trim()}>
+          {busy ? 'Saving…' : 'Save revision request'}
+        </button>
+        <button type="button" className="p-btn ghost" onClick={() => setOpen(false)} disabled={busy}>Cancel</button>
+      </div>
+    </form>
+  );
+}
+
+function QuestionRevisionControl({ question, version, onSubmit, busy }) {
+  return (
+    <div className="course-question-review">
+      <div className="course-question-review-head">
+        <span>Question review · {question.phase}</span>
+        <code>{question.questionId}</code>
+      </div>
+      <RevisionForm
+        scope="question"
+        version={version}
+        sectionId={question.sectionId}
+        phase={question.phase}
+        questionId={question.questionId}
+        onSubmit={onSubmit}
+        busy={busy}
+      />
+    </div>
+  );
+}
+
+function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevision }) {
+  const lessons = courseLessons(course);
+  if (!lessons.length) {
+    return <p className="p-src">The generated course has no lessons to preview yet.</p>;
+  }
+  return (
+    <div className="course-generated-preview">
+      <div className="course-preview-banner">
+        <strong>Generated course preview</strong>
+        <span>Review every lesson and question before approval. Answer keys are visible only in this instructor preview.</span>
+      </div>
+      {lessons.map((lesson, lessonNumber) => (
+        <details key={lesson.id} open={lessonNumber === 0} className="course-preview-lesson">
+          <summary>
+            <span className="course-preview-number">{lessonNumber + 1}</span>
+            <span>{lesson.title}</span>
+            <small>{lesson.questionRefs?.length || 0} questions</small>
+          </summary>
+          <div className="course-preview-body">
+            <CourseLesson content={lesson} preview />
+            <div className="course-lesson-revision">
+              <RevisionForm
+                scope="lesson"
+                version={version}
+                sectionId={lesson.sectionId || lesson.id}
+                onSubmit={onSubmitRevision}
+                busy={pendingRevision === `lesson:${lesson.sectionId || lesson.id}`}
+              />
+            </div>
+            {lesson.questionRefs?.map((question) => (
+              <QuestionRevisionControl
+                key={question.questionId}
+                question={question}
+                version={version}
+                onSubmit={onSubmitRevision}
+                busy={pendingRevision === `question:${question.questionId}`}
+              />
+            ))}
+          </div>
+        </details>
+      ))}
+    </div>
+  );
 }
 
 export function CourseDraft({ course, onChanged }) {
   const [err, setErr] = useState(null);
+  const [notice, setNotice] = useState('');
+  const [pendingRevision, setPendingRevision] = useState(null);
   const { data: envelope, loading, error: draftError, refetch } = useApiQuery(`/courses/${course.id}`);
   const { data: sources } = useApiQuery('/sources');
+  const revise = useApiMutation(`/courses/${course.id}/revise`, 'POST');
   const approve = useApiMutation(`/courses/${course.id}/approve`, 'POST');
 
-  const handleApprove = async () => {
+  const draft = envelope?.course || course.record?.course || course.record || course;
+  const status = envelope?.status || course.status;
+  const version = envelope?.version ?? course.record?.version ?? course.version ?? 0;
+  const hasPendingRevision = Boolean(
+    envelope?.hasPendingRevision
+      || status === 'PENDING_REVIEW'
+      || status === 'PENDING',
+  );
+  const revisionHistory = Array.isArray(envelope?.revisionHistory) ? envelope.revisionHistory : [];
+
+  const refresh = async () => {
+    await refetch();
+    await onChanged?.();
+  };
+
+  const submitRevision = async (payload) => {
+    const key = payload.scope === 'lesson'
+      ? `lesson:${payload.sectionId}`
+      : `question:${payload.questionId}`;
+    setPendingRevision(key);
     setErr(null);
+    setNotice('');
     try {
-      await approve.mutate();
-      refetch();
-      onChanged?.();
-    } catch (e) {
-      setErr(errText(e, 'Failed to approve course'));
+      await revise.mutate(payload);
+      setNotice('Revision request saved. Review the new pending course before approval.');
+      await refresh();
+    } catch (error) {
+      setErr(errText(error, 'The revision request could not be saved.'));
+      throw error;
+    } finally {
+      setPendingRevision(null);
     }
   };
 
-  const exportScorm = (version) =>
-    downloadAuthenticated(
-      `/api/learning/export?courseId=${course.id}&version=${version}`,
-      `${course.id}-scorm-${version}.zip`,
-    ).catch((e) => setErr(e.message));
+  const handleApprove = async () => {
+    setErr(null);
+    setNotice('');
+    try {
+      await approve.mutate({ version });
+      setNotice('Course approved. The reviewed version is now available to learners.');
+      await refresh();
+    } catch (error) {
+      setErr(errText(error, 'The course could not be approved.'));
+    }
+  };
 
-  const draft = envelope?.course;
-  const status = envelope?.status || course.status;
+  const exportScorm = (release) =>
+    downloadAuthenticated(
+      `/api/learning/export?courseId=${course.id}&version=${release}`,
+      `${course.id}-scorm-${release}.zip`,
+    ).catch((error) => setErr(error.message));
+
+  const sourceCount = draft?.sourceIds?.length || course.sourceIds?.length || 0;
   const sections = draft?.sections || [];
-  const nSources = course.sourceIds?.length || 0;
-  const draftSourceIds = draft?.sourceIds || course.sourceIds;
-  const readinessIssues = draft
-    ? [
-        ...(Array.isArray(draftSourceIds) && draftSourceIds.length > 0
-          ? []
-          : ['At least one approved source is required for grounding.']),
-        ...draftReadinessIssues(sections),
-      ]
-    : [draftError ? 'The course draft could not be loaded.' : 'Draft details are still loading.'];
-  const approvedSources = sources?.filter((s) => s.status === 'APPROVED') || [];
+  const approvedSources = Array.isArray(sources) ? sources.filter((source) => source.status === 'APPROVED') : [];
+  const showingLoading = loading || (!envelope && !draftError);
 
   return (
     <>
-      <h2 className="p-h">Course draft</h2>
-      <p className="p-sub">
-        Drafted by Coursewright from {nSources || 'approved'} source{nSources === 1 ? '' : 's'}.
-        Status: <StatusTag status={status} />. Nothing here reaches a student until you approve it.
-      </p>
+      <div className="course-review-heading">
+        <div>
+          <p className="p-src" style={{ margin: 0 }}>AI-authored course · version {version}</p>
+          <h2 className="p-h">{draft?.title || course.name || 'Course draft'}</h2>
+          <p className="p-sub">
+            Grounded in {sourceCount || 'the selected'} approved source{sourceCount === 1 ? '' : 's'}.
+            {' '}Every generated lesson and question stays pending until you approve it.
+          </p>
+        </div>
+        <span className={`p-live${status === 'APPROVED' && !hasPendingRevision ? ' on' : ''}`}>
+          {hasPendingRevision ? 'PENDING REVIEW' : status || 'PENDING'}
+        </span>
+      </div>
 
       {err && <p className="s-shell-error" role="alert">{err}</p>}
-      {draftError && <p className="s-shell-error" role="alert">{draftError.error || draftError.message || 'Could not load course draft.'}</p>}
+      {draftError && <p className="s-shell-error" role="alert">{errText(draftError, 'Could not load course draft.')}</p>}
+      {notice && <p className="p-check ok" role="status"><strong>{notice}</strong></p>}
 
       <div className="p-btnrow" style={{ marginBottom: '1.25rem' }}>
-        {status === 'PENDING' && (
-          <button
-            className="p-btn"
-            onClick={handleApprove}
-            disabled={approve.loading || loading || readinessIssues.length > 0}
-            title={readinessIssues.length > 0 ? 'Resolve the draft readiness checks before approval.' : undefined}
-          >
-            {approve.loading ? 'Approving…' : 'Approve course'}
+        {hasPendingRevision && (
+          <button type="button" className="p-btn" onClick={handleApprove} disabled={approve.loading || loading || !envelope}>
+            {approve.loading ? 'Approving…' : 'Final approval'}
           </button>
         )}
-        {status === 'APPROVED' && (
+        {status === 'APPROVED' && !hasPendingRevision && (
           <>
             <button type="button" className="p-btn ghost" onClick={() => exportScorm('1.2')}>Export SCORM 1.2</button>
             <button type="button" className="p-btn ghost" onClick={() => exportScorm('2004')}>Export SCORM 2004</button>
@@ -409,73 +760,46 @@ export function CourseDraft({ course, onChanged }) {
         )}
       </div>
 
-      <div className="p-panel">
-        <h3>Sections</h3>
-        {loading && <p>Loading draft…</p>}
-        {!loading && sections.length === 0 && <p className="p-src">This draft has no sections.</p>}
-        {!loading && status === 'PENDING' && (
-          <div
-            role={readinessIssues.length > 0 ? 'alert' : 'status'}
-            style={{
-              marginBottom: '0.85rem',
-              color: readinessIssues.length > 0 ? 'var(--p-warning)' : 'var(--p-good)',
-              fontSize: '0.85em',
-            }}
-          >
-            <strong>{readinessIssues.length > 0 ? 'Draft is not learner-ready.' : 'Draft passes the local readiness checks.'}</strong>
-            {readinessIssues.length > 0 && (
-              <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.25rem' }}>
-                {readinessIssues.map((issue) => <li key={issue}>{issue}</li>)}
-              </ul>
-            )}
-          </div>
+      {showingLoading && <p>Loading generated course…</p>}
+      {!showingLoading && (
+        <div className="p-panel">
+          <GeneratedCoursePreview
+            course={draft || {}}
+            version={version}
+            onSubmitRevision={submitRevision}
+            pendingRevision={pendingRevision}
+          />
+        </div>
+      )}
+
+      <div className="p-panel course-revision-history">
+        <h3>Revision history</h3>
+        {revisionHistory.length === 0 ? (
+          <p className="p-src">No revision requests yet. Use an inline lesson or question instruction to start one.</p>
+        ) : (
+          <ol>
+            {revisionHistory.map((entry) => (
+              <li key={revisionHistoryKey(entry, entry.version)}>
+                <strong>{entry.scope === 'lesson' ? 'Whole lesson' : 'Question'}</strong>
+                {entry.phase ? ` · ${entry.phase}` : ''}
+                {entry.version != null ? ` · v${entry.version}` : ''}
+                <span>{entry.instructions || entry.instruction || 'Revision submitted'}</span>
+                {entry.status && <small>{entry.status}</small>}
+              </li>
+            ))}
+          </ol>
         )}
-        {sections.map((s, i) => (
-          <details key={s.title || i} className="s-draft-sec" open={i === 0}>
-            <summary>
-              <span className="s-draft-n">{i + 1}</span> {s.title || `Section ${i + 1}`}
-              <span className="p-src" style={{ marginLeft: '0.6rem' }}>
-                {(s.pre?.length || 0) + (s.post?.length || 0)} items
-              </span>
-            </summary>
-            {s.lesson && <p style={{ whiteSpace: 'pre-wrap' }}>{s.lesson}</p>}
-            {[['pre', 'Pre-check'], ['post', 'Post-check']].map(([k, label]) =>
-              s[k]?.length ? (
-                <div key={k} style={{ marginTop: '0.75rem' }}>
-                  <h4 className="s-label">{label}</h4>
-                  <ol className="s-obj">
-                    {s[k].map((q, j) => (
-                      <li key={j}>
-                        {q.stem}
-                        {Array.isArray(q.options) && (
-                          <ul className="s-draft-opts">
-                            {q.options.map((o, oi) => (
-                              <li key={oi} className={oi === q.answer ? 'keyed' : ''}>{typeof o === 'string' ? o : o.text}</li>
-                            ))}
-                          </ul>
-                        )}
-                        {q.citation && (
-                          <span className="p-src"> {typeof q.citation === 'string' ? q.citation : q.citation.citation}</span>
-                        )}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              ) : null,
-            )}
-          </details>
-        ))}
       </div>
 
+      {status === 'PENDING' && sections.length === 0 && (
+        <p className="p-src">The AI service is still generating this course. Refresh when the pending output is ready.</p>
+      )}
       {status === 'PENDING' && <InstructorSyllabus courseId={course.id} />}
       <InstructorMasteryPlan
         courseId={course.id}
         course={draft || course}
         approvedSources={approvedSources}
-        onUpdated={async () => {
-          await refetch();
-          await onChanged?.();
-        }}
+        onUpdated={refresh}
       />
     </>
   );

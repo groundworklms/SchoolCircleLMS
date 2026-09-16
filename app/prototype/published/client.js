@@ -18,7 +18,7 @@ async function responseBody(response) {
 }
 
 /**
- * Keep the auth transport injectable.  Browser requests use the repository's
+ * Keep the auth transport injectable. Browser requests use the repository's
  * authenticatedFetch (and the Firebase user from useAuth); browser tests can
  * provide a request function without creating Firebase credentials.
  */
@@ -72,7 +72,7 @@ function createAttemptId() {
 }
 
 /**
- * Idempotency is per block and selected option.  A failed network call does
+ * Idempotency is per block and selected option. A failed network call does
  * not clear the entry, so a retry of that answer carries the exact same key.
  * Choosing a different option intentionally gets a new key.
  */
