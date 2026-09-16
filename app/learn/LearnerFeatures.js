@@ -86,7 +86,7 @@ export function LearnerProgress() {
             <div style={{ marginTop: "1rem" }}>
               <h4>Past Mastery Sessions</h4>
               <ul style={{ paddingLeft: "1.5rem" }}>
-                {analytics.mastery.map((midx) => (
+                {analytics.mastery.map((m, idx) => (
                   <li key={idx} style={{ marginBottom: "0.5rem" }}>
                     <span style={{ fontWeight: 600, color: m.verdict === "PASS" ? "var(--p-good)" : (m.verdict === "FAIL" ? "var(--p-critical)" : "var(--p-dim)") }}>
                       {m.verdict || "INCOMPLETE"}

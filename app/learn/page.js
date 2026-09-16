@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import '../prototype/student.css';
 import { I, RailButton, UserMenu } from '../prototype/shell';
 import { useAuth } from '../_auth/AuthProvider';
+import AccountProfile from '../_auth/AccountProfile';
 import LearningGate from '../_learning/LearningGate';
 import { useApiQuery, useApiMutation } from '../_learning/useLearning';
 import { LearnerProfile, LearnerProgress, LearnerStudyPlan } from './LearnerFeatures';
@@ -24,8 +25,8 @@ export default function LearnPage() {
 
 function LearnApp({ user }) {
   const router = useRouter();
-  const { signOut } = useAuth();
-  const [area, setArea] = useState('dashboard'); // dashboard | course | study-plan | progress | profile
+  const { signOut, signOutError } = useAuth();
+  const [area, setArea] = useState('dashboard'); // dashboard | course | study-plan | progress | profile | settings
   const [activeCourseId, setActiveCourseId] = useState(null);
   const { data: coursesData, loading: coursesLoading } = useApiQuery('/courses');
 
@@ -43,16 +44,22 @@ function LearnApp({ user }) {
         <UserMenu
           name={learnerName}
           role={user.role || 'Learner'}
+          rank={user.rank}
           initials={learnerInitials}
           inst={false}
           items={[
-            { label: 'Settings', hint: 'Reminders · How I learn', onClick: () => {} },
+            { label: 'Settings', hint: 'Account · Reminders · How I learn', onClick: () => setArea('settings') },
             {
               label: 'Sign out',
               danger: true,
-              onClick: () => {
-                signOut();
-                router.push('/');
+              onClick: async () => {
+                try {
+                  await signOut();
+                  router.push('/');
+                } catch {
+                  // AuthProvider exposes the error in the shell so a failed
+                  // sign-out never becomes an unhandled promise rejection.
+                }
               },
             },
           ]}
@@ -81,10 +88,17 @@ function LearnApp({ user }) {
 
       <div className="s-content">
         <div className="s-crumbs">
-          <span className="s-crumb-cur">{area === 'course' ? 'Course view' : 'Dashboard'}</span>
+          <span className="s-crumb-cur">
+            {area === 'course' ? 'Course view' : area === 'settings' ? 'Settings' : 'Dashboard'}
+          </span>
         </div>
         <main className="s-main">
           <div className="s-container">
+            {signOutError && (
+              <div className="s-shell-error" role="alert">
+                {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
+              </div>
+            )}
             {coursesLoading && <p>Loading courses…</p>}
             {area === 'dashboard' && !coursesLoading && (
               <div>
@@ -109,6 +123,7 @@ function LearnApp({ user }) {
             {area === 'study-plan' && <LearnerStudyPlan />}
             {area === 'progress' && <LearnerProgress />}
             {area === 'profile' && <LearnerProfile />}
+            {area === 'settings' && <AccountProfile />}
           </div>
         </main>
       </div>

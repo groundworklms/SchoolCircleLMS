@@ -3,6 +3,8 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthProvider';
+import AccountProfile from './AccountProfile';
+import AccountRecovery from './AccountRecovery';
 import { isAllowedEmail } from '../../lib/allowlist';
 
 /* Gates a route behind Firebase auth. Critically, if Firebase is NOT configured
@@ -14,7 +16,17 @@ import { isAllowedEmail } from '../../lib/allowlist';
    accounts up front; this is the backstop for sessions that predate the list
    or slipped past it. */
 export default function AuthGuard({ children }) {
-  const { user, loading, ready, signOut } = useAuth();
+  const {
+    user,
+    profile,
+    profileLoading,
+    profileError,
+    loading,
+    ready,
+    signOut,
+    signOutError,
+    refreshProfile,
+  } = useAuth();
   const router = useRouter();
 
   const denied = Boolean(user) && !isAllowedEmail(user.email);
@@ -27,7 +39,7 @@ export default function AuthGuard({ children }) {
     if (!ready || loading || bounced.current) return;
     if (denied) {
       bounced.current = true;
-      signOut();
+      void signOut().catch(() => {});
       router.replace('/login?denied=1');
     } else if (!user) {
       router.replace('/login');
@@ -41,11 +53,29 @@ export default function AuthGuard({ children }) {
 
   if (!user || denied) return null; // redirecting to /login
 
+  if (profileLoading) return <div className="scl-fullcenter">Loading your account…</div>;
+
+  if (profileError) {
+    return <AccountRecovery error={profileError} onRetry={refreshProfile} returnTo="/prototype" />;
+  }
+
+  if (!profile) return <div className="scl-fullcenter">Loading your account…</div>;
+
+  if (!profile.profileCompletedAt) return <AccountProfile onboarding />;
+
   return (
     <>
       <div className="scl-authpill">
-        <span>{user.displayName || user.email || 'Signed in'}</span>
-        <button onClick={signOut}>Sign out</button>
+        <span>
+          {profile?.name || user.displayName || user.email || 'Signed in'}
+          {profile?.rank ? ` · ${profile.rank}` : ''}
+        </span>
+        <button onClick={() => void signOut().catch(() => {})}>Sign out</button>
+        {(profileError || signOutError) && (
+          <span role="alert" title={profileError?.message || signOutError?.message}>
+            {profileError?.error || signOutError?.error || 'Account action failed'}
+          </span>
+        )}
       </div>
       {children}
     </>

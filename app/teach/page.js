@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import '../prototype/student.css';
 import { I, RailButton, UserMenu } from '../prototype/shell';
 import { useAuth } from '../_auth/AuthProvider';
+import AccountProfile from '../_auth/AccountProfile';
 import LearningGate from '../_learning/LearningGate';
 import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning/useLearning';
 import { InstructorFidelity, InstructorAAR, InstructorSyllabus, RubricsView } from './InstructorFeatures';
@@ -24,12 +25,12 @@ export default function TeachPage() {
 
 function TeachApp({ user }) {
   const router = useRouter();
-  const { signOut } = useAuth();
-  const [area, setArea] = useState('sources'); // sources | courses | rubrics
+  const { signOut, signOutError } = useAuth();
+  const [area, setArea] = useState('sources'); // sources | courses | rubrics | settings
 
   const instName = user.name || 'Instructor';
   const instInitials = instName.charAt(0).toUpperCase();
-  const AREA_LABEL = { sources: 'Sources', courses: 'Courses', rubrics: 'Rubrics' };
+  const AREA_LABEL = { sources: 'Sources', courses: 'Courses', rubrics: 'Rubrics', settings: 'Settings' };
 
   return (
     <div className="s-root i-root">
@@ -37,16 +38,21 @@ function TeachApp({ user }) {
         <UserMenu
           name={instName}
           role={user.role || 'Instructor'}
+          rank={user.rank}
           initials={instInitials}
           inst
           items={[
-            { label: 'Settings', onClick: () => {} },
+            { label: 'Settings', hint: 'Account profile', onClick: () => setArea('settings') },
             {
               label: 'Sign out',
               danger: true,
-              onClick: () => {
-                signOut();
-                router.push('/');
+              onClick: async () => {
+                try {
+                  await signOut();
+                  router.push('/');
+                } catch {
+                  // AuthProvider retains the error for the shell to display.
+                }
               },
             },
           ]}
@@ -68,9 +74,15 @@ function TeachApp({ user }) {
         </div>
         <main className="s-main">
           <div className="s-container" style={{ maxWidth: '60rem' }}>
+            {signOutError && (
+              <div className="s-shell-error" role="alert">
+                {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
+              </div>
+            )}
             {area === 'sources' && <SourcesView />}
             {area === 'courses' && <CoursesView />}
             {area === 'rubrics' && <RubricsView />}
+            {area === 'settings' && <AccountProfile />}
           </div>
         </main>
       </div>

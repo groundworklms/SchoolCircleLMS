@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { useAuth } from '../_auth/AuthProvider';
-import { useAuthUser, useLearningStatus } from './useLearning';
+import AccountProfile from '../_auth/AccountProfile';
+import AccountRecovery from '../_auth/AccountRecovery';
+import { useLearningStatus } from './useLearning';
 
 /* Gates the Learn / Teach apps. Unlike the prototype's AuthGuard (a no-op when
    Firebase is unconfigured), the learning API cannot work without a verified
@@ -12,12 +14,37 @@ import { useAuthUser, useLearningStatus } from './useLearning';
      - signed in, wrong role    -> instructor-only notice (Teach)
    `children` is a render function receiving the Prisma-backed user. */
 export default function LearningGate({ returnTo, requireInstructor = false, children }) {
-  const { loading: firebaseLoading } = useAuth();
-  const { user, loading: userLoading } = useAuthUser();
-  const { status, loading: statusLoading } = useLearningStatus();
+  const {
+    loading: firebaseLoading,
+    profile: user,
+    profileLoading: userLoading,
+    profileError: userError,
+    refreshProfile,
+  } = useAuth();
+  const {
+    status,
+    error: statusError,
+    loading: statusLoading,
+    refetch: retryStatus,
+  } = useLearningStatus();
 
   if (firebaseLoading || statusLoading || userLoading) {
     return <div className="s-root" style={{ padding: '2rem' }}>Loading…</div>;
+  }
+
+  if (userError) {
+    return <AccountRecovery error={userError} onRetry={refreshProfile} returnTo={returnTo} />;
+  }
+
+  if (statusError) {
+    return (
+      <Notice title="Learning tools unavailable">
+        <p>{statusError.error || statusError.message || 'We could not check learning access.'}</p>
+        <button type="button" className="p-btn" style={{ width: 'max-content' }} onClick={retryStatus}>
+          Try again
+        </button>
+      </Notice>
+    );
   }
 
   if (!status?.auth?.ready || !user) {
@@ -31,6 +58,10 @@ export default function LearningGate({ returnTo, requireInstructor = false, chil
         )}
       </Notice>
     );
+  }
+
+  if (!user.profileCompletedAt) {
+    return <AccountProfile onboarding />;
   }
 
   if (requireInstructor && user.role !== 'INSTRUCTOR') {
