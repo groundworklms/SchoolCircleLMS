@@ -171,9 +171,19 @@ keys, `answerIndex`, rationales, and rubric indicators are not serialized.
 
 ### `POST /api/learning/courses/:id/approve` — instructor owner
 
-Transitions a generated course draft to `APPROVED`. A learner attempting to
-open a pending or unowned draft receives `404` rather than a pending-content
-leak.
+Transitions a generated course draft to `APPROVED` and materialises it into the
+first-class `Course` / `Section` / `Item` tables (`Course.id` is the record id;
+every item is `APPROVED` and carries its section's citation with the source's
+Anchor id as `pubId`). The rows land before the status flips, so a failed
+projection leaves the draft `PENDING`; approving again replaces the rows.
+`GET /api/courses` then serves the course to learners. Response:
+
+```json
+{ "id": "record-id", "status": "APPROVED", "materialised": { "courseId": "record-id", "sections": 3, "items": 11 } }
+```
+
+A learner attempting to open a pending or unowned draft receives `404` rather
+than a pending-content leak.
 
 ### `POST /api/learning/courses/:id/syllabus` — instructor owner
 
