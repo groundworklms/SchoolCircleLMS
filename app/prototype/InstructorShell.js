@@ -2,7 +2,6 @@
 
 import './student.css';
 
-import { COURSES } from './data';
 import { I, RailButton, UserMenu } from './shell';
 import { InstructorSettings } from './Settings';
 import LiveControl from './LiveControl';
@@ -11,7 +10,7 @@ import AAR from './AAR';
 import Roster from './Roster';
 import { SourcesView, CoursesLibrary, CourseDraft } from './Library';
 import { InstructorFidelity, RubricsView } from './InstructorFeatures';
-import { useLearningCourses, resolveCourse } from './learning';
+import { useLearningCourses } from './learning';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
 
@@ -19,8 +18,11 @@ import { accountDisplay } from '../_auth/account-display';
    changes is who is signed in and what is in the rail.
 
    The library is the persisted learning loop: courses, sources and rubrics.
-   A course gets its tools only after it has been resolved from either the
-   learning service or the explicitly labelled sample area below. */
+   A course gets its tools only after the learning service has resolved it.
+   There are no sample courses here: an instructor's rail shows the real ones
+   they own, and an unresolved id is an explicit not-found rather than a
+   placeholder standing in for a course. The student shell still carries demo
+   content, which is why the shared resolveCourse is left alone. */
 
 const INSTRUCTOR = { name: 'SSgt Okafor', initials: 'SO', role: 'Instructor' };
 
@@ -29,15 +31,6 @@ const LIBRARY = [
   { id: 'sources', label: 'Sources', icon: I.dashboard },
   { id: 'rubrics', label: 'Rubrics', icon: I.dashboard },
   { id: 'settings', label: 'Settings', icon: I.dashboard },
-];
-
-const MOCK_VIEWS = [
-  { id: 'builder', label: 'Sample overview' },
-  { id: 'roster', label: 'Roster' },
-  { id: 'control', label: 'Run Live Session' },
-  { id: 'mastery', label: 'Class Mastery' },
-  { id: 'aar', label: 'Course AAR' },
-  { id: 'settings', label: 'Course settings' },
 ];
 
 const REAL_VIEWS = [
@@ -49,23 +42,12 @@ const REAL_VIEWS = [
 ];
 
 const SCREENS = {
-  builder: SampleCourse,
   roster: Roster,
   control: LiveControl,
   mastery: Mastery,
   aar: AAR,
   settings: InstructorSettings,
 };
-
-function SampleCourse({ course }) {
-  return (
-    <StatusMessage title={course?.name || 'Sample course'}>
-      <span>
-        Sample course · view only. Create and review AI-generated courses from the signed-in Courses library.
-      </span>
-    </StatusMessage>
-  );
-}
 
 function StatusMessage({ title, children }) {
   return (
@@ -107,9 +89,14 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   // Which course is on screen. A real id that has not loaded yet resolves to
   // null; while the list is loading we hold rather than bounce to a sample
   // course. An unresolved id is an explicit service/not-found state below.
-  const course = inCourse ? resolveCourse(nav.courseId, learning.courses) : null;
+  // Instructors see only real courses. A sample id is not resolved here at
+  // all, so an old sample deep link is an explicit not-found rather than a
+  // read-only placeholder sitting where a real course should be.
+  const course = inCourse
+    ? (learning.courses.find((c) => c.id === nav.courseId) || null)
+    : null;
   const isReal = Boolean(course?.record);
-  const VIEWS = isReal ? REAL_VIEWS : MOCK_VIEWS;
+  const VIEWS = REAL_VIEWS;
   const current = course ? VIEWS.find((v) => v.id === nav.view) || (nav.view ? null : VIEWS[0]) : null;
   const view = current?.id || null;
 
@@ -150,7 +137,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   } else if (inCourse && courseUnavailable) {
     body = (
       <CourseUnavailable courseId={nav.courseId}>
-        Sign in with an instructor account to load this course. Sample courses are listed in the sidebar.
+        Sign in with an instructor account to load this course.
       </CourseUnavailable>
     );
   } else if (inCourse && courseNotFound) {
@@ -178,7 +165,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
       <>
         <h2 className="p-h">Sign in required</h2>
         <p className="p-sub">
-          Sign in to use Sources, Courses and Rubrics. Sample courses work without an account.
+          Sign in to use Sources, Courses and Rubrics.
         </p>
       </>
     );
@@ -219,12 +206,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
       body = <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} courseScoped={view === 'settings'} />;
     }
   } else {
-    const Screen = SCREENS[view];
-    body = Screen ? (
-      <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} courseScoped={view === 'settings'} />
-    ) : (
-      <CourseUnavailable courseId={course.id} title="Course tool not found" />
-    );
+    body = <CourseUnavailable courseId={nav.courseId} title="Course not found" />;
   }
 
   const crumbTail = inLibrary
@@ -251,18 +233,6 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
         <div className="s-rail-sec" style={{ paddingTop: '0.2rem' }}>Library</div>
         {LIBRARY.map((l) => (
           <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
-        ))}
-
-        <div className="s-rail-sec">Sample courses</div>
-        {Object.values(COURSES).map((c) => (
-          <RailButton
-            key={c.id}
-            sub
-            on={inCourse && c.id === course?.id}
-            icon={<span className="s-rail-dot" style={{ background: c.id === 'M092721' ? 'var(--p-accent)' : 'var(--p-dim)' }} />}
-            label={c.name.replace(' Course', '')}
-            onClick={() => openCourse(c.id)}
-          />
         ))}
 
         {inCourse && course && (
