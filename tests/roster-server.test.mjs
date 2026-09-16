@@ -8,7 +8,11 @@ import {
   ENROLLMENT_EVENT,
   MESSAGE,
   MESSAGE_OPERATION,
+  EMAIL_IDENTITY,
+  SEND_WINDOW,
   MAX_COURSE_ENROLLMENTS,
+  MAX_SEND_OPERATIONS_PER_WINDOW,
+  RATE_LIMIT_ERROR,
 } from '../lib/roster/service.js';
 
 function copy(value) {
@@ -154,6 +158,41 @@ const learner = {
   email: 'student@example.test',
   emailVerified: true,
 };
+const otherLearner = {
+  id: 'learner-2',
+  name: 'Other Learner',
+  role: 'LEARNER',
+  email: 'other-student@example.test',
+  emailVerified: true,
+};
+
+/**
+ * A learner-written participation record. `ownerId` is the learner's own User id
+ * and the payload carries `courseId`, exactly as lib/authoring/service.js and
+ * lib/learning/core.js write them. An instructor cannot produce one of these.
+ */
+async function addProgress(db, {
+  ownerId = learner.id,
+  courseId = 'course-1',
+  type = 'MANUAL_PROGRESS',
+} = {}) {
+  return db.learningRecord.create({
+    data: { ownerId, type, status: 'ACTIVE', payload: { courseId, releaseId: 'release-1' } },
+  });
+}
+
+/**
+ * A recipient is deliverable only once BOTH hold: their verified email is bound to
+ * their User row (which happens when they read their own inbox), and they have
+ * started the course. Anything less must not receive a roster message.
+ */
+async function makeDeliverable(fixture, identity, {
+  courseId = 'course-1',
+  type = 'MANUAL_PROGRESS',
+} = {}) {
+  await fixture.service.listMessages(identity);
+  await addProgress(fixture.db, { ownerId: identity.id, courseId, type });
+}
 
 async function serviceFixture(options) {
   const fixture = memoryDb(options);
@@ -417,6 +456,7 @@ test('drops require reason/date and retain history through reactivation', async 
 
 test('message request ids make retries durable and reject changed replay payloads', async () => {
   const fixture = await serviceFixture();
+  await makeDeliverable(fixture, learner);
   const added = await fixture.service.addStudents(instructor, {
     params: { id: 'course-1' },
     body: { name: 'Retry recipient', email: learner.email, section: 'A' },
@@ -476,6 +516,7 @@ test('message request ids make retries durable and reject changed replay payload
 
 test('messages are instructor-scoped, only active recipients are sent, and dropped records remain', async () => {
   const fixture = await serviceFixture();
+  await makeDeliverable(fixture, learner);
   const active = await fixture.service.addStudents(instructor, {
     params: { id: 'course-1' },
     body: { name: 'Active', email: learner.email, section: 'A' },
@@ -535,8 +576,9 @@ test('messages are instructor-scoped, only active recipients are sent, and dropp
   );
 });
 
-test('inbox is keyed by verified identity email and never leaks or permits recipient spoofing', async () => {
+test('inbox is keyed by the recipient User row and never leaks or permits recipient spoofing', async () => {
   const fixture = await serviceFixture();
+  await makeDeliverable(fixture, learner);
   const added = await fixture.service.addStudents(instructor, {
     params: { id: 'course-1' },
     body: { name: 'Manual enrollment', email: learner.email, section: 'A' },
@@ -560,10 +602,19 @@ test('inbox is keyed by verified identity email and never leaks or permits recip
     'subject',
   ]);
   assert.equal(message.read, false);
+  // A different User id is a different mailbox, whatever address it presents --
+  // including the recipient's own address on someone else's account.
+  assert.equal((await fixture.service.listMessages(otherLearner)).json.messages.length, 0);
+  assert.equal((await fixture.service.listMessages({
+    ...otherLearner,
+    email: learner.email,
+  })).json.messages.length, 0);
+  // Changing the verified address on the SAME account keeps that account's
+  // mailbox: delivery follows the User row, not the token's email claim.
   assert.equal((await fixture.service.listMessages({
     ...learner,
-    email: 'wrong@example.test',
-  })).json.messages.length, 0);
+    email: 'renamed@example.test',
+  })).json.messages.length, 1);
   await assert.rejects(
     fixture.service.listMessages({ ...learner, emailVerified: false }),
     (error) =>
@@ -573,7 +624,14 @@ test('inbox is keyed by verified identity email and never leaks or permits recip
 
   await assert.rejects(
     fixture.service.markMessageRead(
-      { ...learner, email: 'wrong@example.test' },
+      otherLearner,
+      { body: { id: message.id, read: true } },
+    ),
+    (error) => codeOf(error) === 'NOT_FOUND',
+  );
+  await assert.rejects(
+    fixture.service.markMessageRead(
+      { ...otherLearner, email: learner.email },
       { body: { id: message.id, read: true } },
     ),
     (error) => codeOf(error) === 'NOT_FOUND',
@@ -609,6 +667,7 @@ test('inbox is keyed by verified identity email and never leaks or permits recip
           courseId: 'course-1',
           courseName: 'Signals fundamentals',
           senderName: instructor.name,
+          recipientUserId: learner.id,
           recipientEmail: learner.email,
           subject: `Synthetic ${index}`,
           body: 'Bounded inbox fixture',
@@ -669,4 +728,357 @@ test('roster and message input bounds reject oversized or malformed requests bef
   );
   assert.equal(fixture.rows().filter((row) => row.type === ENROLLMENT).length, 1);
   assert.equal(fixture.rows().filter((row) => row.type === MESSAGE).length, 0);
+});
+// --- Delivery authorization (the #84 spoofed-broadcast hole) -----------------
+
+test('a typed-in address receives nothing without a verified User row and course participation', async () => {
+  const fixture = await serviceFixture();
+  const added = await fixture.service.addStudents(instructor, {
+    params: { id: 'course-1' },
+    body: {
+      students: [
+        { name: 'Never signed up', email: 'stranger@example.test', section: 'A' },
+        { name: 'Signed in, never started', email: learner.email, section: 'A' },
+        { name: 'Started, never signed in', email: otherLearner.email, section: 'A' },
+      ],
+    },
+  });
+  const idFor = (email) => added.json.students.find((student) => student.email === email).id;
+
+  // Bound to a User row, but no participation in this course.
+  await fixture.service.listMessages(learner);
+  // Participation in this course, but the address is bound to no User row.
+  await addProgress(fixture.db, { ownerId: otherLearner.id });
+
+  for (const email of ['stranger@example.test', learner.email, otherLearner.email]) {
+    await assert.rejects(
+      fixture.service.sendMessages(instructor, {
+        params: { id: 'course-1' },
+        body: { studentIds: [idFor(email)], subject: 'Help Desk', body: 'Click here.' },
+      }),
+      // One identical error for every reason, so a send cannot be used to probe
+      // which addresses have SchoolCircle accounts.
+      (error) =>
+        codeOf(error) === 'FORBIDDEN' &&
+        /signed in with that verified email address and started this course/i.test(error.message),
+    );
+  }
+  assert.equal(fixture.rows().filter((row) => row.type === MESSAGE).length, 0);
+
+  // Both halves present -> delivery succeeds.
+  await addProgress(fixture.db, { ownerId: learner.id });
+  assert.deepEqual(
+    (await fixture.service.sendMessages(instructor, {
+      params: { id: 'course-1' },
+      body: { studentIds: [idFor(learner.email)], subject: 'Real', body: 'Lab Monday.' },
+    })).json,
+    { delivered: 1 },
+  );
+  assert.equal(fixture.rows().filter((row) => row.type === MESSAGE).length, 1);
+});
+
+test('participation in another course does not authorize delivery', async () => {
+  const fixture = await serviceFixture();
+  await addCourse(fixture.db, { id: 'course-2', title: 'Unrelated' });
+  await fixture.service.listMessages(learner);
+  await addProgress(fixture.db, { ownerId: learner.id, courseId: 'course-2' });
+  const added = await fixture.service.addStudents(instructor, {
+    params: { id: 'course-1' },
+    body: { name: 'Elsewhere', email: learner.email, section: 'A' },
+  });
+
+  await assert.rejects(
+    fixture.service.sendMessages(instructor, {
+      params: { id: 'course-1' },
+      body: { studentIds: [added.json.students[0].id], subject: 'No', body: 'No.' },
+    }),
+    (error) => codeOf(error) === 'FORBIDDEN',
+  );
+  assert.equal(fixture.rows().filter((row) => row.type === MESSAGE).length, 0);
+});
+
+test('every learner-written participation type authorizes delivery', async () => {
+  for (const type of ['MANUAL_PROGRESS', 'MANUAL_ATTEMPT', 'MASTERY_SESSION', 'MASTERY_ATTEMPT']) {
+    const fixture = await serviceFixture();
+    await makeDeliverable(fixture, learner, { type });
+    const added = await fixture.service.addStudents(instructor, {
+      params: { id: 'course-1' },
+      body: { name: 'Participant', email: learner.email, section: 'A' },
+    });
+    assert.deepEqual(
+      (await fixture.service.sendMessages(instructor, {
+        params: { id: 'course-1' },
+        body: { studentIds: [added.json.students[0].id], subject: type, body: 'Delivered.' },
+      })).json,
+      { delivered: 1 },
+      `${type} should authorize delivery`,
+    );
+  }
+});
+
+test('a learner cannot read another learner message', async () => {
+  const fixture = await serviceFixture();
+  await makeDeliverable(fixture, learner);
+  const added = await fixture.service.addStudents(instructor, {
+    params: { id: 'course-1' },
+    body: { name: 'Recipient', email: learner.email, section: 'A' },
+  });
+  await fixture.service.sendMessages(instructor, {
+    params: { id: 'course-1' },
+    body: { studentIds: [added.json.students[0].id], subject: 'Private', body: 'For one learner.' },
+  });
+  const messageId = (await fixture.service.listMessages(learner)).json.messages[0].id;
+
+  assert.equal((await fixture.service.listMessages(otherLearner)).json.messages.length, 0);
+  // Not even by claiming the recipient's address, and not even as the instructor
+  // who owns the row.
+  for (const impostor of [
+    otherLearner,
+    { ...otherLearner, email: learner.email },
+    { ...otherLearner, id: 'learner-3' },
+    instructor,
+  ]) {
+    await assert.rejects(
+      fixture.service.markMessageRead(impostor, { body: { id: messageId, read: true } }),
+      (error) => codeOf(error) === 'NOT_FOUND',
+    );
+    await assert.rejects(
+      fixture.service.deleteMessage(impostor, { body: { id: messageId } }),
+      (error) => codeOf(error) === 'NOT_FOUND',
+    );
+  }
+  assert.equal((await fixture.service.listMessages(learner)).json.messages.length, 1);
+});
+
+test('a learner can delete only their own message, and the audit row survives', async () => {
+  const fixture = await serviceFixture();
+  await makeDeliverable(fixture, learner);
+  await makeDeliverable(fixture, otherLearner);
+  const added = await fixture.service.addStudents(instructor, {
+    params: { id: 'course-1' },
+    body: {
+      students: [
+        { name: 'One', email: learner.email, section: 'A' },
+        { name: 'Two', email: otherLearner.email, section: 'A' },
+      ],
+    },
+  });
+  await fixture.service.sendMessages(instructor, {
+    params: { id: 'course-1' },
+    body: {
+      studentIds: added.json.students.map((student) => student.id),
+      subject: 'Broadcast',
+      body: 'Two recipients.',
+    },
+  });
+  const mine = (await fixture.service.listMessages(learner)).json.messages[0];
+  assert.equal((await fixture.service.listMessages(otherLearner)).json.messages.length, 1);
+
+  assert.deepEqual(
+    (await fixture.service.deleteMessage(learner, { body: { id: mine.id } })).json,
+    { id: mine.id, deleted: true },
+  );
+  assert.equal((await fixture.service.listMessages(learner)).json.messages.length, 0);
+  // The other recipient's copy is untouched.
+  assert.equal((await fixture.service.listMessages(otherLearner)).json.messages.length, 1);
+  // Soft delete: the instructor-side audit row remains, flagged.
+  const row = fixture.rows().find((candidate) => candidate.id === mine.id);
+  assert.equal(row.type, MESSAGE);
+  assert.equal(row.payload.hiddenByRecipient, true);
+
+  // A hidden message is gone for every purpose, and deleting twice is a 404.
+  await assert.rejects(
+    fixture.service.deleteMessage(learner, { body: { id: mine.id } }),
+    (error) => codeOf(error) === 'NOT_FOUND',
+  );
+  await assert.rejects(
+    fixture.service.markMessageRead(learner, { body: { id: mine.id, read: true } }),
+    (error) => codeOf(error) === 'NOT_FOUND',
+  );
+  await assert.rejects(
+    fixture.service.deleteMessage(learner, { body: { id: mine.id, read: true } }),
+    (error) => codeOf(error) === 'BAD_REQUEST',
+  );
+  await assert.rejects(
+    fixture.service.deleteMessage({ ...learner, emailVerified: false }, { body: { id: mine.id } }),
+    (error) => codeOf(error) === 'FORBIDDEN',
+  );
+});
+
+test('the per-instructor send limit is enforced and is not consumed by idempotent retries', async () => {
+  const fixture = await serviceFixture();
+  await makeDeliverable(fixture, learner);
+  const added = await fixture.service.addStudents(instructor, {
+    params: { id: 'course-1' },
+    body: { name: 'Recipient', email: learner.email, section: 'A' },
+  });
+  const studentId = added.json.students[0].id;
+  const send = (subject) => fixture.service.sendMessages(instructor, {
+    params: { id: 'course-1' },
+    body: { studentIds: [studentId], subject, body: 'Spam.' },
+  });
+
+  for (let index = 0; index < MAX_SEND_OPERATIONS_PER_WINDOW; index += 1) {
+    assert.deepEqual((await send(`Notice ${index}`)).json, { delivered: 1 });
+  }
+  await assert.rejects(
+    send('One too many'),
+    (error) =>
+      codeOf(error) === RATE_LIMIT_ERROR &&
+      error.status === 429 &&
+      /per hour/i.test(error.message),
+  );
+  assert.equal(
+    fixture.rows().filter((row) => row.type === MESSAGE).length,
+    MAX_SEND_OPERATIONS_PER_WINDOW,
+  );
+
+  // The counter is one durable row per instructor per window.
+  const windows = fixture.rows().filter((row) => row.type === SEND_WINDOW);
+  assert.equal(windows.length, 1);
+  assert.equal(windows[0].ownerId, instructor.id);
+  assert.equal(windows[0].payload.operations, MAX_SEND_OPERATIONS_PER_WINDOW);
+  assert.equal(windows[0].payload.deliveries, MAX_SEND_OPERATIONS_PER_WINDOW);
+
+  // A second instructor has an independent window: the limit is per sender.
+  await addCourse(fixture.db, { id: 'course-2', ownerId: otherInstructor.id, title: 'Other' });
+  await addProgress(fixture.db, { ownerId: learner.id, courseId: 'course-2' });
+  const theirs = await fixture.service.addStudents(otherInstructor, {
+    params: { id: 'course-2' },
+    body: { name: 'Recipient', email: learner.email, section: 'A' },
+  });
+  assert.deepEqual(
+    (await fixture.service.sendMessages(otherInstructor, {
+      params: { id: 'course-2' },
+      body: { studentIds: [theirs.json.students[0].id], subject: 'Fine', body: 'Allowed.' },
+    })).json,
+    { delivered: 1 },
+  );
+  assert.equal(fixture.rows().filter((row) => row.type === SEND_WINDOW).length, 2);
+});
+
+test('an idempotent replay does not consume send quota', async () => {
+  const fixture = await serviceFixture();
+  await makeDeliverable(fixture, learner);
+  const added = await fixture.service.addStudents(instructor, {
+    params: { id: 'course-1' },
+    body: { name: 'Recipient', email: learner.email, section: 'A' },
+  });
+  const body = {
+    studentIds: [added.json.students[0].id],
+    subject: 'Once',
+    body: 'Exactly once.',
+    requestId: '123e4567-e89b-12d3-a456-426614174000',
+  };
+  for (let index = 0; index < 5; index += 1) {
+    assert.deepEqual(
+      (await fixture.service.sendMessages(instructor, { params: { id: 'course-1' }, body })).json,
+      { delivered: 1 },
+    );
+  }
+  const windows = fixture.rows().filter((row) => row.type === SEND_WINDOW);
+  assert.equal(windows.length, 1);
+  assert.equal(windows[0].payload.operations, 1);
+  assert.equal(windows[0].payload.deliveries, 1);
+});
+
+test('a verified email binds to one User row and is never re-pointed by a later claim', async () => {
+  const fixture = await serviceFixture();
+  await fixture.service.listMessages(learner);
+  const bindings = fixture.rows().filter((row) => row.type === EMAIL_IDENTITY);
+  assert.equal(bindings.length, 1);
+  assert.equal(bindings[0].payload.userId, learner.id);
+  assert.equal(bindings[0].payload.email, learner.email);
+
+  // A second account presenting the same verified address does not take it over.
+  await fixture.service.listMessages({ ...otherLearner, email: learner.email });
+  const after = fixture.rows().filter((row) => row.type === EMAIL_IDENTITY);
+  assert.equal(after.filter((row) => row.payload.email === learner.email).length, 1);
+  assert.equal(
+    after.find((row) => row.payload.email === learner.email).payload.userId,
+    learner.id,
+  );
+
+  // So a message to that address still reaches only the first holder.
+  await addProgress(fixture.db, { ownerId: learner.id });
+  await addProgress(fixture.db, { ownerId: otherLearner.id });
+  const added = await fixture.service.addStudents(instructor, {
+    params: { id: 'course-1' },
+    body: { name: 'Recipient', email: learner.email, section: 'A' },
+  });
+  await fixture.service.sendMessages(instructor, {
+    params: { id: 'course-1' },
+    body: { studentIds: [added.json.students[0].id], subject: 'Bound', body: 'One holder.' },
+  });
+  assert.equal((await fixture.service.listMessages(learner)).json.messages.length, 1);
+  assert.equal(
+    (await fixture.service.listMessages({ ...otherLearner, email: learner.email })).json.messages.length,
+    0,
+  );
+});
+
+test('a sender name never falls back to the sender email address', async () => {
+  const fixture = await serviceFixture();
+  await makeDeliverable(fixture, learner);
+  const added = await fixture.service.addStudents(instructor, {
+    params: { id: 'course-1' },
+    body: { name: 'Recipient', email: learner.email, section: 'A' },
+  });
+  for (const nameless of [
+    { ...instructor, name: '' },
+    { ...instructor, name: '   ' },
+    { ...instructor, name: null },
+    { ...instructor, name: undefined },
+  ]) {
+    await fixture.service.sendMessages(nameless, {
+      params: { id: 'course-1' },
+      body: { studentIds: [added.json.students[0].id], subject: 'Anonymous', body: 'No name.' },
+    });
+  }
+  const messages = (await fixture.service.listMessages(learner)).json.messages;
+  assert.equal(messages.length, 4);
+  for (const message of messages) {
+    assert.equal(message.senderName, 'Course instructor');
+    assert.ok(!/@/u.test(message.senderName), 'senderName must never contain an address');
+  }
+});
+
+test('roster 5xx responses are logged with the cause and no connection string', async () => {
+  const logged = [];
+  const original = console.error;
+  console.error = (...args) => logged.push(args.join(' '));
+  try {
+    const boom = rosterRoute({}, () => {
+      throw new Error(
+        'Cannot reach database server at postgresql://ci:secret@localhost:5432/ci?schema=public',
+      );
+    });
+    const response = await boom(new Request('http://localhost/api/roster/messages'));
+    assert.equal(response.status, 500);
+    // The client still learns nothing.
+    assert.equal((await response.json()).error, 'Roster service unavailable. Please retry.');
+  } finally {
+    console.error = original;
+  }
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], /\[roster\]/u);
+  assert.match(logged[0], /reach database server/u);
+  assert.match(logged[0], /\[redacted-url\]/u);
+  assert.ok(!/secret/u.test(logged[0]), 'the connection string must not be logged');
+  assert.ok(!/postgresql:\/\//u.test(logged[0]), 'the connection string must not be logged');
+});
+
+test('a 4xx roster response is not logged', async () => {
+  const logged = [];
+  const original = console.error;
+  console.error = (...args) => logged.push(args.join(' '));
+  try {
+    const route = rosterRoute({}, () => {
+      throw Object.assign(new Error('nope'), { code: 'NOT_FOUND' });
+    });
+    assert.equal((await route(new Request('http://localhost/api/roster/messages'))).status, 404);
+  } finally {
+    console.error = original;
+  }
+  assert.deepEqual(logged, []);
 });
