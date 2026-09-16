@@ -35,8 +35,16 @@ function errText(error, fallback) {
  * Keyed on substrings of ids the endpoint reported, so an unfamiliar model gets
  * no hint rather than a wrong one.
  */
-function hintFor(id) {
-  const name = id.toLowerCase();
+const TIER_HINTS = {
+  flagship: 'Newest full-size model. Best writing quality.',
+  mini: 'Quick and inexpensive. A sensible default.',
+  nano: 'Fastest and cheapest. Fine for rough drafts.',
+  pro: 'Most capable, slowest and priciest. For difficult material.',
+};
+
+function hintFor(model) {
+  if (model.tier && TIER_HINTS[model.tier]) return TIER_HINTS[model.tier];
+  const name = model.id.toLowerCase();
   if (name.includes('nano')) return 'Fastest and cheapest. Fine for rough drafts.';
   if (name.includes('mini')) return 'Quick and inexpensive. A sensible default.';
   if (/^o[1-9]/.test(name)) return 'Slower, stronger at hard reasoning.';
@@ -50,6 +58,8 @@ export function ModelProviderSettings() {
   const [loadError, setLoadError] = useState(null);
 
   const [models, setModels] = useState(null);
+  const [recommended, setRecommended] = useState(null);
+  const [showAll, setShowAll] = useState(false);
   const [modelsError, setModelsError] = useState(null);
   const [chosen, setChosen] = useState('');
 
@@ -105,6 +115,7 @@ export function ModelProviderSettings() {
         if (cancelled) return;
         if (!res.ok) throw json;
         setModels(json.models || []);
+        setRecommended(json.recommended?.length ? json.recommended : null);
         setModelsError(null);
       } catch (error) {
         if (!cancelled) {
@@ -259,26 +270,51 @@ export function ModelProviderSettings() {
 
       {/* The whole simple path: pick one, press one button. */}
       <form className="model-provider-form" onSubmit={useModel}>
-        {models && models.length > 0 && (
-          <div className="model-provider-choices" role="radiogroup" aria-label="Available models">
-            {models.map((model) => (
-              <label key={model.id} className="model-provider-choice">
-                <input
-                  type="radio"
-                  name="model-choice"
-                  value={model.id}
-                  checked={chosen === model.id}
-                  onChange={() => { setChosen(model.id); setProbe(null); }}
-                  disabled={busy}
-                />
-                <span className="model-provider-choice-body">
-                  <span className="model-provider-choice-name">{model.label}</span>
-                  <span className="model-provider-choice-hint">{hintFor(model.id)}</span>
-                </span>
-              </label>
-            ))}
-          </div>
-        )}
+        {(() => {
+          if (!models || models.length === 0) return null;
+          // A real catalogue runs to dozens of near-identical ids, which is not
+          // a choice an instructor should have to make. Show the curated few
+          // and keep the rest one click away.
+          const shortlist = recommended && !showAll ? recommended : models;
+          const chosenIsHidden = chosen && !shortlist.some((m) => m.id === chosen);
+          const listed = chosenIsHidden
+            ? [...shortlist, models.find((m) => m.id === chosen) || { id: chosen, label: chosen }]
+            : shortlist;
+          return (
+            <>
+              <div className="model-provider-choices" role="radiogroup" aria-label="Available models">
+                {listed.map((model) => (
+                  <label key={model.id} className="model-provider-choice">
+                    <input
+                      type="radio"
+                      name="model-choice"
+                      value={model.id}
+                      checked={chosen === model.id}
+                      onChange={() => { setChosen(model.id); setProbe(null); }}
+                      disabled={busy}
+                    />
+                    <span className="model-provider-choice-body">
+                      <span className="model-provider-choice-name">{model.label}</span>
+                      <span className="model-provider-choice-hint">{hintFor(model)}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {recommended && models.length > recommended.length && (
+                <button
+                  type="button"
+                  className="model-provider-disclose"
+                  onClick={() => setShowAll((open) => !open)}
+                  aria-expanded={showAll}
+                >
+                  {showAll
+                    ? 'Show fewer models'
+                    : `Show all ${models.length} available models`}
+                </button>
+              )}
+            </>
+          );
+        })()}
 
         {models && models.length === 0 && (
           <p className="model-provider-note">
