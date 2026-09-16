@@ -3,60 +3,45 @@
 /**
  * Settings -> Generation model.
  *
- * AI generation is the only course-authoring path, so an operator needs to be
- * able to point it at a model without a redeploy: either a self-hosted
- * OpenAI-compatible endpoint (the offline posture, no key needed) or a hosted
- * API of their choice.
+ * AI generation is the only course-authoring path, so an instructor needs to be
+ * able to choose what does the writing. Instructors are not administrators, so
+ * the default view is a list of models the endpoint actually serves and one
+ * button -- no URLs, no keys, no jargon.
  *
- * Two things this panel is careful about:
- *   - It never receives the stored API key, only a masked hint. So "leave blank
- *     to keep" is the real behaviour, not a convenience -- there is nothing to
- *     prefill.
- *   - Saving needs the operator passphrase, because this value decides where
- *     approved source text gets sent. The passphrase is held in component state
- *     for the request and never persisted.
+ * The split that makes that safe: picking a model on the endpoint the
+ * deployment already configured cannot send course material anywhere new, so it
+ * is an ordinary instructor action. Changing the endpoint or supplying an API
+ * key can, so those live behind "Advanced" and require the operator passphrase.
+ * The server enforces this independently (changeNeedsOperator); the UI only
+ * reflects it.
+ *
+ * The panel never receives a stored API key, only a masked hint -- so "leave
+ * blank to keep" is the real behaviour, not a convenience.
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
 import './model-provider.css';
 
 const ENDPOINT = '/api/learning/model-settings';
-
-const PRESETS = [
-  {
-    id: 'self-hosted',
-    label: 'Self-hosted (offline)',
-    note: 'A served open-weight model on your own hardware. No API key leaves the network.',
-    baseUrl: 'http://127.0.0.1:8001/v1',
-    modelId: '',
-    needsKey: false,
-  },
-  {
-    id: 'openrouter',
-    label: 'OpenRouter',
-    note: 'Hosted API. Requires a key, and source text is sent off the network.',
-    baseUrl: 'https://openrouter.ai/api/v1',
-    modelId: 'google/gemini-3.1-pro-preview',
-    needsKey: true,
-  },
-  {
-    id: 'custom',
-    label: 'Other endpoint',
-    note: 'Any OpenAI-compatible /chat/completions endpoint.',
-    baseUrl: '',
-    modelId: '',
-    needsKey: false,
-  },
-];
+const MODELS_ENDPOINT = '/api/learning/model-settings/models';
 
 function errText(error, fallback) {
   return error?.error || error?.message || fallback;
 }
 
-function sourceLabel(active) {
-  if (!active?.source) return 'Not configured';
-  return active.source === 'settings' ? 'From these settings' : 'From deployment environment';
+/**
+ * One-line plain-language hint for the families an instructor is likely to see.
+ * Keyed on substrings of ids the endpoint reported, so an unfamiliar model gets
+ * no hint rather than a wrong one.
+ */
+function hintFor(id) {
+  const name = id.toLowerCase();
+  if (name.includes('nano')) return 'Fastest and cheapest. Fine for rough drafts.';
+  if (name.includes('mini')) return 'Quick and inexpensive. A sensible default.';
+  if (/^o[1-9]/.test(name)) return 'Slower, stronger at hard reasoning.';
+  if (name.includes('turbo')) return 'Older generation, still capable.';
+  return 'Full-size model. Best writing, higher cost.';
 }
 
 export function ModelProviderSettings() {
@@ -64,26 +49,30 @@ export function ModelProviderSettings() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
-  const [preset, setPreset] = useState('self-hosted');
+  const [models, setModels] = useState(null);
+  const [modelsError, setModelsError] = useState(null);
+  const [chosen, setChosen] = useState('');
+
+  const [advanced, setAdvanced] = useState(false);
   const [baseUrl, setBaseUrl] = useState('');
-  const [modelId, setModelId] = useState('');
   const [apiKey, setApiKey] = useState('');
-  const [clearKey, setClearKey] = useState(false);
   const [passphrase, setPassphrase] = useState('');
+  const [claim, setClaim] = useState('');
+  const [claimConfirm, setClaimConfirm] = useState('');
 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const [saved, setSaved] = useState(null);
+  const [probe, setProbe] = useState(null);
 
-  function adopt(next) {
+  const adopt = useCallback((next) => {
     setSettings(next);
-    setBaseUrl(next.baseUrl || '');
-    setModelId(next.modelId || '');
+    setBaseUrl(next.baseUrl || next.active?.baseUrl || '');
+    setChosen(next.modelId || next.active?.model || '');
     setApiKey('');
-    setClearKey(false);
-    const match = PRESETS.find((p) => p.baseUrl && p.baseUrl === next.baseUrl);
-    setPreset(next.baseUrl ? (match?.id || 'custom') : 'self-hosted');
-  }
+    setClaim('');
+    setClaimConfirm('');
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,58 +90,144 @@ export function ModelProviderSettings() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [adopt]);
 
-  function choosePreset(id) {
-    setPreset(id);
-    const chosen = PRESETS.find((p) => p.id === id);
-    if (!chosen || id === 'custom') return;
-    setBaseUrl(chosen.baseUrl);
-    if (chosen.modelId) setModelId(chosen.modelId);
+  // Load the picker's options as soon as the panel opens. Reading the
+  // configured endpoint's catalogue needs no passphrase, so an instructor sees
+  // choices immediately instead of having to ask for them.
+  useEffect(() => {
+    if (loading || loadError) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await authFetch(MODELS_ENDPOINT);
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok) throw json;
+        setModels(json.models || []);
+        setModelsError(null);
+      } catch (error) {
+        if (!cancelled) {
+          setModels(null);
+          setModelsError(errText(error, 'The list of models could not be loaded.'));
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [loading, loadError]);
+
+  async function request(method, body, { withPassphrase = false, url = ENDPOINT } = {}) {
+    const res = await authFetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(withPassphrase ? { 'x-model-settings-key': passphrase } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const json = await res.json();
+    if (!res.ok) throw json;
+    return json;
   }
 
-  async function send(method, body) {
+  /** The simple path: use the chosen model on the endpoint already in force. */
+  async function useModel(event) {
+    event.preventDefault();
     setBusy(true);
     setErr(null);
     setSaved(null);
+    setProbe(null);
     try {
-      const res = await authFetch(ENDPOINT, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-model-settings-key': passphrase,
-        },
-        ...(body ? { body: JSON.stringify(body) } : {}),
+      const json = await request('PUT', {
+        modelId: chosen,
+        ...(Number.isInteger(settings?.version) ? { expectedVersion: settings.version } : {}),
       });
-      const json = await res.json();
-      if (!res.ok) throw json;
       adopt(json.settings);
-      setPassphrase('');
-      setSaved(method === 'DELETE'
-        ? 'Stopped using these settings. Generation falls back to the deployment environment.'
-        : 'Saved. New generation requests use this model.');
+      setSaved('Saved. New course generation uses this model.');
     } catch (error) {
-      setErr(errText(error, 'The generation model could not be saved.'));
+      setErr(errText(error, 'That model could not be selected.'));
     } finally {
       setBusy(false);
     }
   }
 
-  function save(event) {
+  /** Advanced: change the endpoint and/or supply a key. Needs the passphrase. */
+  async function saveAdvanced(event) {
     event.preventDefault();
-    const body = {
-      baseUrl: baseUrl.trim(),
-      modelId: modelId.trim(),
-      // Only send a key when one was typed, or when explicitly clearing it.
-      // Omitting the field keeps whatever is stored.
-      ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
-      ...(clearKey && !apiKey.trim() ? { apiKey: null } : {}),
-      ...(Number.isInteger(settings?.version) ? { expectedVersion: settings.version } : {}),
-    };
-    return send('PUT', body);
+    setBusy(true);
+    setErr(null);
+    setSaved(null);
+    setProbe(null);
+    try {
+      const json = await request('PUT', {
+        baseUrl: baseUrl.trim(),
+        modelId: chosen,
+        ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
+        ...(Number.isInteger(settings?.version) ? { expectedVersion: settings.version } : {}),
+      }, { withPassphrase: true });
+      adopt(json.settings);
+      setPassphrase('');
+      setSaved('Saved. New course generation uses this endpoint and model.');
+      // The catalogue belongs to the old endpoint; make the panel re-ask.
+      setModels(null);
+      setModelsError(null);
+    } catch (error) {
+      setErr(errText(error, 'Those settings could not be saved.'));
+    } finally {
+      setBusy(false);
+    }
   }
 
-  if (loading) return <p className="s-settings-p">Loading the generation model…</p>;
+  async function test() {
+    setBusy(true);
+    setErr(null);
+    setProbe(null);
+    try {
+      const json = await request('POST', { modelId: chosen }, { url: MODELS_ENDPOINT });
+      setProbe(`${json.model} answered. The connection works.`);
+    } catch (error) {
+      setErr(errText(error, 'The model did not answer.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function revert() {
+    setBusy(true);
+    setErr(null);
+    setSaved(null);
+    try {
+      const json = await request('DELETE', null, { withPassphrase: true });
+      adopt(json.settings);
+      setPassphrase('');
+      setSaved('Reverted to the model this deployment is configured with.');
+    } catch (error) {
+      setErr(errText(error, 'That could not be reverted.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function claimPassphrase(event) {
+    event.preventDefault();
+    if (claim !== claimConfirm) {
+      setErr('Those two passphrases do not match.');
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const json = await request('POST', { passphrase: claim });
+      adopt(json.settings);
+      setSaved('Operator passphrase set.');
+    } catch (error) {
+      setErr(errText(error, 'The operator passphrase could not be set.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return <p className="s-settings-p">Loading…</p>;
   if (loadError) {
     return (
       <p className="s-shell-error" role="alert">
@@ -162,151 +237,220 @@ export function ModelProviderSettings() {
   }
 
   const active = settings?.active;
-  const chosen = PRESETS.find((p) => p.id === preset);
-  const locked = !settings?.writable;
-  // A hosted provider with no key would save cleanly and then fail on the
-  // first generation request, so say so before that happens.
-  const keyMissing = Boolean(chosen?.needsKey) && !settings?.hasApiKey && !apiKey.trim();
+  const activeModel = active?.ready ? active.model : null;
+  const changed = Boolean(chosen) && chosen !== activeModel;
 
   return (
     <div className="model-provider">
       <p className="s-settings-p">
-        Which model answers generation requests. Course content is only ever generated from
-        approved sources; this chooses what does the writing.
+        Which AI writes your course drafts. Content is only ever generated from sources you have
+        approved — this chooses what does the writing.
       </p>
 
       <div className="s-settings-row">
-        <span>Active now</span>
+        <span>Currently using</span>
         <span className="s-settings-val model-provider-active">
-          {active?.ready
-            ? `${active.model} · ${sourceLabel(active)}`
-            : `Unavailable · ${sourceLabel(active)}`}
+          {activeModel || 'No model chosen yet'}
         </span>
       </div>
-      {active && !active.ready && (
+      {active && !active.ready && active.reason && (
         <p className="s-shell-error" role="alert">{active.reason}</p>
       )}
-      {settings?.updatedAt && (
-        <div className="s-settings-row">
-          <span>Last changed</span>
-          <span className="s-settings-val">{new Date(settings.updatedAt).toLocaleString()}</span>
-        </div>
-      )}
 
-      {locked && (
-        <p className="s-shell-error" role="alert">{settings?.writableReason}</p>
-      )}
-
-      <form className="model-provider-form" onSubmit={save}>
-        <label>
-          <span>Provider</span>
-          <select
-            value={preset}
-            onChange={(event) => choosePreset(event.target.value)}
-            disabled={locked || busy}
-          >
-            {PRESETS.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-          </select>
-        </label>
-        {chosen?.note && <p className="model-provider-note">{chosen.note}</p>}
-
-        <label>
-          <span>Endpoint</span>
-          <input
-            type="url"
-            value={baseUrl}
-            onChange={(event) => setBaseUrl(event.target.value)}
-            placeholder="https://host/v1"
-            disabled={locked || busy}
-            required
-          />
-        </label>
-
-        <label>
-          <span>Model id</span>
-          <input
-            type="text"
-            value={modelId}
-            onChange={(event) => setModelId(event.target.value)}
-            placeholder="the served model id"
-            disabled={locked || busy}
-            required
-          />
-        </label>
-
-        <label>
-          <span>
-            API key
-            {settings?.hasApiKey
-              ? ` (${settings.apiKeyHint} in place — leave blank to keep)`
-              : ' (leave blank for a self-hosted endpoint)'}
-          </span>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(event) => { setApiKey(event.target.value); setClearKey(false); }}
-            autoComplete="new-password"
-            placeholder={settings?.hasApiKey ? 'Unchanged' : ''}
-            disabled={locked || busy || !settings?.secretStorageReady}
-          />
-        </label>
-        {!settings?.secretStorageReady && (
-          <p className="model-provider-note">{settings?.secretStorageReason}</p>
-        )}
-        {settings?.hasApiKey && (
-          <label className="model-provider-clear">
-            <input
-              type="checkbox"
-              checked={clearKey}
-              onChange={(event) => setClearKey(event.target.checked)}
-              disabled={locked || busy || Boolean(apiKey.trim())}
-            />
-            <span>Remove the stored key (for a self-hosted endpoint)</span>
-          </label>
+      {/* The whole simple path: pick one, press one button. */}
+      <form className="model-provider-form" onSubmit={useModel}>
+        {models && models.length > 0 && (
+          <div className="model-provider-choices" role="radiogroup" aria-label="Available models">
+            {models.map((model) => (
+              <label key={model.id} className="model-provider-choice">
+                <input
+                  type="radio"
+                  name="model-choice"
+                  value={model.id}
+                  checked={chosen === model.id}
+                  onChange={() => { setChosen(model.id); setProbe(null); }}
+                  disabled={busy}
+                />
+                <span className="model-provider-choice-body">
+                  <span className="model-provider-choice-name">{model.label}</span>
+                  <span className="model-provider-choice-hint">{hintFor(model.id)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
         )}
 
-        <label>
-          <span>Operator passphrase</span>
-          <input
-            type="password"
-            value={passphrase}
-            onChange={(event) => setPassphrase(event.target.value)}
-            autoComplete="off"
-            placeholder="Required to change the model"
-            disabled={locked || busy}
-            required
-          />
-        </label>
-
-        {keyMissing && (
+        {models && models.length === 0 && (
           <p className="model-provider-note">
-            {chosen.label} needs an API key. Saving without one stores the endpoint but leaves
-            generation unavailable.
+            The endpoint reported no usable models. Check the API key in Advanced settings.
           </p>
         )}
+
+        {/* No catalogue: say why, and still allow a typed id rather than dead-ending. */}
+        {modelsError && (
+          <>
+            <p className="model-provider-note">{modelsError}</p>
+            <label>
+              <span>Model name</span>
+              <input
+                type="text"
+                value={chosen}
+                onChange={(event) => setChosen(event.target.value)}
+                placeholder="a model your endpoint serves"
+                disabled={busy}
+              />
+            </label>
+          </>
+        )}
+        {!models && !modelsError && <p className="model-provider-note">Loading available models…</p>}
+
         {err && <p className="s-shell-error" role="alert">{err}</p>}
         {saved && <p className="p-check ok" role="status">{saved}</p>}
+        {probe && <p className="p-check ok" role="status">{probe}</p>}
 
         <div className="p-btnrow">
-          <button
-            type="submit"
-            className="p-btn"
-            disabled={locked || busy || !baseUrl.trim() || !modelId.trim() || !passphrase}
-          >
-            {busy ? 'Saving…' : 'Save generation model'}
+          <button type="submit" className="p-btn" disabled={busy || !chosen || !changed}>
+            {busy ? 'Saving…' : 'Use this model'}
           </button>
-          {settings?.configured && (
-            <button
-              type="button"
-              className="p-btn ghost"
-              onClick={() => send('DELETE')}
-              disabled={locked || busy || !passphrase}
-            >
-              Stop using these settings
-            </button>
-          )}
+          <button type="button" className="p-btn ghost" onClick={test} disabled={busy || !chosen}>
+            Test it
+          </button>
         </div>
       </form>
+
+      <button
+        type="button"
+        className="model-provider-disclose"
+        onClick={() => setAdvanced((open) => !open)}
+        aria-expanded={advanced}
+      >
+        {advanced ? 'Hide advanced settings' : 'Advanced settings'}
+      </button>
+
+      {advanced && (settings?.needsPassphraseClaim ? (
+        <form className="model-provider-form" onSubmit={claimPassphrase}>
+          <p className="model-provider-note">
+            Changing the endpoint or entering an API key needs an operator passphrase, and none is
+            set for this deployment yet. Choosing a model above does not need one.
+          </p>
+          <label>
+            <span>New operator passphrase</span>
+            <input
+              type="password"
+              value={claim}
+              onChange={(event) => setClaim(event.target.value)}
+              autoComplete="new-password"
+              minLength={8}
+              placeholder="At least 8 characters"
+              disabled={busy}
+              required
+            />
+          </label>
+          <label>
+            <span>Confirm passphrase</span>
+            <input
+              type="password"
+              value={claimConfirm}
+              onChange={(event) => setClaimConfirm(event.target.value)}
+              autoComplete="new-password"
+              disabled={busy}
+              required
+            />
+          </label>
+          <div className="p-btnrow">
+            <button
+              type="submit"
+              className="p-btn"
+              disabled={busy || claim.length < 8 || claim !== claimConfirm}
+            >
+              Set operator passphrase
+            </button>
+          </div>
+          <p className="model-provider-note">
+            It cannot be reset from here afterwards — that is a configuration change
+            (MODEL_SETTINGS_KEY) — so keep a copy.
+          </p>
+        </form>
+      ) : (
+        <form className="model-provider-form" onSubmit={saveAdvanced}>
+          <label>
+            <span>Endpoint</span>
+            <input
+              type="url"
+              value={baseUrl}
+              onChange={(event) => setBaseUrl(event.target.value)}
+              placeholder="https://host/v1"
+              disabled={busy}
+              required
+            />
+          </label>
+          <p className="model-provider-note">
+            Any OpenAI-compatible endpoint, including a model served on your own network.
+          </p>
+
+          <label>
+            <span>
+              API key
+              {settings?.hasApiKey
+                ? ` (${settings.apiKeyHint} stored — leave blank to keep)`
+                : ' (leave blank to keep using the deployment key)'}
+            </span>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(event) => setApiKey(event.target.value)}
+              autoComplete="new-password"
+              disabled={busy || !settings?.secretStorageReady}
+            />
+          </label>
+          {active?.credential === 'environment' && (
+            <p className="model-provider-note">
+              Using the API key from this deployment&apos;s configuration, so nothing needs to be
+              entered here.
+            </p>
+          )}
+          {!settings?.secretStorageReady && active?.credential !== 'environment' && (
+            <p className="model-provider-note">{settings?.secretStorageReason}</p>
+          )}
+
+          <label>
+            <span>Operator passphrase</span>
+            <input
+              type="password"
+              value={passphrase}
+              onChange={(event) => setPassphrase(event.target.value)}
+              autoComplete="off"
+              disabled={busy}
+              required
+            />
+          </label>
+          {settings?.passphrasePinned && (
+            <p className="model-provider-note">
+              Pinned by this deployment&apos;s MODEL_SETTINGS_KEY.
+            </p>
+          )}
+
+          <div className="p-btnrow">
+            <button
+              type="submit"
+              className="p-btn"
+              disabled={busy || !baseUrl.trim() || !chosen || !passphrase}
+            >
+              Save endpoint and model
+            </button>
+            {settings?.configured && (
+              <button
+                type="button"
+                className="p-btn ghost"
+                onClick={revert}
+                disabled={busy || !passphrase}
+              >
+                Revert to deployment default
+              </button>
+            )}
+          </div>
+        </form>
+      ))}
     </div>
   );
 }
