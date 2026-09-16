@@ -1,6 +1,6 @@
 // /api/learning/sources -- Persisted Quarry sources: list (learners see APPROVED only) and instructor ingest.
-import { learningRoute } from '../../../../lib/learning/http';
-import { createSource, listSources } from '../../../../lib/learning/core';
+import { learningRoute } from '../../../../lib/learning/http.js';
+import { createSource, listSources } from '../../../../lib/learning/core.js';
 
 export const runtime = 'nodejs';
 
