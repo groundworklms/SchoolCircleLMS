@@ -8,6 +8,7 @@ import {
   restoreMasterySession,
   serialiseMasterySession,
   startMasterySession,
+  terminalSafeScorer,
   tutorAnswer,
 } from '../lib/arsenal-core.js';
 
@@ -231,4 +232,41 @@ test('mastery restores mid-session and completes the final criterion via the pro
   assert.equal(report.complete, true);
   assert.equal(report.stalled, false);
   assert.equal(report.criteria.length, 2);
+});
+
+test('terminalSafeScorer corrects the pinned production scoreTurn so the final criterion completes', async () => {
+  const w = await import('whetstone');
+  // Reproduces the pinned scoreTurn's terminal defect: on final-criterion mastery it returns
+  // `complete: true` but leaves `nextEloIndex` at the current index (never advanced).
+  const buggyScoreTurn = async ({ eloIndex, criteria }) => ({
+    verdict: 'mastered',
+    feedback: 'Correct.',
+    mastered: true,
+    complete: eloIndex + 1 >= criteria.length,
+    nextEloIndex: eloIndex, // the bug
+    nextQuestion: '',
+    score: 1,
+  });
+  const rubric = { criteria: [{ elo: 'c', indicators: { developing: 'a', competent: 'b', mastered: 'c' } }] };
+  const build = (scorer) =>
+    new w.Session({
+      objectives: 'o',
+      source: 's',
+      deriveRubric: async () => rubric,
+      firstQuestion: async () => ({ question: 'q' }),
+      scorer,
+    });
+
+  // Raw pinned behavior: Session.answer() rejects the inconsistent terminal turn.
+  const broken = build(buggyScoreTurn);
+  await broken.start();
+  await assert.rejects(() => broken.answer('done'), /inconsistent with nextEloIndex/);
+
+  // Corrective adapter: the same terminal turn now completes cleanly through the real Session.
+  const fixed = build(terminalSafeScorer({ scoreTurn: buggyScoreTurn }));
+  await fixed.start();
+  const turn = await fixed.answer('done');
+  assert.equal(turn.complete, true);
+  assert.equal(fixed.complete, true);
+  assert.equal(fixed.currentQuestion, null);
 });
