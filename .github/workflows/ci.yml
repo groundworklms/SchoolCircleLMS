@@ -71,6 +71,9 @@ jobs:
       - name: Library record rename and delete guards
         run: npm run test:record-admin
 
+      - name: Grounded student chat contracts
+        run: npm run test:student-grounding
+
       # Roster and in-app messaging. These are the delivery-authorization contracts:
       # a message is bound to a User row rather than a token email claim, a
       # recipient needs real participation in the course, a learner can only touch

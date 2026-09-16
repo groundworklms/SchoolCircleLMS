@@ -590,6 +590,27 @@ test('an existing OPENAI_API_KEY secret is accepted without a duplicate MODEL_AP
   assert.equal(providers.textProviderCredential(), '');
 });
 
+test('OpenAI credentials cannot follow generic or lookalike endpoint selections', async () => {
+  process.env.OPENAI_API_KEY = 'synthetic-openai-only';
+  delete process.env.MODEL_API_KEY;
+  await primeModelSettings();
+  for (const base of [
+    'http://127.0.0.1:8001/v1',
+    'https://other-provider.example/v1',
+    'https://api.openai.com.evil.example/v1',
+    'https://api.openai.com/v1/other',
+    'http://api.openai.com/v1',
+  ]) {
+    process.env.MODEL_BASE_URL = base;
+    assert.equal(providers.textProviderCredential(), '', base);
+  }
+  process.env.MODEL_API_KEY = 'synthetic-dedicated-endpoint-key';
+  assert.equal(providers.textProviderCredential(), 'synthetic-dedicated-endpoint-key');
+  delete process.env.MODEL_API_KEY;
+  process.env.MODEL_BASE_URL = 'https://api.openai.com/v1/';
+  assert.equal(providers.textProviderCredential(), 'synthetic-openai-only');
+});
+
 /* ------------------- model choice vs. privileged changes ------------------- */
 
 test('choosing a model on the endpoint in force is not a privileged change', async () => {

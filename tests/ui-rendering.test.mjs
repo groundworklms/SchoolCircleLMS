@@ -564,10 +564,9 @@ test('course chat renders Sourcerer and Anchor citations in one shape', () => {
     queryData: {
       '/courses/course-1': { id: 'course-1', course: { sourceIds: ['source-1'] } },
     },
-    // SignedInCourseChat state order: open, status, msgs, text, busy.
+    // SignedInCourseChat state order: open, msgs, text, busy.
     stateValues: [
       [true, () => {}],
-      [{ ready: true }, () => {}],
       [[
         { role: 'user', text: 'What is sight alignment?' },
         { role: 'assistant', answer: 'Grounded answer [1] [2]', citations: [sourcerer, anchor] },
@@ -578,7 +577,7 @@ test('course chat renders Sourcerer and Anchor citations in one shape', () => {
   });
   const course = { id: 'course-1', name: 'Rifle Marksmanship', record: { id: 'course-1' } };
   const markup = renderToStaticMarkup(React.createElement(CourseChat, { course }));
-  assert.match(markup, /Grounded · course sources/);
+  assert.match(markup, /Course sources selected/);
   assert.match(markup, /Field manual · p\.4/);
   assert.match(markup, /TC 3-22\.9 · p\.88/);
 });
@@ -598,11 +597,10 @@ test('course chat citation locators select the matching approved source record',
         pages: [{ page: 2, text: 'Second source passage' }],
       },
     },
-    // SignedInCourseChat state order: open, status, msgs, text, busy,
+    // SignedInCourseChat state order: open, msgs, text, busy,
     // providerError, selectedCitation.
     stateValues: [
       [true, () => {}],
-      [{ ready: true }, () => {}],
       [[
         { role: 'assistant', answer: 'See [1] and [2].', citations: [
           first,
