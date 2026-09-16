@@ -209,10 +209,6 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     body = <CourseUnavailable courseId={nav.courseId} title="Course not found" />;
   }
 
-  const crumbTail = inLibrary
-    ? (libraryEntry?.label || 'Not found')
-    : (current?.label || (inCourse ? 'Course' : 'Not found'));
-
   return (
     <div className="s-root">
       <nav className="s-rail s-rail-instructor" aria-label="Instructor navigation">
@@ -257,28 +253,13 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
       </nav>
 
       <div className="s-content">
-        <div className="s-crumbs">
-          <span className="s-crumb-cur">Instructor</span>
-          <span className="s-crumb-sep">/</span>
-          {inLibrary ? (
-            <span className="s-crumb-cur">Library</span>
-          ) : inCourse && course ? (
-            <button onClick={() => go({ view: 'builder' })}>{course.name}</button>
-          ) : (
-            <span className="s-crumb-cur">Not found</span>
-          )}
-          <span className="s-crumb-sep">/</span>
-          <span className="s-crumb-cur">{crumbTail}</span>
-          <span className="s-crumb-spacer" />
-          {inCourse && course && !isReal && (
-            <span className="s-lastlogin">{course.students} students · Week {course.week} of {course.weeks}</span>
-          )}
-          {inCourse && course && isReal && (
-            <span className="s-lastlogin">{course.sections} sections · {course.status === 'APPROVED' ? 'Approved' : 'Draft'}</span>
-          )}
-        </div>
         <main className="s-main">
           <div className="s-container">
+            {inCourse && course && isReal && (
+              <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
+                {course.sections} sections · {course.status === 'APPROVED' ? 'Approved' : 'Draft'}
+              </p>
+            )}
             {signOutError && (
               <div className="s-shell-error" role="alert">
                 {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
