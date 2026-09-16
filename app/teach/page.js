@@ -64,7 +64,9 @@ function TeachApp({ user }) {
         <RailButton icon={I.dashboard} label="Rubrics" on={area === 'rubrics'} onClick={() => setArea('rubrics')} />
 
         <div className="s-rail-spacer" />
-        <RailButton icon={I.swap} label="View as learner" onClick={() => router.push('/learn')} />
+        {['LEARNER', 'BOTH'].includes(user.role) && (
+          <RailButton icon={I.swap} label="View as learner" onClick={() => router.push('/learn')} />
+        )}
         <RailButton icon={I.back} label="Planning board" onClick={() => router.push('/plan')} />
       </nav>
 
