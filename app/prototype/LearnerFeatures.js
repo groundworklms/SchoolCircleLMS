@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning/useLearning';
-import { SourceViewer } from './LearnerTutor';
+import { SourceViewer } from './SourceViewer';
 
 /* Learner-side arsenal features for a real (LearningRecord) course: the
    approved course as a reader, Whetstone mastery sessions, the Cadence study
