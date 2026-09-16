@@ -1,0 +1,99 @@
+# Firebase App Hosting runtime config.
+# https://firebase.google.com/docs/app-hosting/configure
+# Database: see the DATABASE_URL block at the bottom and docs/CLOUD_POSTGRES.md.
+# Do not run migrations or demo seeding in the build/start commands.
+runConfig:
+  # db-f1-micro allows ~25 Postgres connections; each instance pools connection_limit=3.
+  maxInstances: 4
+env:
+  # --- Grounding: point the cloud app's server-side /api/doctrine at the Orin's
+  # Anchor engine, exposed over a tunnel.
+  # NOTE: this is a TEMPORARY Cloudflare quick-tunnel URL — it changes whenever the
+  # tunnel restarts. For a stable setup use a named Cloudflare tunnel. Update if restarted.
+  - variable: DOCTRINE_BASE_URL
+    value: https://calculations-probability-dozens-recommended.trycloudflare.com
+    availability:
+      - RUNTIME
+  - variable: DOCTRINE_TIMEOUT_MS
+    value: "30000"
+    availability:
+      - RUNTIME
+
+  # --- Firebase Authentication (login). PUBLIC client config, inlined into the
+  # browser bundle at build time -> must be available at BUILD (and RUNTIME).
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyDNULW649liOlpJEuIfKc5fGrsAjmrOF1g
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: schoolcircle-ae29a.firebaseapp.com
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: schoolcircle-ae29a
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: schoolcircle-ae29a.firebasestorage.app
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "770710930289"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:770710930289:web:cda5d4e9c6ea74742cecd0"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # --- Tester allowlist. Only these emails may sign in / create an account;
+  # anyone else is refused at login and any just-created account is deleted.
+  # Comma-separated, case-insensitive. Baked into the client at BUILD time, so
+  # editing this list needs a new rollout. Unset = allowlist off (open).
+  - variable: NEXT_PUBLIC_ALLOWED_EMAILS
+    value: twhite0911@gmail.com,canyonmcdonald@gmail.com,emor.639@gmail.com,jmathdog@gmail.com
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # --- In-app "Report an issue" widget -> files GitHub issues directly via
+  # /api/feedback. Secrets live in Cloud Secret Manager; the App Hosting compute
+  # service account has Secret Accessor on both.
+  - variable: GITHUB_FEEDBACK_REPO
+    value: groundworklms/SchoolCircleLMS
+    availability:
+      - RUNTIME
+  # Fine-grained PAT (schoolcircle-feedback-widget): Issues read/write on the repo above.
+  - variable: GITHUB_FEEDBACK_TOKEN
+    secret: GITHUB_FEEDBACK_TOKEN
+    availability:
+      - RUNTIME
+  # Shared team passphrase testers enter once in the widget.
+  - variable: FEEDBACK_KEY
+    secret: FEEDBACK_KEY
+    availability:
+      - RUNTIME
+
+  # --- Database: Cloud SQL Postgres (the Firebase Data Connect trial instance), reached
+  # through the Cloud SQL connector in lib/db.js -- the compute service account has
+  # roles/cloudsql.client. DATABASE_URL (Secret Manager) carries user/password/database;
+  # its host is ignored while CLOUD_SQL_CONNECTION_NAME is set. Migrations/seeds run from
+  # an operator laptop via `npm run db:proxy`, never from build/start.
+  - variable: DATABASE_URL
+    secret: DATABASE_URL
+    availability:
+      - RUNTIME
+  - variable: CLOUD_SQL_CONNECTION_NAME
+    value: schoolcircle-ae29a:us-east4:schoolcircle-ae29a-instance
+    availability:
+      - RUNTIME
+  - variable: SCHOOLCIRCLE_DB_ENV
+    value: demo
+    availability:
+      - RUNTIME

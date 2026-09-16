@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../_auth/AuthProvider';
+import { authenticatedFetch } from '../../lib/auth-fetch';
 
 /* Floating course chat. Bottom-right of every course screen.
    Real when a grounded doctrine service is configured (DOCTRINE_BASE_URL):
@@ -75,6 +77,12 @@ function scripted(q) {
 }
 
 export default function CourseChat({ course, view }) {
+  const { user, loading, ready } = useAuth();
+  if (!ready || loading || !user) return null;
+  return <SignedInCourseChat key={`${user.uid}:${course.id}`} course={course} view={view} />;
+}
+
+function SignedInCourseChat({ course, view }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState(null); // { ready, baseUrl?, reason? }
   const [msgs, setMsgs] = useState([]);
@@ -82,6 +90,9 @@ export default function CourseChat({ course, view }) {
   const [busy, setBusy] = useState(false);
   const bodyRef = useRef(null);
   const inputRef = useRef(null);
+  const requestRef = useRef(null);
+
+  useEffect(() => () => requestRef.current?.abort(), []);
 
   useEffect(() => {
     fetch('/api/doctrine')
@@ -113,8 +124,11 @@ export default function CourseChat({ course, view }) {
     let out;
     try {
       if (grounded) {
-        const res = await fetch('/api/doctrine', {
+        const controller = new AbortController();
+        requestRef.current = controller;
+        const res = await authenticatedFetch('/api/doctrine', {
           method: 'POST',
+          signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ question }),
         });
@@ -125,6 +139,7 @@ export default function CourseChat({ course, view }) {
         out = scripted(question);
       }
     } catch (e) {
+      if (e.name === 'AbortError') return;
       out = { abstained: true, answer: 'The doctrine service is unreachable.', citations: [], error: true };
     }
     setMsgs((m) => [...m, { role: 'assistant', ...out }]);
