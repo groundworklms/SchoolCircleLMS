@@ -16,10 +16,21 @@ test('shared instructor shell omits breadcrumbs while retaining course status an
   const source = fs.readFileSync(path.join(workspace, 'app/prototype/InstructorShell.js'), 'utf8');
   assert.doesNotMatch(source, /s-crumb|crumbTail/);
   assert.match(source, /aria-label="Instructor navigation"/);
-  assert.match(source, /<main className="s-main">[\s\S]*course\.sections[\s\S]*'Approved' : 'Draft'/);
+  // The status the breadcrumb used to carry must survive its removal, and it
+  // must use courseHeaderStatus so a pending revision still reads as needing
+  // review rather than flattening to Approved/Draft.
+  assert.match(source, /<main className="s-main">[\s\S]*courseHeaderStatus\(course\)/);
+  // A legacy manual course keeps the school label the breadcrumb showed.
+  assert.match(source, /isManual && course\.school/);
 });
 
-function loadComponent(relativePath, { queryData = {}, queryStates = {}, stateValues = [] } = {}) {
+function loadComponent(relativePath, {
+  queryData = {},
+  queryStates = {},
+  stateValues = [],
+  mutationStates = {},
+  expose = [],
+} = {}) {
   const filename = path.join(workspace, relativePath);
   const transformed = transformSync(fs.readFileSync(filename, 'utf8'), {
     jsc: {
@@ -38,6 +49,10 @@ function loadComponent(relativePath, { queryData = {}, queryStates = {}, stateVa
         ? stateValues[stateIndex++]
         : [initialValue, () => {}];
     },
+    useRef(initialValue) {
+      return { current: initialValue ?? null };
+    },
+    useEffect() {},
   };
   const useLearning = {
     useApiQuery(requestPath) {
@@ -52,8 +67,12 @@ function loadComponent(relativePath, { queryData = {}, queryStates = {}, stateVa
         refetch: () => {},
       };
     },
-    useApiMutation() {
-      return { loading: false, mutate: async () => ({}) };
+    useApiMutation(requestPath) {
+      const configured = mutationStates[requestPath] || {};
+      return {
+        loading: configured.loading ?? false,
+        mutate: configured.mutate || (async () => configured.result ?? {}),
+      };
     },
   };
   const sandbox = {
@@ -93,8 +112,28 @@ function loadComponent(relativePath, { queryData = {}, queryStates = {}, stateVa
       return require(request);
     },
   };
-  vm.runInNewContext(transformed.code, sandbox, { filename });
+  const exposed = expose.map((name) => (
+    `module.exports[${JSON.stringify(name)}] = ${name};`
+  )).join('\n');
+  vm.runInNewContext(`${transformed.code}\n${exposed}`, sandbox, { filename });
   return module.exports;
+}
+
+function collectReactElements(node, elements = []) {
+  if (node == null || typeof node === 'boolean') return elements;
+  if (Array.isArray(node)) {
+    node.forEach((child) => collectReactElements(child, elements));
+    return elements;
+  }
+  if (!React.isValidElement(node)) return elements;
+
+  elements.push(node);
+  if (typeof node.type === 'function') {
+    collectReactElements(node.type(node.props), elements);
+  } else {
+    collectReactElements(node.props?.children, elements);
+  }
+  return elements;
 }
 
 test('learner progress renders a non-empty mastery record', () => {
@@ -165,7 +204,7 @@ test('source viewer renders chunk content from non-empty source data', () => {
   assert.match(sourceMarkup, /Chunk evidence/);
 });
 
-test('course library exposes source failures and disables course drafting', () => {
+test('course library exposes source failures while keeping Create course available', () => {
   const { CoursesLibrary } = loadComponent('app/prototype/Library.js', {
     queryStates: {
       '/sources': { error: { error: 'Source service unavailable' } },
@@ -180,8 +219,250 @@ test('course library exposes source failures and disables course drafting', () =
   }));
   assert.match(markup, /Source service unavailable/);
   assert.match(markup, /Retry loading sources/);
-  assert.match(markup, /disabled[^>]*>Draft course/);
+  assert.match(markup, /Create course/);
+  assert.doesNotMatch(markup, /disabled[^>]*>Create course/);
   assert.doesNotMatch(markup, /No approved sources yet/);
+});
+
+test('course creation modal keeps ingestion, explicit approval, and approved-only selection deterministic', async () => {
+  const sourceRecords = [
+    { id: 'source-pending', title: 'Pending field manual', status: 'PENDING', pages: 3 },
+    { id: 'source-approved', title: 'Approved field manual', status: 'APPROVED', pages: 4 },
+  ];
+
+  const ingestionCalls = [];
+  const ingestionRefreshes = [];
+  const {
+    IngestSourceModal,
+  } = loadComponent('app/prototype/Library.js', {
+    expose: ['IngestSourceModal'],
+    mutationStates: {
+      '/sources': {
+        mutate: async (payload) => {
+          ingestionCalls.push(payload);
+          return { id: 'source-created' };
+        },
+      },
+    },
+    stateValues: [
+      [true, () => {}],
+      ['New source', () => {}],
+      ['Source evidence', () => {}],
+      ['', () => {}],
+      [null, () => {}],
+      [null, () => {}],
+    ],
+  });
+  const ingestionElements = collectReactElements(IngestSourceModal({
+    onIngested: () => ingestionRefreshes.push(true),
+  }));
+  const saveTextButton = ingestionElements.find(
+    (element) => element.type === 'button' && element.props.children === 'Save text source',
+  );
+  assert.ok(saveTextButton, 'text ingestion action should be rendered');
+  await saveTextButton.props.onClick();
+  assert.equal(JSON.stringify(ingestionCalls), JSON.stringify([{ title: 'New source', text: 'Source evidence' }]));
+  assert.equal(ingestionRefreshes.length, 1);
+
+  const approvalCalls = [];
+  const approvalRefreshes = [];
+  const { SourceCard } = loadComponent('app/prototype/Library.js', {
+    expose: ['SourceCard'],
+    queryData: {
+      '/sources/source-pending': {
+        title: 'Pending field manual',
+        pages: [{ page: 1, text: 'Pending evidence' }],
+      },
+    },
+    mutationStates: {
+      '/sources/source-pending/approve': {
+        mutate: async () => {
+          approvalCalls.push(true);
+          return { id: 'source-pending', status: 'APPROVED' };
+        },
+      },
+    },
+    stateValues: [[null, () => {}]],
+  });
+  const approvalElements = collectReactElements(SourceCard({
+    source: sourceRecords[0],
+    onApproved: () => approvalRefreshes.push(true),
+  }));
+  const approveSourceButton = approvalElements.find(
+    (element) => element.type === 'button' && element.props.children === 'Approve source',
+  );
+  assert.ok(approveSourceButton, 'pending sources must require an explicit approval action');
+  await approveSourceButton.props.onClick();
+  assert.equal(approvalCalls.length, 1);
+  assert.equal(approvalRefreshes.length, 1);
+
+  const generationCalls = [];
+  const drafted = [];
+  const { DraftCourseModal } = loadComponent('app/prototype/Library.js', {
+    expose: ['DraftCourseModal'],
+    mutationStates: {
+      '/courses/draft': {
+        mutate: async (payload) => {
+          generationCalls.push(payload);
+          return { id: 'course-created', status: 'PENDING' };
+        },
+      },
+    },
+    stateValues: [
+      [true, () => {}],
+      ['Generated course', () => {}],
+      ['Objective one\nObjective two', () => {}],
+      [['source-pending', 'source-approved'], () => {}],
+      [null, () => {}],
+      [false, () => {}],
+      [null, () => {}],
+    ],
+  });
+  const courseElements = collectReactElements(DraftCourseModal({
+    sources: sourceRecords,
+    sourcesLoading: false,
+    sourcesError: null,
+    onRetrySources: () => {},
+    onDrafted: (course) => drafted.push(course),
+  }));
+  const sourceCheckboxes = courseElements.filter(
+    (element) => element.type === 'input' && element.props.type === 'checkbox',
+  );
+  assert.equal(sourceCheckboxes.length, 1, 'pending sources must not be selectable');
+  assert.equal(sourceCheckboxes[0].props.value, 'source-approved');
+  assert.equal(sourceCheckboxes[0].props.checked, true);
+
+  const generateButton = courseElements.find(
+    (element) => element.type === 'button' && element.props.children === 'Generate course',
+  );
+  assert.ok(generateButton, 'course generation action should be rendered');
+  await generateButton.props.onClick();
+  assert.equal(JSON.stringify(generationCalls), JSON.stringify([{
+    title: 'Generated course',
+    objectives: ['Objective one', 'Objective two'],
+    sourceIds: ['source-approved'],
+    diagrams: false,
+  }]));
+  assert.equal(drafted[0].id, 'course-created');
+});
+
+test('course creation modal renders pending review and only approved source controls', () => {
+  const { CoursesLibrary } = loadComponent('app/prototype/Library.js', {
+    queryData: {
+      '/sources': [
+        { id: 'source-pending', title: 'Pending field manual', status: 'PENDING', pages: 3 },
+        { id: 'source-approved', title: 'Approved field manual', status: 'APPROVED', pages: 4 },
+      ],
+      '/sources/source-pending': {
+        title: 'Pending field manual',
+        pages: [{ page: 1, text: 'Pending evidence' }],
+      },
+    },
+    stateValues: [
+      [true, () => {}],
+      ['Course title', () => {}],
+      ['', () => {}],
+      [['source-approved'], () => {}],
+      [null, () => {}],
+      [true, () => {}],
+      ['New source', () => {}],
+      ['Source evidence', () => {}],
+      ['', () => {}],
+      [null, () => {}],
+      [null, () => {}],
+    ],
+  });
+  const markup = renderToStaticMarkup(React.createElement(CoursesLibrary, {
+    courses: [],
+    loading: false,
+    error: null,
+    onOpen: () => {},
+    onDrafted: () => {},
+  }));
+  assert.match(markup, /aria-label="Create course"/);
+  assert.match(markup, /Upload a PDF/);
+  assert.match(markup, /Save text source/);
+  assert.match(markup, /Pending field manual · Review and approve source/);
+  assert.match(markup, /Approve source/);
+  assert.match(markup, /value="source-approved"/);
+  assert.doesNotMatch(markup, /value="source-pending"/);
+  assert.match(markup, /Generate course/);
+});
+
+function readinessMarkup({
+  version = 3,
+  candidate = { sourceIds: ['source-approved'], sections: [{ id: 'section-1' }] },
+  pending = true,
+  published = false,
+  busy = false,
+  unavailable = false,
+  stateValues = [],
+} = {}) {
+  const { CourseReadiness } = loadComponent('app/prototype/CourseReadiness.js', { stateValues });
+  return renderToStaticMarkup(React.createElement(CourseReadiness, {
+    courseId: 'course-1',
+    version,
+    candidate,
+    pending,
+    published,
+    busy,
+    unavailable,
+    onApprove: () => {},
+  }));
+}
+
+test('course readiness separates server publishing checks from optional QA tools', () => {
+  const markup = readinessMarkup();
+  assert.match(markup, /Required by the server/);
+  assert.match(markup, /exact reviewed version must still be current/);
+  assert.match(markup, /Persisted source relationships must exist/);
+  assert.match(markup, /content, answer-key, citation and grounding validation/);
+  assert.match(markup, /Optional QA and learning tools:/);
+  assert.match(markup, /None is a course publishing requirement/);
+  assert.match(markup, /<input[^>]*type="checkbox"/);
+  assert.doesNotMatch(markup, /<input[^>]*type="checkbox"[^>]*disabled/);
+  assert.match(markup, /<button[^>]*disabled[^>]*>Approve and publish/);
+});
+
+test('course readiness disables acknowledgement and approval for missing content, busy, and unavailable states', () => {
+  const candidate = { sourceIds: ['source-approved'], sections: [{ id: 'section-1' }] };
+  const cases = [
+    {
+      name: 'missing generated content',
+      candidate: { sourceIds: ['source-approved'], sections: [] },
+    },
+    { name: 'approval busy', busy: true, candidate },
+    { name: 'draft unavailable after an error', unavailable: true, candidate },
+  ];
+
+  for (const scenario of cases) {
+    const markup = readinessMarkup(scenario);
+    if (scenario.busy || scenario.unavailable || !scenario.candidate.sections.length) {
+      assert.match(markup, /<input[^>]*type="checkbox"[^>]*disabled/, scenario.name);
+    }
+    assert.match(markup, /<button[^>]*disabled[^>]*>(Approve and publish|Saving…)/, scenario.name);
+  }
+});
+
+test('course readiness acknowledgement is tied to the exact course version and candidate', () => {
+  const candidate = { sourceIds: ['source-approved'], sections: [{ id: 'section-1' }] };
+  const currentReviewKey = JSON.stringify(['course-1', 3, candidate]);
+  const priorVersionKey = JSON.stringify(['course-1', 2, candidate]);
+
+  const reviewedMarkup = readinessMarkup({
+    candidate,
+    stateValues: [[currentReviewKey, () => {}]],
+  });
+  assert.match(reviewedMarkup, /<input[^>]*type="checkbox"[^>]*checked/);
+  assert.match(reviewedMarkup, /<button[^>]*>Approve and publish/);
+  assert.doesNotMatch(reviewedMarkup, /<button[^>]*disabled[^>]*>Approve and publish/);
+
+  const staleMarkup = readinessMarkup({
+    candidate,
+    stateValues: [[priorVersionKey, () => {}]],
+  });
+  assert.doesNotMatch(staleMarkup, /<input[^>]*type="checkbox"[^>]*checked/);
+  assert.match(staleMarkup, /<button[^>]*disabled[^>]*>Approve and publish/);
 });
 
 test('shared generated course presentation keeps manual question typography and preview feedback', () => {
@@ -256,6 +537,9 @@ test('AI course draft previews every generated section with targeted revision co
   assert.match(markup, /Which principle is grounded/);
   assert.match(markup, /Revise whole lesson/);
   assert.match(markup, /Question review/);
+  // CourseReadiness heads the acknowledgement gate and still carries main's
+  // approve action, so both strings have to be present.
+  assert.match(markup, /Review and publish/);
   assert.match(markup, /Approve and publish/);
 });
 
@@ -620,4 +904,76 @@ test('student settings splits account from app without losing a panel', () => {
   for (const heading of ['learning style', 'Reminders', 'Display']) {
     assert.match(app, new RegExp(heading), `App tab lost ${heading}`);
   }
+});
+
+test('library rows carry a three-dots menu, and legacy courses cannot be renamed', () => {
+  const { CoursesLibrary } = loadComponent('app/prototype/Library.js', {
+    queryData: { '/sources': [] },
+  });
+
+  const markup = renderToStaticMarkup(React.createElement(CoursesLibrary, {
+    courses: [
+      { id: 'gen-1', name: 'Generated course', sections: 3, status: 'APPROVED' },
+      { id: 'man-1', name: 'Old manual course', manual: true, status: 'PUBLISHED' },
+    ],
+    loading: false,
+    error: null,
+    onOpen: () => {},
+    onDrafted: () => {},
+  }));
+
+  // The control the instructor was missing entirely.
+  assert.match(markup, /row-actions-trigger/, 'no three-dots trigger rendered');
+  assert.match(markup, /Actions for course/);
+
+  // A legacy remnant is visible in the library so it can be cleared -- it used
+  // to be filtered out here and reachable only from the rail.
+  assert.match(markup, /Old manual course/);
+  assert.match(markup, /s-legacy-tag/);
+  assert.match(markup, /retired manual workflow/);
+
+  // The row's open affordance must be a SIBLING of the menu, not its parent:
+  // a button inside a button is invalid HTML and the inner click would bubble
+  // into opening the course. Walk the tags rather than pattern-matching, since
+  // a regex cannot tell nesting from sequence.
+  //
+  // Lookahead rather than \b: a literal backspace byte replaced that escape
+  // once already, which made match() return null and this check pass while
+  // testing nothing. The count assertion below makes that failure loud.
+  const buttonTags = markup.match(/<\/?button(?=[\s>])/g) || [];
+  assert.ok(buttonTags.length >= 4, `expected button tags, found ${buttonTags.length}`);
+  let depth = 0;
+  for (const tag of buttonTags) {
+    depth += tag === '<button' ? 1 : -1;
+    assert.ok(depth <= 1, 'a button is nested inside another button');
+  }
+  assert.equal(depth, 0, 'unbalanced button tags');
+});
+
+test('a source card exposes rename and remove', () => {
+  const { SourcesView } = loadComponent('app/prototype/Library.js', {
+    queryData: {
+      '/sources': [{ id: 'src-1', title: 'MCRP 3-01A', status: 'APPROVED' }],
+      '/sources/src-1': { id: 'src-1', title: 'MCRP 3-01A', pages: [], chunks: [] },
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(SourcesView));
+  assert.match(markup, /row-actions-trigger/);
+  assert.match(markup, /Actions for source/);
+});
+
+test('the course hook refreshes the legacy list too, not just generated courses', async () => {
+  // Removing a legacy course succeeded on the server while its row stayed on
+  // screen, because the manual list was fetched once with no reload path and
+  // the shared refetch only covered /courses. That is indistinguishable from
+  // the delete not working.
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/learning.js'), 'utf8');
+
+  // The manual list must expose a way to reload.
+  assert.match(source, /refetch:\s*\(\)\s*=>\s*setReload/, 'useManualCourses exposes no refetch');
+  assert.match(source, /\[enabled,\s*reload\]/, 'the manual effect does not depend on a reload trigger');
+
+  // And the hook's shared refetch must drive it.
+  const returned = source.slice(source.indexOf('    manualEnabled,'));
+  assert.match(returned, /manual\.refetch/, 'the shared refetch does not refresh the manual list');
 });

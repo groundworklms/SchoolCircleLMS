@@ -1,0 +1,150 @@
+/* Roster-specific controls live in their own file so the live roster and its
+   import/message panels do not add incidental styling to other screens. */
+
+.s-ro-demo,
+.s-ro-error {
+  border-radius: 12px;
+  padding: 0.7rem 0.9rem;
+  margin: 0 0 1rem;
+  font-size: 0.86em;
+}
+
+.s-ro-demo {
+  color: #6b4a0e;
+  background: #fff3d6;
+  border: 0.5px solid #ecd39a;
+}
+
+.s-ro-demo strong {
+  letter-spacing: 0.04em;
+  margin-right: 0.45rem;
+}
+
+.s-ro-error {
+  color: var(--p-critical);
+  background: var(--p-critical-tint);
+  box-shadow: 0 0 0 0.5px color-mix(in srgb, var(--p-critical) 22%, transparent);
+}
+
+.s-ro-filters {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.s-ro-add,
+.s-ro-import {
+  background: var(--p-bg);
+  border-radius: 14px;
+  padding: 1rem 1.2rem;
+  margin: 0.9rem 0;
+}
+
+.s-ro-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.s-ro-addrow {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.s-ro-addrow input,
+.s-ro-addrow select {
+  flex: 1;
+  min-width: 10rem;
+}
+
+.s-ro-import {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.s-ro-import > div:first-child {
+  flex: 1 1 22rem;
+}
+
+.s-ro-import input[type="file"] {
+  max-width: 100%;
+  font: inherit;
+  font-size: 0.84em;
+  color: var(--p-dim);
+}
+
+.s-ro-help {
+  margin: -0.3rem 0 0;
+  color: var(--p-faint);
+  font-size: 0.84em;
+}
+
+.s-ro-file {
+  color: var(--p-dim);
+  font-size: 0.82em;
+}
+
+.s-ro-drop {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+  justify-content: flex-end;
+}
+
+.s-ro-dropmeta {
+  font-size: 0.75em;
+  color: var(--p-faint);
+  margin-top: 0.2rem;
+}
+
+.s-ro-rowactions {
+  margin: 0;
+  justify-content: flex-end;
+}
+
+.s-ro-rowactions .p-btn {
+  height: 2rem;
+  padding: 0 0.75rem;
+  font-size: 0.82em;
+}
+
+.s-ro-viewtoggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  margin-top: 0.6rem;
+  color: var(--p-faint);
+  font-size: 0.82em;
+}
+
+.s-ro-viewtoggle .s-label-link {
+  font-size: 1em;
+}
+
+.s-ro-state {
+  color: var(--p-faint) !important;
+  text-align: center;
+  padding: 1.2rem !important;
+}
+
+@media (max-width: 700px) {
+  .s-ro-filters {
+    width: 100%;
+  }
+
+  .s-ro-filters > * {
+    flex: 1 1 9rem;
+    min-width: 0 !important;
+  }
+
+  .s-ro-rowactions {
+    justify-content: flex-start;
+  }
+}

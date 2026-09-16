@@ -5,6 +5,8 @@ import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning
 import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { SourceViewer } from './SourceViewer';
+import { CourseReadiness } from './CourseReadiness';
+import { RowActions } from './RowActions';
 
 /* The instructor library — the parts of the persisted learning loop that are
    not tied to one course on screen: source documents (Quarry) and the course
@@ -72,7 +74,16 @@ function SourceCard({ source, onApproved }) {
 
   return (
     <div className="p-panel">
-      <h3>{source.title}</h3>
+      <div className="p-panel-head">
+        <h3>{source.title}</h3>
+        <RowActions
+          label="source"
+          title={source.title}
+          endpoint={`/api/learning/sources/${source.id}`}
+          onChanged={onApproved}
+          removeNote="A source that any course still cites cannot be removed."
+        />
+      </div>
       <p className="p-src" style={{ marginBottom: '1rem' }}>
         <code>{source.id}</code> · <StatusTag status={source.status} />
       </p>
@@ -143,8 +154,9 @@ function IngestSourceModal({ onIngested }) {
 
   return (
     <div style={MODAL_BACKDROP}>
-      <div className="p-panel" style={{ width: '440px', maxWidth: '90%' }}>
-        <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Ingest new source</h3>
+      <div className="p-panel" role="dialog" aria-modal="true" aria-label="Add source" style={{ width: '440px', maxWidth: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
+        <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Add source</h3>
+        <p className="p-src">Saved to your reusable source library. Review and explicitly approve it before generating a course.</p>
         <input
           className="scw-ti"
           placeholder="Source title (optional for PDF)"
@@ -176,7 +188,7 @@ function IngestSourceModal({ onIngested }) {
             type="button"
             className="p-btn"
             onClick={handlePdfUpload}
-            disabled={pdfUpload.loading || !file}
+            disabled={pdfUpload.loading || ingest.loading || !file}
             style={{ marginTop: '0.75rem' }}
           >
             {pdfUpload.loading ? 'Uploading…' : 'Upload PDF'}
@@ -195,9 +207,9 @@ function IngestSourceModal({ onIngested }) {
         </div>
         {err && <p className="s-shell-error" role="alert">{err}</p>}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button className="p-btn ghost" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="p-btn" onClick={handleSubmit} disabled={ingest.loading || !title || !text}>
-            {ingest.loading ? 'Ingesting…' : 'Ingest'}
+          <button className="p-btn ghost" onClick={() => setOpen(false)} disabled={ingest.loading || pdfUpload.loading}>Cancel</button>
+          <button className="p-btn" onClick={handleSubmit} disabled={ingest.loading || pdfUpload.loading || !title.trim() || !text.trim()}>
+            {ingest.loading ? 'Saving…' : 'Save text source'}
           </button>
         </div>
       </div>
@@ -226,10 +238,9 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
       <div className="s-pagehead s-pagehead-row">
         <div>
           <h1>Courses</h1>
-          <p>Draft from approved sources; approve before learners see it.</p>
         </div>
         <DraftCourseModal
-          sources={approvedSources}
+          sources={Array.isArray(sources) ? sources : []}
           sourcesLoading={sourcesPending}
           sourcesError={sourcesError}
           onRetrySources={refetchSources}
@@ -249,21 +260,43 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
         </div>
       )}
       {!sourcesPending && !sourcesError && Array.isArray(sources) && approvedSources.length === 0 && (
-        <p>No approved sources. Add and approve one before drafting.</p>
+        <p>No approved sources yet. Choose Create course to add, review and approve your sources in one place.</p>
       )}
-      {!loading && !error && courses.length === 0 && <p>No course drafts yet. Approve a source, then draft from it.</p>}
+      {!loading && !error && courses.length === 0 && <p>No courses yet. Create a course from your sources, then review the generated draft.</p>}
       {courses.length > 0 && (
         <div className="s-courselist">
           {courses.map((c) => (
-            <button className="s-courserow" key={c.id} onClick={() => onOpen(c.id)}>
-              <div className="s-courserow-main">
-                <div className="s-card-title">{c.name}</div>
-                <div className="s-card-school">
-                  {c.sections} sections · <StatusTag status={c.hasPendingRevision || c.record?.hasPendingRevision ? 'PENDING_REVIEW' : c.status} />
+            /* A row-actions button cannot nest inside the row's own button, so
+               the open affordance is its own element and the menu is a
+               sibling. */
+            <div className="s-courserow s-courserow-managed" key={c.id}>
+              <button className="s-courserow-open" onClick={() => onOpen(c.id)}>
+                <div className="s-courserow-main">
+                  <div className="s-card-title">
+                    {c.name || c.title}
+                    {c.manual && <span className="s-legacy-tag">Legacy</span>}
+                  </div>
+                  <div className="s-card-school">
+                    {c.manual
+                      ? 'Published through the retired manual workflow · roster only'
+                      : <>{c.sections} sections · <strong>{c.hasPendingRevision || c.record?.hasPendingRevision ? `${c.status === 'APPROVED' ? 'Published' : 'Draft'} · revision needs review` : c.status === 'APPROVED' ? 'Published' : 'Needs review'}</strong></>}
+                  </div>
                 </div>
-              </div>
-              <span className="s-quick-arrow">→</span>
-            </button>
+                <span className="s-quick-arrow">→</span>
+              </button>
+              <RowActions
+                label="course"
+                title={c.name || c.title}
+                /* Legacy courses live on the authoring API, where renaming is
+                   retired (410), so only removal is offered for them. */
+                endpoint={c.manual
+                  ? `/api/authoring/courses/${c.id}`
+                  : `/api/learning/courses/${c.id}`}
+                canRename={!c.manual}
+                onChanged={onDrafted}
+                removeNote="A course learners have worked in is archived instead, and their work is kept."
+              />
+            </div>
           ))}
         </div>
       )}
@@ -278,22 +311,27 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const [sourceIds, setSourceIds] = useState([]);
   const [err, setErr] = useState(null);
   const draft = useApiMutation('/courses/draft', 'POST');
+  const approvedSources = sources.filter((source) => source.status === 'APPROVED');
+  const selectedIds = sourceIds.filter((id) => approvedSources.some((source) => source.id === id));
 
   const handleSubmit = async () => {
-    if (!title.trim() || sourceIds.length === 0) return;
+    if (selectedIds.length === 0 || draft.loading) return;
     setErr(null);
     try {
-      await draft.mutate({
-        title: title.trim(),
+      // Title and objectives are overrides, not requirements. Left empty they
+      // are written from the selected sources; an empty string would read as an
+      // instructor asking for a blank title, so send neither unless typed.
+      const created = await draft.mutate({
+        ...(title.trim() ? { title: title.trim() } : {}),
         objectives: objective.split('\n').map((line) => line.trim()).filter(Boolean),
-        sourceIds,
+        sourceIds: selectedIds,
         diagrams: false,
       });
       setOpen(false);
       setTitle('');
       setObjective('');
       setSourceIds([]);
-      onDrafted();
+      onDrafted(created);
     } catch (e) {
       setErr(errText(e, 'Failed to draft course'));
     }
@@ -305,21 +343,34 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
       <button
         className="p-btn"
         onClick={() => setOpen(true)}
-        disabled={sourceUnavailable}
-        title={sourcesError ? 'Approved sources are unavailable.' : undefined}
       >
-        {sourcesLoading ? 'Loading sources…' : 'Draft course'}
+        Create course
       </button>
     );
   }
 
   return (
     <div style={MODAL_BACKDROP}>
-      <div className="p-panel" style={{ width: '440px', maxWidth: '90%' }}>
-        <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Draft new course</h3>
+      <div className="p-panel" role="dialog" aria-modal="true" aria-label="Create course" style={{ width: '640px', maxWidth: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
+        <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Create course</h3>
+        <p className="p-src">1. Sources → 2. Generate → 3. Review → 4. Approve and publish</p>
+        <p>Add a PDF or paste text, review and approve it below, then select it for this course. Existing approved sources can be reused.</p>
+        <IngestSourceModal onIngested={onRetrySources} />
+        {sources.filter((source) => source.status === 'PENDING').map((source) => (
+          <details key={source.id} style={{ margin: '0.75rem 0' }}>
+            <summary>{source.title} · Review and approve source</summary>
+            <SourceCard source={source} onApproved={onRetrySources} />
+          </details>
+        ))}
+        <h4>Generate from selected sources</h4>
+        <p className="p-src">
+          The title and objectives are written from the sources you select. Fill either in only to
+          override what the model would choose.
+        </p>
         <input
           className="scw-ti"
-          placeholder="Course title"
+          placeholder="Course title (optional — written from the sources)"
+          aria-label="Course title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
@@ -327,7 +378,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
         <textarea
           className="scw-ti"
           aria-label="Course objectives"
-          placeholder="Optional objectives, one per line."
+          placeholder="Objectives, one per line (optional — written from the sources)"
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
           rows={4}
@@ -345,12 +396,12 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           <legend style={{ padding: '0 0.3rem', fontSize: '0.84em', color: 'var(--p-dim)' }}>
             Approved sources
           </legend>
-          {sources.map((s) => (
+          {approvedSources.map((s) => (
             <label key={s.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.25rem 0', cursor: 'pointer' }}>
               <input
                 type="checkbox"
                 value={s.id}
-                checked={sourceIds.includes(s.id)}
+                checked={selectedIds.includes(s.id)}
                 onChange={(e) => setSourceIds((current) => e.target.checked
                   ? [...current, s.id]
                   : current.filter((id) => id !== s.id))}
@@ -361,9 +412,9 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
               </span>
             </label>
           ))}
-          {sources.length > 0 && (
+          {approvedSources.length > 0 && (
             <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--p-faint)' }}>
-              {sourceIds.length} source{sourceIds.length === 1 ? '' : 's'} selected
+              {selectedIds.length} source{selectedIds.length === 1 ? '' : 's'} selected
             </small>
           )}
         </fieldset>
@@ -373,14 +424,15 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
             <button type="button" className="p-btn ghost" onClick={onRetrySources}>Retry loading sources</button>
           </div>
         )}
-        {!sourcesLoading && !sourcesError && sources.length === 0 && (
-          <p className="p-src" style={{ marginBottom: '1rem' }}>No approved sources — approve one under Sources first.</p>
+        {sourcesLoading && <p role="status">Loading sources…</p>}
+        {!sourcesLoading && !sourcesError && approvedSources.length === 0 && (
+          <p className="p-src" style={{ marginBottom: '1rem' }}>No approved sources yet. Add a source above, then open its review and approve it.</p>
         )}
         {err && <p className="s-shell-error" role="alert">{err}</p>}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button className="p-btn ghost" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || !title.trim() || sourceIds.length === 0}>
-            {draft.loading ? 'Drafting…' : 'Draft'}
+          <button className="p-btn ghost" onClick={() => setOpen(false)} disabled={draft.loading}>Cancel</button>
+          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
+            {draft.loading ? 'Generating…' : 'Generate course'}
           </button>
         </div>
       </div>
@@ -615,7 +667,7 @@ function QuestionRevisionControl({ question, version, onSubmit, busy }) {
   );
 }
 
-function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevision }) {
+function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevision, revisionsDisabled }) {
   const lessons = courseLessons(course);
   if (!lessons.length) {
     return <p className="p-src">No lessons to preview yet.</p>;
@@ -641,7 +693,7 @@ function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevi
                 version={version}
                 sectionId={lesson.sectionId || lesson.id}
                 onSubmit={onSubmitRevision}
-                busy={pendingRevision === `lesson:${lesson.sectionId || lesson.id}`}
+                busy={revisionsDisabled || pendingRevision === `lesson:${lesson.sectionId || lesson.id}`}
               />
             </div>
             {lesson.questionRefs?.map((question) => (
@@ -650,7 +702,7 @@ function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevi
                 question={question}
                 version={version}
                 onSubmit={onSubmitRevision}
-                busy={pendingRevision === `question:${question.questionId}`}
+                busy={revisionsDisabled || pendingRevision === `question:${question.questionId}`}
               />
             ))}
           </div>
@@ -708,7 +760,7 @@ export function CourseDraft({ course, onChanged }) {
     setNotice('');
     try {
       await approve.mutate({ version });
-      setNotice('Approved and published. Learners can now access this version.');
+      setNotice('Course approved and published. The reviewed version is now available to learners.');
       await refresh();
     } catch (error) {
       setErr(errText(error, 'The course could not be approved.'));
@@ -725,6 +777,11 @@ export function CourseDraft({ course, onChanged }) {
   const sections = draft?.sections || [];
   const approvedSources = Array.isArray(sources) ? sources.filter((source) => source.status === 'APPROVED') : [];
   const showingLoading = loading || (!envelope && !draftError);
+  // A pendingRevision key only ever matches the one form it names, so blocking
+  // every revision form while an approve is in flight (or the draft failed to
+  // load) needs its own flag. A sentinel key such as 'unavailable' matched no
+  // form at all and left them all enabled -- the opposite of the intent.
+  const revisionsDisabled = approve.loading || Boolean(draftError);
 
   return (
     <>
@@ -733,26 +790,20 @@ export function CourseDraft({ course, onChanged }) {
           <p className="p-src" style={{ margin: 0 }}>Version {version}</p>
           <h2 className="p-h">{draft?.title || course.name || 'Course draft'}</h2>
           <p className="p-sub">
-            {sourceCount > 0
-              ? `Uses ${sourceCount} approved source${sourceCount === 1 ? '' : 's'}.`
-              : 'Uses approved sources.'}
+            Grounded in {sourceCount || 'the selected'} approved source{sourceCount === 1 ? '' : 's'}.
+            {' '}Review the generated content, then approve and publish this exact version.
           </p>
         </div>
         <span className={`p-live${status === 'APPROVED' && !hasPendingRevision ? ' on' : ''}`}>
-          {hasPendingRevision ? 'PENDING REVIEW' : status || 'PENDING'}
+          {hasPendingRevision ? 'NEEDS REVIEW' : status === 'APPROVED' ? 'PUBLISHED' : status || 'PENDING'}
         </span>
       </div>
 
       {err && <p className="s-shell-error" role="alert">{err}</p>}
-      {draftError && <p className="s-shell-error" role="alert">{errText(draftError, 'Could not load course draft.')}</p>}
+      {draftError && <div className="s-shell-error" role="alert"><p>{errText(draftError, 'Could not load course draft.')}</p><button type="button" className="p-btn ghost" onClick={refetch}>Reload course</button></div>}
       {notice && <p className="p-check ok" role="status"><strong>{notice}</strong></p>}
 
       <div className="p-btnrow" style={{ marginBottom: '1.25rem' }}>
-        {hasPendingRevision && (
-          <button type="button" className="p-btn" onClick={handleApprove} disabled={approve.loading || loading || !envelope}>
-            {approve.loading ? 'Publishing…' : 'Approve and publish'}
-          </button>
-        )}
         {status === 'APPROVED' && !hasPendingRevision && (
           <>
             <button type="button" className="p-btn ghost" onClick={() => exportScorm('1.2')}>Export SCORM 1.2</button>
@@ -760,6 +811,17 @@ export function CourseDraft({ course, onChanged }) {
           </>
         )}
       </div>
+
+      <CourseReadiness
+        courseId={course.id}
+        version={version}
+        candidate={draft}
+        pending={hasPendingRevision}
+        published={status === 'APPROVED'}
+        busy={approve.loading || Boolean(pendingRevision)}
+        unavailable={showingLoading || Boolean(draftError) || !envelope}
+        onApprove={handleApprove}
+      />
 
       {showingLoading && <p>Loading generated course…</p>}
       {!showingLoading && (
@@ -769,6 +831,7 @@ export function CourseDraft({ course, onChanged }) {
             version={version}
             onSubmitRevision={submitRevision}
             pendingRevision={pendingRevision}
+            revisionsDisabled={revisionsDisabled}
           />
         </div>
       )}
@@ -795,13 +858,17 @@ export function CourseDraft({ course, onChanged }) {
       {status === 'PENDING' && sections.length === 0 && (
         <p className="p-src">Still generating. Refresh when the course is ready.</p>
       )}
-      {status === 'PENDING' && <InstructorSyllabus courseId={course.id} />}
-      <InstructorMasteryPlan
-        courseId={course.id}
-        course={draft || course}
-        approvedSources={approvedSources}
-        onUpdated={refresh}
-      />
+      <details className="p-panel">
+        <summary>Optional learning tools · syllabus and mastery plan</summary>
+        <p className="p-src">These tools do not block course publication. Rubrics and fidelity evaluation are available under Advanced tools.</p>
+        {status === 'PENDING' && <InstructorSyllabus courseId={course.id} />}
+        <InstructorMasteryPlan
+          courseId={course.id}
+          course={draft || course}
+          approvedSources={approvedSources}
+          onUpdated={refresh}
+        />
+      </details>
     </>
   );
 }
