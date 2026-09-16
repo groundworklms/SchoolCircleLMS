@@ -1017,8 +1017,11 @@ test('library rows carry a three-dots menu, and legacy courses cannot be renamed
 test('a source card exposes rename and remove', () => {
   const { SourcesView } = loadComponent('app/prototype/Library.js', {
     queryData: {
-      '/sources': [{ id: 'src-1', title: 'MCRP 3-01A', status: 'APPROVED' }],
-      '/sources/src-1': { id: 'src-1', title: 'MCRP 3-01A', pages: [], chunks: [] },
+      // canRemove is what /sources reports for a source this instructor owns.
+      // An approved source owned by someone else comes back with canRemove
+      // false and gets no menu, because every write behind it is owner-only.
+      '/sources': [{ id: 'src-1', title: 'MCRP 3-01A', status: 'APPROVED', canRemove: true }],
+      '/sources/src-1': { id: 'src-1', title: 'MCRP 3-01A', pages: [], chunks: [], canRemove: true },
     },
   });
   const markup = renderToStaticMarkup(React.createElement(SourcesView));
