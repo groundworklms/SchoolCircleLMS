@@ -223,6 +223,19 @@
 .s-pagehead h1 { margin: 0 0 0.3rem; font-size: 2.25em; letter-spacing: -0.024em; font-weight: 700; line-height: 1.1; }
 .s-pagehead h1 code { font-size: 0.42em; vertical-align: middle; }
 .s-pagehead p { margin: 0; color: var(--p-dim); font-size: 1.05em; }
+.s-pagehead-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+
+/* Course draft review (Library.js): one <details> per Coursewright section. */
+.s-draft-sec { border-top: 1px solid var(--p-border); padding: 0.7rem 0; }
+.s-draft-sec:first-of-type { border-top: 0; }
+.s-draft-sec summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 0.5rem; }
+.s-draft-sec summary::-webkit-details-marker { display: none; }
+.s-draft-sec summary::before { content: '▸'; color: var(--p-dim); font-size: 0.8em; }
+.s-draft-sec[open] summary::before { content: '▾'; }
+.s-draft-n { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5em; height: 1.5em; border-radius: 999px; background: var(--p-surface-2); color: var(--p-dim); font-size: 0.8em; font-weight: 600; }
+.s-draft-sec > p { margin: 0.6rem 0 0; white-space: pre-wrap; }
+.s-draft-opts { margin: 0.3rem 0 0; padding-left: 1.2rem; font-size: 0.92em; color: var(--p-dim); }
+.s-draft-opts li.keyed { color: var(--p-good); font-weight: 600; }
 
 /* ---------- up next ---------- */
 .s-next { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); margin-bottom: 1.75rem; }

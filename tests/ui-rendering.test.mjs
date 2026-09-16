@@ -4,12 +4,13 @@ import path from 'node:path';
 import test from 'node:test';
 import vm from 'node:vm';
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { transformSync } = require('next/dist/build/swc');
 const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
-const workspace = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 function loadComponent(relativePath, { queryData = {}, stateValues = [] } = {}) {
   const filename = path.join(workspace, relativePath);
@@ -94,7 +95,7 @@ test('tutor renders citation and chunk content from non-empty source data', () =
 });
 
 test('instructor fidelity renders a non-empty run report', () => {
-  const { InstructorFidelity } = loadComponent('app/teach/InstructorFeatures.js', {
+  const { InstructorFidelity } = loadComponent('app/prototype/InstructorFeatures.js', {
     queryData: {
       '/fidelity?courseId=course-1': {
         status: 'complete',
