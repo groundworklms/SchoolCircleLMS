@@ -1,1 +1,5 @@
 - [Git-pinned packages](git-package-install.md) — package helpers may reject GitHub specs; preserve locked sources rather than substitute registry namesakes.
+- [No direct push to main](no-direct-push-to-main.md) — always branch + PR, never push straight to main, never merge unasked.
+- [THOMPSON-UPDATES branch](thompson-updates-branch.md) — owner's work branch; check drift vs. main before building on it; real live app is app/prototype/*.js, not web/app.html.
+- [Issue author filter](issue-author-filter.md) — only act on issues/PRs from GitHub user tewhite4, not other testers.
+- [QA batch #48-#64 scope](qa-batch-48-64-scope.md) — what shipped vs. was deliberately deferred in the tewhite4 QA fix batch; read before touching Roster, Ask-the-doctrine gating, or lesson locking.
