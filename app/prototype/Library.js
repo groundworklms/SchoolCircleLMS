@@ -280,11 +280,14 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const draft = useApiMutation('/courses/draft', 'POST');
 
   const handleSubmit = async () => {
-    if (!title.trim() || sourceIds.length === 0) return;
+    if (sourceIds.length === 0) return;
     setErr(null);
     try {
+      // Both fields are overrides, not requirements. Left empty they are
+      // written from the selected sources; an empty string would read as an
+      // instructor asking for a blank title, so send neither unless typed.
       await draft.mutate({
-        title: title.trim(),
+        ...(title.trim() ? { title: title.trim() } : {}),
         objectives: objective.split('\n').map((line) => line.trim()).filter(Boolean),
         sourceIds,
         diagrams: false,
@@ -316,10 +319,14 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   return (
     <div style={MODAL_BACKDROP}>
       <div className="p-panel" style={{ width: '440px', maxWidth: '90%' }}>
-        <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Draft new course</h3>
+        <h3 style={{ fontSize: '1.1em', marginBottom: '0.35rem' }}>Draft new course</h3>
+        <p className="p-src" style={{ marginBottom: '1rem' }}>
+          Pick the sources. The title and objectives are written from them — fill either in only to
+          override what the model would choose.
+        </p>
         <input
           className="scw-ti"
-          placeholder="Course title"
+          placeholder="Course title (optional — written from the sources)"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
@@ -327,7 +334,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
         <textarea
           className="scw-ti"
           aria-label="Course objectives"
-          placeholder="Optional objectives, one per line."
+          placeholder="Objectives, one per line (optional — written from the sources)"
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
           rows={4}
@@ -379,7 +386,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
         {err && <p className="s-shell-error" role="alert">{err}</p>}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button className="p-btn ghost" onClick={() => setOpen(false)}>Cancel</button>
-          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || !title.trim() || sourceIds.length === 0}>
+          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || sourceIds.length === 0}>
             {draft.loading ? 'Drafting…' : 'Draft'}
           </button>
         </div>
