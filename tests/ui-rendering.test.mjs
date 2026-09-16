@@ -241,7 +241,7 @@ test('AI course draft previews every generated section with targeted revision co
   assert.match(markup, /Which principle is grounded/);
   assert.match(markup, /Revise whole lesson/);
   assert.match(markup, /Question review/);
-  assert.match(markup, /Final approval/);
+  assert.match(markup, /Approve and publish/);
 });
 
 test('rubric generation distinguishes source failures from a successful empty source list', () => {
@@ -261,7 +261,7 @@ test('rubric generation distinguishes source failures from a successful empty so
     },
   });
   const emptyMarkup = renderToStaticMarkup(React.createElement(EmptyRubricsView));
-  assert.match(emptyMarkup, /No approved sources yet/);
+  assert.match(emptyMarkup, /No approved sources/);
   assert.doesNotMatch(emptyMarkup, /Retry loading sources/);
 });
 
@@ -402,8 +402,8 @@ test('shared mastery plan displays object indicators and its approved locked sta
   assert.match(markup, /Competent:/);
   assert.match(markup, /Names the correct interval/);
   assert.match(markup, /approved and locked/);
-  assert.doesNotMatch(markup, /Approve shared mastery plan/);
-  assert.doesNotMatch(markup, /Generate shared mastery plan/);
+  assert.doesNotMatch(markup, /Approve plan/);
+  assert.doesNotMatch(markup, /Generate plan/);
 });
 
 test('shared mastery plan shows pending object indicators with an approval action', () => {
@@ -431,8 +431,8 @@ test('shared mastery plan shows pending object indicators with an approval actio
   assert.match(markup, /Inspect the area/);
   assert.match(markup, /Competent:/);
   assert.match(markup, /Checks all hazards/);
-  assert.match(markup, /Approve shared mastery plan/);
-  assert.doesNotMatch(markup, /Generate shared mastery plan/);
+  assert.match(markup, /Approve plan/);
+  assert.doesNotMatch(markup, /Generate plan/);
 });
 
 test('cohort mastery distinguishes total learners from competency contributors', () => {
