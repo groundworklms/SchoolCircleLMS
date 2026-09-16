@@ -40,7 +40,6 @@ export function SourcesView() {
       <div className="s-pagehead s-pagehead-row">
         <div>
           <h1>Source documents</h1>
-          <p>Approve sources before drafting courses.</p>
         </div>
         <IngestSourceModal onIngested={refetch} />
       </div>

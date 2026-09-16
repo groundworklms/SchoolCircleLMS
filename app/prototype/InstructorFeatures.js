@@ -678,10 +678,6 @@ export function RubricsView() {
     <>
       <div className="s-pagehead">
         <h1>Rubrics</h1>
-        <p>
-          Optional advanced tool. Rubricon drafts a behaviourally-anchored rubric from a task and an
-          approved source, then traces every element back to the text.
-        </p>
       </div>
 
       <SavedRubrics />
