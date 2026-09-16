@@ -158,6 +158,9 @@ importers:
       '@google-cloud/cloud-sql-connector':
         specifier: ^1.12.0
         version: 1.12.0
+      '@next/env':
+        specifier: 15.5.25
+        version: 15.5.25
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -621,6 +624,10 @@ importers:
         version: 0.31.10
 
   scripts:
+    dependencies:
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.2
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
