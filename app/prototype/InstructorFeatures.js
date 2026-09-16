@@ -2,12 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { useApiQuery, useApiMutation } from '../_learning/useLearning';
+import { RowActions } from './RowActions';
 
-/* Instructor-side arsenal features for a real (LearningRecord) course:
+/* Instructor-side optional tools for a real (LearningRecord) course:
    syllabus (Cadence), doctrinal fidelity (Understudy), the after-action
-   review (Hotwash) and rubric generation (Rubricon). Each talks to
-   /api/learning/* and shows the server's answer or its error — never a
-   made-up result. */
+   review (Hotwash), shared mastery (Sextant) and rubric generation
+   (Rubricon). The primary Courses flow owns source selection, generation,
+   review, approval and publish; these tools never stand in for those stages.
+   Each talks to /api/learning/* and shows the server's answer or its error —
+   never a made-up result. */
 
 function errText(e, fallback) {
   return e?.error || e?.message || fallback;
@@ -49,7 +52,7 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
     };
   });
   const mutationError = generatePlan.error || approvePlan.error;
-  const errorText = mutationError?.error || mutationError?.message || 'Unable to update the shared mastery plan.';
+  const errorText = mutationError?.error || mutationError?.message || 'Unable to update the mastery plan.';
 
   const handleGenerate = async () => {
     if (!selectedSourceId) return;
@@ -77,10 +80,11 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
 
   return (
     <div className="p-panel" data-testid="instructor-mastery-plan" style={{ marginTop: '1rem' }}>
-      <h3>Shared mastery plan</h3>
+      <h3>Optional advanced tool: Shared mastery plan</h3>
       <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
         One reviewed set of criteria keeps learner outcomes comparable across the cohort.
-        Once approved, this revision is locked for the course.
+        This optional plan does not block course review or publish. Once approved, this revision
+        is locked for the course.
       </p>
 
       {mutationError && <Err msg={`Mastery plan update failed: ${errorText}`} />}
@@ -88,17 +92,17 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
       {!plan ? (
         <div>
           <label style={{ display: 'block', fontSize: '0.85em', marginBottom: '0.5rem' }}>
-            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Approved course source</span>
+            <span style={{ display: 'block', marginBottom: '0.25rem' }}>Approved source</span>
             <select
               className="scw-ti"
-              aria-label="Approved course source"
+              aria-label="Approved source"
               value={selectedSourceId}
               onChange={(event) => setSelectedSourceId(event.target.value)}
               disabled={sourceOptions.length === 0 || generatePlan.loading}
               style={{ width: '100%', padding: '0.45rem' }}
             >
               {sourceOptions.length === 0 ? (
-                <option value="">No approved course source available</option>
+                <option value="">No approved source available</option>
               ) : (
                 sourceOptions.map((source) => (
                   <option key={source.id} value={source.id}>{source.label}</option>
@@ -111,7 +115,7 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
             onClick={handleGenerate}
             disabled={!selectedSourceId || sourceOptions.length === 0 || generatePlan.loading}
           >
-            {generatePlan.loading ? 'Generating shared mastery plan…' : 'Generate shared mastery plan'}
+            {generatePlan.loading ? 'Generating…' : 'Generate plan'}
           </button>
         </div>
       ) : (
@@ -128,11 +132,11 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
               onClick={handleApprove}
               disabled={!plan.revision || approvePlan.loading}
             >
-              {approvePlan.loading ? 'Approving shared mastery plan…' : 'Approve shared mastery plan'}
+              {approvePlan.loading ? 'Approving…' : 'Approve plan'}
             </button>
           ) : plan.status === 'APPROVED' ? (
             <p className="p-src" style={{ color: 'var(--p-good)', margin: '0.65rem 0 0' }}>
-              Reviewed criteria are approved and locked for this course.
+              Criteria are approved and locked for this course.
             </p>
           ) : (
             <p className="p-src">This plan is not available for learner sessions.</p>
@@ -206,7 +210,7 @@ export function InstructorSyllabus({ courseId }) {
     <div className="p-panel">
       <h3>Syllabus</h3>
       <p className="p-src" style={{ marginBottom: '0.75rem' }}>
-        Dated blocks Cadence paces a learner&apos;s study plan against. One row per lesson or exam.
+        Add one dated row per lesson or exam.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         {syllabus.map((item, i) => (
@@ -280,6 +284,7 @@ export function InstructorFidelity({ courseId }) {
         <div className="p-panel">
           <h3>Benchmark cases</h3>
           <p className="p-src" style={{ marginBottom: '0.75rem' }}>
+            Optional advanced tool.{' '}
             Situations a learner might raise, and what doctrine says should come back. Understudy runs each through the tutor and grades the answer against the approved sources.
           </p>
           <input className="scw-ti" placeholder="Source IDs (comma-separated)" value={sourceIdsStr} onChange={(e) => setSourceIdsStr(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
@@ -302,6 +307,9 @@ export function InstructorFidelity({ courseId }) {
 
       <div className="p-panel">
         <h3>Fidelity report</h3>
+        <p className="p-src" style={{ marginBottom: '0.75rem' }}>
+          Optional advanced tool; this report informs review but does not block course approval or publish.
+        </p>
         <Err msg={err} />
         {hasReport ? (
           <>
@@ -354,7 +362,7 @@ export function InstructorFidelity({ courseId }) {
         ) : (
           <>
             <p className="p-src" style={{ marginBottom: '1rem' }}>
-              No saved report. Save benchmark cases, then run the check against the approved doctrine.
+              Save cases, then run the check against approved doctrine.
             </p>
             <button className="p-btn" onClick={handleRunFidelity} disabled={runFidelity.loading}>
               {runFidelity.loading ? 'Running…' : 'Run fidelity check'}
@@ -424,7 +432,7 @@ export function InstructorAAR({ courseId }) {
       <div className="p-panel">
         <h3>Record a critique</h3>
         <p className="p-src" style={{ marginBottom: '0.75rem' }}>
-          Sustains and improves from instructors and end-of-course surveys. The AAR is built only from what is recorded here.
+          Record instructor or survey feedback here to build the AAR.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <input className="scw-ti" placeholder="Area (e.g. Annex B practical)" value={critiqueArea} onChange={(e) => setCritiqueArea(e.target.value)} style={{ flex: 1 }} />
@@ -494,6 +502,59 @@ export function InstructorAAR({ courseId }) {
 
 /* ---------- rubrics (Rubricon) ---------- */
 
+/**
+ * The instructor's saved rubrics.
+ *
+ * This screen previously showed only the rubric it had just generated, so an
+ * older one could not be found, renamed or removed. Rubrics are owner-private,
+ * so this is the owner's own list.
+ */
+function SavedRubrics() {
+  const { data: rubrics, loading, error, refetch } = useApiQuery('/rubrics');
+  const list = Array.isArray(rubrics) ? rubrics : [];
+
+  if (loading) return <p>Loading saved rubrics…</p>;
+  if (error) {
+    return (
+      <p className="s-shell-error" role="alert">
+        {errText(error, 'Could not load saved rubrics.')}
+      </p>
+    );
+  }
+  if (!list.length) return null;
+
+  return (
+    <div className="p-panel">
+      <h3>Saved rubrics</h3>
+      <div className="s-courselist">
+        {list.map((r) => (
+          <div className="s-courserow s-courserow-managed" key={r.id}>
+            <div className="s-courserow-open s-courserow-static">
+              <div className="s-courserow-main">
+                <div className="s-card-title">{r.title}</div>
+                <div className="s-card-school">
+                  {r.taskCode ? <>{r.taskCode} · </> : null}
+                  {/* Plain text rather than Library's StatusTag: Library already
+                      imports from this module, so importing it back would be a
+                      circular dependency. */}
+                  {r.criteria} criteria · {r.status === 'APPROVED' ? 'Approved' : 'Draft'}
+                </div>
+              </div>
+            </div>
+            <RowActions
+              label="rubric"
+              title={r.title}
+              endpoint={`/api/learning/rubrics/${r.id}`}
+              onChanged={refetch}
+              removeNote="A rubric a mastery session grades against cannot be removed."
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RubricsView() {
   const {
     data: sources,
@@ -518,9 +579,65 @@ export function RubricsView() {
 
   const [generatedRubricId, setGeneratedRubricId] = useState(null);
 
+  // Auto-filled task suggestions for the selected source.
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [suggestionOrigin, setSuggestionOrigin] = useState('');
+  const [suggestionError, setSuggestionError] = useState(null);
+  const [suggesting, setSuggesting] = useState(false);
+
   const generateRubric = useApiMutation('/rubrics/generate', 'POST');
+  const suggestTasks = useApiMutation('/rubrics/task-suggestions', 'POST');
   const approveRubric = useApiMutation(`/rubrics/${generatedRubricId}/approve`, 'POST');
   const { data: rubricData, refetch } = useApiQuery(`/rubrics/${generatedRubricId}`, { enabled: !!generatedRubricId });
+
+  const applySuggestion = (task) => {
+    if (!task) return;
+    setTaskCode(task.code || '');
+    setTaskTitle(task.title || '');
+    setTaskCondition(task.condition || '');
+    setTaskStandard(task.standard || '');
+    setTaskSteps((task.performanceSteps || []).join('\n'));
+  };
+
+  // Selecting a source fills the whole form from it, so the ordinary path is
+  // pick a source and press Generate. Every field stays editable; a failure
+  // here leaves the form usable by hand rather than blocking generation.
+  useEffect(() => {
+    if (!sourceId) {
+      setSuggestions([]);
+      setSuggestionOrigin('');
+      setSuggestionError(null);
+      return undefined;
+    }
+    let current = true;
+    setSuggesting(true);
+    setSuggestionError(null);
+    suggestTasks
+      .mutate({ sourceId })
+      .then((res) => {
+        if (!current) return;
+        const tasks = Array.isArray(res?.tasks) ? res.tasks : [];
+        setSuggestions(tasks);
+        setSuggestionOrigin(res?.origin || '');
+        setSuggestionIndex(0);
+        applySuggestion(tasks[0]);
+      })
+      .catch((e) => {
+        if (!current) return;
+        setSuggestions([]);
+        setSuggestionOrigin('');
+        setSuggestionError(errText(e, 'Could not read a task from this source.'));
+      })
+      .finally(() => {
+        if (current) setSuggesting(false);
+      });
+    return () => {
+      current = false;
+    };
+    // suggestTasks is a fresh object each render; the source id is the input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceId]);
 
   const handleGenerate = async () => {
     if (!sourceId || !taskCode) return;
@@ -561,11 +678,20 @@ export function RubricsView() {
     <>
       <div className="s-pagehead">
         <h1>Rubrics</h1>
-        <p>Rubricon drafts a behaviourally-anchored rubric from a task and an approved source, then traces every element back to the text.</p>
+        <p>
+          Optional advanced tool. Rubricon drafts a behaviourally-anchored rubric from a task and an
+          approved source, then traces every element back to the text.
+        </p>
       </div>
+
+      <SavedRubrics />
 
       <div className="p-panel">
         <h3>Generate a rubric</h3>
+        <p className="p-src">
+          Pick an approved source and the task fields fill themselves from it. Edit anything that
+          needs it, then generate.
+        </p>
         {sourcesPending && <p className="p-src">Loading approved sources…</p>}
         {sourcesError && (
           <div className="s-shell-error" role="alert">
@@ -576,7 +702,7 @@ export function RubricsView() {
           </div>
         )}
         {!sourcesPending && !sourcesError && Array.isArray(sources) && approvedSources.length === 0 && (
-          <p className="p-src">No approved sources yet. Add and approve a source before generating a rubric.</p>
+          <p className="p-src">No approved sources. Add and approve one before generating.</p>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <select className="scw-ti" value={sourceId} onChange={(e) => setSourceId(e.target.value)} disabled={sourcesUnavailable}>
@@ -585,13 +711,52 @@ export function RubricsView() {
               <option key={s.id} value={s.id}>{s.title}</option>
             ))}
           </select>
+          {suggesting && <p className="p-src">Reading the task from this source…</p>}
+          {suggestionOrigin === 'quarry' && suggestions.length > 0 && (
+            <p className="p-src">
+              {suggestions.length === 1
+                ? 'Filled from the task written in this source.'
+                : `${suggestions.length} tasks in this source — pick one to fill the form.`}
+            </p>
+          )}
+          {suggestionOrigin === 'model' && (
+            <p className="p-src">
+              This source has no task block, so the fields below are a draft written from its text.
+              Check them before generating.
+            </p>
+          )}
+          {suggestions.length > 1 && (
+            <select
+              className="scw-ti"
+              aria-label="Task from this source"
+              value={suggestionIndex}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                setSuggestionIndex(next);
+                applySuggestion(suggestions[next]);
+              }}
+            >
+              {suggestions.map((task, i) => (
+                <option key={task.code || i} value={i}>{task.code} — {task.title}</option>
+              ))}
+            </select>
+          )}
+          {suggestionError && (
+            <p className="p-src" role="status">{suggestionError} Fill the fields in by hand.</p>
+          )}
           <input className="scw-ti" placeholder="Task code (e.g. 0311-M16-1001)" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} disabled={sourcesUnavailable} />
+          {suggestions[suggestionIndex]?.codeGenerated && taskCode === suggestions[suggestionIndex]?.code && (
+            <small style={{ color: 'var(--p-faint)', marginTop: '-0.25rem' }}>
+              This source carries no task code, so one was derived from the title. Replace it with
+              the real code if the task has one.
+            </small>
+          )}
           <input className="scw-ti" placeholder="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} disabled={sourcesUnavailable} />
           <input className="scw-ti" placeholder="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} disabled={sourcesUnavailable} />
           <input className="scw-ti" placeholder="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
           <textarea className="scw-ti" placeholder="Performance steps (one per line)" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
           <Err msg={err} />
-          <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || sourcesUnavailable || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
+          <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || suggesting || sourcesUnavailable || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
             {generateRubric.loading ? 'Generating…' : 'Generate rubric'}
           </button>
         </div>
