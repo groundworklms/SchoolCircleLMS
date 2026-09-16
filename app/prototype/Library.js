@@ -37,7 +37,6 @@ export function SourcesView() {
       <div className="s-pagehead s-pagehead-row">
         <div>
           <h1>Source documents</h1>
-          <p>Approve sources before drafting courses.</p>
         </div>
         <IngestSourceModal onIngested={refetch} />
       </div>
@@ -226,7 +225,6 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
       <div className="s-pagehead s-pagehead-row">
         <div>
           <h1>Courses</h1>
-          <p>Draft from approved sources; approve before learners see it.</p>
         </div>
         <DraftCourseModal
           sources={approvedSources}
