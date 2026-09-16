@@ -138,7 +138,10 @@ test('source library groups documents without technical IDs or repeated approval
   assert.match(markup, /Approved field manual/);
   assert.match(markup, /New reference/);
   assert.doesNotMatch(markup, /private-record-id|>APPROVED</);
-  assert.match(markup, />Remove</);
+  // Rename/remove is the shared RowActions menu (#113/#119), not a second
+  // per-card affordance, so the row exposes its trigger rather than a
+  // free-standing Remove button.
+  assert.match(markup, /row-actions-trigger/);
   assert.match(markup, />Preview</);
   assert.match(markup, />Approve</);
 });
@@ -164,7 +167,7 @@ test('shared source cards do not offer removal to non-owners', () => {
     onPreview: () => {}, onRefresh: () => {},
   }));
   assert.match(markup, />Preview</);
-  assert.doesNotMatch(markup, />Remove<|>Approve</);
+  assert.doesNotMatch(markup, /row-actions-trigger|>Approve</);
 });
 
 test('learner progress renders a non-empty mastery record', () => {
@@ -935,4 +938,76 @@ test('student settings splits account from app without losing a panel', () => {
   for (const heading of ['learning style', 'Reminders', 'Display']) {
     assert.match(app, new RegExp(heading), `App tab lost ${heading}`);
   }
+});
+
+test('library rows carry a three-dots menu, and legacy courses cannot be renamed', () => {
+  const { CoursesLibrary } = loadComponent('app/prototype/Library.js', {
+    queryData: { '/sources': [] },
+  });
+
+  const markup = renderToStaticMarkup(React.createElement(CoursesLibrary, {
+    courses: [
+      { id: 'gen-1', name: 'Generated course', sections: 3, status: 'APPROVED' },
+      { id: 'man-1', name: 'Old manual course', manual: true, status: 'PUBLISHED' },
+    ],
+    loading: false,
+    error: null,
+    onOpen: () => {},
+    onDrafted: () => {},
+  }));
+
+  // The control the instructor was missing entirely.
+  assert.match(markup, /row-actions-trigger/, 'no three-dots trigger rendered');
+  assert.match(markup, /Actions for course/);
+
+  // A legacy remnant is visible in the library so it can be cleared -- it used
+  // to be filtered out here and reachable only from the rail.
+  assert.match(markup, /Old manual course/);
+  assert.match(markup, /s-legacy-tag/);
+  assert.match(markup, /retired manual workflow/);
+
+  // The row's open affordance must be a SIBLING of the menu, not its parent:
+  // a button inside a button is invalid HTML and the inner click would bubble
+  // into opening the course. Walk the tags rather than pattern-matching, since
+  // a regex cannot tell nesting from sequence.
+  //
+  // Lookahead rather than \b: a literal backspace byte replaced that escape
+  // once already, which made match() return null and this check pass while
+  // testing nothing. The count assertion below makes that failure loud.
+  const buttonTags = markup.match(/<\/?button(?=[\s>])/g) || [];
+  assert.ok(buttonTags.length >= 4, `expected button tags, found ${buttonTags.length}`);
+  let depth = 0;
+  for (const tag of buttonTags) {
+    depth += tag === '<button' ? 1 : -1;
+    assert.ok(depth <= 1, 'a button is nested inside another button');
+  }
+  assert.equal(depth, 0, 'unbalanced button tags');
+});
+
+test('a source card exposes rename and remove', () => {
+  const { SourcesView } = loadComponent('app/prototype/Library.js', {
+    queryData: {
+      '/sources': [{ id: 'src-1', title: 'MCRP 3-01A', status: 'APPROVED' }],
+      '/sources/src-1': { id: 'src-1', title: 'MCRP 3-01A', pages: [], chunks: [] },
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(SourcesView));
+  assert.match(markup, /row-actions-trigger/);
+  assert.match(markup, /Actions for source/);
+});
+
+test('the course hook refreshes the legacy list too, not just generated courses', async () => {
+  // Removing a legacy course succeeded on the server while its row stayed on
+  // screen, because the manual list was fetched once with no reload path and
+  // the shared refetch only covered /courses. That is indistinguishable from
+  // the delete not working.
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/learning.js'), 'utf8');
+
+  // The manual list must expose a way to reload.
+  assert.match(source, /refetch:\s*\(\)\s*=>\s*setReload/, 'useManualCourses exposes no refetch');
+  assert.match(source, /\[enabled,\s*reload\]/, 'the manual effect does not depend on a reload trigger');
+
+  // And the hook's shared refetch must drive it.
+  const returned = source.slice(source.indexOf('    manualEnabled,'));
+  assert.match(returned, /manual\.refetch/, 'the shared refetch does not refresh the manual list');
 });

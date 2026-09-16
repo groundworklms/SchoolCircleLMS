@@ -70,6 +70,16 @@ const dbMock = {
     record.updatedAt = new Date();
     return true;
   },
+  async deleteLearningRecords(ids) {
+    let deleted = 0;
+    for (const id of [...new Set(ids || [])]) {
+      if (records.delete(id)) deleted += 1;
+    }
+    return { records: deleted, courses: 0 };
+  },
+  async courseEvidenceCount() {
+    return { attempts: 0, schedules: 0, total: 0 };
+  },
   async createCourseRevisionAtomically() {
     throw new Error('not used in source library tests');
   },
@@ -81,6 +91,9 @@ const dbMock = {
 mock.module('../lib/db.js', { namedExports: dbMock });
 mock.module('../lib/model-settings.js', {
   namedExports: { async primeModelSettings() {} },
+});
+mock.module('../lib/doctrine-settings.js', {
+  namedExports: { async primeDoctrineSettings() {} },
 });
 mock.module('../lib/auth.js', {
   namedExports: {
@@ -254,7 +267,7 @@ test('source catalog uses targeted metadata-only PDF queries', async () => {
   }
 });
 
-test('approval and removal use version CAS without resurrecting a removed source', async () => {
+test('concurrent approvals of one source resolve through a version CAS', async () => {
   const source = await dbMock.createLearningRecord({
     ownerId: OWNER.id,
     type: 'SOURCE',
@@ -276,22 +289,24 @@ test('approval and removal use version CAS without resurrecting a removed source
     started: resolveStarted,
   };
   versionUpdateBarrier = barrier;
-  const approval = core.approveSource(OWNER, { params: { id: source.id } });
-  const removal = core.removeSource(OWNER, { params: { id: source.id } });
+  const first = core.approveSource(OWNER, { params: { id: source.id } });
+  const second = core.approveSource(OWNER, { params: { id: source.id } });
   await started;
   barrier.released = true;
   versionUpdateBarrier = null;
   release();
-  const results = await Promise.allSettled([approval, removal]);
-  assert.equal((await dbMock.getLearningRecord(source.id)).status, 'REMOVED');
-  assert.ok(results.some((result) => result.status === 'fulfilled'));
-  assert.equal(
-    await statusOf(() => core.approveSource(OWNER, { params: { id: source.id } })),
-    404,
-  );
+  const results = await Promise.allSettled([first, second]);
+  const stored = await dbMock.getLearningRecord(source.id);
+  assert.equal(stored.status, 'APPROVED');
+  // Exactly one writer may win the CAS; the loser is told the source moved
+  // rather than silently double-applying the transition.
+  assert.equal(results.filter((result) => result.status === 'fulfilled').length, 1);
+  const loser = results.find((result) => result.status === 'rejected');
+  assert.equal(loser.reason.code, 'SOURCE_TRANSITION_CONFLICT');
+  assert.equal(stored.version, 1);
 });
 
-test('source guards reject removal during course/rubric generation', async () => {
+test('source guards reject deletion during course/rubric generation', async () => {
   const courseSource = await dbMock.createLearningRecord({
     ownerId: OWNER.id,
     type: 'SOURCE',
@@ -309,7 +324,7 @@ test('source guards reject removal during course/rubric generation', async () =>
     body: { title: 'Guarded course', objectives: [], sourceIds: [courseSource.id] },
   });
   await courseGate.startedPromise;
-  await core.removeSource(OWNER, { params: { id: courseSource.id } });
+  await core.deleteSource(OWNER, { params: { id: courseSource.id } });
   courseGate.release();
   await assert.rejects(coursePromise, (error) => error.code === 'SOURCE_GUARD_CONFLICT');
   assert.equal(
@@ -335,7 +350,7 @@ test('source guards reject removal during course/rubric generation', async () =>
     body: { task: 'Guarded rubric', sourceId: rubricSource.id },
   });
   await rubricGenerationGate.startedPromise;
-  await core.removeSource(OWNER, { params: { id: rubricSource.id } });
+  await core.deleteSource(OWNER, { params: { id: rubricSource.id } });
   rubricGenerationGate.release();
   await assert.rejects(rubricPromise, (error) => error.code === 'SOURCE_GUARD_CONFLICT');
   assert.equal(
@@ -459,33 +474,34 @@ test('duplicate deterministic PDF attachment maps a unique conflict to 409', asy
   }
 });
 
-test('remove route enforces ownership and archives approved source citations', async () => {
+test('delete route enforces ownership, refuses a cited source, and takes its PDF with it', async () => {
   const source = await dbMock.createLearningRecord({
     ownerId: OWNER.id,
     type: 'SOURCE',
     status: 'APPROVED',
     payload: {
-      title: 'Archivable source',
-      sourceId: 'archive-1',
+      title: 'Removable source',
+      sourceId: 'removable-1',
       text: 'Approved source text.',
       pages: [{ page: 1, text: 'Approved source text.' }],
       chunks: [{ page: 1, text: 'Approved source text.' }],
     },
   });
-  const approvedCourse = await dbMock.createLearningRecord({
+  const citingCourse = await dbMock.createLearningRecord({
     ownerId: OWNER.id,
     type: 'COURSE_DRAFT',
     status: 'APPROVED',
     payload: { title: 'Existing approved course', sourceIds: [source.id] },
   });
   const bytes = makePdf('Approved source text.');
-  await dbMock.createLearningRecord({
+  const storedPdf = await dbMock.createLearningRecord({
     ownerId: OWNER.id,
     type: 'SOURCE_PDF',
     status: 'STORED',
+    id: sourceLibrary.sourcePdfRecordId(source.id),
     payload: {
       sourceRecordId: source.id,
-      filename: 'archive.pdf',
+      filename: 'removable.pdf',
       bytesBase64: Buffer.from(bytes).toString('base64'),
     },
   });
@@ -505,6 +521,7 @@ test('remove route enforces ownership and archives approved source citations', a
     ownerId: OWNER.id,
     type: 'SOURCE_PDF',
     status: 'STORED',
+    id: sourceLibrary.sourcePdfRecordId(pending.id),
     payload: {
       sourceRecordId: pending.id,
       filename: 'pending.pdf',
@@ -512,6 +529,7 @@ test('remove route enforces ownership and archives approved source citations', a
     },
   });
 
+  // Another instructor is not the owner: the source is simply not there.
   const denied = await sourceRoute.DELETE(
     new Request(`http://localhost/api/learning/sources/${source.id}`, {
       method: 'DELETE',
@@ -530,6 +548,37 @@ test('remove route enforces ownership and archives approved source citations', a
   );
   assert.equal(learnerDenied.status, 403);
 
+  // The owner is refused too while a course still cites the source: provenance
+  // wins over tidiness, and the refusal names the course.
+  const inUse = await sourceRoute.DELETE(
+    new Request(`http://localhost/api/learning/sources/${source.id}`, {
+      method: 'DELETE',
+      headers: headers(OWNER),
+    }),
+    { params: { id: source.id } },
+  );
+  assert.equal(inUse.status, 409);
+  const inUseBody = await inUse.json();
+  assert.equal(inUseBody.code, 'SOURCE_IN_USE');
+  assert.match(inUseBody.error, /Existing approved course/);
+  assert.ok(await dbMock.getLearningRecord(source.id));
+
+  // Rename is the one edit a row action offers, and it only touches the label.
+  const renamed = await sourceRoute.PATCH(
+    new Request(`http://localhost/api/learning/sources/${source.id}`, {
+      method: 'PATCH',
+      headers: { ...headers(OWNER), 'content-type': 'application/json' },
+      body: JSON.stringify({ title: 'Renamed source' }),
+    }),
+    { params: { id: source.id } },
+  );
+  assert.equal(renamed.status, 200);
+  assert.equal((await renamed.json()).title, 'Renamed source');
+  assert.equal((await dbMock.getLearningRecord(source.id)).payload.text, 'Approved source text.');
+
+  // Drop the citation and the same request now succeeds, taking the stored
+  // original with it rather than stranding megabytes of base64.
+  await dbMock.updateLearningRecord(citingCourse.id, { payload: { title: 'Existing approved course', sourceIds: [] } });
   const removed = await sourceRoute.DELETE(
     new Request(`http://localhost/api/learning/sources/${source.id}`, {
       method: 'DELETE',
@@ -538,27 +587,14 @@ test('remove route enforces ownership and archives approved source citations', a
     { params: { id: source.id } },
   );
   assert.equal(removed.status, 200);
-  assert.equal((await dbMock.getLearningRecord(source.id)).payload.text, 'Approved source text.');
-  assert.equal((await dbMock.getLearningRecord(source.id)).status, 'REMOVED');
+  assert.equal((await removed.json()).deleted, true);
+  assert.equal(await dbMock.getLearningRecord(source.id), null);
+  assert.equal(await dbMock.getLearningRecord(storedPdf.id), null);
+  assert.equal(await statusOf(() => core.getSource(LEARNER, { params: { id: source.id } })), 404);
+  assert.equal(await statusOf(() => core.getSourcePdf(LEARNER, { params: { id: source.id } })), 404);
 
-  const archived = await sourceRoute.GET(
-    new Request(`http://localhost/api/learning/sources/${source.id}`, { headers: headers(LEARNER) }),
-    { params: { id: source.id } },
-  );
-  const archivedBody = await archived.json();
-  assert.equal(archived.status, 200);
-  assert.equal(archivedBody.text, 'Approved source text.');
-  assert.equal(archivedBody.hasPdf, true);
-
-  const archivedPdf = await sourcePdfRoute.GET(
-    new Request(`http://localhost/api/learning/sources/${source.id}/pdf`, { headers: headers(LEARNER) }),
-    { params: { id: source.id } },
-  );
-  assert.equal(archivedPdf.status, 200);
-  assert.deepEqual([...new Uint8Array(await archivedPdf.arrayBuffer())], [...bytes]);
-  assert.equal(archivedPdf.headers.get('cache-control'), 'private, no-store');
-  assert.match(archivedPdf.headers.get('content-disposition'), /^inline; filename="/);
-
+  // A pending source stays private to its owner throughout: not listed, not
+  // readable, and its original is not downloadable.
   const listed = await core.listSources(LEARNER);
   assert.equal(listed.json.some((entry) => entry.id === source.id), false);
   assert.equal(listed.json.some((entry) => entry.id === pending.id), false);
@@ -573,6 +609,15 @@ test('remove route enforces ownership and archives approved source citations', a
     404,
   );
 
+  // The owner can still read their own pending original, with private headers.
+  const ownerPdf = await sourcePdfRoute.GET(
+    new Request(`http://localhost/api/learning/sources/${pending.id}/pdf`, { headers: headers(OWNER) }),
+    { params: { id: pending.id } },
+  );
+  assert.equal(ownerPdf.status, 200);
+  assert.equal(ownerPdf.headers.get('cache-control'), 'private, no-store');
+  assert.match(ownerPdf.headers.get('content-disposition'), /^inline; filename="/);
+
   assert.equal(
     await statusOf(() => core.draftCourseRecord(OWNER, {
       body: { title: 'New draft', objectives: [], sourceIds: [source.id] },
@@ -585,10 +630,6 @@ test('remove route enforces ownership and archives approved source citations', a
     })),
     404,
   );
-
-  // Keep the approved course in the store until the test ends: it is the
-  // authorization proof that made the archived source readable to the learner.
-  assert.equal(approvedCourse.status, 'APPROVED');
 });
 
 test('source PDF ingest stores bytes, attach validates pages, and keeps metadata private', async () => {

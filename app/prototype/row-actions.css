@@ -1,0 +1,195 @@
+/*
+ * The three-dots row menu. Self-contained: it is used from the instructor
+ * library, which loads prototype.css and student.css but not course.css, so
+ * this cannot lean on the form styling that lives there.
+ */
+
+.row-actions {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+.row-actions-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  padding: 0;
+  color: var(--p-dim, #6e6e73);
+  background: none;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.row-actions-trigger:hover:not(:disabled) {
+  color: var(--p-text, #1d1d1f);
+  background: var(--p-bg, #f5f5f7);
+}
+
+.row-actions-trigger[aria-expanded='true'] {
+  color: var(--p-text, #1d1d1f);
+  background: var(--p-bg, #f5f5f7);
+}
+
+.row-actions-trigger:disabled { opacity: 0.4; cursor: default; }
+
+.row-actions-menu {
+  position: absolute;
+  top: 2.1rem;
+  right: 0;
+  z-index: 20;
+  min-width: 11rem;
+  padding: 0.3rem;
+  background: var(--p-surface, #fff);
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 0.7px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.row-actions-menu > button[role='menuitem'] {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  color: var(--p-text, #1d1d1f);
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 7px;
+  font: inherit;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.row-actions-menu > button[role='menuitem']:hover {
+  background: var(--p-bg, #f5f5f7);
+}
+
+.row-actions-menu > button.is-danger { color: var(--p-bad, #d70015); }
+
+.row-actions-form {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 15rem;
+  padding: 0.65rem;
+}
+
+.row-actions-form label {
+  display: grid;
+  gap: 0.25rem;
+  color: var(--p-dim, #6e6e73);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.row-actions-form input[type='text'] {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  color: var(--p-text, #1d1d1f);
+  background: var(--p-surface, #fff);
+  border: none;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 0.7px rgba(0, 0, 0, 0.18);
+  font: inherit;
+  font-size: 0.88rem;
+}
+
+.row-actions-buttons { display: flex; gap: 0.4rem; }
+.row-actions-buttons .p-btn { font-size: 0.82rem; padding: 0.35rem 0.7rem; }
+
+/* Removal is the one irreversible action here, so it does not look like Save. */
+.row-actions-buttons .p-btn.danger {
+  color: #fff;
+  background: var(--p-bad, #d70015);
+}
+
+.row-actions-confirm {
+  margin: 0;
+  color: var(--p-text, #1d1d1f);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.row-actions-note {
+  margin: 0.35rem 0 0;
+  color: var(--p-dim, #6e6e73);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+/* Errors and archive notices sit under the row rather than inside the popover,
+   which closes on success. */
+.row-actions-error {
+  position: absolute;
+  top: 2.1rem;
+  right: 0;
+  z-index: 19;
+  min-width: 14rem;
+  margin: 0;
+  font-size: 0.78rem;
+}
+
+/* A managed row: the open affordance is its own element so the actions menu
+   can be a sibling rather than an invalid nested button. */
+.s-courserow-managed {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding-right: 0.45rem;
+}
+
+.s-courserow-managed > .s-courserow-open {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.s-courserow-managed > .s-courserow-open.s-courserow-static { cursor: default; }
+.s-courserow-managed > .s-courserow-open > .s-courserow-main { min-width: 0; }
+
+/* Marks a course published through the retired manual workflow. */
+.s-legacy-tag {
+  margin-left: 0.45rem;
+  padding: 0.05rem 0.35rem;
+  color: var(--p-dim, #6e6e73);
+  background: var(--p-bg, #f5f5f7);
+  border-radius: 5px;
+  font-size: 0.7em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+/* Puts the source card's title and its menu on one line. */
+.p-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.p-panel-head > h3 { margin: 0; min-width: 0; }
+
+/* The irreversible step has to look different from the reversible one. */
+.row-actions-danger {
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  color: var(--p-bad, #d70015);
+  background: rgba(215, 0, 21, 0.08);
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+}

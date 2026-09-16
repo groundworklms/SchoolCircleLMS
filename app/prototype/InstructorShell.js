@@ -36,27 +36,16 @@ import { accountDisplay } from '../_auth/account-display';
 
 const INSTRUCTOR = { name: 'SSgt Okafor', initials: 'SO', role: 'Instructor' };
 
-const LIBRARY_PRIMARY = [
-  { id: 'courses', label: 'Courses', icon: I.courses },
-];
-
-const LIBRARY_SECONDARY = [
-  { id: 'sources', label: 'Sources', icon: I.dashboard },
-];
-
-const LIBRARY_ADVANCED = [
-  { id: 'rubrics', label: 'Rubrics', icon: I.dashboard },
-];
-
-const LIBRARY_ACCOUNT = [
-  { id: 'settings', label: 'Settings', icon: I.dashboard },
-];
-
+// Ordered by how often an instructor needs them -- the course list first, the
+// account last. They were briefly four one-item groups under four headings,
+// which cost four lines of chrome to say nothing: a heading earns its place by
+// telling you what several items have in common, and one item has nothing to
+// have in common with.
 const LIBRARY = [
-  ...LIBRARY_PRIMARY,
-  ...LIBRARY_SECONDARY,
-  ...LIBRARY_ADVANCED,
-  ...LIBRARY_ACCOUNT,
+  { id: 'courses', label: 'Courses', icon: I.courses },
+  { id: 'sources', label: 'Sources', icon: I.dashboard },
+  { id: 'rubrics', label: 'Rubrics', icon: I.dashboard },
+  { id: 'settings', label: 'Settings', icon: I.dashboard },
 ];
 
 const REAL_VIEWS = [
@@ -272,7 +261,10 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     else {
       body = (
         <CoursesLibrary
-          courses={learning.courses.filter((candidate) => !candidate.manual)}
+          // Legacy manual courses are included so they can be cleared: they
+          // were filtered out here, which left them visible only in the rail
+          // with no way to manage or remove them.
+          courses={learning.courses}
           loading={learning.loading}
           error={learning.error}
           onOpen={openCourse}
@@ -340,22 +332,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
 
         <div className="s-rail-scroll" tabIndex={0} role="region" aria-label="Library and course navigation">
         <div className="s-rail-sec" style={{ paddingTop: '0.2rem' }}>Library</div>
-        {LIBRARY_PRIMARY.map((l) => (
-          <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
-        ))}
-
-        <div className="s-rail-sec">Secondary tools</div>
-        {LIBRARY_SECONDARY.map((l) => (
-          <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
-        ))}
-
-        <div className="s-rail-sec">Advanced tools</div>
-        {LIBRARY_ADVANCED.map((l) => (
-          <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
-        ))}
-
-        <div className="s-rail-sec">Account</div>
-        {LIBRARY_ACCOUNT.map((l) => (
+        {LIBRARY.map((l) => (
           <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
         ))}
 
@@ -384,17 +361,12 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
               <span className="s-rail-sec-name">{course.name}</span>
               {!isReal && <code>{course.id}</code>}
             </div>
-            {VIEWS.filter((v) => !v.advanced && !v.secondary).map((v) => (
+            {/* Everything an instructor reaches for while teaching the course.
+                `secondary` still orders the list -- it just no longer earns a
+                heading of its own over a single Roster button. */}
+            {VIEWS.filter((v) => !v.advanced).map((v) => (
               <RailButton key={v.id} sub on={view === v.id} label={v.label} onClick={() => go({ view: v.id })} />
             ))}
-            {VIEWS.some((v) => v.secondary) && (
-              <>
-                <div className="s-rail-sec">Course tools</div>
-                {VIEWS.filter((v) => v.secondary).map((v) => (
-                  <RailButton key={v.id} sub on={view === v.id} label={v.label} onClick={() => go({ view: v.id })} />
-                ))}
-              </>
-            )}
             {VIEWS.some((v) => v.advanced) && (
               <>
                 <div className="s-rail-sec">Advanced tools</div>

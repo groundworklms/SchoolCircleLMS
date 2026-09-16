@@ -3,23 +3,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
 import { useApiMutation, useApiQuery } from '../_learning/useLearning';
+import { RowActions } from './RowActions';
 
 function message(error, fallback) {
   return error?.error || error?.message || fallback;
 }
 
+/**
+ * One row in the source library: title, size, preview, and the approval click.
+ *
+ * Rename and removal are deliberately NOT re-implemented here -- they are the
+ * shared RowActions three-dots menu (#113/#119), so a source behaves like a
+ * rubric or a course and the server keeps its one removal rule (a source any
+ * course still cites is refused with SOURCE_IN_USE).
+ */
 export function SourceLibraryCard({ source, onPreview, onRefresh, approveLabel = 'Approve' }) {
   const [error, setError] = useState('');
-  const [confirming, setConfirming] = useState(false);
   const approve = useApiMutation(`/sources/${source.id}/approve`, 'POST');
-  const remove = useApiMutation(`/sources/${source.id}`, 'DELETE');
   const pending = source.status !== 'APPROVED';
   const act = async (action) => {
     setError('');
     try {
       await action.mutate();
       await onRefresh();
-      setConfirming(false);
     } catch (err) {
       setError(message(err, 'That change could not be completed.'));
     }
@@ -32,10 +38,17 @@ export function SourceLibraryCard({ source, onPreview, onRefresh, approveLabel =
       </div>
       <div className="source-card-actions">
         <button type="button" className="p-btn ghost source-preview-trigger" onClick={() => onPreview(source)}>Preview</button>
-        {pending && <button type="button" className="p-btn" onClick={() => act(approve)} disabled={approve.loading || remove.loading}>{approve.loading ? 'Approving…' : approveLabel}</button>}
-        {source.canRemove && !confirming && <button type="button" className="source-remove-link" onClick={() => setConfirming(true)} disabled={approve.loading || remove.loading}>Remove</button>}
+        {pending && <button type="button" className="p-btn" onClick={() => act(approve)} disabled={approve.loading}>{approve.loading ? 'Approving…' : approveLabel}</button>}
+        {source.canRemove && (
+          <RowActions
+            label="source"
+            title={source.title}
+            endpoint={`/api/learning/sources/${source.id}`}
+            onChanged={onRefresh}
+            removeNote="A source that any course still cites cannot be removed."
+          />
+        )}
       </div>
-      {confirming && <div className="source-remove-confirm" role="alert"><span>Remove from library? Existing course citations stay intact.</span><button type="button" className="p-btn ghost" onClick={() => setConfirming(false)}>Keep</button><button type="button" className="p-btn source-danger" onClick={() => act(remove)} disabled={remove.loading}>{remove.loading ? 'Removing…' : 'Remove from library'}</button></div>}
       {error && <p className="s-shell-error source-action-error" role="alert">{error}</p>}
     </article>
   );
