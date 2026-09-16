@@ -12,6 +12,18 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+test('shared instructor shell omits breadcrumbs while retaining course status and navigation', () => {
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/InstructorShell.js'), 'utf8');
+  assert.doesNotMatch(source, /s-crumb|crumbTail/);
+  assert.match(source, /aria-label="Instructor navigation"/);
+  // The status the breadcrumb used to carry must survive its removal, and it
+  // must use courseHeaderStatus so a pending revision still reads as needing
+  // review rather than flattening to Approved/Draft.
+  assert.match(source, /<main className="s-main">[\s\S]*courseHeaderStatus\(course\)/);
+  // A legacy manual course keeps the school label the breadcrumb showed.
+  assert.match(source, /isManual && course\.school/);
+});
+
 function loadComponent(relativePath, {
   queryData = {},
   queryStates = {},
