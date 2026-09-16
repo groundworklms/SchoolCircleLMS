@@ -144,10 +144,8 @@ test(
         status: 'APPROVED',
         payload: { title: 'Existing course', sourceIds: [approved.id] },
       });
-      const pdfBytes = new TextEncoder().encode('%PDF-1.7
-cited');
-      const pendingPdfBytes = new TextEncoder().encode('%PDF-1.7
-pending');
+      const pdfBytes = new TextEncoder().encode('%PDF-1.7\ncited');
+      const pendingPdfBytes = new TextEncoder().encode('%PDF-1.7\npending');
       const pdf = await createLearningRecord({
         ownerId: owner.id,
         type: 'SOURCE_PDF',

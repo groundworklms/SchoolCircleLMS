@@ -120,6 +120,7 @@ mock.module('../lib/arsenal-core.js', {
   namedExports: {
     answerMasterySession: async () => null,
     deriveMasteryPlan: async () => null,
+    draftRubricTask: async () => ({ task: 'Generated task' }),
     draftCourse: async () => {
       if (draftGate) {
         const gate = draftGate;
