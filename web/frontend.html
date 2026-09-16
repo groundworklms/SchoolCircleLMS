@@ -1963,7 +1963,7 @@ const dayAt = o => new Date(TODAY.getTime() + o * DAY);
 const COURSES = [
   { id: 'tc322', code: 'TC 3-22.9', name: 'Rifle & Carbine Marksmanship', short: 'Marksmanship', section: '28xx · Basic · Class 26-04',
     instructor: 'SSgt White', students: 24, week: 6, weeks: 14, enrollCode: 'RCM-26Q4',
-    poi: { id: 'POI 0933-MKS', v: '2024.2', status: 'current', approved: -210, review: 120, owner: 'WTBn S-3' },
+    poi: { id: 'POI 0933-MKS', v: '2024.2', status: 'current', approved: -210, review: 120, owner: 'Schoolhouse S-3' },
     weights: { assignment: .4, quiz: .2, exam: .4 },
     topics: [['Sight alignment & picture', 88], ['Natural point of aim', 81], ['Stable firing positions', 74], ['Trigger control', 61], ['Ballistics & zeroing', 58]],
     annexes: [
@@ -1991,7 +1991,7 @@ const COURSES = [
     ] },
   { id: 'mcpp', code: 'MCWP 5-10', name: 'Marine Corps Planning Process', short: 'MCPP', section: '06xx · MCPP · Class 26-02',
     instructor: 'SSgt White', students: 18, week: 3, weeks: 9, enrollCode: 'MCPP-7KX2',
-    poi: { id: 'POI 06xx-MCPP', v: '2021.1', status: 'superseded', approved: -900, review: -60, owner: 'EWS S-3' },
+    poi: { id: 'POI 06xx-MCPP', v: '2021.1', status: 'superseded', approved: -900, review: -60, owner: 'Schoolhouse S-3' },
     weights: { assignment: .4, quiz: .2, exam: .4 },
     topics: [['Planning terms', 82], ['Problem framing', 78], ['Mission analysis', 74], ['COA development', 69], ['Radio net procedures', 55]],
     annexes: [
@@ -2393,7 +2393,7 @@ function decide(i, ok) {
   if (!REQUESTS.some(x => !x.done)) document.getElementById('dBody').innerHTML = '<p class="note">No requests waiting.</p>';
 }
 function showInvite() {
-  openDialog(`Invite students · ${curCourse().code}`, `<p class="note">One email or EDIPI per line. Invitees get the enrollment code and a join link.</p><textarea id="inv" placeholder="jane.doe@usmc.mil&#10;1234567890"></textarea>`,
+  openDialog(`Invite students · ${curCourse().code}`, `<p class="note">One email or EDIPI per line. Invitees get the enrollment code and a join link.</p><textarea id="inv" placeholder="name@example.mil&#10;0000000000"></textarea>`,
     `<button class="btn ghost press" onclick="closeDialog()">Cancel</button><button class="btn press" onclick="sendInvites()">Send invites</button>`);
 }
 function sendInvites() { const n = document.getElementById('inv').value.split(/\n+/).filter(s => s.trim()).length; if (!n) return toast('Add at least one email or EDIPI'); closeDialog(); toast(`Invites sent to ${n} ${n === 1 ? 'person' : 'people'}`); }
@@ -4784,7 +4784,7 @@ function cbSourcesView() {
 const cbSrcRow = r => {
   const lib = r.libId && libById(r.libId);
   return `<div class="cb-srcrow"><span class="kico ${r.status === 'current' ? 'exam' : 'quiz'}">${ic(r.source === 'uploaded' ? 'file' : 'book')}</span>
-    <span class="cwho"><b>${esc(r.title || 'Untitled source')}</b><small>${esc(r.ed || 'No edition')}${lib ? ` · ${lib.pages} pages indexed` : ''}${r.source === 'uploaded' ? ' · uploaded' : ''}</small></span>
+    <span class="cwho"><b>${esc(r.title || 'Untitled source')}</b><small>${esc(r.ed || 'No edition')}${lib ? '' : ''}${r.source === 'uploaded' ? ' · uploaded' : ''}</small></span>
     ${r.status === 'superseded' ? tag('c', 'Superseded') : tag('g', 'Current')}
     <button class="iconbtn sm press" onclick="cbRefDel('${r.id}')" aria-label="Remove ${esc(r.title || 'source')}">${ic('trash')}</button></div>`;
 };
@@ -5118,6 +5118,9 @@ function cbDoneView() {
 
 /* ============ Course Builder references: search the system library, or upload your own ============ */
 IC.upload = '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>';
+// Illustrative sample catalogue. The publication numbers are real, but the
+// editions, currency and summaries here are DEMO METADATA and are not
+// maintained against MCPEL or APD -- do not read them as authoritative.
 const REF_LIBRARY = [
   { id: 'lib-tc322-24', num: 'TC 3-22.9', title: 'Rifle and Carbine', ed: '2024, Change 1', status: 'current', type: 'Training circular', pages: 412, usedBy: ['TC 3-22.9'], summary: 'Rifle and carbine fundamentals, zeroing, firing positions and qualification.', topics: 'marksmanship sight alignment trigger control zero' },
   { id: 'lib-tc322-16', num: 'TC 3-22.9', title: 'Rifle and Carbine', ed: '2016', status: 'superseded', update: '2024, Change 1', updateId: 'lib-tc322-24', type: 'Training circular', pages: 384, usedBy: [], summary: 'Superseded by the 2024 edition with Change 1.', topics: 'marksmanship' },
@@ -5143,7 +5146,7 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 function cbRefRow(r) {
   const lib = r.libId && libById(r.libId), src = r.source === 'uploaded' ? tag('b', 'Uploaded') : lib ? tag('', 'Library') : tag('', 'Entered manually');
   return `<div class="cb-ref ${r.status}" data-f="ref-${r.id}"><span class="kico ${r.status === 'current' ? 'exam' : 'quiz'}">${ic(r.source === 'uploaded' ? 'file' : 'book')}</span>
-    ${lib ? `<span class="cwho cb-ref-t"><b>${esc(r.title)}</b><small>${esc(lib.type)}<span class="cb-ref-ed-m"> · ${esc(r.ed)}</span> · ${lib.pages} pages indexed${lib.rel ? ` · ${esc(lib.rel)}` : ''}</small></span><span class="cb-ref-ed tnum">${esc(r.ed)}</span>`
+    ${lib ? `<span class="cwho cb-ref-t"><b>${esc(r.title)}</b><small>${esc(lib.type)}<span class="cb-ref-ed-m"> · ${esc(r.ed)}</span>${lib.rel ? ` · ${esc(lib.rel)}` : ''}</small></span><span class="cb-ref-ed tnum">${esc(r.ed)}</span>`
       : `<input class="ti" value="${esc(r.title)}" placeholder="Title" aria-label="Reference title" oninput="cbRefSet('${r.id}','title',this.value)"><input class="ti ed" value="${esc(r.ed)}" placeholder="Edition" aria-label="Edition" oninput="cbRefSet('${r.id}','ed',this.value)">`}
     ${r.status === 'superseded' ? `<button class="btn sm press" onclick="cbRefUpdate('${r.id}')">Update to ${esc(r.update)}</button>` : tag('g', 'Current')}${src}
     <button class="iconbtn sm press" onclick="cbRefDel('${r.id}')" aria-label="Remove reference">${ic('trash')}</button></div>`;
@@ -5181,7 +5184,7 @@ const refLib = { q: '', type: 'all', currentOnly: true, sel: new Set(), ctx: nul
 function openRefLibrary(ctx = {}) {
   Object.assign(refLib, { q: '', type: 'all', currentOnly: true, sel: new Set(), ctx });
   const it = ctx.item && cbFind(ctx.item)?.it;
-  openDialog('Add references from the library', `${it ? `<p class="note" style="margin:0">Selected references are added to the course and cited by “${esc(it.title)}”.</p>` : ''}
+  openDialog('Add references from the library', `<p class="note" style="margin:0 0 .5rem">Illustrative catalogue. The publication numbers are real; the editions and summaries shown are demo metadata, not a maintained record of current doctrine.</p>${it ? `<p class="note" style="margin:0">Selected references are added to the course and cited by “${esc(it.title)}”.</p>` : ''}
     <div class="csearch">
       <label class="csearch-box">${ic('search')}<input id="refQ" type="search" autocomplete="off" spellcheck="false" placeholder="Search by publication number, title or topic" oninput="refLib.q=this.value;renderRefHits()" onkeydown="if(event.key==='Enter'){event.preventDefault();refAddSelected()}"></label>
       <div class="csearch-opts">${pillHtml(REF_TYPES, refLib.type, 'setRefType', 'sm')}<button class="switch" role="switch" aria-checked="true" onclick="refLib.currentOnly=!refLib.currentOnly;this.setAttribute('aria-checked',refLib.currentOnly);renderRefHits()"><span class="trk"></span>Current editions only</button></div>
@@ -5209,7 +5212,7 @@ function renderRefHits() {
     const right = added ? tag('', 'In this course') : x.status === 'superseded' ? `<span class="ref-old">${tag('c', 'Superseded')}<button class="linkbtn" onclick="event.preventDefault();refPickCurrent('${x.updateId}')">Use ${esc(x.update)}</button></span>` : x.source === 'uploaded' ? tag('b', 'Uploaded') : tag('g', 'Current');
     return `<label class="ref-row ${added ? 'added' : ''} ${on ? 'on' : ''}" role="option" aria-selected="${on}"><input type="checkbox" ${added ? 'checked disabled' : on ? 'checked' : ''} onchange="refToggle('${x.id}',this.checked,this)" aria-label="${esc(`${x.num} ${x.title}`.trim())}">
       <span class="kico ${x.status === 'current' ? 'exam' : 'quiz'}">${ic(x.source === 'uploaded' ? 'file' : 'book')}</span>
-      <span class="cwho"><b>${refHl([x.num, x.title].filter(Boolean).join(' · '))}</b><small>${esc(x.type)} · ${refHl(x.ed)} · ${x.pages} pages indexed${x.usedBy.length ? ` · used by ${plural(x.usedBy.length, 'course')}` : ''}</small><span class="ref-sum">${refHl(x.summary)}</span></span>${right}</label>`;
+      <span class="cwho"><b>${refHl([x.num, x.title].filter(Boolean).join(' · '))}</b><small>${esc(x.type)} · ${refHl(x.ed)}${x.usedBy.length ? ` · used by ${plural(x.usedBy.length, 'course')}` : ''}</small><span class="ref-sum">${refHl(x.summary)}</span></span>${right}</label>`;
   }).join('') || `<div class="pv-empty"><b>No references match</b><p class="note">Try a publication number like “3-22.9”${refLib.currentOnly ? ', turn off “Current editions only”,' : ''} or upload your own.</p></div>`;
 }
 function refToggle(id, on, el) {
@@ -5265,7 +5268,7 @@ function renderRefUpload() {
       <label class="cb-field"><span class="cb-lab">Type</span><select class="sel" onchange="refUp.meta.type=this.value">${UP_TYPES.map(t => `<option ${m.type === t ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
     </div>
     <div class="cb-field"><span class="cb-lab">Releasability</span>${pillHtml(UP_REL.map(r => [r, r]), m.rel, 'setUpRel', 'sm')}</div>
-    ${cui ? `<div class="sub-warn">${ic('alert')}<span>CUI stays with this course. It won't be added to the shared library, and its passages stay on the local index.</span></div>` : ''}
+    ${cui ? `<div class="sub-warn">${ic('alert')}<span>In the shipped product, material marked CUI is intended to stay with its course rather than join the shared library. This demo has no backend and enforces nothing.</span></div>` : ''}
     <button class="switch" role="switch" aria-checked="${refUp.share && !cui}" ${cui ? 'disabled' : ''} onclick="refUp.share=!refUp.share;this.setAttribute('aria-checked',refUp.share)"><span class="trk"></span>Add to the shared library so other instructors can find it</button>
     <label class="attest"><input type="checkbox" id="upRights" ${refUp.rights ? 'checked' : ''} onchange="refUp.rights=this.checked;upFoot()"><span>I'm authorized to use this document for training, and it's the edition I intend to cite</span></label>`, '');
   document.querySelector('#dialog .dialog-card').classList.add('wide');
@@ -6889,9 +6892,12 @@ function cmdDonut(parts) {
 
 /* ---------- 1 · readiness ---------- */
 V.cdash = () => {
+  // The product ships instructor and student roles only (app/prototype/routes.js).
+  // This tier is a proposal, and says so on screen so the demo is not read as a
+  // capability that exists today.
   const r = cmdRollup(), rows = cmdSorted(), t = cmdTrend(), b = cmdBehavior(), topics = cmdTopics();
   const kpi = (lab, val, note, tone) => `<div><div class="tilelab">${lab}</div><div class="tileval tnum" style="color:${cmdToneVar(tone)}">${val}</div><div class="note">${note}</div></div>`;
-  return `<div class="pagehead"><h1>Readiness</h1><p>Every course the schoolhouse is running, from the top. The numbers come from the same submissions and grades the instructors work in. Powered by <b>Sextant</b>.</p></div>
+  return `<div class="pagehead"><h1>Readiness</h1><p><b>Proposed view.</b> The shipped product has instructor and student roles only; this command tier is a design proposal, not a built feature. Every course the schoolhouse is running, from the top, drawn from the same submissions and grades the instructors work in.</p></div>
   <div class="bento cm-bento">
     ${kpi('Average mastery', cmdPct(r.avg), `${cmdPct(r.onTrack)} at or above 80%`, toneFrom(r.avg))}
     ${kpi('Students at risk', r.atRisk, `${r.watch} more on watch`, r.atRisk ? 'crit' : 'good')}
