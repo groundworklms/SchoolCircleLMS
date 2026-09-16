@@ -6,6 +6,7 @@ import { usePrefs, setPref } from './prefs';
 import AccountProfile from '../_auth/AccountProfile';
 import { WaypointSurvey } from './LearnerFeatures';
 import { ModelProviderSettings } from './ModelProviderSettings';
+import { DoctrineSettings } from './DoctrineSettings';
 
 /* Settings, both roles. Preferences persist in the browser (prefs.js) so the
    instructor's per-course toggles show up on the student side in a demo. */
@@ -381,6 +382,13 @@ export function InstructorSettings({
         <section className="p-panel">
           <h3>Generation model</h3>
           <ModelProviderSettings />
+        </section>
+      )}
+
+      {authenticated && (
+        <section className="p-panel">
+          <h3>Doctrine engine</h3>
+          <DoctrineSettings />
         </section>
       )}
         </>

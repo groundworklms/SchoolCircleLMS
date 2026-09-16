@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useApiQuery, useApiMutation } from '../_learning/useLearning';
+import { RowActions } from './RowActions';
 
 /* Instructor-side optional tools for a real (LearningRecord) course:
    syllabus (Cadence), doctrinal fidelity (Understudy), the after-action
@@ -501,6 +502,59 @@ export function InstructorAAR({ courseId }) {
 
 /* ---------- rubrics (Rubricon) ---------- */
 
+/**
+ * The instructor's saved rubrics.
+ *
+ * This screen previously showed only the rubric it had just generated, so an
+ * older one could not be found, renamed or removed. Rubrics are owner-private,
+ * so this is the owner's own list.
+ */
+function SavedRubrics() {
+  const { data: rubrics, loading, error, refetch } = useApiQuery('/rubrics');
+  const list = Array.isArray(rubrics) ? rubrics : [];
+
+  if (loading) return <p>Loading saved rubrics…</p>;
+  if (error) {
+    return (
+      <p className="s-shell-error" role="alert">
+        {errText(error, 'Could not load saved rubrics.')}
+      </p>
+    );
+  }
+  if (!list.length) return null;
+
+  return (
+    <div className="p-panel">
+      <h3>Saved rubrics</h3>
+      <div className="s-courselist">
+        {list.map((r) => (
+          <div className="s-courserow s-courserow-managed" key={r.id}>
+            <div className="s-courserow-open s-courserow-static">
+              <div className="s-courserow-main">
+                <div className="s-card-title">{r.title}</div>
+                <div className="s-card-school">
+                  {r.taskCode ? <>{r.taskCode} · </> : null}
+                  {/* Plain text rather than Library's StatusTag: Library already
+                      imports from this module, so importing it back would be a
+                      circular dependency. */}
+                  {r.criteria} criteria · {r.status === 'APPROVED' ? 'Approved' : 'Draft'}
+                </div>
+              </div>
+            </div>
+            <RowActions
+              label="rubric"
+              title={r.title}
+              endpoint={`/api/learning/rubrics/${r.id}`}
+              onChanged={refetch}
+              removeNote="A rubric a mastery session grades against cannot be removed."
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function RubricsView() {
   const {
     data: sources,
@@ -629,6 +683,8 @@ export function RubricsView() {
           approved source, then traces every element back to the text.
         </p>
       </div>
+
+      <SavedRubrics />
 
       <div className="p-panel">
         <h3>Generate a rubric</h3>
