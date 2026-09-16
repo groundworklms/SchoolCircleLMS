@@ -238,7 +238,6 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
       <div className="s-pagehead s-pagehead-row">
         <div>
           <h1>Courses</h1>
-          <p>Sources → Generate → Review → Approve and publish. Only your approved version reaches learners.</p>
         </div>
         <DraftCourseModal
           sources={Array.isArray(sources) ? sources : []}
