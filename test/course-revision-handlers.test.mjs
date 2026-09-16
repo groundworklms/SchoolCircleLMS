@@ -354,6 +354,18 @@ const dbMock = {
   async getLearningRecord(id) {
     return snapshot(records.get(id) || null);
   },
+  async courseEvidenceCount() {
+    // No typed delivery rows in this fixture, so no learner evidence. The
+    // delete path reads this to decide archive-vs-remove.
+    return { attempts: 0, schedules: 0, total: 0 };
+  },
+  async deleteLearningRecords(ids, { courseIds = [] } = {}) {
+    let deleted = 0;
+    for (const id of new Set(ids || [])) {
+      if (records.delete(id)) deleted += 1;
+    }
+    return { records: deleted, courses: courseIds.length };
+  },
   async getLearningRecordsByIds(ids) {
     // Same contract as the real batched read: a Map keyed by id, missing ids
     // simply absent. The production list path uses this instead of a query

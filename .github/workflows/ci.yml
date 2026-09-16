@@ -59,6 +59,11 @@ jobs:
       - name: Text model transport
         run: npm run test:model
 
+      # Renaming and removing library records. The delete guards decide whether
+      # learner attempts survive, so they gate merges.
+      - name: Library record rename and delete guards
+        run: npm run test:record-admin
+
       # Roster and in-app messaging. These are the delivery-authorization contracts:
       # a message is bound to a User row rather than a token email claim, a
       # recipient needs real participation in the course, a learner can only touch
