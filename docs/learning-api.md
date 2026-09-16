@@ -57,14 +57,15 @@ operations. Missing configuration returns `503 NO_PROVIDER`; there is no mock
 or cloud fallback. An explicitly selected
 `https://openrouter.ai/api/v1` may use the runtime `OPENROUTER_API_KEY` for
 authorized development/testing only; a key alone never selects that provider.
-Rubricon and Whetstone currently expose no raw chat injection in their upstream
-releases, so each production generation path additionally requires its own
-isolated `RUBRICON_ENDPOINT`/`RUBRICON_MODEL` or
-`WHETSTONE_ENDPOINT`/`WHETSTONE_MODEL` configuration. A dedicated
-`*_API_KEY` is accepted for any explicit endpoint; the shared
-`OPENROUTER_API_KEY` is accepted only when that endpoint is exactly
-`https://openrouter.ai/api/v1/chat/completions`. Missing configuration returns
-`503` rather than intercepting global environment or fetch state. Anchor
+Rubricon and Whetstone ride this same shared model. Their upstream packages
+freeze `ENDPOINT`/`MODEL` in module-level constants at import, so a per-helper
+endpoint could never follow a runtime Settings change; instead Whetstone is
+driven through its documented `Session` injection seam and Rubricon's BARS
+generation runs on the shared model before being handed to Rubricon's own
+`validateRubric` and `verifyTraceability`, which are unchanged and remain the
+actual guarantee. The former `RUBRICON_*`/`WHETSTONE_*` variables are no longer
+read, and `rubriconConfigured`/`whetstoneConfigured` now report shared-model
+readiness. Anchor
 remains an independent grounded HTTP service at `DOCTRINE_BASE_URL`; the
 existing `/api/doctrine` route returns its explicit unavailable state when that
 variable is absent.

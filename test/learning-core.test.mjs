@@ -144,6 +144,9 @@ test('real production scorer: restored and fresh sessions finish, then reload co
     env: {
       MODEL_BASE_URL: 'https://whetstone.invalid',
       MODEL_ID: 'fixture-model',
+      // Production Whetstone now rides the shared model, so the shared credential
+      // is what authenticates that path.
+      MODEL_API_KEY: 'fixture-not-a-credential',
       WHETSTONE_ENDPOINT: 'https://whetstone.invalid/chat/completions',
       WHETSTONE_MODEL: 'fixture-model',
       WHETSTONE_API_KEY: 'fixture-not-a-credential',
