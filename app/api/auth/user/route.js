@@ -16,6 +16,8 @@ export async function GET(request) {
         id: user.id,
         name: user.name,
         rank: user.rank || null,
+        branch: user.branch || null,
+        payGrade: user.payGrade || null,
         profileCompletedAt: user.profileCompletedAt || null,
         role: user.role,
         externalId: user.externalId,

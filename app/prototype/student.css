@@ -83,6 +83,7 @@
 /* ---------- persistent account profile ---------- */
 .s-profile-editor {
   max-width: 38rem;
+  color: var(--p-text, #1d1d1f);
   background: var(--p-surface, #fff);
   border-radius: var(--p-radius, 18px);
   box-shadow: var(--p-shadow, 0 2px 12px rgba(0,0,0,0.06));
@@ -107,7 +108,8 @@
   margin-top: 1rem;
   font-weight: 600;
 }
-.s-profile-field input {
+.s-profile-field input,
+.s-profile-field select {
   width: 100%;
   border: 1px solid var(--p-border, rgba(0,0,0,0.14));
   border-radius: 9px;
@@ -116,9 +118,19 @@
   font: inherit;
   padding: 0.65rem 0.75rem;
 }
-.s-profile-field input:focus {
+.s-profile-field select {
+  min-height: 2.65rem;
+  cursor: pointer;
+}
+.s-profile-field input:focus,
+.s-profile-field select:focus {
   outline: 2px solid var(--p-accent, #b3122e);
   outline-offset: 1px;
+}
+.s-profile-field select:disabled {
+  cursor: not-allowed;
+  color: var(--p-faint, #86868b);
+  background: var(--p-surface-2, #ececef);
 }
 .s-profile-field small {
   color: var(--p-faint, #86868b);
@@ -154,6 +166,15 @@
   margin: 2rem auto;
   color: var(--p-dim, #6e6e73);
 }
+.s-profile-editor-note {
+  margin-top: 1rem;
+  border-radius: 10px;
+  background: var(--p-surface-2, #ececef);
+  color: var(--p-dim, #6e6e73);
+  padding: 0.7rem 0.85rem;
+  line-height: 1.45;
+}
+.s-profile-editor-note strong { color: var(--p-text, #1d1d1f); }
 .s-profile-editor .p-btn,
 .s-account-recovery .p-btn {
   background: var(--p-accent, #b3122e);

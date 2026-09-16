@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   authReadiness,
   getBearerToken,
+  hasRole,
   requireAnyRole,
   requireIdentity,
   resolveFirebaseUser,
@@ -118,6 +119,14 @@ test('requireIdentity / requireAnyRole reject anonymous callers with the API err
     });
     await assert.rejects(requireAnyRole(request(), ['INSTRUCTOR']), { code: 'AUTH_REQUIRED' });
   });
+});
+
+test('BOTH is authorized for both learner and instructor capabilities', () => {
+  assert.equal(hasRole('BOTH', 'LEARNER'), true);
+  assert.equal(hasRole('BOTH', 'INSTRUCTOR'), true);
+  assert.equal(hasRole('LEARNER', 'INSTRUCTOR'), false);
+  assert.equal(hasRole('INSTRUCTOR', 'LEARNER'), false);
+  assert.equal(hasRole('BOTH', 'ADMIN'), false);
 });
 
 test('learningRoute maps thrown errors to the shared status table', async () => {

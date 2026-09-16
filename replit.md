@@ -12,3 +12,11 @@ structure and limit Replit compatibility changes to workspace configuration.
 
 Make changes on a feature branch and submit a pull request into `main`.
 Do not commit/push directly to `main`, merge, or publish without explicit approval.
+
+## Self-service profile roles
+
+Users may select Student, Instructor, or Both during onboarding and in Settings.
+The owner explicitly approved granting instructor permissions immediately when
+Instructor or Both is saved; no approval queue is required. Changing back to
+Student removes instructor permissions. Keep authorization tied to the saved
+database role, never to an unverified token claim or a client-only view switch.
