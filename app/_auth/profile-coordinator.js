@@ -87,7 +87,8 @@ export function createProfileCoordinator({ getActiveUser, loadProfile, saveProfi
     return load(activeUser, session);
   };
 
-  const update = async ({ name, rank }) => {
+  const update = async (input = {}) => {
+    const { name, role, branch, payGrade, rank } = input;
     const activeUser = getActiveUser();
     const expectedUser = observedUser;
     const expectedAccount = account;
@@ -107,6 +108,24 @@ export function createProfileCoordinator({ getActiveUser, loadProfile, saveProfi
         rank: rank === null ? null : (typeof rank === 'string' ? rank.trim() : ''),
       };
       if (payload.rank === '') payload.rank = null;
+      // Keep the original payload shape available to older callers while
+      // forwarding the complete onboarding fields when the new form supplies
+      // them. The server remains authoritative for allowed values.
+      if (Object.prototype.hasOwnProperty.call(input, 'role')) {
+        payload.role = typeof role === 'string' ? role.trim() : role;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, 'branch')) {
+        payload.branch = typeof branch === 'string' ? branch.trim() : branch;
+      }
+      if (Object.prototype.hasOwnProperty.call(input, 'payGrade')) {
+        payload.payGrade = payGrade === null
+          ? null
+          : (typeof payGrade === 'string' ? payGrade.trim() : payGrade);
+      }
+      if (Object.prototype.hasOwnProperty.call(input, 'branch') && payload.branch === 'CIVILIAN') {
+        payload.payGrade = null;
+        payload.rank = null;
+      }
       const nextProfile = await saveProfile(
         payload,
         { signal: undefined, user: expectedUser },

@@ -21,6 +21,7 @@ datasource db {
 enum Role {
   INSTRUCTOR
   LEARNER
+  BOTH
 }
 
 enum ItemKind {
@@ -39,6 +40,8 @@ model User {
   id        String    @id @default(cuid())
   name      String
   rank      String?   @db.VarChar(40)
+  branch    String?
+  payGrade  String?
   profileCompletedAt DateTime?
   role      Role      @default(LEARNER)
   // For MarineNet/LTI later: the LTI `sub` claim maps here, so local accounts and SSO

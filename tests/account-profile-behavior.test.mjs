@@ -6,6 +6,7 @@ import { signOutAndNavigateToLogin } from '../app/_auth/account-recovery.js';
 import { createProfileCoordinator } from '../app/_auth/profile-coordinator.js';
 import { validateProfileFields } from '../app/_auth/profile-form.js';
 import { authenticatedFetch } from '../lib/auth-fetch.js';
+import { getPayGrades, getRanks } from '../lib/profile-options.js';
 
 const deferred = () => {
   let resolve;
@@ -186,6 +187,57 @@ test('profile form validation trims fields and preserves nullable rank', () => {
   });
   assert.equal(validateProfileFields('   ', '').error, 'Name must be between 1 and 80 characters.');
   assert.equal(validateProfileFields('Rivera', 'r'.repeat(41)).error, 'Rank must be 40 characters or fewer.');
+});
+
+test('profile form validation returns the complete payload and enforces dependent options', () => {
+  assert.deepEqual(
+    validateProfileFields({
+      name: '  Rivera  ',
+      role: 'INSTRUCTOR',
+      branch: 'ARMY',
+      payGrade: 'E-4',
+      rank: 'Specialist',
+    }),
+    {
+      value: {
+        name: 'Rivera',
+        role: 'INSTRUCTOR',
+        branch: 'ARMY',
+        payGrade: 'E-4',
+        rank: 'Specialist',
+      },
+    },
+  );
+  assert.deepEqual(
+    validateProfileFields({
+      name: 'Rivera',
+      role: 'BOTH',
+      branch: 'CIVILIAN',
+      payGrade: 'E-4',
+      rank: 'Specialist',
+    }),
+    {
+      value: {
+        name: 'Rivera',
+        role: 'BOTH',
+        branch: 'CIVILIAN',
+        payGrade: null,
+        rank: null,
+      },
+    },
+  );
+  assert.match(
+    validateProfileFields({
+      name: 'Rivera',
+      role: 'LEARNER',
+      branch: 'NAVY',
+      payGrade: 'E-4',
+      rank: 'Specialist',
+    }).error,
+    /valid rank/i,
+  );
+  assert.equal(getPayGrades('ARMY').some(({ value }) => value === 'E-4'), true);
+  assert.equal(getRanks('ARMY', 'E-4').some(({ value }) => value === 'Specialist'), true);
 });
 
 test('prototype shells use demo identity only when Firebase is unconfigured', () => {

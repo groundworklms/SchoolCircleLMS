@@ -22,6 +22,16 @@ const BASE = '/prototype';
 const STUDENT_AREAS = new Set(['courses', 'calendar', 'inbox', 'settings']);
 const DEFAULT_COURSE = 'M092721';
 
+export function canAccessRole(profile, role, ready = true) {
+  // The prototype intentionally keeps its existing demo behavior when Firebase
+  // is not configured. Once auth is configured, the persisted role controls
+  // both direct URLs and the role switcher.
+  if (!ready) return true;
+  if (role === 'instructor') return ['INSTRUCTOR', 'BOTH'].includes(profile?.role);
+  if (role === 'student') return ['LEARNER', 'BOTH'].includes(profile?.role);
+  return false;
+}
+
 export function parse(pathname) {
   const seg = (pathname || '').replace(/^\/prototype\/?/, '').split('/').filter(Boolean);
 
