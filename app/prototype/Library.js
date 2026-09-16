@@ -38,7 +38,7 @@ export function SourcesView() {
       <div className="s-pagehead s-pagehead-row">
         <div>
           <h1>Source documents</h1>
-          <p>Doctrine and outlines the course drafts cite. Approve a source before drafting from it.</p>
+          <p>Approve sources before drafting courses.</p>
         </div>
         <IngestSourceModal onIngested={refetch} />
       </div>
@@ -340,7 +340,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
         <textarea
           className="scw-ti"
           aria-label="Course objectives"
-          placeholder="Optional objectives, one per line. Leave blank to generate the full outline from your POI and sources."
+          placeholder="Optional objectives, one per line."
           value={objective}
           onChange={(e) => setObjective(e.target.value)}
           rows={4}
@@ -356,7 +356,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           }}
         >
           <legend style={{ padding: '0 0.3rem', fontSize: '0.84em', color: 'var(--p-dim)' }}>
-            Ground this course in approved sources
+            Approved sources
           </legend>
           {approvedSources.map((s) => (
             <label key={s.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.25rem 0', cursor: 'pointer' }}>
@@ -595,7 +595,7 @@ function RevisionForm({
           onChange={(event) => setInstructions(event.target.value)}
           rows={3}
           maxLength={4000}
-          placeholder="Tell the AI what to improve without changing the source evidence…"
+          placeholder="Describe the change; source evidence stays unchanged…"
           autoFocus
         />
       </label>
@@ -629,16 +629,16 @@ function QuestionRevisionControl({ question, version, onSubmit, busy }) {
   );
 }
 
-function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevision }) {
+function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevision, revisionsDisabled }) {
   const lessons = courseLessons(course);
   if (!lessons.length) {
-    return <p className="p-src">The generated course has no lessons to preview yet.</p>;
+    return <p className="p-src">No lessons to preview yet.</p>;
   }
   return (
     <div className="course-generated-preview">
       <div className="course-preview-banner">
         <strong>Generated course preview</strong>
-        <span>Review every lesson and question before approval. Answer keys are visible only in this instructor preview.</span>
+        <span>Review each lesson and question before approval. Answer keys are instructor-only.</span>
       </div>
       {lessons.map((lesson, lessonNumber) => (
         <details key={lesson.id} open={lessonNumber === 0} className="course-preview-lesson">
@@ -655,7 +655,7 @@ function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevi
                 version={version}
                 sectionId={lesson.sectionId || lesson.id}
                 onSubmit={onSubmitRevision}
-                busy={pendingRevision === `lesson:${lesson.sectionId || lesson.id}`}
+                busy={revisionsDisabled || pendingRevision === `lesson:${lesson.sectionId || lesson.id}`}
               />
             </div>
             {lesson.questionRefs?.map((question) => (
@@ -664,7 +664,7 @@ function GeneratedCoursePreview({ course, version, onSubmitRevision, pendingRevi
                 question={question}
                 version={version}
                 onSubmit={onSubmitRevision}
-                busy={pendingRevision === `question:${question.questionId}`}
+                busy={revisionsDisabled || pendingRevision === `question:${question.questionId}`}
               />
             ))}
           </div>
@@ -707,7 +707,7 @@ export function CourseDraft({ course, onChanged }) {
     setNotice('');
     try {
       await revise.mutate(payload);
-      setNotice('Revision request saved. Review the new pending course before approval.');
+      setNotice('Revision saved. Review it before approval.');
       await refresh();
     } catch (error) {
       setErr(errText(error, 'The revision request could not be saved.'));
@@ -739,12 +739,17 @@ export function CourseDraft({ course, onChanged }) {
   const sections = draft?.sections || [];
   const approvedSources = Array.isArray(sources) ? sources.filter((source) => source.status === 'APPROVED') : [];
   const showingLoading = loading || (!envelope && !draftError);
+  // A pendingRevision key only ever matches the one form it names, so blocking
+  // every revision form while an approve is in flight (or the draft failed to
+  // load) needs its own flag. A sentinel key such as 'unavailable' matched no
+  // form at all and left them all enabled -- the opposite of the intent.
+  const revisionsDisabled = approve.loading || Boolean(draftError);
 
   return (
     <>
       <div className="course-review-heading">
         <div>
-          <p className="p-src" style={{ margin: 0 }}>AI-authored course · version {version}</p>
+          <p className="p-src" style={{ margin: 0 }}>Version {version}</p>
           <h2 className="p-h">{draft?.title || course.name || 'Course draft'}</h2>
           <p className="p-sub">
             Grounded in {sourceCount || 'the selected'} approved source{sourceCount === 1 ? '' : 's'}.
@@ -787,7 +792,8 @@ export function CourseDraft({ course, onChanged }) {
             course={draft || {}}
             version={version}
             onSubmitRevision={submitRevision}
-            pendingRevision={pendingRevision || (approve.loading || draftError ? 'unavailable' : null)}
+            pendingRevision={pendingRevision}
+            revisionsDisabled={revisionsDisabled}
           />
         </div>
       )}
@@ -795,7 +801,7 @@ export function CourseDraft({ course, onChanged }) {
       <div className="p-panel course-revision-history">
         <h3>Revision history</h3>
         {revisionHistory.length === 0 ? (
-          <p className="p-src">No revision requests yet. Use an inline lesson or question instruction to start one.</p>
+          <p className="p-src">No revision requests yet. Revise a lesson or question to start one.</p>
         ) : (
           <ol>
             {revisionHistory.map((entry) => (
@@ -812,7 +818,7 @@ export function CourseDraft({ course, onChanged }) {
       </div>
 
       {status === 'PENDING' && sections.length === 0 && (
-        <p className="p-src">The AI service is still generating this course. Refresh when the pending output is ready.</p>
+        <p className="p-src">Still generating. Refresh when the course is ready.</p>
       )}
       <details className="p-panel">
         <summary>Optional learning tools · syllabus and mastery plan</summary>

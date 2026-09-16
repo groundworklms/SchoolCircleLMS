@@ -15,3 +15,10 @@ export const PATCH = rosterRoute(
   { roles: ['LEARNER', 'INSTRUCTOR'] },
   ({ identity, body }) => service.markMessageRead(identity, { body }),
 );
+
+// A recipient must be able to get rid of a message. Scoped to `identity.id` inside
+// the service, so a learner can only ever hide their own row.
+export const DELETE = rosterRoute(
+  { roles: ['LEARNER', 'INSTRUCTOR'] },
+  ({ identity, body }) => service.deleteMessage(identity, { body }),
+);

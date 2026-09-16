@@ -82,13 +82,6 @@ export default function Prototype() {
 
   return (
     <div className="p-root">
-      <div className="p-banner">
-        <strong>PROTOTYPE</strong>
-        <span>
-          Grounded answers, POI ingest and approved course content are live where a service is
-          configured; everything else is hand-written mock data. Nothing unreviewed reaches a student.
-        </span>
-      </div>
       {nav.role === 'student' ? (
         <StudentShell
           nav={nav}

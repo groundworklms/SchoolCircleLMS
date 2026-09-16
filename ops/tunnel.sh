@@ -5,5 +5,5 @@
 #   ops/tunnel.sh
 set -euo pipefail
 KEY="${ORIN_SSH_KEY:-$HOME/.ssh/gameday_orin}"
-echo "Tunneling localhost:8000 → orin-vanguard:8000 (Anchor). Ctrl-C to stop."
-exec ssh -i "$KEY" -N -L 8000:127.0.0.1:8000 vanguard@192.168.55.1
+echo "Tunneling localhost:8000 → orin-vanguard:8000 (direct USB bind) (Anchor). Ctrl-C to stop."
+exec ssh -i "$KEY" -N -L 8000:192.168.55.1:8000 vanguard@192.168.55.1

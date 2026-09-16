@@ -82,19 +82,6 @@ html[data-theme="dark"] .p-root {
   }
 }
 
-/* ---------- prototype banner ---------- */
-.p-banner {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.4rem 1.4rem;
-  background: repeating-linear-gradient(45deg, #fff3d6, #fff3d6 10px, #fbe9c2 10px, #fbe9c2 20px);
-  border-bottom: 0.5px solid #ecd39a;
-  font-size: 0.78em;
-  color: #6b4a0e;
-}
-.p-banner strong { color: #8a5a00; letter-spacing: 0.04em; }
-
 /* ---------- chrome ---------- */
 .p-top {
   display: flex;
