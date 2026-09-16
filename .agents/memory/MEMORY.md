@@ -1,0 +1,1 @@
+- [Git-pinned packages](git-package-install.md) — package helpers may reject GitHub specs; preserve locked sources rather than substitute registry namesakes.

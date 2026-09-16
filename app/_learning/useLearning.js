@@ -8,34 +8,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
+import { useAuth } from '../_auth/AuthProvider';
 
 const API_BASE = '/api/learning';
 
-/** The Prisma-backed identity (id, name, ROLE) for the signed-in Firebase user, or null. */
+/** The shared Prisma-backed identity for the signed-in Firebase user, or null. */
 export function useAuthUser() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let alive = true;
-    authFetch('/api/auth/user')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!alive) return;
-        setUser(data?.user || null);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setUser(null);
-        setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  return { user, loading };
+  const { profile: user, profileLoading: loading, profileError: error, refreshProfile } = useAuth();
+  return { user, loading, error, refetch: refreshProfile };
 }
 
 /** GET /api/learning/status: auth, persistence, and arsenal readiness. */
@@ -44,26 +24,30 @@ export function useLearningStatus() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let alive = true;
-    authFetch(`${API_BASE}/status`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (!alive) return;
-        setStatus(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (!alive) return;
-        setError(err);
-        setLoading(false);
-      });
-    return () => {
-      alive = false;
-    };
+  const fetchStatus = useCallback(async (signal) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await authFetch(`${API_BASE}/status`, { signal });
+      const data = await response.json();
+      if (!response.ok) throw data;
+      if (signal?.aborted) return;
+      setStatus(data);
+    } catch (err) {
+      if (err?.name === 'AbortError' || signal?.aborted) return;
+      setError(err);
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
   }, []);
 
-  return { status, error, loading };
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchStatus(controller.signal);
+    return () => controller.abort();
+  }, [fetchStatus]);
+
+  return { status, error, loading, refetch: () => fetchStatus() };
 }
 
 /** GET `${API_BASE}${path}`; a non-2xx JSON body becomes `error`. */

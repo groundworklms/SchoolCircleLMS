@@ -80,6 +80,103 @@
 .s-rail-spacer { flex: 1; }
 .s-rail > .s-rail-btn:nth-last-child(-n+2) { color: var(--p-dim); font-size: 0.9em; }
 
+/* ---------- persistent account profile ---------- */
+.s-profile-editor {
+  max-width: 38rem;
+  background: var(--p-surface, #fff);
+  border-radius: var(--p-radius, 18px);
+  box-shadow: var(--p-shadow, 0 2px 12px rgba(0,0,0,0.06));
+  padding: 1.5rem;
+}
+.s-profile-editor.onboarding {
+  margin: 3rem auto;
+}
+.s-profile-editor-head h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.55em;
+  letter-spacing: -0.02em;
+}
+.s-profile-editor-head p {
+  margin: 0 0 1.5rem;
+  color: var(--p-dim, #6e6e73);
+}
+.s-profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  font-weight: 600;
+}
+.s-profile-field input {
+  width: 100%;
+  border: 1px solid var(--p-border, rgba(0,0,0,0.14));
+  border-radius: 9px;
+  background: var(--p-surface, #fff);
+  color: var(--p-text, #1d1d1f);
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+}
+.s-profile-field input:focus {
+  outline: 2px solid var(--p-accent, #b3122e);
+  outline-offset: 1px;
+}
+.s-profile-field small {
+  color: var(--p-faint, #86868b);
+  font-size: 0.78em;
+  font-weight: 400;
+}
+.s-profile-field em {
+  color: var(--p-faint, #86868b);
+  font-size: 0.85em;
+  font-style: normal;
+  font-weight: 400;
+}
+.s-profile-editor-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+.s-profile-editor-error,
+.s-shell-error {
+  margin-top: 1rem;
+  border-radius: 10px;
+  background: var(--p-critical-tint, #fff5f0);
+  color: var(--p-critical, #c2410c);
+  padding: 0.7rem 0.85rem;
+}
+.s-profile-editor-success {
+  margin-top: 1rem;
+  color: var(--p-good, #1e7a3c);
+}
+.s-profile-editor-status {
+  max-width: 38rem;
+  margin: 2rem auto;
+  color: var(--p-dim, #6e6e73);
+}
+.s-profile-editor .p-btn,
+.s-account-recovery .p-btn {
+  background: var(--p-accent, #b3122e);
+  border: none;
+  border-radius: 980px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.92em;
+  font-weight: 600;
+  min-height: 2.4rem;
+  padding: 0 1.1rem;
+}
+.s-profile-editor .p-btn:hover,
+.s-account-recovery .p-btn:hover { filter: brightness(1.12); }
+.s-profile-editor .p-btn:disabled,
+.s-account-recovery .p-btn:disabled { cursor: default; opacity: 0.45; }
+.s-profile-editor .p-btn.ghost,
+.s-account-recovery .p-btn.ghost {
+  background: rgba(0,0,0,0.05);
+  color: var(--p-text, #1d1d1f);
+}
+
 /* ---------- content column ---------- */
 .s-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .s-crumbs {
