@@ -64,6 +64,21 @@ for secure credentials, migrations, safe seeding, and the approval/rollout check
 
 ## The learning loop (`/learn`, `/teach`, `/api/learning`)
 
+### Manual interactive course creation
+
+Use **Course builder** in `/teach` (`/teach/courses`) to build a course without
+AI. Drafts support ordered lessons and interactive content blocks, student
+preview, explicit publishing, and archive/restore. Learners open published
+courses through **Interactive courses** in `/learn` (`/learn/library`).
+Draft saves do not change previously published lessons or erase learner history.
+
+The workflow uses the existing PostgreSQL `LearningRecord` table with separate
+manual-course, immutable-release, progress and attempt records. Linked media
+uses HTTPS URLs; this version does not upload files. AI generation, advanced
+branching and export remain separate from this manual authoring workflow.
+See [the authoring contract](docs/MANUAL_AUTHORING_CONTRACT.md) for the API,
+versioning, ownership and assessment rules.
+
 The eleven arsenal packages (Quarry, Coursewright, Rubricon, Sourcerer, Whetstone, Sextant,
 Cadence, Hotwash, Waypoint, Cartridge, Understudy) are pinned by commit in `package.json` and wired
 behind `/api/learning/*` — sources → cited course drafts → rubrics, tutor, mastery sessions, study

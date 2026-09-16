@@ -1,0 +1,441 @@
+/* Manual authoring surfaces.  This is intentionally scoped so the existing
+   teaching and learner shells keep their established layout. */
+.authoring-root {
+  --p-bg: #f5f5f7;
+  --p-surface: #fff;
+  --p-surface-2: #ececef;
+  --p-border: rgba(0, 0, 0, .08);
+  --p-border-soft: rgba(0, 0, 0, .06);
+  --p-text: #1d1d1f;
+  --p-dim: #6e6e73;
+  --p-faint: #86868b;
+  --p-ink: #1d1d1f;
+  --p-accent: #b3122e;
+  --p-accent-bright: #e0334f;
+  --p-accent-tint: rgba(179, 18, 46, .1);
+  --p-good: #1e7a3c;
+  --p-warning: #b0731a;
+  --p-critical: #c2410c;
+  --p-critical-tint: #fff5f0;
+  --p-shadow: 0 2px 12px rgba(0, 0, 0, .06), 0 0 0 .5px rgba(0, 0, 0, .04);
+  --p-shadow-lift: 0 10px 28px rgba(0, 0, 0, .1), 0 0 0 .5px rgba(0, 0, 0, .04);
+  --p-radius: 18px;
+  min-height: 100vh;
+  color: var(--p-text);
+  background: var(--p-bg);
+  font-family: -apple-system, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.authoring-root *,
+.authoring-root *::before,
+.authoring-root *::after { box-sizing: border-box; }
+
+.authoring-root button,
+.authoring-root input,
+.authoring-root textarea,
+.authoring-root select { font: inherit; }
+
+.authoring-root button,
+.authoring-root select { cursor: pointer; }
+
+.authoring-root button:disabled,
+.authoring-root input:disabled,
+.authoring-root textarea:disabled,
+.authoring-root select:disabled { cursor: default; opacity: .58; }
+
+.authoring-root :focus-visible {
+  outline: 2px solid var(--p-accent);
+  outline-offset: 2px;
+}
+
+.authoring-topbar,
+.authoring-editor-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 2.4rem max(1.2rem, calc((100vw - 82rem) / 2)) 1.6rem;
+  background: rgba(255, 255, 255, .86);
+  border-bottom: .5px solid var(--p-border);
+}
+
+.authoring-editor-header {
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, .04);
+}
+
+.authoring-eyebrow,
+.authoring-section-kicker {
+  margin: 0 0 .25rem;
+  color: var(--p-accent);
+  font-size: .74rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.authoring-topbar h1,
+.authoring-editor-heading h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  letter-spacing: -.03em;
+  line-height: 1.1;
+}
+
+.authoring-editor-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.15rem;
+  min-width: 0;
+}
+
+.authoring-editor-heading > div { min-width: 0; }
+.authoring-title-line { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+.authoring-subtitle,
+.authoring-muted { margin: .45rem 0 0; color: var(--p-dim); }
+.authoring-subtitle { max-width: 54ch; }
+.authoring-muted { font-size: .88rem; line-height: 1.45; }
+
+.authoring-main,
+.authoring-editor-main {
+  width: min(82rem, calc(100% - 2.4rem));
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+}
+
+.authoring-editor-main { padding-top: 1.3rem; }
+
+.authoring-panel,
+.authoring-empty,
+.authoring-state,
+.authoring-access {
+  background: var(--p-surface);
+  border: none;
+  border-radius: var(--p-radius);
+  box-shadow: var(--p-shadow);
+}
+
+.authoring-panel { padding: 1.5rem; }
+.authoring-create-panel { display: grid; grid-template-columns: minmax(14rem, .85fr) minmax(22rem, 1.15fr); gap: 2rem; align-items: start; margin-bottom: 2.3rem; }
+.authoring-panel h2,
+.authoring-empty h2,
+.authoring-state h1 { margin: 0; font-size: 1.35rem; letter-spacing: -.02em; }
+.authoring-panel h3 { margin: 0; font-size: 1.02rem; }
+.authoring-panel h4 { margin: 0; font-size: .92rem; }
+
+.authoring-form-row {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+}
+
+.authoring-create-form { display: grid; gap: .45rem; }
+.authoring-create-form > label,
+.authoring-add-block > label { color: var(--p-dim); font-size: .84rem; font-weight: 600; }
+
+.authoring-root input,
+.authoring-root textarea,
+.authoring-root select {
+  width: 100%;
+  min-width: 0;
+  color: var(--p-text);
+  background: var(--p-surface);
+  border: none;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 .7px rgba(0, 0, 0, .16);
+  padding: .62rem .75rem;
+}
+
+.authoring-root input:focus,
+.authoring-root textarea:focus,
+.authoring-root select:focus { outline: 2px solid var(--p-accent); outline-offset: 1px; }
+.authoring-root textarea { min-height: 4rem; resize: vertical; line-height: 1.45; }
+.authoring-root input[type="radio"] { width: 1rem; height: 1rem; padding: 0; accent-color: var(--p-accent); box-shadow: none; }
+.authoring-root input[type="number"] { min-width: 7rem; }
+.authoring-root code { font-family: "SF Mono", Cascadia Code, Consolas, ui-monospace, monospace; font-size: .82em; }
+
+.authoring-btn {
+  min-height: 2.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .4rem;
+  border: none;
+  border-radius: 980px;
+  padding: 0 1.15rem;
+  color: #fff;
+  background: var(--p-accent);
+  font-size: .9rem;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.authoring-btn:hover:not(:disabled) { filter: brightness(1.1); }
+.authoring-btn.ghost { color: var(--p-text); background: rgba(0, 0, 0, .06); }
+.authoring-btn.dark { background: var(--p-ink); }
+.authoring-btn.small { min-height: 2.05rem; padding: 0 .85rem; font-size: .82rem; }
+.authoring-text-btn {
+  display: inline-flex;
+  flex: none;
+  padding: .2rem 0;
+  border: none;
+  background: none;
+  color: var(--p-accent);
+  font-weight: 650;
+}
+.authoring-text-btn:hover { text-decoration: underline; }
+.authoring-actions,
+.authoring-header-actions { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; }
+.authoring-header-actions { justify-content: flex-end; }
+
+.authoring-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.55rem;
+  border-radius: 980px;
+  padding: .12rem .6rem;
+  background: rgba(176, 115, 26, .14);
+  color: var(--p-warning);
+  font-size: .7rem;
+  font-weight: 750;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.authoring-status.published { color: var(--p-good); background: rgba(30, 122, 60, .12); }
+.authoring-status.archived { color: var(--p-critical); background: var(--p-critical-tint); }
+
+.authoring-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.15rem;
+}
+.authoring-section-head > * { min-width: 0; }
+.authoring-course-list { display: grid; gap: .8rem; }
+.authoring-course-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  padding: 1.15rem 1.3rem;
+  text-align: left;
+  color: inherit;
+  background: var(--p-surface);
+  border: none;
+  border-radius: var(--p-radius);
+  box-shadow: var(--p-shadow);
+  transition: box-shadow .15s, transform .15s;
+}
+.authoring-course-card:hover { box-shadow: var(--p-shadow-lift); transform: translateY(-1px); }
+.authoring-course-card-main { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.authoring-course-card-main strong { font-size: 1.1rem; }
+.authoring-course-card-main span { color: var(--p-dim); font-size: .9rem; overflow: hidden; text-overflow: ellipsis; }
+.authoring-course-card-main small { color: var(--p-faint); font-size: .78rem; }
+.authoring-course-card-side { display: flex; align-items: center; gap: .75rem; flex: none; color: var(--p-faint); }
+.authoring-empty { padding: 3rem 1.5rem; text-align: center; }
+.authoring-empty p { color: var(--p-dim); }
+.authoring-state { padding: 2.5rem; text-align: center; }
+.authoring-state p { margin: 0 0 1rem; }
+.authoring-error-state { color: var(--p-critical); }
+.authoring-inline-error { margin: .65rem 0 0; color: var(--p-critical); font-size: .88rem; }
+
+.authoring-editor-layout {
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr);
+  align-items: start;
+  gap: 1.2rem;
+}
+.authoring-lesson-sidebar {
+  position: sticky;
+  top: 5.8rem;
+  min-width: 0;
+  padding: 1rem .8rem .8rem;
+  background: rgba(255, 255, 255, .72);
+  border-radius: var(--p-radius);
+  box-shadow: var(--p-shadow);
+}
+.authoring-sidebar-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; padding: .25rem .35rem .8rem; }
+.authoring-sidebar-heading h2 { margin: 0; font-size: 1.15rem; }
+.authoring-sidebar-empty { padding: 1rem .5rem; color: var(--p-dim); font-size: .86rem; }
+.authoring-lesson-list { display: grid; gap: .25rem; list-style: none; margin: 0; padding: 0; }
+.authoring-lesson-list li { min-width: 0; }
+.authoring-lesson-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+  padding: .62rem .5rem;
+  border: none;
+  border-radius: 10px;
+  color: var(--p-text);
+  background: none;
+  text-align: left;
+}
+.authoring-lesson-item:hover,
+.authoring-lesson-item.selected { background: var(--p-accent-tint); color: var(--p-accent); }
+.authoring-lesson-item.selected { font-weight: 650; }
+.authoring-lesson-index { display: grid; place-items: center; flex: none; width: 1.5rem; height: 1.5rem; border-radius: 7px; color: var(--p-dim); background: rgba(0, 0, 0, .06); font-size: .75rem; font-weight: 700; }
+.selected .authoring-lesson-index { color: #fff; background: var(--p-accent); }
+.authoring-lesson-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.authoring-lesson-actions { display: flex; gap: .1rem; padding: .1rem .25rem .35rem 2.55rem; }
+
+.authoring-workspace { display: grid; gap: 1.2rem; min-width: 0; }
+.authoring-course-details,
+.authoring-lesson-editor { min-width: 0; }
+.authoring-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
+.authoring-field-grid.compact { grid-template-columns: repeat(2, minmax(0, 10rem)); }
+.authoring-field { display: grid; align-content: start; gap: .35rem; min-width: 0; color: var(--p-dim); font-size: .84rem; font-weight: 650; }
+.authoring-field > small { color: var(--p-faint); font-size: .78rem; font-weight: 400; }
+.authoring-field-grid > .authoring-field:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.authoring-array-section { margin-top: 1.45rem; padding-top: 1.2rem; border-top: .5px solid var(--p-border); }
+.authoring-array-heading,
+.authoring-nested-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; margin-bottom: .7rem; }
+.authoring-objectives { display: grid; gap: .45rem; }
+.authoring-objective-row { display: grid; grid-template-columns: 1.8rem minmax(0, 1fr) auto; align-items: center; gap: .55rem; }
+.authoring-drag-number { display: grid; place-items: center; width: 1.65rem; height: 1.65rem; border-radius: 7px; color: var(--p-dim); background: var(--p-surface-2); font-size: .78rem; font-weight: 700; }
+.authoring-empty-line { padding: .8rem 0; color: var(--p-dim); font-size: .88rem; }
+.authoring-empty-line p { margin: 0; }
+
+.authoring-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 1.7rem;
+  height: 1.7rem;
+  padding: 0;
+  border: none;
+  border-radius: 7px;
+  color: var(--p-dim);
+  background: rgba(0, 0, 0, .05);
+  font-size: .92rem;
+  line-height: 1;
+}
+.authoring-icon-btn:hover:not(:disabled) { color: var(--p-accent); background: var(--p-accent-tint); }
+.authoring-icon-btn.danger:hover:not(:disabled) { color: var(--p-critical); background: var(--p-critical-tint); }
+.authoring-array-controls { display: flex; align-items: center; gap: .18rem; flex-wrap: wrap; }
+
+.authoring-lesson-editor > .authoring-field { margin-bottom: 1.25rem; }
+.authoring-block-list { display: grid; gap: 1rem; }
+.authoring-block {
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--p-bg);
+  box-shadow: inset 0 0 0 .5px var(--p-border);
+}
+.authoring-block-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .8rem 1rem; background: rgba(255, 255, 255, .65); }
+.authoring-block-head h3 { margin: .08rem 0 0; font-size: 1rem; }
+.authoring-block-number { color: var(--p-faint); font-size: .72rem; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+.authoring-block-actions { display: flex; gap: .2rem; flex-wrap: wrap; }
+.authoring-block-body { display: grid; gap: .85rem; padding: 1rem; }
+.authoring-nested-section,
+.authoring-options { display: grid; gap: .65rem; padding-top: .5rem; }
+.authoring-nested-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8rem; align-items: start; padding: .8rem; background: var(--p-surface); border-radius: 12px; box-shadow: 0 0 0 .5px var(--p-border); }
+.authoring-nested-fields { display: grid; gap: .65rem; min-width: 0; }
+.authoring-option-row { display: grid; grid-template-columns: 1.1rem minmax(0, 1fr) auto; align-items: center; gap: .5rem; padding: .4rem; border-radius: 10px; }
+.authoring-option-row.selected { background: rgba(30, 122, 60, .08); }
+.authoring-add-block { margin-top: 1.25rem; padding-top: 1.1rem; border-top: .5px solid var(--p-border); }
+.authoring-add-block .authoring-form-row { margin-top: .4rem; }
+.authoring-add-block select { max-width: 18rem; }
+
+.authoring-banner {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  margin-bottom: .9rem;
+  padding: .72rem .9rem;
+  border-radius: 10px;
+  font-size: .9rem;
+}
+.authoring-banner.error { color: var(--p-critical); background: var(--p-critical-tint); }
+.authoring-banner.success { color: var(--p-good); background: rgba(30, 122, 60, .1); }
+.authoring-banner.info { color: var(--p-dim); background: rgba(0, 0, 0, .045); }
+.authoring-banner.recovery { color: var(--p-text); background: rgba(179, 18, 46, .08); align-items: flex-start; flex-wrap: wrap; }
+.authoring-banner.recovery > span { color: var(--p-dim); }
+.authoring-banner.recovery .authoring-actions { width: 100%; }
+
+.authoring-results { margin-top: 1.2rem; }
+.authoring-result-tiles { display: flex; gap: .8rem; margin-bottom: 1.1rem; }
+.authoring-result-tiles > div { display: flex; flex-direction: column; min-width: 8rem; padding: .85rem 1rem; border-radius: 12px; background: var(--p-bg); }
+.authoring-result-tiles strong { font-size: 1.5rem; }
+.authoring-result-tiles span { color: var(--p-dim); font-size: .78rem; }
+.authoring-table-wrap { overflow-x: auto; }
+.authoring-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.authoring-table th,
+.authoring-table td { padding: .58rem .65rem; text-align: left; border-bottom: .5px solid var(--p-border); }
+.authoring-table thead th { color: var(--p-faint); font-size: .8rem; font-weight: 650; }
+.authoring-table tbody th { font-weight: 500; }
+.authoring-privacy-note { margin-bottom: 0; }
+
+.authoring-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(29, 29, 31, .42);
+}
+.authoring-modal { width: min(58rem, 100%); max-height: min(90vh, 55rem); overflow-y: auto; padding: 1.4rem; background: var(--p-surface); border-radius: var(--p-radius); box-shadow: var(--p-shadow-lift); }
+.authoring-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.authoring-modal-head h2 { margin: 0; font-size: 1.35rem; }
+.authoring-preview-note { margin: 1rem 0; color: var(--p-dim); font-size: .88rem; }
+.authoring-preview-content { padding: 1rem; border-radius: 12px; background: var(--p-bg); }
+
+.authoring-access { width: min(36rem, calc(100% - 2rem)); margin: 8vh auto; padding: 2rem; text-align: center; }
+.authoring-access h1 { margin: 0 0 .6rem; font-size: 1.5rem; }
+.authoring-access p { color: var(--p-dim); }
+.authoring-access .authoring-actions { justify-content: center; margin-top: 1.2rem; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .authoring-topbar,
+  .authoring-editor-header { padding-left: 1.1rem; padding-right: 1.1rem; }
+  .authoring-main,
+  .authoring-editor-main { width: min(100% - 1.4rem, 82rem); }
+  .authoring-editor-layout { grid-template-columns: 1fr; }
+  .authoring-lesson-sidebar { position: static; }
+  .authoring-lesson-list { display: flex; overflow-x: auto; padding-bottom: .3rem; }
+  .authoring-lesson-list li { flex: 0 0 14rem; }
+  .authoring-lesson-actions { padding-left: .5rem; }
+}
+
+@media (max-width: 680px) {
+  .authoring-topbar,
+  .authoring-editor-header { flex-direction: column; }
+  .authoring-editor-header { align-items: stretch; }
+  .authoring-editor-heading { gap: .7rem; }
+  .authoring-header-actions { justify-content: flex-start; }
+  .authoring-create-panel { grid-template-columns: 1fr; gap: 1rem; }
+  .authoring-form-row,
+  .authoring-add-block .authoring-form-row { align-items: stretch; flex-direction: column; }
+  .authoring-field-grid,
+  .authoring-field-grid.compact { grid-template-columns: 1fr; }
+  .authoring-field-grid > .authoring-field:last-child:nth-child(odd) { grid-column: auto; }
+  .authoring-objective-row { grid-template-columns: 1.8rem minmax(0, 1fr); }
+  .authoring-objective-row .authoring-array-controls { grid-column: 2; }
+  .authoring-nested-card { grid-template-columns: 1fr; }
+  .authoring-nested-card > .authoring-array-controls { justify-content: flex-end; }
+  .authoring-option-row { grid-template-columns: 1.1rem minmax(0, 1fr); }
+  .authoring-option-row .authoring-array-controls { grid-column: 2; }
+  .authoring-banner { align-items: flex-start; flex-direction: column; gap: .2rem; }
+  .authoring-modal { padding: 1rem; }
+}
