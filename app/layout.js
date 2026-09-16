@@ -1,13 +1,22 @@
 import './globals.css';
+import './_components/widgets.css';
+import { AuthProvider } from './_auth/AuthProvider';
+import QaWidget from './_components/QaWidget';
 
 export const metadata = {
-  title: 'Hackathon Planning Board',
+  title: 'SchoolCircle',
+  description: 'Grounded, offline, human-led training — every answer cites the manual or refuses.',
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body suppressHydrationWarning>
+        <AuthProvider>
+          {children}
+          <QaWidget />
+        </AuthProvider>
+      </body>
     </html>
   );
 }

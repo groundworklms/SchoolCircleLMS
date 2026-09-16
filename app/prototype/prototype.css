@@ -34,18 +34,53 @@
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---------- prototype banner ---------- */
-.p-banner {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.4rem 1.4rem;
-  background: repeating-linear-gradient(45deg, #fff3d6, #fff3d6 10px, #fbe9c2 10px, #fbe9c2 20px);
-  border-bottom: 0.5px solid #ecd39a;
-  font-size: 0.78em;
-  color: #6b4a0e;
+/* Dark theme (Settings → Display → Theme, #51). Explicit choice always wins;
+   "Match system" (no data-theme attribute) follows prefers-color-scheme. */
+html[data-theme="dark"] .p-root,
+html:not([data-theme="light"]):not([data-theme="dark"]) .p-root {
+  color-scheme: dark;
 }
-.p-banner strong { color: #8a5a00; letter-spacing: 0.04em; }
+@media (prefers-color-scheme: light) {
+  html:not([data-theme]) .p-root { color-scheme: light; }
+}
+html[data-theme="dark"] .p-root {
+  --p-bg: #1c1c1e;
+  --p-surface: #2c2c2e;
+  --p-surface-2: #3a3a3c;
+  --p-border: rgba(255, 255, 255, 0.10);
+  --p-border-soft: rgba(255, 255, 255, 0.07);
+  --p-text: #f5f5f7;
+  --p-dim: #a1a1a6;
+  --p-faint: #8e8e93;
+  --p-rail: rgba(28, 28, 30, 0.72);
+  --p-accent-tint: rgba(224, 51, 79, 0.16);
+  --p-good: #3ac262;
+  --p-warning: #e0983a;
+  --p-critical: #ff7a45;
+  --p-critical-tint: rgba(255, 122, 69, 0.12);
+  --p-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
+  --p-shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme="light"]):not([data-theme="dark"]) .p-root {
+    --p-bg: #1c1c1e;
+    --p-surface: #2c2c2e;
+    --p-surface-2: #3a3a3c;
+    --p-border: rgba(255, 255, 255, 0.10);
+    --p-border-soft: rgba(255, 255, 255, 0.07);
+    --p-text: #f5f5f7;
+    --p-dim: #a1a1a6;
+    --p-faint: #8e8e93;
+    --p-rail: rgba(28, 28, 30, 0.72);
+    --p-accent-tint: rgba(224, 51, 79, 0.16);
+    --p-good: #3ac262;
+    --p-warning: #e0983a;
+    --p-critical: #ff7a45;
+    --p-critical-tint: rgba(255, 122, 69, 0.12);
+    --p-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
+    --p-shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
+  }
+}
 
 /* ---------- chrome ---------- */
 .p-top {
@@ -230,7 +265,7 @@
   background: rgba(0,0,0,0.05); border: none;
   display: grid; place-items: center; font-size: 0.8em; font-weight: 700; color: var(--p-dim);
 }
-.p-ans.correct { box-shadow: 0 0 0 1.5px var(--p-good); background: rgba(30,122,60,0.08); }
+.p-ans.correct { box-shadow: 0 0 0 1.5px var(--p-good); background: rgba(30,122,60,0.08); color: var(--p-good); }
 .p-ans.correct .p-anskey { background: var(--p-good); color: #fff; }
 .p-ans.wrong { box-shadow: 0 0 0 1.5px var(--p-critical); background: rgba(194,65,12,0.08); }
 .p-ans.wrong .p-anskey { background: var(--p-critical); color: #fff; }

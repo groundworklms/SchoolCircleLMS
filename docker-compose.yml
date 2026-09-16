@@ -1,6 +1,5 @@
-# Local Postgres for development. `docker compose up -d`, then `npm run db:migrate`.
-# Production uses a managed Postgres in the approved enclave (Track B); edge/offline uses
-# SQLite (change the Prisma provider + DATABASE_URL). See docs/DATA_MODEL.md.
+# Local Postgres for development or offline hardware (Docker is not used in Replit).
+# Cloud uses Cloud SQL Postgres with the same schema. See docs/CLOUD_POSTGRES.md.
 services:
   db:
     image: postgres:16-alpine
@@ -9,13 +8,13 @@ services:
     environment:
       POSTGRES_USER: schoolcircle
       POSTGRES_PASSWORD: schoolcircle
-      POSTGRES_DB: schoolcircle
+      POSTGRES_DB: schoolcircle_dev
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - schoolcircle_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U schoolcircle"]
+      test: ["CMD-SHELL", "pg_isready -U schoolcircle -d schoolcircle_dev"]
       interval: 5s
       timeout: 3s
       retries: 10

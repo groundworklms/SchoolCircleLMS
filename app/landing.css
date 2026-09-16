@@ -1,0 +1,222 @@
+/* SchoolCircle landing + login — self-contained light theme.
+   globals.css is the dark planning-board theme applied app-wide, so every rule
+   here is explicit (background, color) and scoped under .scl-* to override it. */
+
+.scl-page {
+  --p-bg: #f5f5f7;
+  --p-surface: #ffffff;
+  --p-accent: #b3122e; /* Marine scarlet */
+  --p-ink: #1d1d1f;
+  --p-muted: #6b6b70;
+  --p-line: rgba(0, 0, 0, 0.08);
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 600px at 80% -10%, rgba(179, 18, 46, 0.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 10%, rgba(179, 18, 46, 0.06), transparent 55%),
+    var(--p-bg);
+  color: var(--p-ink);
+  font: 16px/1.55 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.scl-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 22px 24px;
+}
+.scl-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+.scl-brand .scl-mark {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--p-accent);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 15px;
+}
+.scl-nav-spacer { flex: 1; }
+
+.scl-wrap { max-width: 1080px; margin: 0 auto; padding: 24px; }
+
+.scl-hero {
+  text-align: center;
+  padding: 56px 16px 40px;
+}
+.scl-eyebrow {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--p-accent);
+  margin-bottom: 18px;
+}
+.scl-hero h1 {
+  font-size: clamp(30px, 6vw, 52px);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  margin: 0 0 16px;
+  font-weight: 800;
+}
+.scl-hero p.scl-sub {
+  font-size: clamp(16px, 2.4vw, 20px);
+  color: var(--p-muted);
+  max-width: 620px;
+  margin: 0 auto 30px;
+}
+
+.scl-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.scl-btn {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 13px 26px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: transform 0.06s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.scl-btn:active { transform: translateY(1px); }
+.scl-btn-primary {
+  background: var(--p-accent);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(179, 18, 46, 0.28);
+}
+.scl-btn-primary:hover { background: #9d1029; }
+.scl-btn-ghost {
+  background: var(--p-surface);
+  color: var(--p-ink);
+  border-color: var(--p-line);
+}
+.scl-btn-ghost:hover { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); }
+.scl-btn-google {
+  background: var(--p-surface);
+  color: var(--p-ink);
+  border-color: var(--p-line);
+  width: 100%;
+  justify-content: center;
+}
+.scl-btn-block { width: 100%; justify-content: center; }
+
+.scl-principles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin: 44px 0 8px;
+}
+.scl-principle {
+  background: var(--p-surface);
+  border-radius: 18px;
+  padding: 22px 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+.scl-principle h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+.scl-principle p { margin: 0; color: var(--p-muted); font-size: 14px; }
+.scl-principle .scl-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--p-accent); display: inline-block; margin-right: 8px;
+  vertical-align: middle;
+}
+
+.scl-what {
+  background: var(--p-surface);
+  border-radius: 22px;
+  padding: 34px;
+  margin: 40px 0;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+.scl-what h2 { margin: 0 0 10px; font-size: 24px; letter-spacing: -0.02em; }
+.scl-what p { margin: 0 auto; max-width: 640px; color: var(--p-muted); }
+
+.scl-foot {
+  text-align: center;
+  color: var(--p-muted);
+  font-size: 13px;
+  padding: 26px 16px 48px;
+}
+
+/* ---- login ---- */
+.scl-login-center {
+  min-height: calc(100vh - 84px);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.scl-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--p-surface);
+  border-radius: 22px;
+  padding: 32px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.10);
+}
+.scl-card h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: -0.02em; }
+.scl-card .scl-lead { margin: 0 0 22px; color: var(--p-muted); font-size: 14px; }
+.scl-field { margin-bottom: 12px; }
+.scl-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.scl-field input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--p-line);
+  border-radius: 12px;
+  padding: 11px 13px;
+  font-size: 15px;
+  background: #fbfbfd;
+}
+.scl-field input:focus { outline: 2px solid rgba(179, 18, 46, 0.35); border-color: transparent; }
+.scl-or {
+  display: flex; align-items: center; gap: 12px;
+  color: var(--p-muted); font-size: 12px; margin: 18px 0;
+}
+.scl-or::before, .scl-or::after { content: ""; flex: 1; height: 1px; background: var(--p-line); }
+.scl-note {
+  background: #fff7e6;
+  border: 1px solid #ffe2a8;
+  color: #7a5300;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+.scl-err {
+  background: #fdeaec;
+  border: 1px solid #f5c2c9;
+  color: #9d1029;
+  border-radius: 12px;
+  padding: 10px 13px;
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+.scl-linkbtn {
+  background: none; border: none; color: var(--p-accent);
+  font-size: 13px; cursor: pointer; padding: 0; font-weight: 600;
+}
+.scl-muted-row { text-align: center; margin-top: 16px; font-size: 13px; color: var(--p-muted); }
+
+@media (max-width: 720px) {
+  .scl-principles { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 420px) {
+  .scl-principles { grid-template-columns: 1fr; }
+}

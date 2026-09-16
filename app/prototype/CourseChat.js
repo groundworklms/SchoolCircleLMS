@@ -1,12 +1,26 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from '../_auth/AuthProvider';
+import { authenticatedFetch } from '../../lib/auth-fetch';
+import { useApiQuery } from '../_learning/useLearning';
+import { unlockedLessonIds } from './Lessons';
+import { usePrefs } from './prefs';
+import { SourceViewer } from './SourceViewer';
 
-/* Floating course chat. Bottom-right of every course screen.
-   Real when a grounded doctrine service is configured (DOCTRINE_BASE_URL):
-   questions go to /api/doctrine and come back with citations, or an honest
-   abstention. Without one, it answers from a small script so the interaction
-   can still be demoed — and says so in the header. Never an ungrounded model. */
+/* The one chat. Bottom-right of every student screen. Which grounding it
+   uses depends on what is on screen:
+
+     real course   -> Sourcerer over that course's approved sources
+                      (/api/learning/tutor). Cite-or-refuse; every turn is
+                      recorded for the class view, never attributed.
+     mock course   -> Anchor over the doctrine corpus (/api/doctrine) when a
+                      service is configured; a small script otherwise, and the
+                      header says so.
+     no course     -> Anchor over the doctrine corpus, or the same script.
+
+   Never an ungrounded model. Citations from either backend are normalised to
+   one shape (see `normaliseCitation`) so the renderer is the same. */
 
 const SUGGEST = {
   M092721: [
@@ -20,6 +34,12 @@ const SUGGEST = {
     'What does PMCS cover on the AN/PRC-117G?',
   ],
 };
+
+const DOCTRINE_SUGGEST = [
+  'What is sight alignment?',
+  'How do I correct trigger jerk?',
+  'What is the maximum effective range of a Javelin missile?',
+];
 
 // Scripted fallback. Keyed by a regex over the question; the answer shape
 // matches what the doctrine service returns so the renderer is the same.
@@ -60,6 +80,18 @@ const SCRIPT = [
       'Operator-level PMCS on the AN/PRC-117G covers the before/during/after checks in the -10: case and connectors, battery condition and seating, antenna and connector inspection, power-on self-test, and a comm check. [1] The step people put out of sequence is the antenna check — it comes before power-on, not after.',
     citations: [{ n: 1, citation: 'TM-XXXXX-10, Ch 2, "Operator PMCS", table 2-1', pub_id: 'TM-XXXXX-10' }],
   },
+  {
+    match: /sight alignment/i,
+    answer:
+      'Sight alignment is the relationship between the front sight post and the rear sight aperture: the top of the front post centred in the aperture, level with an equal amount of light on each side. [1] Sight picture adds the target — but alignment comes first, because an alignment error grows with range while a picture error does not.',
+    citations: [{ n: 1, citation: 'TC 3-22.9, Ch 7, "Aiming — sight alignment"', pub_id: 'TC 3-22.9 §7' }],
+  },
+  {
+    match: /trigger jerk|trigger control/i,
+    answer:
+      'Trigger jerk is an abrupt rearward pull that disturbs the sights at the instant of firing. Correct it with a steady, increasing pressure straight to the rear, applied so the shot surprises you, with follow-through — hold the sight picture through recoil. [1] Dry-fire with a coin on the barrel exposes it fast.',
+    citations: [{ n: 1, citation: 'TC 3-22.9, Ch 8, "Trigger control & follow-through"', pub_id: 'TC 3-22.9 §8' }],
+  },
 ];
 
 const ABSTAIN = {
@@ -74,25 +106,135 @@ function scripted(q) {
   return hit ? { abstained: false, answer: hit.answer, citations: hit.citations } : ABSTAIN;
 }
 
-export default function CourseChat({ course, view }) {
+// A student has to have reached a lesson before the tutor will answer from it —
+// study aid for reinforcement, not a shortcut around the lesson (#63). There is
+// no real link between the doctrine corpus and a mock course's lesson content,
+// so this is a best-effort keyword match on lesson titles, for the mock course
+// on screen; real courses and the bare doctrine mode have nothing to gate.
+const STOPWORDS = new Set([
+  'about', 'above', 'after', 'again', 'before', 'their', 'there', 'these', 'those',
+  'which', 'while', 'would', 'could', 'should', 'where', 'when', 'what', 'with', 'from', 'into',
+]);
+function keywordsOf(title) {
+  return title.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 4 && !STOPWORDS.has(w));
+}
+
+function useLockedLessons(course) {
+  const prefs = usePrefs();
+  const mock = course && !course.record && Array.isArray(course.topics) ? course : null;
+  return useMemo(() => {
+    if (!mock) return [];
+    const { ids, flat } = unlockedLessonIds(mock, prefs.progress);
+    const unlockedKeywords = new Set(flat.filter((l) => ids.has(l.id)).flatMap((l) => keywordsOf(l.title)));
+    return flat
+      .filter((l) => !ids.has(l.id))
+      .map((lesson) => ({ lesson, keywords: keywordsOf(lesson.title).filter((k) => !unlockedKeywords.has(k)) }))
+      .filter((x) => x.keywords.length > 0);
+  }, [mock, prefs.progress]);
+}
+
+function findLockedLesson(lockedLessons, question) {
+  const q = ` ${question.toLowerCase().replace(/[^a-z0-9\s]/g, ' ')} `;
+  const hit = lockedLessons.find(({ keywords }) => keywords.some((k) => q.includes(` ${k} `)));
+  return hit?.lesson || null;
+}
+
+/* Anchor returns { n, citation, pub_id, page_printed }; Sourcerer returns
+   { label, source, page }. One shape for the renderer. */
+export function normaliseCitation(c, i) {
+  const citation = {
+    n: c.n ?? i + 1,
+    citation: c.citation ?? c.label ?? c.source ?? 'source',
+    pub_id: c.pub_id ?? c.source ?? c.sourceId ?? '',
+    page: c.page_printed ?? c.page ?? null,
+  };
+  const sourceId = c.sourceId ?? c.source_id;
+  const passage = c.passage ?? c.text ?? c.quote ?? c.excerpt ?? c.snippet;
+  // Keep the compact legacy citation shape unless the provider supplied a
+  // locator that the viewer can use. This also keeps citations from older
+  // Anchor responses backwards-compatible.
+  if (sourceId) citation.sourceId = sourceId;
+  if (typeof passage === 'string' && passage.trim()) citation.passage = passage;
+  // Keep a Sourcerer record locator even when pub_id is a human publication
+  // label. Non-enumerable preserves the compact legacy JSON shape.
+  if (typeof c.source === 'string' && c.source.trim()) {
+    Object.defineProperty(citation, 'source', { value: c.source, enumerable: false });
+  }
+  return citation;
+}
+
+function citationSourceText(citation) {
+  return [
+    citation?.sourceId,
+    citation?.source_id,
+    citation?.source,
+    citation?.pub_id,
+  ].filter((value) => typeof value === 'string' && value.trim());
+}
+
+function startsWithSourceId(value, sourceId) {
+  const escaped = String(sourceId).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // A source id must end at a locator boundary. Without this check source-1
+  // would incorrectly claim source-10 p.2 in a multi-source course.
+  return new RegExp(`^${escaped}(?=$|[\\s,;:#()[\\]{}.])`).test(value.trim());
+}
+
+export function resolveCitationSourceId(citation, sourceIds) {
+  if (!Array.isArray(sourceIds) || sourceIds.length === 0) return null;
+  const texts = citationSourceText(citation);
+  const exact = sourceIds.find((sourceId) =>
+    texts.some((text) => String(text).trim() === String(sourceId)),
+  );
+  if (exact) return exact;
+  const prefixed = sourceIds.find((sourceId) =>
+    texts.some((text) => startsWithSourceId(text, sourceId)),
+  );
+  if (prefixed) return prefixed;
+  // A one-source course has no ambiguity when an older provider omits the
+  // record id. Never guess in a multi-source course.
+  return sourceIds.length === 1 ? sourceIds[0] : null;
+}
+
+export default function CourseChat({ course = null, view = null }) {
+  const { user, loading, ready } = useAuth();
+  if (!ready || loading || !user) return null;
+  return <SignedInCourseChat key={`${user.uid}:${course?.id || 'doctrine'}`} course={course} view={view} />;
+}
+
+function SignedInCourseChat({ course, view }) {
+  const tutorMode = Boolean(course?.record);
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState(null); // { ready, baseUrl?, reason? }
   const [msgs, setMsgs] = useState([]);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [providerError, setProviderError] = useState(null);
+  const [selectedCitation, setSelectedCitation] = useState(null);
   const bodyRef = useRef(null);
   const inputRef = useRef(null);
+  const requestRef = useRef(null);
+  const lockedLessons = useLockedLessons(course);
+
+  // Tutor mode needs the course's approved source ids (learner envelopes keep
+  // sourceIds; only answer keys are stripped).
+  const { data: envelope } = useApiQuery(`/courses/${course?.id}`, { enabled: tutorMode });
+  const sourceIds = envelope?.course?.sourceIds || [];
+
+  useEffect(() => () => requestRef.current?.abort(), []);
 
   useEffect(() => {
+    if (tutorMode) return;
     fetch('/api/doctrine')
       .then((r) => r.json())
-      .then(setStatus)
-      .catch(() => setStatus({ ready: false }));
-  }, []);
-
-  useEffect(() => {
-    setMsgs([]);
-  }, [course.id]);
+      .then((nextStatus) => {
+        setStatus(nextStatus);
+        if (!nextStatus?.ready) setProviderError(nextStatus?.reason || 'Doctrine provider is not configured.');
+      })
+      .catch(() => {
+        setStatus({ ready: false, reason: 'Doctrine provider status unavailable.' });
+        setProviderError('Doctrine provider status unavailable.');
+      });
+  }, [tutorMode]);
 
   useEffect(() => {
     if (bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight;
@@ -102,41 +244,92 @@ export default function CourseChat({ course, view }) {
     if (open && inputRef.current) inputRef.current.focus();
   }, [open]);
 
-  const grounded = !!status?.ready;
+  const grounded = tutorMode ? sourceIds.length > 0 : !!status?.ready;
+  const modeLabel = tutorMode
+    ? (providerError ? 'Provider unavailable' : grounded ? 'Grounded · course sources' : 'Waiting for sources')
+    : status === null ? 'Checking…' : grounded ? 'Grounded · doctrine' : 'Scripted demo';
+  const modeTitle = tutorMode
+    ? `Sourcerer over ${sourceIds.length} approved source${sourceIds.length === 1 ? '' : 's'}`
+    : grounded ? `Anchor via ${status.baseUrl}` : status?.reason || 'No doctrine service configured';
 
   const ask = async (q) => {
     const question = (q ?? text).trim();
     if (!question || busy) return;
     setText('');
+    const history = msgs
+      .filter((m) => m.role === 'user' || (m.role === 'assistant' && !m.error))
+      .map((m) => ({ role: m.role, text: m.role === 'user' ? m.text : m.answer }));
     setMsgs((m) => [...m, { role: 'user', text: question }]);
+    setProviderError(
+      tutorMode || status?.ready
+        ? null
+        : status?.reason || 'Doctrine provider is not configured.',
+    );
+
+    const locked = findLockedLesson(lockedLessons, question);
+    if (locked) {
+      setMsgs((m) => [...m, {
+        role: 'assistant',
+        abstained: true,
+        locked: true,
+        answer: `That's covered in a lesson you haven't reached yet — ${locked.title} (${locked.id}). Work through it first, then I can help you review it.`,
+        citations: [],
+      }]);
+      return;
+    }
+
     setBusy(true);
     let out;
     try {
-      if (grounded) {
-        const res = await fetch('/api/doctrine', {
+      const controller = new AbortController();
+      requestRef.current = controller;
+      if (tutorMode) {
+        const res = await authenticatedFetch('/api/learning/tutor', {
           method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question, sourceIds, history }),
+        });
+        const json = await res.json().catch(() => ({}));
+        out = res.ok
+          ? { abstained: Boolean(json.refused), reason: json.reason, answer: json.answer, citations: (json.citations || []).map(normaliseCitation) }
+          : { abstained: true, answer: `The tutor could not answer: ${json.error || res.status}.`, citations: [], error: true };
+        if (!res.ok) setProviderError(json.error || `Tutor service returned ${res.status}.`);
+      } else if (grounded) {
+        const res = await authenticatedFetch('/api/doctrine', {
+          method: 'POST',
+          signal: controller.signal,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ question }),
         });
-        const json = await res.json();
-        out = res.ok ? json : { abstained: true, answer: `The doctrine service could not answer: ${json.error || res.status}.`, citations: [], error: true };
+        const json = await res.json().catch(() => ({}));
+        out = res.ok
+          ? { ...json, citations: (json.citations || []).map(normaliseCitation) }
+          : { abstained: true, answer: `The doctrine service could not answer: ${json.error || res.status}.`, citations: [], error: true };
+        if (!res.ok) setProviderError(json.error || `Doctrine service returned ${res.status}.`);
       } else {
         await new Promise((r) => setTimeout(r, 500 + Math.random() * 400));
         out = scripted(question);
       }
     } catch (e) {
-      out = { abstained: true, answer: 'The doctrine service is unreachable.', citations: [], error: true };
+      if (e.name === 'AbortError') return;
+      setProviderError(e?.message || 'The grounding service is unreachable.');
+      out = { abstained: true, answer: 'The grounding service is unreachable.', citations: [], error: true };
     }
     setMsgs((m) => [...m, { role: 'assistant', ...out }]);
     setBusy(false);
   };
 
-  const suggestions = SUGGEST[course.id] || [];
+  const suggestions = course ? SUGGEST[course.id] || [] : DOCTRINE_SUGGEST;
+  const title = course ? 'Ask about this course' : 'Ask the doctrine';
+  const subtitle = course ? course.name : 'Grounded by Anchor · cite-or-refuse';
+  const placeholder = !course ? 'Ask the doctrine…' : `Ask about ${view === 'lessons' ? 'this lesson' : 'this course'}…`;
+  const citationSourceId = resolveCitationSourceId(selectedCitation, sourceIds);
 
   return (
     <>
       {!open && (
-        <button className="s-chat-fab" onClick={() => setOpen(true)} aria-label="Ask about this course">
+        <button className="s-chat-fab" onClick={() => setOpen(true)} aria-label={title}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
             <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 4 13.5z" />
             <path d="M8 8h8M8 11.5h5" />
@@ -146,28 +339,38 @@ export default function CourseChat({ course, view }) {
       )}
 
       {open && (
-        <section className="s-chat" aria-label="Course assistant">
+        <section className="s-chat" aria-label={title}>
           <header className="s-chat-head">
             <div className="s-chat-title">
-              <div>Ask about this course</div>
-              <div className="s-chat-sub">{course.name}</div>
+              <div>{title}</div>
+              <div className="s-chat-sub">{subtitle}</div>
             </div>
-            <span className={`s-chat-status${grounded ? ' on' : ''}`} title={grounded ? `Grounded via ${status.baseUrl}` : status?.reason || 'No doctrine service configured'}>
+            <span className={`s-chat-status${grounded ? ' on' : ''}`} title={modeTitle}>
               <span className="s-chat-dot" />
-              {status === null ? 'Checking…' : grounded ? 'Grounded' : 'Scripted demo'}
+              {modeLabel}
             </span>
             <button className="s-chat-x" onClick={() => setOpen(false)} aria-label="Close">×</button>
           </header>
 
           <div className="s-chat-body" ref={bodyRef}>
+            {providerError && (
+              <div
+                className="s-chat-provider-error"
+                role="alert"
+                style={{ margin: '0.6rem', padding: '0.55rem 0.7rem', borderRadius: '6px', color: 'var(--p-warning)', background: 'var(--p-surface-2)', fontSize: '0.8em' }}
+              >
+                {providerError}
+              </div>
+            )}
             <div className="s-chat-msg assistant">
               <div className="s-chat-bubble">
-                Answers come only from the approved outlines and doctrine indexed for this course, with a citation you can open.
-                If the material doesn&apos;t cover it, I&apos;ll say so rather than guess.
+                {tutorMode
+                  ? 'Answers come only from the approved sources behind this course, with a citation you can open. If they don\'t cover it, I\'ll say so rather than guess.'
+                  : 'Answers come only from the approved outlines and doctrine, with a citation you can open. If the material doesn\'t cover it, I\'ll say so rather than guess.'}
               </div>
             </div>
 
-            {msgs.length === 0 && (
+            {msgs.length === 0 && suggestions.length > 0 && (
               <div className="s-chat-suggest">
                 {suggestions.map((s) => (
                   <button key={s} onClick={() => ask(s)}>{s}</button>
@@ -183,15 +386,22 @@ export default function CourseChat({ course, view }) {
               ) : (
                 <div className={`s-chat-msg assistant${m.abstained ? ' abstain' : ''}`} key={i}>
                   <div className="s-chat-bubble">
-                    {m.abstained && !m.error && <div className="s-chat-abstain">Not in the course material</div>}
+                    {m.locked && <div className="s-chat-abstain">Not yet unlocked</div>}
+                    {m.abstained && !m.error && !m.locked && <div className="s-chat-abstain">Not in the {tutorMode ? 'course sources' : 'course material'}{m.reason ? ` · ${String(m.reason).replace(/_/g, ' ')}` : ''}</div>}
                     {m.error && <div className="s-chat-abstain">Service error</div>}
                     {m.answer}
                   </div>
                   {m.citations?.length > 0 && (
                     <div className="s-chat-cites">
                       {m.citations.map((c) => (
-                        <button key={c.n} className="s-chat-cite" title={c.citation}>
-                          <b>[{c.n}]</b> {c.pub_id}{c.page_printed ? ` · p.${c.page_printed}` : ''}
+                         <button
+                           key={c.n}
+                           type="button"
+                           className="s-chat-cite"
+                           title={c.citation}
+                           onClick={() => setSelectedCitation(c)}
+                         >
+                          <b>[{c.n}]</b> {c.pub_id || c.citation}{c.page ? ` · p.${c.page}` : ''}
                         </button>
                       ))}
                     </div>
@@ -218,10 +428,10 @@ export default function CourseChat({ course, view }) {
               ref={inputRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder={`Ask about ${view === 'lessons' ? 'this lesson' : 'this course'}…`}
-              disabled={busy}
+              placeholder={placeholder}
+              disabled={busy || (tutorMode && !grounded)}
             />
-            <button type="submit" className="p-btn" disabled={busy || !text.trim()} aria-label="Send">
+            <button type="submit" className="p-btn" disabled={busy || !text.trim() || (tutorMode && !grounded)} aria-label="Send">
               ↑
             </button>
           </form>
@@ -229,6 +439,12 @@ export default function CourseChat({ course, view }) {
             Not available during exams. Your instructor sees what the class asks, in aggregate — never who asked.
           </div>
         </section>
+      )}
+      {tutorMode && citationSourceId && selectedCitation && (
+        <SourceViewer
+          sourceId={citationSourceId}
+          citation={selectedCitation}
+        />
       )}
     </>
   );

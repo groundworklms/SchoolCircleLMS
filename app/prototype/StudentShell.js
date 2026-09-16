@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import './student.css';
 
 import { COURSES } from './data';
@@ -8,7 +10,7 @@ import StudyMaterials from './StudyMaterials';
 import LiveSession from './LiveSession';
 import MyProgress from './MyProgress';
 import StudentCalendar from './StudentCalendar';
-import StudentInbox from './StudentInbox';
+import StudentInbox, { useInboxMessages } from './StudentInbox';
 import Assignments, { dueSoon } from './Assignments';
 import Lessons, { currentLesson } from './Lessons';
 import CourseChat from './CourseChat';
@@ -18,10 +20,21 @@ import Grades from './Grades';
 import Discussions from './Discussions';
 import { StudentSettings } from './Settings';
 import { usePrefs } from './prefs';
+import { useLearningCourses, resolveCourse } from './learning';
+import { RealCourseHome, CourseReader, MasterySession, StudyPlan, LearnerProgress } from './LearnerFeatures';
+import LibraryList from './published/Library';
+import PublishedCourseReader from './published/CourseReader';
+import { useAuth } from '../_auth/AuthProvider';
+import { accountDisplay } from '../_auth/account-display';
 
 /* Student shell. Canvas-shaped — global icon rail, dashboard with course cards,
    course sub-nav, breadcrumb, and a To-Do column — on a neutral palette.
-   The four screens it mounts are untouched; this file only decides where they sit. */
+   The screens it mounts are untouched; this file only decides where they sit.
+
+   Courses come from two places (see learning.js): approved LearningRecord
+   courses from /api/learning, which get the views the API can back (reader,
+   Whetstone mastery, Cadence path, Sextant progress), and the mock demo
+   courses, which keep the full click-through set. */
 
 const STUDENT = { name: 'Cpl Rivera', initials: 'CR' };
 
@@ -36,6 +49,26 @@ const COURSE_NAV = [
   { id: 'live', label: 'Live Session' },
   { id: 'progress', label: 'My Progress' },
 ];
+
+// Views a real (approved LearningRecord) course supports.
+const REAL_COURSE_NAV = [
+  { id: 'home', label: 'Home' },
+  { id: 'lessons', label: 'Lessons' },
+  { id: 'mastery', label: 'Mastery Session' },
+  { id: 'path', label: 'Learning Path' },
+  { id: 'progress', label: 'My Progress' },
+];
+
+function RealProgress({ course }) {
+  return <LearnerProgress courseId={course.id} />;
+}
+
+const REAL_SCREENS = {
+  lessons: CourseReader,
+  mastery: MasterySession,
+  path: StudyPlan,
+  progress: RealProgress,
+};
 
 const SCREENS = {
   lessons: Lessons,
@@ -70,7 +103,7 @@ function Agenda({ courseId, onOpen }) {
               <button className="s-item" onClick={() => t.courseId && onOpen(t.courseId, t.view)}>
                 <span className="s-item-title">{t.title}</span>
                 <span className="s-item-meta">
-                  {t.courseId ? <code>{COURSES[t.courseId].id}</code> : t.kind} · {t.due}
+                  {t.courseId ? <code>{COURSES[t.courseId]?.id || t.courseId}</code> : t.kind} · {t.due}
                 </span>
               </button>
             </li>
@@ -86,7 +119,7 @@ function Agenda({ courseId, onOpen }) {
               <button className="s-item" onClick={() => onOpen(t.courseId, t.view)}>
                 <span className="s-item-title">{t.title}</span>
                 <span className="s-item-meta">
-                  <code>{COURSES[t.courseId].id}</code> · {t.when}
+                  <code>{COURSES[t.courseId]?.id || t.courseId}</code> · {t.when}
                   {t.exam && <span className="p-examtag" style={{ marginLeft: '0.4rem' }}>EXAM</span>}
                 </span>
               </button>
@@ -100,7 +133,34 @@ function Agenda({ courseId, onOpen }) {
 
 /* ---------- dashboard ---------- */
 
-function Dashboard({ onOpen }) {
+function RealCourseCard({ c, onOpen }) {
+  return (
+    <button className="s-card" onClick={() => onOpen(c.id, 'home')}>
+      <div className="s-card-head">
+        <div>
+          <div className="s-card-title">{c.name}</div>
+          <div className="s-card-school">{c.school}</div>
+        </div>
+        <div className="s-card-avg">
+          <span style={{ color: 'var(--p-good)' }}>✓</span>
+          <small>cited</small>
+        </div>
+      </div>
+      <div className="s-card-foot">
+        <span>{c.sections} sections · {c.status === 'APPROVED' ? 'approved by your instructor' : 'generated course'}</span>
+      </div>
+    </button>
+  );
+}
+
+function Dashboard({
+  onOpen,
+  realCourses = [],
+  learningLoading = false,
+  learningError = null,
+}) {
+  const { ready, profile } = useAuth();
+  const identity = accountDisplay({ ready, profile, demo: STUDENT });
   const list = Object.values(COURSES);
   const hour = new Date().getHours();
   const greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -115,8 +175,16 @@ function Dashboard({ onOpen }) {
     <div className="s-two">
       <div>
         <div className="s-pagehead">
-          <h1>{greet}, {STUDENT.name}</h1>
-          <p>{list.length} courses in progress · 1 requirement overdue</p>
+          <h1>{greet}, {[identity.rank, identity.name].filter(Boolean).join(' ')}</h1>
+          {learningLoading ? (
+            <p role="status">Loading enrolled courses…</p>
+          ) : learningError ? (
+            <p className="s-shell-error" role="alert">
+              Unable to load enrolled courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
+            </p>
+          ) : (
+            <p>{realCourses.length} enrolled courses · {list.length} demo samples · 1 requirement overdue</p>
+          )}
         </div>
 
         <h4 className="s-label">Up next</h4>
@@ -127,7 +195,7 @@ function Dashboard({ onOpen }) {
               className={`s-next-card${t.late ? ' late' : ''}`}
               onClick={() => t.courseId && onOpen(t.courseId, t.view)}
             >
-              <span className="s-next-kind">{t.courseId ? COURSES[t.courseId].name : t.kind}</span>
+              <span className="s-next-kind">{t.courseId ? COURSES[t.courseId]?.name || t.courseId : t.kind}</span>
               <span className="s-next-title">{t.title}</span>
               <span className="s-next-meta">
                 <b>{t.due}</b>
@@ -137,7 +205,17 @@ function Dashboard({ onOpen }) {
           ))}
         </div>
 
-        <h4 className="s-label">My courses</h4>
+        <h4 className="s-label">Enrolled courses</h4>
+        <div className="s-cards">
+          {realCourses.map((c) => (
+            <RealCourseCard key={c.id} c={c} onOpen={onOpen} />
+          ))}
+          {!realCourses.length && !learningLoading && !learningError && (
+            <p className="s-cal-empty">No generated courses are currently enrolled.</p>
+          )}
+        </div>
+
+        <h4 className="s-label">Demo samples (not enrolled)</h4>
         <div className="s-cards">
           {list.map((c) => {
             const avg = courseAvg(c);
@@ -151,7 +229,7 @@ function Dashboard({ onOpen }) {
                     <div className="s-card-title">
                       {c.name} <code>{c.id}</code>
                     </div>
-                    <div className="s-card-school">{c.school}</div>
+                    <div className="s-card-school">Demo · sample data · {c.school}</div>
                   </div>
                   <div className="s-card-avg">
                     <span>{avg}%</span>
@@ -164,7 +242,7 @@ function Dashboard({ onOpen }) {
                 </div>
                 <div className="s-card-foot">
                   <span>
-                    Needs work: <b style={{ color: 'var(--p-critical)' }}>{weakest.name}</b> ({weakest.mastery}%)
+                    Demo only · needs work: <b style={{ color: 'var(--p-critical)' }}>{weakest.name}</b> ({weakest.mastery}%)
                   </span>
                   {next && <span>Next: {next.title.split(' — ')[0]} · {next.when}</span>}
                 </div>
@@ -199,17 +277,53 @@ function Dashboard({ onOpen }) {
   );
 }
 
-function Courses({ onOpen }) {
+function Courses({
+  onOpen,
+  onOpenPublished,
+  realCourses = [],
+  learningLoading = false,
+  learningError = null,
+}) {
   const list = Object.values(COURSES);
   return (
     <div className="s-two">
       <div>
         <div className="s-pagehead">
           <h1>Courses</h1>
-          <p>Everything you are enrolled in — schoolhouse courses and auto-enrolled annual training.</p>
+          <p>Generated courses, published manual courses, and clearly marked demo samples.</p>
         </div>
 
-        <h4 className="s-label">In progress</h4>
+        <h4 className="s-label">Generated courses</h4>
+        {learningLoading && <p role="status">Loading generated courses…</p>}
+        {learningError && (
+          <div className="s-shell-error" role="alert">
+            Unable to load generated courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
+          </div>
+        )}
+        <div className="s-courselist">
+          {realCourses.map((c) => (
+            <button className="s-courserow" key={c.id} onClick={() => onOpen(c.id, 'home')}>
+              <div className="s-courserow-main">
+                <div className="s-card-title">{c.name}</div>
+                <div className="s-card-school">{c.school}</div>
+                <div className="s-prog"><span>{c.sections} sections</span></div>
+              </div>
+              <div className="s-card-avg">
+                <span style={{ color: 'var(--p-good)' }}>✓</span>
+                <small>cited</small>
+              </div>
+              <span className="s-quick-arrow">→</span>
+            </button>
+          ))}
+          {!realCourses.length && !learningLoading && !learningError && (
+            <p className="s-cal-empty">No generated courses are currently available.</p>
+          )}
+        </div>
+
+        <h4 className="s-label">Published manual courses</h4>
+        <LibraryList onOpen={onOpenPublished} />
+
+        <h4 className="s-label">Demo samples (not enrolled)</h4>
         <div className="s-courselist">
           {list.map((c) => {
             const avg = courseAvg(c);
@@ -221,7 +335,7 @@ function Courses({ onOpen }) {
                   <div className="s-card-title">
                     {c.name} <code>{c.id}</code>
                   </div>
-                  <div className="s-card-school">{c.school}</div>
+                  <div className="s-card-school">Demo · sample data · {c.school}</div>
                   <div className="s-prog">
                     <div className="s-prog-track"><div className="s-prog-fill" style={{ width: `${pct}%` }} /></div>
                     <span>Week {c.week} of {c.weeks}{next ? ` · Next: ${next.title.split(' — ')[0]} · ${next.when}` : ''}</span>
@@ -229,7 +343,7 @@ function Courses({ onOpen }) {
                 </div>
                 <div className="s-card-avg">
                   <span>{avg}%</span>
-                  <small>mastery</small>
+                  <small>demo mastery</small>
                 </div>
                 <span className="s-quick-arrow">→</span>
               </button>
@@ -390,80 +504,195 @@ function CourseHome({ course, go, onOpen }) {
   );
 }
 
+function CourseUnavailable({ courseId, error }) {
+  return (
+    <div className="s-shell-error" role="alert">
+      <h2>Course unavailable</h2>
+      <p>
+        {courseId
+          ? `No accessible generated or demo course matches “${courseId}”.`
+          : 'A course ID is required to open this course.'}
+      </p>
+      {error ? <p>{error.error || error.message || 'The course service did not return this record.'}</p> : null}
+    </div>
+  );
+}
+
+function UnsupportedCourseTool({ course, view }) {
+  return (
+    <div className="s-shell-error" role="alert">
+      <h2>Tool unavailable</h2>
+      <p>
+        {course?.name || 'This course'} does not support the “{view || 'unknown'}” learner tool.
+        Choose one of the tools listed for this course.
+      </p>
+    </div>
+  );
+}
+
 /* ---------- shell ---------- */
 
-export default function StudentShell({ nav, onSwitchRole }) {
+export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
+  const { ready: authReady, profile, signOut, signOutError } = useAuth();
+  const {
+    authenticated,
+    name: displayName,
+    rank: displayRank,
+    initials,
+  } = accountDisplay({ ready: authReady, profile, demo: STUDENT });
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      window.location.href = '/';
+    } catch {
+      // AuthProvider exposes the explicit error in the shell.
+    }
+  };
+
   // Location comes from the URL (see nav.js); these are the three moves the shell makes.
   const { area, courseId, view, lessonId, page, threadId } = nav;
   const prefs = usePrefs();
-  const course = courseId ? COURSES[courseId] : null;
+  const learning = useLearningCourses();
+  const isPublished = area === 'published';
+  const course = isPublished ? null : resolveCourse(courseId, learning.courses);
+  const isReal = Boolean(course?.record);
+  const pendingCourse = !isPublished && area === 'course' && Boolean(courseId) && !course && learning.loading;
+  const NAV = isReal ? REAL_COURSE_NAV : COURSE_NAV;
+  const inboxUnread = useInboxMessages().filter((m) => m.unread).length;
+
+  // Remember the lesson + page you were on per course, so leaving Lessons for
+  // another screen and coming back resumes where you left off instead of the
+  // lesson list.
+  const lessonMemory = useRef({});
+  useEffect(() => {
+    if (area === 'course' && view === 'lessons' && lessonId) {
+      lessonMemory.current[courseId] = { lessonId, page };
+    }
+  }, [area, view, courseId, lessonId, page]);
 
   const setArea = (a) => nav.go({ area: a, courseId: null, view: null, lessonId: null, page: null });
-  const setView = (v) => nav.go({ area: 'course', courseId, view: v, lessonId: null, page: null, threadId: null });
+  const setView = (v) => {
+    const remembered = v === 'lessons' ? lessonMemory.current[courseId] : null;
+    nav.go({ area: 'course', courseId, view: v, lessonId: remembered?.lessonId ?? null, page: remembered?.page ?? null, threadId: null });
+  };
   const open = (id, v = 'home') => nav.go({ area: 'course', courseId: id, view: v || 'home', lessonId: null, page: null });
+  const openPublished = (id) => nav.go({ area: 'published', courseId: id, view: null, lessonId: null, page: null, threadId: null });
   const openLesson = (id, pg = null) => nav.go({ area: 'course', courseId, view: 'lessons', lessonId: id, page: pg, threadId: null });
   const openThread = (id, forLesson = null) => nav.go({ area: 'course', courseId, view: 'discussions', threadId: id, lessonId: forLesson, page: null });
 
   const crumbs = [{ label: 'Dashboard', onClick: () => setArea('dashboard') }];
   if (area === 'course' && course) {
     crumbs.push({ label: course.name, onClick: () => setView('home') });
-    if (view !== 'home') crumbs.push({ label: COURSE_NAV.find((n) => n.id === view).label });
+    if (view !== 'home') crumbs.push({ label: (NAV.find((n) => n.id === view) || NAV[0]).label });
+  } else if (area === 'published') {
+    crumbs.push({ label: 'Courses', onClick: () => setArea('courses') });
+    crumbs.push({ label: `Published course${courseId ? ` · ${courseId}` : ''}` });
   } else if (area === 'courses') crumbs.push({ label: 'Courses' });
   else if (area === 'calendar') crumbs.push({ label: 'Calendar' });
   else if (area === 'inbox') crumbs.push({ label: 'Inbox' });
   else if (area === 'settings') crumbs.push({ label: 'Settings' });
 
   let body;
-  if (area === 'course' && !course) body = <Dashboard onOpen={open} />;
-  else if (area === 'dashboard') body = <Dashboard onOpen={open} />;
-  else if (area === 'courses') body = <Courses onOpen={open} />;
+  if (area === 'published') {
+    body = <PublishedCourseReader courseId={courseId} onBack={() => setArea('courses')} />;
+  } else if (pendingCourse) body = <p role="status">Loading course…</p>;
+  else if (area === 'course' && !course) body = <CourseUnavailable courseId={courseId} error={learning.error} />;
+  else if (area === 'dashboard') {
+    body = (
+      <Dashboard
+        onOpen={open}
+        realCourses={learning.courses}
+        learningLoading={learning.loading}
+        learningError={learning.error}
+      />
+    );
+  }
+  else if (area === 'courses') {
+    body = (
+      <Courses
+        onOpen={open}
+        onOpenPublished={openPublished}
+        realCourses={learning.courses}
+        learningLoading={learning.loading}
+        learningError={learning.error}
+      />
+    );
+  }
   else if (area === 'calendar') body = <StudentCalendar onOpen={open} />;
   else if (area === 'inbox') body = <StudentInbox onOpen={open} onArea={setArea} />;
-  else if (area === 'settings') body = <StudentSettings onSignOut={() => { window.location.href = '/'; }} />;
+  else if (area === 'settings') {
+    body = (
+      <StudentSettings
+        onSignOut={handleSignOut}
+        account={profile}
+        authenticated={authenticated}
+      />
+    );
+  }
+  else if (isReal && view === 'home') body = <RealCourseHome key={course.id} course={course} go={setView} />;
+  else if (isReal) {
+    const Screen = REAL_SCREENS[view];
+    body = Screen
+      ? <Screen key={`${course.id}:${view}`} course={course} />
+      : <UnsupportedCourseTool course={course} view={view} />;
+  }
   else if (view === 'home') body = <CourseHome course={course} go={setView} onOpen={open} />;
   else {
     const Screen = SCREENS[view];
-    body = <Screen key={course.id} course={course} go={setView} lessonId={lessonId} page={page} onOpenLesson={openLesson} threadId={threadId} onOpenThread={openThread} lessonFilter={view === 'discussions' ? lessonId : null} />;
+    body = Screen
+      ? <Screen key={course.id} course={course} go={setView} lessonId={lessonId} page={page} onOpenLesson={openLesson} threadId={threadId} onOpenThread={openThread} lessonFilter={view === 'discussions' ? lessonId : null} />
+      : <UnsupportedCourseTool course={course} view={view} />;
   }
 
   return (
     <div className="s-root" style={{ '--scale': prefs.textScale }}>
       <nav className="s-rail">
         <UserMenu
-          name={STUDENT.name}
-          role="Student"
-          initials={STUDENT.initials}
+          name={displayName}
+          role={!profileRole ? 'Student' : profileRole === 'BOTH' ? 'Learner · Instructor' : 'Learner'}
+          rank={displayRank}
+          initials={initials}
           items={[
             { label: 'Settings', hint: 'Reminders · How I learn', onClick: () => setArea('settings') },
             { label: 'My progress', onClick: () => open('M092721', 'progress') },
             'divider',
-            { label: 'Sign out', danger: true, onClick: () => { window.location.href = '/'; } },
+            { label: 'Sign out', danger: true, onClick: handleSignOut },
           ]}
         />
         <RailButton icon={I.dashboard} label="Dashboard" on={area === 'dashboard'} onClick={() => setArea('dashboard')} />
         <RailButton icon={I.courses} label="Courses" on={area === 'courses'} onClick={() => setArea('courses')} />
         <RailButton icon={I.calendar} label="Calendar" on={area === 'calendar'} onClick={() => setArea('calendar')} />
-        <RailButton icon={I.inbox} label="Inbox" on={area === 'inbox'} onClick={() => setArea('inbox')} badge={2} />
+        <RailButton icon={I.inbox} label="Inbox" on={area === 'inbox'} onClick={() => setArea('inbox')} badge={inboxUnread} />
 
         {area === 'course' && course ? (
           <>
             <div className="s-rail-sec">
               <span className="s-rail-sec-name">{course.name}</span>
-              <code>{course.id}</code>
+              {!isReal && <code>{course.id}</code>}
             </div>
-            {COURSE_NAV.map((n) => (
+            {NAV.map((n) => (
               <RailButton key={n.id} label={n.label} sub on={view === n.id} onClick={() => setView(n.id)} />
             ))}
           </>
         ) : (
           <>
-            <div className="s-rail-sec">My courses</div>
+            <div className="s-rail-sec">Enrolled generated courses</div>
+            {learning.courses.map((c) => (
+              <RailButton
+                key={c.id}
+                sub
+                icon={<span className="s-rail-dot" style={{ background: 'var(--p-good)' }} />}
+                label={c.name}
+                onClick={() => open(c.id, 'home')}
+              />
+            ))}
+            <div className="s-rail-sec">Demo samples</div>
             {Object.values(COURSES).map((c) => (
               <RailButton
                 key={c.id}
                 sub
                 icon={<span className="s-rail-dot" style={{ background: c.id === 'M092721' ? 'var(--p-accent)' : 'var(--p-dim)' }} />}
-                label={c.name.replace(' Course', '')}
+                label={`${c.name.replace(' Course', '')} · demo`}
                 onClick={() => open(c.id, 'home')}
               />
             ))}
@@ -471,7 +700,9 @@ export default function StudentShell({ nav, onSwitchRole }) {
         )}
 
         <div className="s-rail-spacer" />
-        <RailButton icon={I.swap} label="View as instructor" onClick={onSwitchRole} />
+        {onSwitchRole && (
+          <RailButton icon={I.swap} label="View as instructor" onClick={onSwitchRole} />
+        )}
         <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/'; }} />
       </nav>
 
@@ -491,11 +722,18 @@ export default function StudentShell({ nav, onSwitchRole }) {
           <span className="s-lastlogin">Last login 12 Sep 26 at 0742</span>
         </div>
         <main className="s-main">
-          <div className="s-container">{body}</div>
+          <div className="s-container">
+            {signOutError && (
+              <div className="s-shell-error" role="alert">
+                {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
+              </div>
+            )}
+            {body}
+          </div>
         </main>
       </div>
 
-      {area === 'course' && course && <CourseChat key={course.id} course={course} view={view} />}
+      {!isPublished && <CourseChat key={course?.id || 'doctrine'} course={course} view={view} />}
     </div>
   );
 }
