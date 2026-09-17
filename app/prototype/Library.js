@@ -1236,7 +1236,7 @@ export function CourseDraft({ course, onChanged }) {
           {preview ? 'Back to review' : 'Preview as a learner'}
         </button>
         {!showingLoading && sections.some((s) => s?.lesson && !s.refused) && (
-          <button type="button" className="p-btn ghost" onClick={handleWritePages} disabled={writePages.loading || Boolean(pendingRevision) || approve.loading}>
+          <button type="button" className="p-btn ghost" onClick={handleWritePages} disabled={writePages.loading || Boolean(pendingRevision) || hasPendingRevision || approve.loading}>
             {writePages.loading
               ? 'Writing lesson pages…'
               : sections.some((s) => Array.isArray(s?.pages) && s.pages.length)

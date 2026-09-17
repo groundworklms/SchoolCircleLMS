@@ -135,6 +135,44 @@ test('lessonPagesForSection builds the transformer-lesson item shape from a bare
   assert.ok(out.items.every((it, i) => it.id === `section-1#${i + 1}`));
 });
 
+test('lessonPagesForSection places every pre-check, in every shape of section', () => {
+  // Coursewright asks for two pre-checks but nothing caps the model, and each
+  // one is approved by name. Only the first two were ever placed, and in a
+  // withheld section only the first -- while the notice told the learner the
+  // approved checks were theirs to answer.
+  const withThree = (overrides) => {
+    const s = structuredClone(SECTION);
+    s.pre = [
+      s.pre[0],
+      { stem: 'Second pre-check?', options: ['Yes', 'No'], answer: 0 },
+      { stem: 'Third pre-check?', options: ['Yes', 'No'], answer: 1 },
+    ];
+    Object.assign(s, overrides);
+    return lessonPagesForSection(s, { id: 's' }).items.map((it) => `${it.type}:${it.title}`);
+  };
+  const preTitles = ['check:Before you read', 'check:Quick check', 'check:Quick check'];
+  const preOf = (titles) => titles.filter((t) => preTitles.includes(t));
+
+  // Bare micro-lesson: the first opens, the rest follow the reading.
+  const bare = withThree({});
+  assert.deepEqual(preOf(bare), preTitles);
+  assert.deepEqual(bare.slice(0, 4), ['check:Before you read', 'page:Transformers', 'check:Quick check', 'check:Quick check']);
+
+  // Authored pages: the rest follow the first page, not the last.
+  const authored = withThree({ pages: [
+    { title: 'Page one', blocks: [{ type: 'p', text: 'One.' }] },
+    { title: 'Page two', blocks: [{ type: 'p', text: 'Two.' }] },
+  ] });
+  assert.deepEqual(authored.slice(0, 5), ['check:Before you read', 'page:Page one', 'check:Quick check', 'check:Quick check', 'page:Page two']);
+
+  // Withheld prose: the notice, then every approved check.
+  const withheld = withThree({ withheld: true });
+  assert.deepEqual(withheld.slice(0, 4), ['check:Before you read', 'page:Lesson text not released', 'check:Quick check', 'check:Quick check']);
+
+  // Neither prose nor pages (and not withheld): the checks still all appear.
+  assert.deepEqual(preOf(withThree({ lesson: '', pages: [] })), preTitles);
+});
+
 test('lessonPagesForSection uses authored pages, hotspots for explained labels, and keys when present', () => {
   const s = structuredClone(SECTION);
   s.intro = 'Why this matters.';

@@ -233,8 +233,16 @@ export function localGrade(item, k) {
   return { picked: k, correct: item.answers[k]?.correct === true, answer, rationale: item.rationale || '' };
 }
 
+/* The letter of a keyed answer, or null when the result carries none. A live
+   course grades on the server and returns answer: null on a miss -- the key
+   never leaves the server -- so 65 + null would have read as "A" every time. */
+function keyLetter(index) {
+  return Number.isInteger(index) && index >= 0 ? String.fromCharCode(65 + index) : null;
+}
+
 export function CheckItem({ item, result, onPick, busy = false, error = null }) {
   const picked = result?.picked ?? null;
+  const key = picked !== null ? keyLetter(result.answer) : null;
   return (
     <div className="s-chk" data-item-id={item.itemId || undefined}>
       <div className="s-chk-lab">Check your understanding</div>
@@ -259,7 +267,9 @@ export function CheckItem({ item, result, onPick, busy = false, error = null }) 
       {picked !== null && (
         <div className="p-rationale">
           <span className="p-rlab">{result.correct ? 'Correct — here is why' : 'Not quite — here is why'}</span>
-          {result.rationale || (result.correct ? 'That is the keyed answer.' : `The keyed answer is ${String.fromCharCode(65 + result.answer)}.`)}
+          {result.rationale || (result.correct
+            ? 'That is the keyed answer.'
+            : key ? `The keyed answer is ${key}.` : 'That is not the keyed answer.')}
         </div>
       )}
     </div>
