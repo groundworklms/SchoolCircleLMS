@@ -678,7 +678,10 @@ function DraftCourseModal({ courses = [], sources, sourcesLoading, sourcesError,
       // gone -- which is what a deploy mid-generation looks like from here --
       // and that is a different thing from a connection dropping under a
       // generation still running: there is nothing to wait for.
-      if (last?.phase === 'stalled') {
+      // Polling gave up after a run of failed requests. The job is unaffected
+      // -- it is a row, and the watch below finds the course it produces -- so
+      // this reports the same way a stall does rather than as a failure.
+      if (last?.phase === 'unreachable' || last?.phase === 'stalled') {
         setLostStream(true);
         await onDrafted?.();
         return;
