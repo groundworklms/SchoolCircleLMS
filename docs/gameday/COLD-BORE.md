@@ -155,7 +155,7 @@ Judges will ask "how do I know it isn't hallucinating?" — we answer on screen:
 Pull the network cable and **the grounding engine keeps answering on the Orin** — cited, or an
 honest refusal, computed on the board. The reason we're on a Jetson at all. The loop *around* it is
 not offline yet: SchoolCircle signs in through Firebase Auth, so be signed in before you unplug, and
-say so rather than letting a judge discover it. Closing that is the offline-auth lane, in progress.
+say so rather than letting a judge discover it. That is a deployment/auth-mode question, separate from the board.
 - Serves: all five
 - Payoff: **airplane mode, live — for the engine that can't be allowed to lie.**
 
@@ -188,9 +188,9 @@ Momentum going into Day 1 — everything here is done, tested, and committed loc
   `abstained: true` / `abstain_reason: low_retrieval_score`, and on-device generation ran on the
   board. This is the demo, and it is real.
   **Scope it honestly:** what is proven offline is the **grounding engine**, not the whole product.
-  SchoolCircle's own sign-in still calls **Firebase Authentication** over the internet, so with the
+  SchoolCircle's own sign-in, as deployed today, calls **Firebase Authentication** over the internet, so with the
   cable out the board keeps answering but the app cannot log a new user in — sign in *before* you
-  unplug. An offline auth path is in progress in another lane and is **not** done. An earlier
+  unplug. That is a property of the deployment's configured auth mode, not of the board. An earlier
   version of this line claimed offline on the strength of a revoked cloud key; revoking a key leaves
   Firebase Auth perfectly reachable, so that was never offline evidence and should never be quoted.
 - [x] **Roles & auth — built.** Instructor vs. learner behind one swappable seam (`lib/auth.js`) → LTI 1.3 / SSO / CAC. Tabs filter by role; Studio/Rubrics/Insight guarded server-side. Verified by URL.

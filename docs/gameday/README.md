@@ -47,6 +47,6 @@ lane.
 **Scope the offline word.** *Anchor*, the grounding engine on the Orin, is offline-proven: network
 cable out, it still serves health, corpus and `/api/ask` with paragraph-level citations, and still
 refuses out-of-corpus questions. *SchoolCircle* is not offline-capable yet — its sign-in calls
-Firebase Authentication over the internet, and the offline auth path is in progress in another lane.
+Firebase Authentication over the internet, as configured today.
 Say "the grounding engine runs offline," never "the product runs offline." The honest version is the
 one that survives a judge unplugging the cable.

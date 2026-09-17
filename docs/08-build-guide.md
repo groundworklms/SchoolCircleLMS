@@ -22,8 +22,9 @@ stack is the design + architecture detail behind them.
 - [ ] Offline check, scoped: pull the network cable — **Anchor** still answers `/api/health`,
   `/api/corpus` and `/api/ask` with paragraph-level citations, and still refuses out-of-corpus
   questions. **Log in first:** SchoolCircle’s sign-in goes through Firebase Authentication over the
-  internet, so with the cable out the app cannot authenticate a new session. An offline auth path is
-  a separate, unfinished lane. Demo Anchor’s offline proof, not the app’s.
+  internet as configured today, so with the cable out the app cannot authenticate a new session.
+  That is an auth-configuration property, not a property of the board. Demo Anchor’s offline
+  proof, not the app’s.
 - [ ] `docs/` stack copied into the repo. All arsenal repos installed. Prisma migrated + seeded.
 
 ---

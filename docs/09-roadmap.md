@@ -15,7 +15,7 @@ Legend: ✅ shipped · 🔨 gameday build · 🔭 horizon
 | Human-in-the-loop review | ✅ | `Item.status` PENDING/APPROVED/REJECTED | — |
 | Offline **grounding** on the edge | ✅ | Anchor on a Jetson Orin answers, cites and refuses with the network cable out (measured 16 Sep 2026) | — |
 | Doctrinal-fidelity gate | ✅ | Understudy (strict mode, benchmark) | surface it in the `/api/learning/tutor` response as a badge |
-| Offline **app** (sign-in without the internet) | 🔨 | Firebase Auth works; the offline path is a separate lane, **not done** | land an auth provider that does not require a Google endpoint |
+| Offline **app** (sign-in without the internet) | 🔨 | Firebase Auth works; signing in without a Google endpoint is **not available on the default configuration** | an auth mode that does not require a Google endpoint |
 | SQLite edge database | 🔭 | one Prisma schema on `provider = "postgresql"`, Cloud SQL and local Postgres both proven | real work, not a connection-string swap (`docs/CLOUD_POSTGRES.md:251`) — provider change plus type/migration follow-through |
 
 ## The learner loop

@@ -4,9 +4,10 @@ import './landing.css';
 // The "Offline grounding" claim is deliberately scoped to the GROUNDING ENGINE
 // and not to the platform. Anchor on the Jetson genuinely answers with citations
 // and refuses out-of-corpus questions with the network cable out -- measured. The
-// web app's own sign-in still goes to Firebase Auth over the internet, so "the
-// delivery loop runs with the network pulled", which this list used to say, is a
-// claim a judge could disprove by pulling the cable and reloading the page.
+// web app's own sign-in, as this deployment is configured today (measured
+// 17 Sep 2026), calls Firebase Auth over the internet. So "the delivery loop
+// runs with the network pulled", which this list used to say, is a claim a judge
+// could disprove by pulling the cable and reloading the page.
 const PRINCIPLES = [
   ['Grounded', 'Every answer cites the exact paragraph of doctrine — or the system refuses. It never invents.'],
   ['Verified', 'An on-device entailment check confirms the specifics are actually supported by the source.'],

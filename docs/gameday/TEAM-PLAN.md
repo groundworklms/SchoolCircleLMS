@@ -47,8 +47,8 @@ the platform honest.
 - Consume the 12 soldiers (`npm i github:groundworklms/<repo>`), keep the cite-or-refuse guarantee enforced.
 - Prove **Anchor** offline: sign in first, then pull the network cable — the tutor still answers
   from the board with citations, and the refusal still fires. Scope the claim to the grounding
-  engine when you present it: SchoolCircle's sign-in still needs Firebase Auth, so the app is not
-  offline end-to-end until the offline-auth lane lands.
+  engine when you present it: SchoolCircle's sign-in, as deployed today, needs Firebase Auth, so the app is not
+  offline end-to-end on the default configuration.
 **Gameday tasks (content & SME — the guardrail):**
 - Source and **screen for releasability** the 28xx / 06xx doctrine (POIs, outlines, sample assessments); run ingest (`quarry`) → the Anchor corpus. Track it on the corpus board (COLD-BORE.md).
 - Curate the golden course so the demo always has a banked artifact.
