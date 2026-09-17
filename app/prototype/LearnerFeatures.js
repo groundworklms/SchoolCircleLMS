@@ -28,10 +28,17 @@ function pct(v) {
 
 export function RealCourseHome({ course, go }) {
   const { data: envelope, loading } = useApiQuery(`/courses/${course.id}`);
+  /* Structure from the course record; COUNTS from the delivery projection.
+     The record no longer carries the draft's questions to a learner (see
+     lib/learning/core.js `learnerCourseProjection`), and counting them there
+     was promising a number of checks that included ones no instructor had
+     ratified. What is counted here is what this learner can actually open. */
+  const { data: delivery } = useApiQuery(`/courses/${course.id}/attempts`);
   const draft = envelope?.course;
   const sections = draft?.sections || [];
   const objectives = draft?.objectives || [];
   const sourceId = draft?.sourceIds?.[0];
+  const approvedChecks = (delivery?.items || []).length;
 
   return (
     <div className="s-two">
@@ -51,8 +58,8 @@ export function RealCourseHome({ course, go }) {
           </div>
           <div className="s-hero-tile">
             <div className="s-label">Items</div>
-            <div className="s-hero-num">{sections.reduce((n, s) => n + (s.pre?.length || 0) + (s.post?.length || 0), 0)}</div>
-            <div className="s-hero-sub">pre and post checks</div>
+            <div className="s-hero-num">{approvedChecks}</div>
+            <div className="s-hero-sub">approved pre and post checks</div>
           </div>
           <div className="s-hero-tile">
             <div className="s-label">Grounding</div>
@@ -152,15 +159,67 @@ function attemptKeyFor(keys, itemId, optionId) {
   return attemptId;
 }
 
+/**
+ * What a learner is shown where an unratified lesson's prose would have gone.
+ *
+ * THE OPTIONS, AND WHY THIS ONE. Hiding the whole section was the obvious
+ * alternative and is worse: section numbering is how a learner and an
+ * instructor refer to the same thing out loud ("section 4"), the course would
+ * silently shrink for some readers and not others, and any check in that
+ * section that HAD been approved would quietly become unanswerable — evidence
+ * missing from their record with nothing on screen to explain it. Leaving the
+ * body blank is worse still: an empty page is indistinguishable from a broken
+ * one, and a learner who cannot interpret it has no idea whether to wait, to
+ * reload, or to ask.
+ *
+ * So the section stays, its approved checks stay, and the missing prose is
+ * named. The copy says what SchoolCircle HAS done (drafted this section from
+ * the source) and what it has NOT (had it approved), and it does not dress the
+ * refusal up as an outage: this is the product working, and a learner reading
+ * it should come away understanding the rule rather than suspecting a bug.
+ *
+ * PENDING and withheld read the same. The learner is told the text is not
+ * approved, which is true of both; which way their instructor is leaning on a
+ * passage is not theirs to read off a screen.
+ */
+function UnreleasedLesson({ publication, hasChecks }) {
+  return (
+    <aside className="s-ls-callout note" role="note">
+      <div className="s-ls-callout-t">Lesson text not released</div>
+      <p>
+        SchoolCircle drafted this section from{' '}
+        {publication ? <strong>{publication}</strong> : 'the approved source'}, and your
+        instructor has not approved the text. Nothing unreviewed reaches a student, so
+        it is not shown here.
+      </p>
+      <p>
+        {hasChecks
+          ? 'The checks below were approved separately and are yours to answer now.'
+          : 'Nothing else in this section has been approved yet either, so there is nothing here to work through until your instructor has reviewed it.'}
+      </p>
+    </aside>
+  );
+}
+
 /* The approved course, one section at a time.
  *
- * The lesson prose, section titles and citation come from the course record;
- * the CHECKS come from /courses/:id/attempts, which returns only the items an
- * instructor has ratified. That is deliberate and is the whole gate: a PENDING
- * or rejected question is not in that response, so it is never rendered and
- * there is nothing on screen to answer. Answer keys and rationale are not in
- * it either — the rationale reaches the learner only in the reply to their own
- * answer, after they have committed to a choice. */
+ * EVERY WORD OF CONTENT ON THIS SCREEN COMES FROM /courses/:id/attempts, which
+ * returns only what an instructor has ratified item by item — the lesson prose
+ * and the checks alike. That is the whole gate: a PENDING or withheld item is
+ * simply not in that response, so it cannot be rendered, and the reader has
+ * nothing to fall back on that would render it anyway.
+ *
+ * It used to be half true. The checks came from there, but the prose came from
+ * the authoring draft at /courses/:id, which no ratification decision touches,
+ * so a lesson an instructor had not approved — or had approved a DIFFERENT
+ * wording of, since REVISE edits the row and not the draft — was what a learner
+ * read. The course record is now used only for what course approval actually
+ * released: the section list, their titles and order, and which source they are
+ * grounded in.
+ *
+ * Answer keys and rationale are in neither response. The rationale reaches the
+ * learner only in the reply to their own answer, after they have committed to a
+ * choice. */
 export function CourseReader({ course }) {
   const { data: envelope, loading, error } = useApiQuery(`/courses/${course.id}`);
   const { data: delivery } = useApiQuery(`/courses/${course.id}/attempts`);
@@ -214,23 +273,43 @@ export function CourseReader({ course }) {
   if (!sections.length) return <p className="p-src">This course has no sections yet.</p>;
 
   const answers = { ...(delivery?.answers || {}), ...justAnswered };
-  const locator = typeof (cur.cite || cur.citation) === 'string' ? cur.cite || cur.citation : '';
+  /* The ratified prose for this section, if the release has any. Absent
+     entirely when the section never had a lesson to ratify; present with
+     `released: false` when it has one an instructor has not approved — which
+     is the case the notice below exists to explain. */
+  const prose = (delivery?.lessons || []).find((entry) => entry.sectionIndex === i) || null;
+  const withheld = Boolean(prose && !prose.released);
+  const checks = (delivery?.items || []).filter((item) => item.sectionIndex === i);
   /* No `title`: the section heading belongs to the reader (below), and passing
      it here as well printed every section title twice, once small and once
      large. The citation is handed over as the resolved shape -- publication
      name, page, and the stored locator untouched -- so the learner is cited to
      a publication and the key stays addressable but unread. Without a name
-     there is no line: a record id is not a citation. */
+     there is no line: a record id is not a citation.
+
+     It is the LESSON ROW's citation now, read from the same row as the words
+     it sits under. Materialisation resolves a citation per item, so the row
+     names the passage the lesson itself was written from rather than the
+     section's primary label; and because one row is behind both, a page number
+     can no longer vouch for a wording that is not the one on screen. `pubId`
+     is the publication label stamped at materialisation; the approved-source
+     list stays as the fallback for a release materialised without one. */
+  const cited = prose?.citation || null;
+  const citedPublication = cited?.pubId || publication;
   const lesson = {
     id: String(cur.id || `section-${i + 1}`),
-    citation: locator && publication
-      ? { citation: locator, pubId: publication, page: pageOf(locator) }
+    citation: cited?.citation && citedPublication
+      ? {
+          citation: cited.citation,
+          pubId: citedPublication,
+          page: cited.page ?? pageOf(cited.citation),
+        }
       : null,
     blocks: [
-      ...(cur.lesson ? [{
-        id: `${cur.id || `section-${i + 1}`}:lesson`,
+      ...(prose?.released && prose.text ? [{
+        id: prose.id,
         type: 'text',
-        body: cur.lesson,
+        body: prose.text,
       }] : []),
       /* Placed by `sectionIndex`, which is the materialised Section.order and
          therefore this section's own index. The block id IS the Item id, so
@@ -238,18 +317,16 @@ export function CourseReader({ course }) {
          instructor ratified -- no id is reconstructed here. A choice has no id
          of its own on that row: the keyed answer is an index into `options`,
          so the index is what identifies the choice on the way back. */
-      ...(delivery?.items || [])
-        .filter((item) => item.sectionIndex === i)
-        .map((item) => ({
-          id: item.id,
-          type: 'check',
-          title: item.phase === 'post' ? 'After you read' : 'Before you read',
-          prompt: item.stem,
-          options: (item.options || []).map((text, optionIndex) => ({
-            id: String(optionIndex),
-            text,
-          })),
+      ...checks.map((item) => ({
+        id: item.id,
+        type: 'check',
+        title: item.phase === 'post' ? 'After you read' : 'Before you read',
+        prompt: item.stem,
+        options: (item.options || []).map((text, optionIndex) => ({
+          id: String(optionIndex),
+          text,
         })),
+      })),
     ],
   };
 
@@ -275,12 +352,22 @@ export function CourseReader({ course }) {
           <h1>{cur.title || `Section ${i + 1}`}</h1>
         </div>
         <Err msg={answerError} />
-        <CourseLesson
-          content={lesson}
-          progress={{ answers }}
-          onAnswer={onAnswer}
-          busy={saving}
-        />
+        {withheld ? (
+          <UnreleasedLesson publication={publication} hasChecks={checks.length > 0} />
+        ) : null}
+        {/* The presentation's own empty state ("This lesson has no content
+            yet") is true but uninformative, and printing it under a notice
+            that has just said exactly why the section is empty reads like two
+            different explanations. When the notice is up and there is nothing
+            ratified to render, the notice is the whole answer. */}
+        {lesson.blocks.length > 0 || !withheld ? (
+          <CourseLesson
+            content={lesson}
+            progress={{ answers }}
+            onAnswer={onAnswer}
+            busy={saving}
+          />
+        ) : null}
 
         <div className="s-reader-nav">
           <button className="s-lesson-navbtn" disabled={i === 0} onClick={() => setI(i - 1)}>← Previous</button>

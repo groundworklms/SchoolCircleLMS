@@ -153,6 +153,57 @@ test('only ratified questions are offered to a learner', async () => {
   assert.doesNotMatch(JSON.stringify(json), /Unratified question/);
 });
 
+test('the ratified set carries the lesson prose a learner may read', async () => {
+  // This response is the reader's ONLY source of course content. Prose used to
+  // come from the authoring draft instead, which no ratification decision
+  // touches, so a PENDING lesson was read by learners anyway.
+  const { handlers } = fixture();
+  const { json } = await handlers.getCourseAttempts(LEARNER, { params: { id: COURSE_ID }, query: {} });
+  assert.deepEqual(json.lessons, [{
+    sectionIndex: 0,
+    sectionTitle: 'Movement fundamentals',
+    id: `${COURSE_ID}:s1:lesson`,
+    released: true,
+    text: 'Read this.',
+    citation: null,
+  }]);
+});
+
+test('a lesson a human has not ratified is withheld exactly as a question is', async () => {
+  const { handlers } = fixture({
+    sections: [{
+      id: `${COURSE_ID}:s1`,
+      title: 'Movement fundamentals',
+      order: 0,
+      items: [
+        {
+          id: `${COURSE_ID}:s1:lesson`,
+          kind: 'LESSON',
+          stem: 'Unratified lesson prose.',
+          options: null,
+          answer: null,
+          citation: { citation: 'src-1 p.135', pubId: 'TC 3-22.9', page: '135' },
+          status: 'PENDING',
+        },
+        approvedQuestion(`${COURSE_ID}:s1:pre1`),
+      ],
+    }],
+  });
+  const { json } = await handlers.getCourseAttempts(LEARNER, { params: { id: COURSE_ID }, query: {} });
+  assert.equal(json.lessons.length, 1);
+  assert.equal(json.lessons[0].released, false);
+  // Neither the wording nor the citation that vouches for it leaves the server.
+  assert.doesNotMatch(JSON.stringify(json.lessons), /Unratified lesson prose|p\.135/);
+  // The approved check in the same section is unaffected: a learner still has
+  // something to do, and the answer they give is still recorded.
+  assert.equal(json.items.length, 1);
+  const recorded = await handlers.recordCourseAttempt(LEARNER, {
+    params: { id: COURSE_ID },
+    body: answerBody(),
+  });
+  assert.equal(recorded.json.recorded, true);
+});
+
 test('the answerable set carries no answer key, rationale or support score', async () => {
   const { handlers } = fixture();
   const { json } = await handlers.getCourseAttempts(LEARNER, { params: { id: COURSE_ID }, query: {} });
