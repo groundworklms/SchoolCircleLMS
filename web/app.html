@@ -346,7 +346,7 @@ table.t td:first-child{color:var(--p-text);font-weight:500}
   </nav>
   <div class="content">
     <div class="protobar">◆ <b>Interactive prototype</b> — illustrative mock data for the showcase. The live platform runs on the real open-source repos + Anchor grounding on the edge. Citations are clickable.</div>
-    <div class="crumbs"><span id="crumbRole">Instructor view</span><span style="opacity:.5">/</span><span id="crumbView" style="color:var(--p-dim)">Dashboard</span><span class="sp"></span><span>grounded by Anchor · offline-capable</span></div>
+    <div class="crumbs"><span id="crumbRole">Instructor view</span><span style="opacity:.5">/</span><span id="crumbView" style="color:var(--p-dim)">Dashboard</span><span class="sp"></span><span>grounded by Anchor · offline grounding on the edge</span></div>
     <main class="main"><div class="container" id="stage"></div></main>
   </div>
 </div>
@@ -584,7 +584,7 @@ V.course=()=>{
 };
 
 V.sask=()=>`
-  <div class="pagehead"><h1>Ask the doctrine</h1><p>Answers straight from the source, with a citation — or an honest "not in the source." Powered by <b>Sourcerer</b> + <b>Anchor</b>, offline.</p></div>
+  <div class="pagehead"><h1>Ask the doctrine</h1><p>Answers straight from the source, with a citation — or an honest "not in the source." Powered by <b>Sourcerer</b> + <b>Anchor</b> — grounding runs offline on the edge.</p></div>
   <div class="chips"><span class="chip" onclick="ask('sight')">What is sight alignment?</span><span class="chip" onclick="ask('trigger')">How do I fix trigger jerk?</span><span class="chip refuse" onclick="ask('javelin')">Max range of a Javelin?</span></div>
   <div class="chat" id="askChat"><div class="bubble ai">Ask me anything from the marksmanship corpus — I'll answer with a citation, or tell you it isn't covered.</div></div>
   <div class="askbar"><input class="ti" id="askIn" placeholder="Type a question…" onkeydown="if(event.key==='Enter')askFree()"><button class="btn" onclick="askFree()">Ask</button></div>`;
@@ -616,7 +616,7 @@ V.stack=()=>{
   <div class="label">Three flows, end to end</div>
   <div class="flows">
     <div class="flowcol"><div class="flowcol-h">① Author<span>prep · cloud allowed</span></div>${step('Doctrine PDF / POI')}${A}${step('Quarry','text · chunks · tasks','rp')}${A}${step('Anchor','index the corpus','edge')}${A}${step('Coursewright · Rubricon','cited course + BARS','rp')}${A}${step('Instructor review','approve · edit · reject')}${A}${step('Cartridge','→ SCORM → MarineNet','rp')}</div>
-    <div class="flowcol"><div class="flowcol-h">② Deliver<span>edge · offline</span></div>${step('Student question / answer')}${A}${step('Sourcerer · Whetstone','ask · discuss-to-mastery','rp')}${A}${step('Understudy','fidelity gate','rp')}${A}${step('Anchor','retrieve · cite-or-refuse · HHEM','edge')}${A}${step('Cited answer · coached · or refused')}</div>
+    <div class="flowcol"><div class="flowcol-h">② Deliver<span>edge · offline grounding</span></div>${step('Student question / answer')}${A}${step('Sourcerer · Whetstone','ask · discuss-to-mastery','rp')}${A}${step('Understudy','fidelity gate','rp')}${A}${step('Anchor','retrieve · cite-or-refuse · HHEM','edge')}${A}${step('Cited answer · coached · or refused')}</div>
     <div class="flowcol"><div class="flowcol-h">③ Improve<span>the loop</span></div>${step('Attempts · turns · critiques')}${A}${step('Sextant','gain · gaps · evidence','rp')}${A}${step('Hotwash','ranked course AAR','rp')}${A}${step('Cadence','next study plan · .ics','rp')}<div class="arrow">↺</div>${step('Feeds the next course')}</div>
   </div>
   <div class="label">The twelve soldiers <span style="color:var(--p-faint);font-weight:400">· all public, Apache-2.0, tested</span></div>

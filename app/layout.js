@@ -5,7 +5,7 @@ import QaWidget from './_components/QaWidget';
 
 export const metadata = {
   title: 'SchoolCircle',
-  description: 'Grounded, offline, human-led training — every answer cites the manual or refuses.',
+  description: 'Grounded, human-led training with an offline doctrine engine — every answer cites the manual or refuses.',
 };
 
 export default function RootLayout({ children }) {

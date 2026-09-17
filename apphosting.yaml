@@ -32,14 +32,44 @@ runConfig:
   # long comment in app/api/learning/courses/draft/stream/route.js for what that
   # does and does not cost, and for the one (untested) operator lever.
 env:
-  # --- Grounding: point the cloud app's server-side /api/doctrine at the Orin's
-  # Anchor engine, exposed over a tunnel.
-  # NOTE: this is a TEMPORARY Cloudflare quick-tunnel URL — it changes whenever the
-  # tunnel restarts. For a stable setup use a named Cloudflare tunnel. Update if restarted.
-  - variable: DOCTRINE_BASE_URL
-    value: https://calculations-probability-dozens-recommended.trycloudflare.com
-    availability:
-      - RUNTIME
+  # --- Grounding: the cloud app's server-side /api/doctrine needs an Anchor
+  # address that THIS SERVER can route to.
+  #
+  # DOCTRINE_BASE_URL is deliberately NOT set here, and that is a considered
+  # choice rather than an omission. It used to pin a Cloudflare *quick* tunnel
+  # hostname. A quick tunnel takes a brand-new hostname every time it restarts,
+  # so that value is guaranteed to rot, and it did: the pinned hostname was
+  # measured returning 502 on 16 Sep 2026 while the panel showed a red
+  # "Not answering · <dead host>".
+  #
+  # A stale baked-in address is worse than none:
+  #   * unset resolves to `unconfigured`, which the Settings -> Doctrine engine
+  #     panel paints NEUTRAL GREY with instructions ("nothing is set up" is not
+  #     a fault) -- see lib/doctrine.js `doctrineProvider()`;
+  #   * a dead value resolves to `ready: true` and paints RED, which looks like
+  #     a broken deployment rather than an unconfigured one;
+  #   * worse, "Use deployment default" (the DELETE on
+  #     /api/learning/doctrine-settings) would throw away an operator's
+  #     working address and restore the dead one.
+  #
+  # So the runtime setting is the single source of truth. Precedence is
+  # operator setting -> env -> unconfigured, and an instructor sets the address
+  # in Settings -> Doctrine engine with NO rollout. Pinning it here would mean a
+  # new rollout after every tunnel restart.
+  #
+  # To serve grounding to this HOSTED deployment you need an address reachable
+  # from Google's network. `http://192.168.55.1:8000` is the Orin over its
+  # point-to-point USB link and is reachable ONLY from the laptop the board is
+  # plugged into -- never from here. Options:
+  #   * a NAMED Cloudflare tunnel (stable hostname, survives restarts) -- the
+  #     right answer if grounding must stay up unattended;
+  #   * a quick tunnel, pasted into Settings -> Doctrine engine each time it
+  #     restarts -- fine for a demo, and needs no redeploy;
+  #   * run SchoolCircle locally on the laptop holding the Orin, where "Find the
+  #     Orin" reaches the USB address directly.
+  # If you do decide to pin a stable hostname here, add it as a new
+  # `DOCTRINE_BASE_URL` block -- and only a NAMED tunnel, never a quick one.
+  # See docs/orin-offline-config.md.
   - variable: DOCTRINE_TIMEOUT_MS
     value: "30000"
     availability:

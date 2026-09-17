@@ -6,7 +6,24 @@
  * The grounding engine is a physical board on a USB cable that moves between
  * laptops. So the default view is not a URL field: it is one button that looks
  * for it, and a plain answer about whether it is answering and which
- * publications it is holding. Typing an address is the fallback, not the path.
+ * publications it is holding.
+ *
+ * Which of the two controls is "the path" DEPENDS ON WHERE THIS IS RUNNING, and
+ * the copy must not pretend otherwise. `Find the Orin` POSTs to
+ * /api/learning/doctrine-settings, and the sweep in lib/doctrine-detect.js runs
+ * SERVER-SIDE from that route -- not in the browser. Its first candidate,
+ * http://192.168.55.1:8000, is the Orin's point-to-point USB device-mode
+ * address, reachable only from the single laptop the board is cabled to.
+ *
+ *   - SchoolCircle running locally on that laptop: the sweep is the path, and
+ *     genuinely needs no key and no tunnel.
+ *   - Hosted (Firebase App Hosting): the server is in Google's network and can
+ *     never route to a USB address, so the sweep cannot succeed and typing a
+ *     reachable address -- a tunnel -- is the path.
+ *
+ * Measured 16 Sep 2026: on the hosted deployment the sweep changed nothing and
+ * the panel still reported the configured tunnel returning 502. The feature is
+ * real, its scope is narrower than "finds it on its own", and the copy says so.
  *
  * Nothing here is a credential -- an Anchor address is an address -- so there
  * is no passphrase and no masked field, unlike Settings -> Generation model.
@@ -78,10 +95,12 @@ function CorpusSummary({ corpus }) {
  * not know yet" must never look like "it works".
  *
  * Unreachable is written as a ROUTINE state, because it is one. The engine is a
- * board on a USB cable that moves between laptops, and a tunnel gets a new
+ * board on a USB cable that moves between laptops, and a quick tunnel gets a new
  * hostname every time it restarts -- so a stale address is the normal case on a
- * demo day, not a crash. The panel therefore says what to do about it, in the
- * order an operator should try: sweep for the board, then type the new address.
+ * demo day, not a crash. The panel therefore says what to do about it, and names
+ * which of the two remedies actually applies where: the sweep is server-side, so
+ * it only finds the board when the server IS the laptop holding it. Hosted, the
+ * address has to be typed.
  */
 function HealthPanel({ health, checking, sourceNote, onRecheck, onEnterAddress }) {
   const state = health?.state;
@@ -135,8 +154,10 @@ function HealthPanel({ health, checking, sourceNote, onRecheck, onEnterAddress }
                 + 'takes a new hostname every time it restarts, so a saved address goes stale '
                 + 'on its own. '
               : 'No address is set yet. '}
-            Try <strong>Find the Orin</strong> below — it sweeps the USB and tunnel addresses —
-            then type the new address in if the sweep comes up empty.
+            Try <strong>Find the Orin</strong> below — it probes the USB and local addresses from
+            the server this app runs on, so it only finds the board if that server is the machine
+            it is plugged into. On a hosted deployment it cannot be, so typing the current address
+            in is the normal path rather than the fallback.
           </p>
         )}
 
@@ -280,7 +301,15 @@ export function DoctrineSettings() {
       adopt(json.settings);
       setDetected(json.detected);
       if (!json.detected?.found) {
-        setErr('No engine answered. Check the USB cable is in the device-mode port.');
+        // Naming only the cable sends a hosted operator to look at hardware that
+        // was never in the path: this sweep runs on the server, which on a hosted
+        // deployment cannot reach a USB address however well the board is seated.
+        setErr(
+          'No engine answered any of the addresses above. If SchoolCircle is running on the '
+          + 'laptop the Orin is plugged into, check the USB cable is in the device-mode port. '
+          + 'If this is the hosted deployment, it cannot reach the USB address at all — enter a '
+          + 'tunnel address manually.',
+        );
       }
     } catch (error) {
       setErr(errText(error, 'The search could not be run.'));
@@ -350,8 +379,12 @@ export function DoctrineSettings() {
   return (
     <div className="doctrine-settings">
       <p className="s-settings-p">
-        Where grounded answers and citations come from. With the Orin plugged in over USB this
-        finds it on its own — no key and no tunnel needed.
+        Where grounded answers and citations come from. <strong>Find the Orin</strong> probes from
+        the server this app is running on — so it picks the board up over USB, with no key and no
+        tunnel, only when SchoolCircle is running on the same laptop the Orin is plugged into.
+        <code> http://192.168.55.1:8000</code> is a point-to-point USB address, so a hosted
+        deployment cannot route to it: there, give it an address reachable from the server, which
+        today means a tunnel pasted in below.
       </p>
 
       <HealthPanel

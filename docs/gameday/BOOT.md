@@ -7,7 +7,8 @@ report status, stop before pushing.
 
 ## The only human step (nothing else is manual)
 **Plug the Orin into the lead laptop** — USB device-mode cable + the Orin's power. That point-to-
-point link is the whole offline story; it appears as network `192.168.55.1`.
+point link is how the app reaches the offline grounding engine; it appears as network
+`192.168.55.1`.
 
 SSH is already password-free: a dedicated gameday key is pre-registered on the Orin. The **private**
 half lives on the lead laptop at `~/.ssh/gameday_orin` (never committed); the **public** half is in
@@ -18,11 +19,15 @@ ever appear in this repo.
 ## Topology (read once so Tuesday isn't confusing)
 - **Anchor** (the grounding engine) runs **on the Orin**, not on any laptop.
 - Only the **lead laptop** is physically wired to the Orin (`192.168.55.1` is point-to-point USB —
-  other laptops cannot see it).
-- So **the demo machine = the lead laptop**: it runs the SSH tunnel *and* hosts the LMS, which calls
-  Anchor at `http://localhost:8000`.
+  other laptops cannot see it, and neither can the hosted Firebase deployment, ever).
+- So **the demo machine = the lead laptop**: it hosts the LMS and calls Anchor directly at
+  `http://192.168.55.1:8000`. Anchor binds the USB interface itself, so **no SSH tunnel is required**
+  for this path. `ops/tunnel.sh` exists only for exposing Anchor to somewhere else.
 - **Other laptops** (White, McDonald) develop against a mock or against a URL the lead laptop shares
   over the venue network — they don't need the Orin to build screens and logic.
+- **What is offline and what is not:** Anchor answers with the network cable out — that is measured,
+  and it is the demo. SchoolCircle's *sign-in* still calls Firebase Authentication over the
+  internet, so sign in before you unplug anything, and never claim the whole app runs offline.
 
 ---
 
@@ -38,20 +43,26 @@ Ground truth:
   device-mode at 192.168.55.1, user "vanguard". A pre-registered key handles auth — use
   `ssh -i ~/.ssh/gameday_orin vanguard@192.168.55.1`. No password. If that key file is missing on
   this laptop, STOP and tell me (docs/gameday/keys/README.md says how to place it).
-- Anchor serves /api/ask on the Orin's port 8000; we tunnel it to this laptop's localhost:8000.
+- Anchor serves /api/ask on the Orin's port 8000 and binds the USB interface, so this laptop
+  reaches it DIRECTLY at http://192.168.55.1:8000 — no SSH tunnel needed. (ops/tunnel.sh is only
+  for exposing Anchor to a machine that is not cabled to the Orin.) On-board generation is
+  llama-server at http://192.168.55.1:8080/v1, serving model id
+  "/opt/tutor/models/gemma-4-E2B_q4_0-it.gguf" (that literal path IS the model id).
 
 Steps:
 1. Ensure Git, Node 18+, and Claude Code are installed (install what's missing, Windows).
 2. Reach the Orin: `ssh -i ~/.ssh/gameday_orin vanguard@192.168.55.1 uptime`. Confirm it works.
 3. Confirm all 5 services are active:
    ssh -i ~/.ssh/gameday_orin vanguard@192.168.55.1 'systemctl is-active tutor-api tutor-gen tutor-embed tutor-rerank tutor-verify'
-4. Open a background tunnel and KEEP it alive — auto-reconnect if it drops, without asking me:
-   ssh -i ~/.ssh/gameday_orin -N -L 8000:127.0.0.1:8000 vanguard@192.168.55.1
-5. Smoke-test cite-or-refuse against http://localhost:8000/api/ask :
+4. Confirm the corpus is loaded: GET http://192.168.55.1:8000/api/corpus should report
+   4,731 total chunks across 14 publications. Flag any other numbers rather than reporting green.
+5. Smoke-test cite-or-refuse against http://192.168.55.1:8000/api/ask :
    - "What is trigger control?"  -> expect citations, abstained:false
    - "What is the max range of a Javelin?"  -> expect abstained:true, low_retrieval_score
    Show me the key fields from each.
-Then a 3-line readiness summary: engine / tunnel / grounding. Nothing more.
+6. Offline check: tell me to unplug the network cable, re-run step 5, and confirm both answers are
+   unchanged. Note that the app's sign-in needs Firebase Auth, so I must be signed in first.
+Then a 3-line readiness summary: engine / corpus / grounding. Nothing more.
 ```
 
 ## 2 — APP HOST laptop (White — runs the LMS)
@@ -68,9 +79,13 @@ training platform (SchoolCircleLMS). Do the work; report status; stop before any
    docs/02-architecture.md, docs/05-arsenal-contracts.md.
 3. Install deps, migrate the Prisma schema, seed ONE TC 3-22.9 course + one instructor + one
    learner. Show me the seed result.
-4. Point the app at Anchor via DOCTRINE_BASE_URL. On the demo machine that's http://localhost:8000
-   (Morgan's tunnel). On my own laptop I can't see the Orin, so use a mock/stub for /api/ask while
-   I build, and we integrate against the real tunnel on the demo machine. Confirm the app starts.
+4. Point the app at Anchor via DOCTRINE_BASE_URL. On the demo machine that's
+   http://192.168.55.1:8000 — Anchor binds the USB interface, no tunnel needed. On my own laptop I
+   can't see the Orin (that address is point-to-point USB), so use a mock/stub for /api/ask while I
+   build, and we integrate on the demo machine. Confirm the app starts. Do NOT set
+   DOCTRINE_BASE_URL in apphosting.yaml — the hosted deployment cannot route to the Orin, and a
+   pinned Cloudflare quick-tunnel hostname was already tried there and measured dead (502); the
+   hosted engine address is entered at runtime in Settings -> Doctrine engine.
 5. Start the dev server; tell me the URL. Rule that never bends: nothing with status PENDING is
    ever served to a learner.
 ```
@@ -110,5 +125,7 @@ I'm Thompson, QA and product voice — I test this like a Marine would use it. N
 
 ---
 
-**Guardrail in every lane:** grounded, verified, offline, human-led. Nothing ungrounded and
-nothing `PENDING` ever reaches a learner. Each prompt stops before pushing — you stay in control.
+**Guardrail in every lane:** grounded, verified, offline **at the edge**, human-led. Nothing
+ungrounded and nothing `PENDING` ever reaches a learner. The offline half of that is Anchor on the
+Orin (measured, cable out) — not the app's sign-in, which still needs Firebase Auth. Each prompt
+stops before pushing — you stay in control.

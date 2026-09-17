@@ -27,9 +27,9 @@ Re-measured 17 Sep 2026. Nothing here is carried forward on memory.
 | --- | --- |
 | **3 + 2** | of our five targets backed end-to-end, two more partly — the honest breakdown is in [RANGE-CARD § USE CASES](./RANGE-CARD.md) |
 | **4,731** | grounded passages on the Orin, across **14** Distribution A publications (`GET /api/corpus`) |
-| **564** | tests in this repo — 559 pass, 5 skipped, **0 failures** (47 test files, one pass) |
+| **564** | tests in this repo — 559 pass, 5 skipped, **0 failures** (47 test files, one pass) **on the 17 Sep run.** Re-run 17 Sep 2026 on this branch: every suite that does not need Postgres was run (`test`, `test:ui-rendering`, `test:navigation`, `test:doctrine`, `test:doctrine-auth`, `test:student-grounding`, `test:source-library`, `test:account-profile`, `test:model`, `test:ai-authoring`, `test:authoring`, `test:roster`, `test:record-admin`, `test:db-policy`) and **every one reported 0 failures**. The three DB-backed suites (`test:db`, `test:roster-db`, `test:authoring-db`) were NOT run — no local Postgres — so say "0 failures outside the database suites", not "all green". The 564 figure is a single-pass total; the per-suite scripts overlap, so do not re-derive it by adding them up. |
 | **5 / 5** | out-of-doctrine questions correctly refused, 1.5–1.9s each (`POST /api/ask`) |
-| **Orin** | answering offline — `/api/health`, `/api/corpus`, `/api/ask`, `/api/verify`, `/api/ground` all served |
+| **Orin** | **answering with the network cable out** — `/api/health`, `/api/corpus`, `/api/ask`, `/api/verify`, `/api/ground` all served, citations carry paragraph-level locators, out-of-corpus questions refused. (Scope: this is Anchor. SchoolCircle's sign-in still needs Firebase Auth.) |
 
 ---
 
@@ -94,9 +94,9 @@ The thirteenth piece is **SchoolCircle** — the instructor/learner host. It sta
 
 The connective tissue is **plain-JSON contracts**, not cross-imports — the pieces compose without knowing about each other. Objectives → passages + citations → course JSON → rubric JSON → attempts flow between them; SchoolCircle orchestrates, Anchor grounds.
 
-1. **Ground.** Bring up [Anchor](https://github.com/groundworklms/anchor) on the Orin (offline), open the tunnel (`ops/tunnel.sh`), and ingest the corpus with [Quarry](https://github.com/groundworklms/quarry) → chunks + tasks.
+1. **Ground.** Bring up [Anchor](https://github.com/groundworklms/anchor) on the Orin (offline) — it binds the USB interface directly at `http://192.168.55.1:8000`, so no tunnel is needed from the cabled laptop (`ops/tunnel.sh` is only for reaching it from elsewhere) — and ingest the corpus with [Quarry](https://github.com/groundworklms/quarry) → chunks + tasks.
 2. **Author.** SchoolCircle calls [Coursewright](https://github.com/groundworklms/coursewright) (objectives+passages → course) and [Rubricon](https://github.com/groundworklms/rubricon) (standard → BARS), grounded through Anchor; the instructor reviews.
-3. **Deliver.** Learners hit [Sourcerer](https://github.com/groundworklms/sourcerer) (cited tutor / refusal) and [Whetstone](https://github.com/groundworklms/whetstone) (discuss-to-mastery) — both cite-or-refuse, offline-capable.
+3. **Deliver.** Learners hit [Sourcerer](https://github.com/groundworklms/sourcerer) (cited tutor / refusal) and [Whetstone](https://github.com/groundworklms/whetstone) (discuss-to-mastery) — both cite-or-refuse, and both answer from Anchor on the board with no internet. The app around them still signs in through Firebase Auth.
 4. **Measure.** [Sextant](https://github.com/groundworklms/sextant) turns the resulting attempts + sessions into learning gain, gaps, and competency evidence for the instructor's view.
 5. **Plan.** [Cadence](https://github.com/groundworklms/cadence) turns a syllabus + calendar into a study plan across three COAs, exported to the learner's calendar (.ics) with reminders.
 6. **Improve.** End-of-course critiques + Sextant's trends feed [Hotwash](https://github.com/groundworklms/hotwash) → a ranked AAR worklist that sharpens the next iteration.
@@ -114,7 +114,7 @@ The full design + architecture spec lives as a documentation stack — **[github
 | Field | Detail |
 | --- | --- |
 | **Design** | Apple-gray `#f5f5f7` · Marine scarlet `#b3122e` · frosted rail · borderless cards on soft shadow · 18px radius · SF system font. Exact tokens + shell + components in `docs/01`. |
-| **Data** | Prisma: `User · Course · Section · Item · Attempt · Mastery · Schedule`. Confidence-before-reveal calibration; spaced-repetition `Schedule`; **no ClassGap table** (privacy by GROUP BY, never selecting learnerId). Postgres → SQLite is a connection-string swap for the edge. Full schema in `docs/03`. |
+| **Data** | Prisma: `User · Course · Section · Item · Attempt · Mastery · Schedule`. Confidence-before-reveal calibration; spaced-repetition `Schedule`; **no ClassGap table** (privacy by GROUP BY, never selecting learnerId). **The edge build is PostgreSQL too, not SQLite** — `prisma/schema.prisma` keeps `provider = "postgresql"` for both cloud and edge and you change only `DATABASE_URL` (`docs/CLOUD_POSTGRES.md` is explicit: SQLite is *not* a connection-string-only swap). Full schema in `docs/03`. |
 | **Grounding** | Adapter via `DOCTRINE_BASE_URL` → Anchor `/api/ask`. Contract: `{ abstained, abstainReason, answer, citations:[{n,citation,pub_id,page_printed}], topScore }`. **An abstention returns HTTP 200** — never fall back to an ungrounded model. Detail in `docs/04`. |
 | **Consume** | The 11 npm soldiers install straight from GitHub; Anchor is the HTTP service. |
 
@@ -124,9 +124,13 @@ npm i github:groundworklms/{quarry,rubricon,coursewright,sourcerer,whetstone,sex
 
 ```bash
 # .env.local
-DATABASE_URL=postgresql://…            # or file:./edge.db for the SQLite edge build
+DATABASE_URL=postgresql://…            # edge too: local PostgreSQL, NOT file:./edge.db — same provider, different URL
 OPENROUTER_API_KEY=…                   # authoring / prep only — never at delivery
-DOCTRINE_BASE_URL=http://192.168.55.1:8000   # Anchor on the Orin
+DOCTRINE_BASE_URL=http://192.168.55.1:8000   # Anchor on the Orin. POINT-TO-POINT USB device-mode:
+                                             # only the laptop the Orin is cabled to can reach it.
+                                             # Never set this on the hosted Firebase deployment —
+                                             # it cannot route there. Hosted grounding is set at
+                                             # runtime in Settings → Doctrine engine instead.
 DOCTRINE_TIMEOUT_MS=30000
 # optional per-repo model calls: <NAME>_API_KEY / <NAME>_ENDPOINT / <NAME>_MODEL
 ```
@@ -148,9 +152,12 @@ Judges will ask "how do I know it isn't hallucinating?" — we answer on screen:
 - Payoff: **the mic-drop** — not another chatbot.
 
 ### H-2 · Offline at the edge *(Day 3)*
-Pull the network and the whole delivery loop still runs on the Orin. The reason we're on a Jetson at all.
+Pull the network cable and **the grounding engine keeps answering on the Orin** — cited, or an
+honest refusal, computed on the board. The reason we're on a Jetson at all. The loop *around* it is
+not offline yet: SchoolCircle signs in through Firebase Auth, so be signed in before you unplug, and
+say so rather than letting a judge discover it. Closing that is the offline-auth lane, in progress.
 - Serves: all five
-- Payoff: **airplane mode, live.**
+- Payoff: **airplane mode, live — for the engine that can't be allowed to lie.**
 
 ### H-3 · MarineNet / SCORM export *(Day 3)*
 Export a course/agent to SCORM, load it into a player, report completion + score. Answers #9's "embed in Moodle/MCeLE" requirement directly.
@@ -174,10 +181,21 @@ Momentum going into Day 1 — everything here is done, tested, and committed loc
 - [x] **#12 AI Tutor — complete.** Ask the doctrine → cited answer or honest refusal, wired live to Anchor on the Orin (HHEM-verified, score shown). The out-of-doctrine refusal fires for real — 5 of 5 out-of-corpus questions refused on 17 Sep. Live at `/prototype`. **There is no fallback answerer:** with Anchor unreachable the tutor fails and records the turn `FAILED` rather than answering from something weaker.
 - [x] **#13 + #16 — complete.** Pipeline now generates a grounded scenario-with-coaching, higher-order discussion prompts, and an instructor summary. A full **MCPP course** (MCWP 5-10) generated alongside marksmanship — MEU planning scenario, SFAD-C coaching, Bloom's-tier prompts. Course switcher live on `/prototype`.
 - [x] **#9 Mastery agent — built (stand-in).** Grounded discuss-to-mastery at `/prototype`: derives a rubric from the objective, probes, scores each answer, coaches the gap, advances, records a score for the LMS. Proven weak→developing, strong→mastered. Swaps to real 8670 ELOs on MCeLE access.
-- [x] **Offline VERIFIED.** Broke the cloud key: tutor still answered via Anchor, refusal still fired, courses still rendered, generation failed gracefully. Zero external assets. Runbook: `ops/OFFLINE.md`.
+- [x] **Anchor offline — VERIFIED with the network cable out.** Not a key revocation: the network
+  cable came out of the host laptop, and Anchor on the Orin kept serving `/api/health`,
+  `/api/corpus` and `/api/ask`. Cited answers came back with paragraph-level locators over the full
+  corpus (**4,731 chunks, 14 publications**), out-of-corpus questions still refused with
+  `abstained: true` / `abstain_reason: low_retrieval_score`, and on-device generation ran on the
+  board. This is the demo, and it is real.
+  **Scope it honestly:** what is proven offline is the **grounding engine**, not the whole product.
+  SchoolCircle's own sign-in still calls **Firebase Authentication** over the internet, so with the
+  cable out the board keeps answering but the app cannot log a new user in — sign in *before* you
+  unplug. An offline auth path is in progress in another lane and is **not** done. An earlier
+  version of this line claimed offline on the strength of a revoked cloud key; revoking a key leaves
+  Firebase Auth perfectly reachable, so that was never offline evidence and should never be quoted.
 - [x] **Roles & auth — built.** Instructor vs. learner behind one swappable seam (`lib/auth.js`) → LTI 1.3 / SSO / CAC. Tabs filter by role; Studio/Rubrics/Insight guarded server-side. Verified by URL.
 - [x] **Gap-fills built — Cadence & Hotwash.** The chief instructor's two open asks now have real, tested repos: **Cadence** (syllabus+calendar → 3-COA study plan + .ics, 17 tests) and **Hotwash** (course critiques → ranked AAR across iterations, 16 tests). **Public & green** — `github.com/groundworklms/cadence · /hotwash`.
-- [x] **Run-of-show REHEARSED.** All beats pass live end-to-end: generate · cited answer + refusal (Anchor/HHEM) · rubric · mastery · SCORM export. Demo-day gotcha caught: the Anchor tunnel isn't persistent — run `ops/tunnel.sh` at start, and check **Settings → Doctrine engine** shows green, which is now a live probe of the endpoint rather than a reading of the config.
+- [x] **Run-of-show REHEARSED.** All beats pass live end-to-end: generate · cited answer + refusal (Anchor/HHEM) · rubric · mastery · SCORM export. Demo-day gotchas caught: check **Settings → Doctrine engine** shows green before every run — it is a live probe of the endpoint, not a reading of the config — and **sign in before the offline beat**, because sign-in needs Firebase Auth. Anchor binds the USB interface directly at `http://192.168.55.1:8000`, so `ops/tunnel.sh` is no longer a required step for the local path; it is only for exposing Anchor beyond the cabled laptop, and a Cloudflare *quick* tunnel takes a new hostname on every restart (a **named** tunnel is the stable option).
 - [x] **Public showcase refreshed.** schoolcircle.tannerwhite.net — platform landing, real grounded output, and the linked arsenal; the full interactive instructor + student system at `/prototype` (with a live Ask-tutor widget and a QA issue-reporter).
 - [x] **BARS proven on real doctrine.** Anchors traceable to source performance-steps; vague standards correctly flag for SME definition rather than inventing criteria.
 - [x] **Corpus staged.** 14 publications on the Orin, 4,731 passages, all Distribution A — verified from `GET /api/corpus` on 17 Sep, listed in [RANGE-CARD § NUMBERS](./RANGE-CARD.md). The per-publication counts this line used to carry (163 / 345 chunks) described an app-side chunk table the schema no longer has; the app now holds approved sources as `LearningRecord`s and grounds through Anchor.
@@ -204,7 +222,7 @@ Counts are from `GET /api/corpus`, 17 Sep 2026.
 - **D-0 ✓ (DONE):** Anchor #1 built · Corpus staged · Golden course · Orin + key set
 - **Day 1 (15 SEP):** #12 AI Tutor (Ask) · #13 / #16 content · H-4 roles
 - **Day 2 (16 SEP):** H-1 grounding trust · Live refusal · #9 mastery machinery
-- **Day 3 (17 SEP):** H-2 offline loop · H-3 SCORM export · Integration freeze
+- **Day 3 (17 SEP):** H-2 Anchor offline proof (cable out) · H-3 SCORM export · Integration freeze
 - **Day 4 (18 SEP):** Run-of-show ×2 · Scorecard + metrics · Present
 
 ---
@@ -219,7 +237,8 @@ Open cold on Day 1 with minimum friction. Security hardening is a deliberate Day
 | --- | --- |
 | **Device** | Jetson Orin Nano 8GB · host `orin-vanguard` · air-gapped, offline |
 | **SSH** | key-based; USB device-mode only. Use `id_ed25519`, not nahawi.pem. |
-| **Anchor** | `http://127.0.0.1:8000/api/*` — ask · corpus · health · learn |
+| **Anchor** | `http://192.168.55.1:8000/api/*` from the cabled laptop (`127.0.0.1:8000` on the board itself) — ask · corpus · health · verify · ground. The `192.168.55.1` address is point-to-point USB: no other laptop and no cloud host can reach it. |
+| **Generation** | llama-server on the board at `http://192.168.55.1:8080/v1`; the served model id is the literal string `/opt/tutor/models/gemma-4-E2B_q4_0-it.gguf` |
 | **Auth key** | OpenRouter at `~/.secrets/openrouter.env` (600). Workstation authors; the Orin stays offline. |
 | **sudo** | Rarely needed; password in local team notes — deliberately not in this doc. |
 
@@ -234,8 +253,9 @@ ssh -i ~/.ssh/id_ed25519 vanguard@192.168.55.1
 | Task | Detail | Command |
 | --- | --- | --- |
 | **Daily check** | Link, services, health, corpus, key — one shot each morning. | `bash ops/orin-check.sh` |
-| **Key → .env** | Pull the authoring key into an app env file. | `bash ops/get-key.sh path/.env` |
-| **Run the app** | Next.js on `:3111`; Postgres in Docker. | `docker start schoolcircle-dev && npm run dev` |
+| **Expose Anchor off this laptop** | Optional. Not needed for the local demo — Anchor binds the USB interface directly. A Cloudflare *quick* tunnel renames itself on every restart; use a **named** tunnel if it must stay up. | `bash ops/tunnel.sh` |
+| **Authoring key** | Copy it out of `~/.secrets/openrouter.env` on the Orin by hand. `ops/` holds exactly two scripts — `orin-check.sh` and `tunnel.sh` — and there is **no** `get-key.sh`. | — |
+| **Run the app** | Next.js on `:3111`; Postgres in Docker. The container is `schoolcircle-db` on host port **5432** (`docker-compose.yml`) — not `schoolcircle-dev`, not 5433. | `docker start schoolcircle-db && npm run dev` |
 | **#1 live at** | `/prototype` — the Rubric Studio + SME review, working now. | — |
 
 ---
@@ -251,7 +271,7 @@ route a judge can exercise end-to-end in the app.
 | --- | --- | --- |
 | **Content Generation** | **Built — 2 of 2** | #13 end-to-end via **Coursewright**; #16 partly — MCWP 5-10 is on the board and the generator runs against it, but the MCPP planning experience is the mastery path re-pointed, not purpose-built |
 | **Performance Assessment** | **1 of 5 end-to-end, 2 partly** | #1 **Rubricon** is complete. #9 **Whetstone** runs but the 8670 ELOs and the Moodle embedding are not in hand. #6 and #14 are **not** claimed: **Sextant** reads attempts, not forums, assignments or chat transcripts |
-| **Personalized Learning** | **Built — #12** | AI Tutor via **Sourcerer** + Anchor (cite-or-refuse, offline, measured). #7 low-resource language is out of scope. **Cadence** and **Waypoint** are real and wired, but they are not a use case on the portal |
+| **Personalized Learning** | **Built — #12** | AI Tutor via **Sourcerer** + Anchor (cite-or-refuse, answered on the board with the network cable out, measured). #7 low-resource language is out of scope. **Cadence** and **Waypoint** are real and wired, but they are not a use case on the portal |
 | **Operational Support** | **Not covered — 0 of 5** | Say this first. The grounded Q&A surface is adjacent to #15; nothing here answers #2, #4, #5 or #8 |
 | **Simulation** | Partial | the MCPP planning scenario + coaching (**Coursewright**) — no use case on the portal sits in this category |
 | **Wargaming** | **Repo, not a use case — 0 of 3** | #17 via **Understudy** is a real doctrine-bound agent with a fidelity benchmark, and it is **set aside**. A repo we can show, not a use case we solved |
@@ -267,7 +287,7 @@ One platform, visibly doing five jobs. Rehearse until it runs cold.
 3. **Trust it.** *(1:00 · #12 · trust)* Click a citation → the exact passage. Ask an out-of-doctrine question → it refuses. Then open **item review** for the HHEM number — that is where the on-device entailment check writes a **measured** support score per generated item, and where an unscored item reads *not verified* instead of showing a figure. *Mic drop.*
 4. **Rubric from a raw standard.** *(1:00 · #1)* Paste a T&R standard → BARS anchors, traceable. Then a vague one → flagged for the SME, not guessed.
 5. **Prove it teaches.** *(0:45 · #9)* Learner discusses to mastery / takes pre→post; the instructor's class view lights up.
-6. **Where it runs.** *(0:30)* Pull the network — still working, offline on the edge. Then: exports to SCORM, drops into MarineNet.
+6. **Where it runs.** *(0:30)* Signed in and on the tutor page already — then **pull the network cable**: still a cited answer, still an honest refusal, computed on the board. Name the edge of the claim out loud: the **grounding engine** is what runs offline; a fresh sign-in would still need Firebase Auth, and that is the next gap we close. Plug back in; exports to SCORM, drops into MarineNet.
 
 ---
 
