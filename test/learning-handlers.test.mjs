@@ -605,8 +605,15 @@ test(
         sourceId: source.id,
         revision: pendingPlan.revision,
       });
-      assert.equal(crossOwnerView.json.course.sections[0].pre[0].answer, undefined);
-      assert.equal(crossOwnerView.json.course.sections[0].pre[0].indicators, undefined);
+      // A cross-owner reader is a learner here, and the learner projection no
+      // longer redacts the answer key out of a question it still ships -- it does
+      // not ship the question. Course approval releases a shape; every sentence
+      // inside it stays a PENDING Item until a human ratifies it, so the draft's
+      // lesson/pre/post never cross this boundary at all. Asserting the absence of
+      // the containers, not of a field inside them, is what pins that.
+      assert.equal(crossOwnerView.json.course.sections[0].pre, undefined);
+      assert.equal(crossOwnerView.json.course.sections[0].post, undefined);
+      assert.equal(crossOwnerView.json.course.sections[0].lesson, undefined);
       assert.equal(JSON.stringify(crossOwnerView).includes('Performs the operation.'), false);
     } finally {
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
