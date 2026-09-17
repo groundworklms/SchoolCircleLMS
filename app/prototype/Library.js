@@ -809,6 +809,11 @@ export function CourseDraft({ course, onChanged }) {
 
   const sourceCount = draft?.sourceIds?.length || course.sourceIds?.length || 0;
   const sections = draft?.sections || [];
+  const notCovered = (Array.isArray(draft?.skippedObjectives) ? draft.skippedObjectives : [])
+    .map((entry) => (typeof entry === 'string'
+      ? { objective: entry, reason: '' }
+      : { objective: String(entry?.objective || ''), reason: String(entry?.reason || '') }))
+    .filter((entry) => entry.objective);
   const approvedSources = Array.isArray(sources) ? sources.filter((source) => source.status === 'APPROVED') : [];
   const showingLoading = loading || (!envelope && !draftError);
   // A pendingRevision key only ever matches the one form it names, so blocking
@@ -832,6 +837,27 @@ export function CourseDraft({ course, onChanged }) {
           {hasPendingRevision ? 'NEEDS REVIEW' : status === 'APPROVED' ? 'PUBLISHED' : status || 'PENDING'}
         </span>
       </div>
+
+      {/* What this draft does NOT teach, carried on the record itself. The
+          generation modal said it once while the instructor watched; this is
+          the same fact days later, when they are deciding whether to approve a
+          course that covers three of the four objectives they asked for. Older
+          drafts stored bare objective strings, so both shapes render. */}
+      {notCovered.length > 0 && (
+        <div className="p-panel" style={{ marginBottom: '1rem' }}>
+          <p className="p-src" style={{ margin: 0 }}>
+            Not covered by the selected sources, so not written:
+          </p>
+          <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
+            {notCovered.map((entry) => (
+              <li key={entry.objective} className="p-src">
+                {entry.objective}
+                {entry.reason ? <> &mdash; {entry.reason}</> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {err && <p className="s-shell-error" role="alert">{err}</p>}
       {draftError && <div className="s-shell-error" role="alert"><p>{errText(draftError, 'Could not load course draft.')}</p><button type="button" className="p-btn ghost" onClick={refetch}>Reload course</button></div>}
