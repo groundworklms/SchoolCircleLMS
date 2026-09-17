@@ -132,3 +132,46 @@ test('startJob returns before the work does, and records the outcome afterwards'
   assert.equal(rows.get(record.id).payload.courseId, 'course-9');
   assert.ok(originalCreate && originalUpdate, 'the real helpers still exist for production use');
 });
+
+/*
+ * The handlers, called.
+ *
+ * These exist because the first version of them referenced a `requireAnyRole`
+ * that lib/learning/core.js does not import. That is a ReferenceError on the
+ * first real request, and every test passed: the job layer underneath was
+ * covered, the routes were one line each, and nothing in between was ever
+ * executed. The generation failed in the browser with "requireAnyRole is not
+ * defined" and the suite was green.
+ */
+test('the job handlers run, which is what nothing was checking', async () => {
+  const { startCourseJob, readCourseJob, listCourseJobs } = await import('../lib/learning/core.js');
+  const identity = { id: 'owner-1', roles: ['INSTRUCTOR'] };
+
+  // Called with the envelope the route passes -- { body, params, query,
+  // request } -- not with the body itself. Reading the wrong one is the second
+  // bug this covers.
+  await assert.rejects(
+    startCourseJob(identity, { body: { sourceIds: ['source-1'] } }),
+    (error) => {
+      assert.doesNotMatch(String(error?.message), /is not defined/, error?.message);
+      return true;
+    },
+    'it may fail for want of a database; it must not fail for want of an identifier',
+  );
+
+  await assert.rejects(
+    readCourseJob(identity, { params: { id: 'nope' } }),
+    (error) => {
+      assert.doesNotMatch(String(error?.message), /is not defined/, error?.message);
+      return true;
+    },
+  );
+
+  await assert.rejects(
+    listCourseJobs(identity),
+    (error) => {
+      assert.doesNotMatch(String(error?.message), /is not defined/, error?.message);
+      return true;
+    },
+  );
+});
