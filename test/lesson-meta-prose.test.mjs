@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { narratesTheLesson, groundLessonPages } from '../lib/arsenal-core.js';
+import { withoutNarration } from '../lib/learning/narration.js';
+import { lessonPagesForSection } from '../lib/learning/lesson-pages.js';
 
 // Observed verbatim in the course generated from the AY27 coursebook on
 // 2026-09-17. Every one of these passed the grounding floor, because narrating
@@ -139,4 +141,73 @@ test('the intro may still orient the learner', () => {
   );
   assert.ok(grounded);
   assert.match(grounded.intro, /^In this lesson/, 'the intro is exempt by design');
+});
+
+
+// ASTRA's own quotes from sections 1 and 9, where the narration hangs off a
+// copula rather than an exposition verb. The first version of this detector
+// missed both.
+test('narration carried by a copula is caught', () => {
+  for (const line of [
+    'The lesson is built to cover what learning means to Marines.',
+    'The lesson is organized in a sequence: first the Department of the Navy, then the functions.',
+    'This lesson also places learning in a larger setting.',
+    'The lesson will show you the characteristics of a successful Marine learner.',
+    'This module has three parts.',
+    'The reading was written to prepare you for the practical application.',
+  ]) {
+    assert.equal(narratesTheLesson(line), true, line);
+  }
+});
+
+test('withoutNarration keeps the doctrine in a half-blurb paragraph', () => {
+  const sentences = [
+    'The lesson is built to cover what learning means to Marines. ',
+    'Learning is a change in behavior that results from experience. ',
+    'This lesson also places learning in a larger setting. ',
+    'A successful Marine learner is self-directed and reflective.',
+  ];
+  assert.deepEqual(withoutNarration(sentences), [sentences[1], sentences[3]]);
+});
+
+test('withoutNarration returns nothing when every sentence narrates', () => {
+  assert.deepEqual(
+    withoutNarration(['The lesson says three things. ', 'The lesson then covers the fourth.']),
+    [],
+  );
+  assert.deepEqual(withoutNarration(null), []);
+});
+
+// The cliff this closes: pages dropped as narration fall back to the
+// micro-lesson, which on a chapter-introduction section is the same blurb.
+test('the micro-lesson fallback does not reintroduce the blurb', () => {
+  const { items } = lessonPagesForSection({
+    title: 'What learning means',
+    lesson:
+      'The lesson is built to cover what learning means to Marines. ' +
+      'Learning is a change in behavior that results from experience. ' +
+      'This lesson also places learning in a larger setting.',
+  });
+  const pages = items.filter((item) => item.type === 'page');
+  const prose = pages.flatMap((page) => (page.blocks || []).filter((b) => b.type === 'p').map((b) => b.text));
+  assert.ok(prose.length > 0, 'the teaching sentence still reaches the learner');
+  for (const text of prose) {
+    assert.equal(narratesTheLesson(text), false, `narration survived the fallback: ${text}`);
+  }
+  assert.ok(prose.some((text) => /change in behavior/.test(text)));
+});
+
+test('a section that is nothing but narration gets no lesson page', () => {
+  const { items } = lessonPagesForSection({
+    title: 'About this lesson',
+    lesson: 'The lesson is built to cover what learning means. This lesson also places learning in a setting.',
+  });
+  const prose = items
+    .filter((item) => item.type === 'page')
+    .flatMap((page) => (page.blocks || []).filter((b) => b.type === 'p').map((b) => b.text));
+  assert.equal(
+    prose.some((text) => /built to cover|places learning/.test(text)),
+    false,
+    'the blurb must not be shown as though it were a lesson',
+  );
 });
