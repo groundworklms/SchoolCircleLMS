@@ -454,10 +454,11 @@ export function GenerationProgress({ events, interrupted = false, watching = fal
             {arrived
               ? 'The generation finished. The course is in your list.'
               : watching
-                ? 'The connection carrying this progress ended. The generation did not — it is '
-                  + 'still running on the server, and this window is watching for the course to land.'
-                : 'The connection ended before generation reported an outcome — the reporting '
-                  + 'stopped, not the generation. Check the course list in a few minutes.'}
+                ? 'Lost contact with the generation. It is a job on the server rather than something '
+                  + 'this window is holding open, so it carries on without us — and this window is '
+                  + 'watching for the course to land.'
+                : 'Contact with the generation was lost before it reported an outcome. It runs as a '
+                  + 'job on the server, so check the course list in a few minutes.'}
           </p>
           {!arrived && (
             <p style={{ margin: '0.5rem 0 0', color: 'var(--p-dim)', fontSize: '0.9em' }}>
