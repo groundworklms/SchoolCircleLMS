@@ -80,6 +80,7 @@ const dbMock = {
   // Per-item ratification (#863f724) reaches Item rows through db.js. These
   // suites never exercise that path, so the seams answer empty rather than
   // the module failing to link.
+  async approvePendingDeliveryCourseItems() { return 0; },
   async listDeliveryCourseItems() { return []; },
   async getDeliveryCourseItem() { return null; },
   async updateDeliveryCourseItem() { return null; },
@@ -137,6 +138,8 @@ mock.module('../lib/arsenal-core.js', {
     masteryPlanProvenance: () => null,
     deriveMasteryPlan: async () => null,
     draftRubricTask: async () => ({ task: 'Generated task' }),
+    expandCoursePages: async () => ({ expanded: 0 }),
+    passageForCitation: () => null,
     draftCourse: async () => {
       if (draftGate) {
         const gate = draftGate;

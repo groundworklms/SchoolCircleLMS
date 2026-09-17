@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { projectCourseRows, withPreservedItemStatus } from '../lib/learning/project-course.js';
+import { lessonContent, projectCourseRows, withPreservedItemStatus } from '../lib/learning/project-course.js';
 
 const DRAFT = {
   title: 'Marksmanship fundamentals',
@@ -284,4 +284,28 @@ test('an unresolvable label, an empty index and an unrelated index all fall back
       ['src_1 p.4'],
     );
   }
+});
+
+test('a section\'s structured teaching content rides on its LESSON row, and a bare section carries none', () => {
+  const rich = {
+    title: 'Transformers',
+    lesson: 'A transformer moves energy between circuits.',
+    intro: 'Why it matters.',
+    pages: [{ title: 'How it works', blocks: [{ type: 'p', text: 'Two coils on a core.' }] }],
+    labels: [{ label: 'Core', text: 'Laminated iron.' }],
+    diagram: { title: 'Transformer', viewBox: '0 0 10 10', elements: [{ type: 'text', x: 1, y: 1, text: 'Core' }] },
+    flashcards: [{ front: 'Turns ratio', back: 'Ns/Np' }],
+  };
+  const bare = { title: 'Bare', lesson: 'Just the paragraph.' };
+  const { sections } = projectCourseRows('rec', { title: 'T', sections: [rich, bare] });
+  const lessonRow = (section) => section.items.find((item) => item.kind === 'LESSON');
+  assert.deepEqual(lessonRow(sections[0]).options, {
+    intro: 'Why it matters.',
+    pages: rich.pages,
+    labels: rich.labels,
+    diagram: rich.diagram,
+    flashcards: rich.flashcards,
+  });
+  assert.equal(lessonRow(sections[1]).options, null);
+  assert.equal(lessonContent({ title: 'x', diagram: { elements: [] }, pages: [] }), null);
 });

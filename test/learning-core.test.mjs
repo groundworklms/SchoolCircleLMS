@@ -1200,11 +1200,18 @@ test('the learner course projection carries structure, never unratified text', (
       lesson: 'Unratified lesson prose.',
       pre: [{ stem: 'An unratified pre-check?', options: ['A', 'B'], answer: 0 }],
       post: [{ stem: 'An unratified post-check?', options: ['A', 'B'], answer: 1 }],
+      annex: { letter: 'A', title: 'Basics' },
+      intro: 'An unratified intro.',
+      pages: [{ title: 'An unratified page', blocks: [{ type: 'p', text: 'Unratified page text.' }] }],
+      labels: [{ label: 'Core', text: 'Unratified label text.' }],
+      diagram: { title: 'Unratified diagram', elements: [] },
+      flashcards: [{ front: 'Unratified card', back: 'x' }],
     }],
   });
 
   // What course approval did release.
   assert.equal(projected.title, 'Movement');
+  assert.deepEqual(projected.sections[0].annex, { letter: 'A', title: 'Basics' });
   assert.deepEqual(projected.objectives, ['Move under fire']);
   assert.deepEqual(projected.sourceIds, ['source-1']);
   assert.equal(projected.sections[0].title, 'Movement fundamentals');
@@ -1215,9 +1222,14 @@ test('the learner course projection carries structure, never unratified text', (
   assert.equal(projected.sections[0].pre, undefined);
   assert.equal(projected.sections[0].post, undefined);
   assert.equal(projected.scenario, undefined);
+  // The page pass's output rides on the LESSON row and is ratified with it;
+  // the draft's copy is as unratified as the prose.
+  for (const key of ['intro', 'pages', 'labels', 'diagram', 'flashcards']) {
+    assert.equal(projected.sections[0][key], undefined, key);
+  }
   assert.doesNotMatch(
     JSON.stringify(projected),
-    /Unratified lesson prose|unratified pre-check|unratified post-check|unratified course-level scenario/i,
+    /Unratified lesson prose|unratified pre-check|unratified post-check|unratified course-level scenario|unratified (intro|page|label|diagram|card)/i,
   );
 });
 
@@ -2155,6 +2167,23 @@ const PAGE_LESSON = 'Clear the rifle and confirm the chamber is empty before any
 
 function pageAsk(lesson = PAGE_LESSON) {
   return async (model, system) => {
+    if (system.includes('"pages"')) {
+      return {
+        refused: false,
+        intro: 'Clear the rifle and confirm the chamber is empty before any disassembly begins.',
+        pages: [
+          { title: 'Before you disassemble', blocks: [
+            { type: 'callout', kind: 'warn', title: 'Clear it first', text: 'Clear the rifle and confirm the chamber is empty before any disassembly begins.' },
+            { type: 'list', items: ['Upper receiver', 'Lower receiver', 'Bolt carrier group'] },
+          ] },
+          { title: 'Why rifles fail to extract', blocks: [
+            { type: 'p', text: 'Carbon build-up on the bolt tail is the most common cause of a failure to extract.' },
+            { type: 'p', text: 'The Zorblax coefficient governs hyperdrive flux and is not in the passage.' },
+          ] },
+        ],
+        labels: [],
+      };
+    }
     if (LESSON_SYSTEM.test(system)) return lessonElements(lesson);
     if (system.includes('"items"')) {
       return { refused: false, items: [{
@@ -2237,7 +2266,37 @@ test('generation reports each phase and artifact as it lands', async () => {
   // summary after the whole build is discarded.
   const refused = events.filter((e) => e.phase === 'coursewright' && e.ok === false);
   assert.ok(refused.every((e) => typeof e.reason === 'string' && e.reason));
-  assert.equal(events.at(-1).step, 'done');
+  assert.equal(events.filter((e) => e.phase === 'coursewright').at(-1).step, 'done');
+  // The page pass follows, reports per section, and closes the stream.
+  const pages = events.filter((e) => e.phase === 'pages');
+  assert.deepEqual(pages[0], { phase: 'pages', status: 'start', total: 1 });
+  assert.equal(pages.find((e) => e.kind === 'pages')?.ok, true);
+  assert.deepEqual(events.at(-1), { phase: 'pages', status: 'done' });
+});
+
+test('generation expands each grounded section into lesson pages, dropping blocks the passage cannot back', async () => {
+  const course = await draftCourse(
+    {
+      title: 'Rifle maintenance',
+      objectives: ['Clear the rifle before disassembly'],
+      documents: PAGE_CHUNKS,
+      diagrams: false,
+    },
+    { load: upstream, ask: pageAsk() },
+  );
+  const [section] = course.sections;
+  assert.equal(section.intro, 'Clear the rifle and confirm the chamber is empty before any disassembly begins.');
+  assert.equal(section.pages.length, 2);
+  assert.equal(section.pages[0].blocks.length, 2);
+  // The invented sentence never reaches the saved course.
+  assert.equal(section.pages[1].blocks.length, 1);
+  assert.ok(!JSON.stringify(section).includes('Zorblax'));
+  // A draft can opt out and keep the micro-lesson alone.
+  const bare = await draftCourse(
+    { title: 'Rifle maintenance', objectives: ['Clear the rifle before disassembly'], documents: PAGE_CHUNKS, diagrams: false, pages: false },
+    { load: upstream, ask: pageAsk() },
+  );
+  assert.equal(bare.sections[0].pages, undefined);
 });
 
 test('a throwing progress listener never aborts a generation that is going fine', async () => {
