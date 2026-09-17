@@ -131,12 +131,9 @@ function HealthPanel({ health, checking, sourceNote, onRecheck, onEnterAddress }
         {(state === 'unreachable' || state === 'unconfigured') && (
           <p className="doctrine-note">
             {state === 'unreachable'
-              ? 'Nothing is answering there. The board moves between laptops, and a tunnel '
-                + 'takes a new hostname every time it restarts, so a saved address goes stale '
-                + 'on its own. '
+              ? 'Nothing is answering there — a restarted tunnel takes a new hostname, so a saved address goes stale. '
               : 'No address is set yet. '}
-            Try <strong>Find the Orin</strong> below — it sweeps the USB and tunnel addresses —
-            then type the new address in if the sweep comes up empty.
+            Run <strong>Find the Orin</strong> below, or enter the address manually.
           </p>
         )}
 
@@ -350,8 +347,7 @@ export function DoctrineSettings() {
   return (
     <div className="doctrine-settings">
       <p className="s-settings-p">
-        Where grounded answers and citations come from. With the Orin plugged in over USB this
-        finds it on its own — no key and no tunnel needed.
+        Where grounded answers and citations come from. Plugged in over USB, the Orin is found automatically.
       </p>
 
       <HealthPanel
@@ -416,11 +412,9 @@ export function DoctrineSettings() {
             />
           </label>
           <p className="doctrine-note">
-            The Orin over USB is <code>http://192.168.55.1:8000</code>. A laptop running
-            <code> ops/tunnel.sh</code> is <code>http://localhost:8000</code>. Anything else —
-            a quick tunnel, another laptop on the venue network — takes a fresh hostname every
-            time it restarts, so paste the current one here and the status light will tell you
-            whether it answers.
+            Orin over USB: <code>http://192.168.55.1:8000</code>. A laptop running
+            <code> ops/tunnel.sh</code>: <code>http://localhost:8000</code>. Otherwise paste the
+            current address — the status light shows whether it answers.
           </p>
           <div className="p-btnrow">
             <button type="submit" className="p-btn" disabled={busy || !baseUrl.trim()}>
