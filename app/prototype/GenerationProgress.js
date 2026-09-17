@@ -239,14 +239,14 @@ function Step({ label, state, detail }) {
 }
 
 /**
- * @param {{ events: Array, interrupted?: boolean }} props
+ * @param {{ events: Array, interrupted?: boolean, watching?: boolean }} props
  *   `interrupted` is the one fact this screen cannot fold out of the events:
  *   the stream stopped without a `saved` or a `failed`. Only the caller holding
  *   the reader knows that, so it is passed in rather than inferred from the
  *   absence of a terminal event — which is also what a generation still in
  *   flight looks like.
  */
-export function GenerationProgress({ events, interrupted = false }) {
+export function GenerationProgress({ events, interrupted = false, watching = false, arrived = false }) {
   const view = generationView(events);
   const built = view.sections.filter((section) => section.artifacts.lesson?.ok).length;
 
@@ -427,13 +427,28 @@ export function GenerationProgress({ events, interrupted = false }) {
           -- so this says only what is known, and names the one action that
           makes it worse. Generating again is how the same course gets written
           twice, and an instructor who is told nothing does exactly that. */}
+      {/* Not styled as an error, because nothing has gone wrong with the
+          course. The connection carrying the progress report ended and the
+          generation did not; this screen now waits for it rather than handing
+          the instructor a job it can do itself. `watching` is false only where
+          the caller cannot watch, and there the older "go and look" wording is
+          still the true one. */}
       {interrupted && !view.saved && !view.failure && (
-        <div className="s-shell-error" role="alert" style={{ marginTop: '1rem' }}>
+        <div className="p-panel" role="status" style={{ marginTop: '1rem' }}>
           <p style={{ margin: 0 }}>
-            The connection ended before generation reported an outcome — the reporting stopped, not
-            the generation. Check the course list in a few minutes; generating again before it
-            appears makes a duplicate.
+            {arrived
+              ? 'The generation finished. The course is in your list.'
+              : watching
+                ? 'The connection carrying this progress ended. The generation did not — it is '
+                  + 'still running on the server, and this window is watching for the course to land.'
+                : 'The connection ended before generation reported an outcome — the reporting '
+                  + 'stopped, not the generation. Check the course list in a few minutes.'}
           </p>
+          {!arrived && (
+            <p style={{ margin: '0.5rem 0 0', color: 'var(--p-dim)', fontSize: '0.9em' }}>
+              Generating again before it appears makes a second copy of the same course.
+            </p>
+          )}
         </div>
       )}
 

@@ -2021,12 +2021,14 @@ test('a lost stream offers waiting as the primary action and regenerating as the
   );
   assert.ok(regenerate, 'regenerating stays reachable, as a secondary action');
 
-  // And the honest copy the buttons now agree with is still on screen.
+  // And the honest copy the buttons now agree with is still on screen. Role
+  // 'status' rather than 'alert': the wording changed from an error to a
+  // statement that the generation is still running, and an assertive live
+  // region for "this is fine, it is still working" interrupts a screen reader
+  // for no reason.
   const notice = elements.find(
-    (element) => element.props?.role === 'alert'
-      && /ended before generation reported an outcome/.test(
-        JSON.stringify(element.props.children),
-      ),
+    (element) => element.props?.role === 'status'
+      && /the reporting stopped, not|generation did not/.test(JSON.stringify(element.props.children)),
   );
   assert.ok(notice, 'the lost-stream explanation must not be replaced by the buttons');
 
@@ -2133,11 +2135,14 @@ test('a generation whose stream ended without an outcome says so instead of noth
   const lost = renderToStaticMarkup(
     React.createElement(GenerationProgress, { events, interrupted: true }),
   );
-  assert.match(lost, /role="alert"/);
+  // 'status', not 'alert': a generation still running server-side is not an
+  // error, and an assertive live region for it interrupts a screen reader to
+  // say nothing is wrong.
+  assert.match(lost, /role="status"/);
   assert.match(lost, /ended before generation reported an outcome/);
   // It has to name the action that makes it worse, because that is the action
   // the silence was prompting.
-  assert.match(lost, /duplicate/);
+  assert.match(lost, /second copy/);
 
   // A generation still in flight looks exactly the same in the events, so the
   // notice must never be inferred from a missing terminal phase.
@@ -2350,4 +2355,39 @@ test('a long not-covered list folds to a count and groups its reasons', () => {
   assert.equal(markup.match(/outside this course&#x27;s scope/g).length, 1);
   // ...and every topic is still there for whoever opens it.
   for (const entry of notCovered) assert.ok(markup.includes(entry.objective), entry.objective);
+});
+
+test('a lost stream says the generation is still running, and stops asking the instructor to go and look', () => {
+  const { GenerationProgress } = loadComponent('app/prototype/GenerationProgress.js');
+  const events = [
+    { phase: 'sources', documents: 1, characters: 9000 },
+    { phase: 'outline', status: 'done', objectives: ['Apply the principles of joint operations'] },
+    { phase: 'sections', total: 1, passages: 1 },
+  ];
+
+  // Lost, and this screen can watch for the result.
+  const watching = renderToStaticMarkup(
+    React.createElement(GenerationProgress, { events, interrupted: true, watching: true }),
+  );
+  assert.match(watching, /watching for the course to land/);
+  assert.match(watching, /makes a second copy/, 'the duplicate warning still stands while it is unknown');
+  // Not an error: nothing has gone wrong with the course.
+  assert.doesNotMatch(watching, /s-shell-error/);
+
+  // Landed. The warning goes with it, because there is no longer any doubt.
+  const arrived = renderToStaticMarkup(
+    React.createElement(GenerationProgress, { events, interrupted: true, watching: false, arrived: true }),
+  );
+  assert.match(arrived, /The generation finished\. The course is in your list\./);
+  assert.doesNotMatch(arrived, /makes a second copy/);
+
+  // A caller that cannot watch keeps the older, still-true wording.
+  const unwatched = renderToStaticMarkup(
+    React.createElement(GenerationProgress, { events, interrupted: true }),
+  );
+  assert.match(unwatched, /Check the course list in a few minutes/);
+
+  // And none of it appears on a generation that is simply still going.
+  const running = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
+  assert.doesNotMatch(running, /reporting|watching for the course/);
 });
