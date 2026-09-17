@@ -16,6 +16,28 @@ There is no global-corpus, scripted, or model-only fallback. Unsupported evidenc
 produces a normal refusal with no citations. Required service failures produce
 sanitized service errors, not a claim that the course lacks the answer.
 
+## Citation contract
+
+The answer stage is told the rules it is held to, because a rule the model
+cannot see is a rule it cannot satisfy. It returns `{refused, answer, used}`;
+`used` lists 1-based numbers of the retrieved passages, and `answer` carries an
+inline `[n]` marker for each.
+
+What is delivered requires the **set** of markers in the answer to equal the set
+of `used` numbers. A passage cited in several sentences carries a marker in each
+of them, which is how a cited answer is normally written. A marker outside
+`used` is a reference to evidence no stage verified, a `used` entry with no
+marker is evidence the answer never leans on, a grouped `[1, 2]` is not a
+marker, and a repeated `used` entry inflates the evidence handed to Understudy;
+all four remain refusals, and none of them produce a partial answer.
+
+`anchor_abstained` means no supplied passage was relevant. `unsupported` means
+the model declined because the selected passages do not answer the question —
+Anchor selecting passages is not the same as those passages carrying the answer,
+so this is the expected refusal for an in-topic question the source never
+addresses. `citation_invalid` means a candidate existed but its citations could
+not be validated against the authorized passages.
+
 ## Anchor companion
 
 Companion changes are proposed at

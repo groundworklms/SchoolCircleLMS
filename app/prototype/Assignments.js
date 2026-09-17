@@ -178,6 +178,7 @@ function Composer({ a, onSubmit, onCancel }) {
     <div className="s-asg-composer">
       <textarea
         rows={4}
+        aria-label="Your response"
         placeholder="Type your response here, or attach a file below."
         value={response}
         onChange={(e) => setResponse(e.target.value)}

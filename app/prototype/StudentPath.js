@@ -91,6 +91,7 @@ function StudentPath({ course }) {
               key={c.id}
               className={`p-coacard${coa === c.id ? ' on' : ''}`}
               onClick={() => setCoa(c.id)}
+              aria-pressed={coa === c.id}
             >
               <h4>
                 <span style={{ color: c.color }}>{c.icon}</span>

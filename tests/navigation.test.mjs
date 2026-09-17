@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   canAccessLocation,
@@ -8,6 +11,9 @@ import {
   publishedCourseHref,
   settingsHref,
 } from '../app/prototype/routes.js';
+
+const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const source = (relativePath) => fs.readFileSync(path.join(workspace, relativePath), 'utf8');
 
 test('canonical roots select the correct role and area', () => {
   assert.deepEqual(parse('/prototype'), {
@@ -74,7 +80,10 @@ test('instructor secondary and legacy course tools retain canonical deep links',
   // The review/publish path stays the canonical builder URL, while existing
   // roster and live-learning links remain addressable for saved bookmarks.
   assert.equal(href(parse('/prototype/instructor/M092721')), '/prototype/instructor/M092721/builder');
-  for (const view of ['roster', 'control', 'fidelity', 'mastery', 'aar', 'settings']) {
+  // `rubrics` is both a library view and a course view. The library one wins
+  // at /instructor/rubrics (asserted above); under a course id it is that
+  // course's own objective coverage.
+  for (const view of ['roster', 'control', 'fidelity', 'rubrics', 'mastery', 'aar', 'settings']) {
     const path = `/prototype/instructor/M092721/${view}`;
     assert.equal(parse(path).area, 'course', path);
     assert.equal(href(parse(path)), path);
@@ -107,6 +116,33 @@ test('saved-role access permits only the instructor preview locations', () => {
   assert.equal(canAccessLocation(instructor, parse('/prototype/course/course-1'), true), false);
   assert.equal(canAccessLocation({ role: 'LEARNER' }, parse('/prototype/instructor'), true), false);
   assert.equal(canAccessLocation({ role: 'BOTH' }, parse('/prototype/instructor'), true), true);
+});
+
+/* /plan is the team's hackathon board. The route stays -- we deep-link it
+   ourselves -- but it kept reappearing on both rails, where a judge or a Marine
+   sees it. The rails are checked at the source because a rail button is a raw
+   window.location assignment, not a routes.js location. */
+test('neither prototype rail offers the internal planning board', () => {
+  for (const shell of ['app/prototype/InstructorShell.js', 'app/prototype/StudentShell.js']) {
+    const text = source(shell);
+    assert.doesNotMatch(text, /Planning board/, shell);
+    // Sign-out still sends the browser to '/', so only /plan itself is barred.
+    assert.doesNotMatch(text, /['"]\/plan(?:[/?#]|['"])/, shell);
+  }
+});
+
+/* Both hero buttons used to land on /login -- "Explore the prototype" pointed at
+   the auth-gated /prototype, which redirects. A second CTA has to go somewhere a
+   signed-out visitor can actually reach. */
+test('the landing hero offers one way in and no auth-gated second CTA', () => {
+  const landing = source('app/page.js');
+  assert.doesNotMatch(landing, /href="\/prototype"/);
+
+  const anchors = [...landing.matchAll(/href="#([\w-]+)"/g)].map((m) => m[1]);
+  assert.ok(anchors.length > 0, 'expected an in-page CTA target');
+  for (const id of anchors) {
+    assert.match(landing, new RegExp(`id="${id}"`), `#${id} has no target on the page`);
+  }
 });
 
 test('settings tabs are addressable, canonical, and validated', () => {
@@ -149,4 +185,34 @@ test('settings tabs are addressable, canonical, and validated', () => {
   assert.equal(settingsHref('instructor'), '/prototype/instructor/settings');
   assert.equal(settingsHref('student', 'app'), '/prototype/settings/app');
   assert.equal(settingsHref('student'), '/prototype/settings');
+});
+
+test('a learner surface is decided by the address, not by the caller', async () => {
+  const { isLearnerSurface } = await import('../lib/learner-view.js');
+  // Every student address asks the server for what a learner may see, so an
+  // instructor previewing one cannot be shown their own unpublished drafts.
+  for (const path of [
+    '/prototype',
+    '/prototype/courses',
+    '/prototype/calendar',
+    '/prototype/settings',
+    '/prototype/course/M092721/lessons',
+    '/prototype/published/course-1',
+  ]) {
+    assert.equal(isLearnerSurface(path), true, path);
+  }
+  // Authoring is never narrowed: an instructor keeps full access to their own
+  // drafts on every instructor address.
+  for (const path of [
+    '/prototype/instructor',
+    '/prototype/instructor/courses',
+    '/prototype/instructor/sources',
+    '/prototype/instructor/course-1/builder',
+  ]) {
+    assert.equal(isLearnerSurface(path), false, path);
+  }
+  // Anything outside the grammar is left alone rather than guessed at.
+  for (const path of ['/login', '/', '/prototype/not-found', '/prototype/nonsense', null]) {
+    assert.equal(isLearnerSurface(path), false, String(path));
+  }
 });

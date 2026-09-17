@@ -1,4 +1,5 @@
-import { requireAnyRole } from '../../../../lib/auth.js';
+import { learnerScopedIdentity, requireAnyRole } from '../../../../lib/auth.js';
+import { asksForLearnerView } from '../../../../lib/learner-view.js';
 import { db } from '../../../../lib/db.js';
 import {
   approvedReleaseIds,
@@ -72,7 +73,10 @@ function payloadOf(record) {
 
 export async function GET(request, { params }) {
   try {
-    const identity = await requireAnyRole(request, ['LEARNER', 'INSTRUCTOR']);
+    const verified = await requireAnyRole(request, ['LEARNER', 'INSTRUCTOR']);
+    // See /api/courses: the published reader is a learner surface, so it is
+    // read as a learner even when the account that opened it can teach.
+    const identity = asksForLearnerView(request) ? learnerScopedIdentity(verified) : verified;
     const full = identity.role === 'INSTRUCTOR' || identity.role === 'BOTH';
     const { id } = await params;
     const query = new URL(request.url).searchParams;

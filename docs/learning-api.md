@@ -130,7 +130,7 @@ JSON body:
 Multipart body with `file` and optional `title`/`sourceId`. This uses Quarry's
 existing PDF extraction seam, preserves printed page text, and persists the
 same `PENDING SOURCE` shape. Uploads must be `application/pdf`, begin with the
-`%PDF-` signature, and be no larger than 10 MiB. The legacy `POST /api/ingest`
+`%PDF-` signature, and be no larger than 50 MiB. The legacy `POST /api/ingest`
 parse-only response uses the same upload guard.
 
 ### `GET /api/learning/sources` — authenticated
@@ -213,6 +213,60 @@ identity. A learner attempting to open a pending or unowned draft receives
 optional `releaseId`; mastery sessions persist the selected `releaseId` and
 analytics default to the current release while retaining explicit historical
 selection.
+
+## Answering a check in a generated course
+
+### `GET /api/learning/courses/:id/attempts` — learner or instructor
+
+```json
+{
+  "id": "record-id",
+  "releaseId": "record-id:release:revision-record-id",
+  "items": [{
+    "id": "record-id:s1:pre1",
+    "sectionIndex": 0,
+    "sectionTitle": "Movement fundamentals",
+    "phase": "pre",
+    "ordinal": 1,
+    "stem": "Which principle applies?",
+    "options": ["Use cover", "Ignore terrain"]
+  }],
+  "answers": { "record-id:s1:pre1": { "optionId": "0", "correct": true, "feedback": "…" } }
+}
+```
+
+The answerable set is the `APPROVED` `QUESTION` half of the selected release's
+materialised items and nothing else, so a `PENDING` or `REJECTED` item is never
+listed and its text never leaves the server. No keyed answer, rationale or
+support score is returned. `answers` contains only the calling learner's own
+recorded attempts, newest first per item.
+
+### `POST /api/learning/courses/:id/attempts` — learner or instructor
+
+```json
+{ "itemId": "record-id:s1:pre1", "optionId": "0", "attemptId": "uuid", "releaseId": "…" }
+```
+
+`optionId` is the index of the chosen option on the materialised row, because
+the keyed answer is an index into that row's `options`. The response is
+`{ "result": { "blockId", "optionId", "correct", "feedback" }, "releaseId",
+"recorded" }` — the same result shape the published manual reader returns, so
+one presentation serves both. The rationale reaches the learner here and only
+here, after they have committed to a choice.
+
+`attemptId` is an idempotency key: retrying the same answer replays the stored
+result (`recorded: false`) instead of banking a second attempt, and reusing the
+key for a different answer is `409 CONFLICT`. A different choice is a genuine
+second attempt and both stay on record.
+
+The attempt is persisted as a `MASTERY_ATTEMPT` record owned by the verified
+learner, carrying `courseId`, `releaseId`, `itemId`, `sectionId`, `objective`
+(the section title), `phase`, `correct`, `gradedAgainst` (the item's citation)
+and the result. That is the shape the evidence store already filters for, so a
+recorded answer feeds Sextant learning gain and class gaps directly. Unlike a
+conversational mastery turn, a keyed check **does** establish `phase` and
+`correct`; `phase` is derived server-side from the materialised item id and is
+omitted when the id states none, rather than being invented.
 
 ## Shared mastery plan review
 
@@ -329,10 +383,24 @@ the evidence persistence bridge.
 }
 ```
 
+The source must already be `APPROVED`, as for every other grounded generator.
+
+`courseId` and `objective` are optional and only valid together. They record
+which course objective the rubric judges, and the server checks both against
+the course record: the course must be the caller's, the objective must be one
+the draft teaches, and the source must be one the course was generated from.
+A rubric may still be generated without them -- a standard can become a BARS
+scale on its own.
+
 Rubricon validation and traceability checks run after the model output. The
 `RUBRIC` record remains `PENDING` and includes `validation` and
 `traceability`. The route calls upstream `generateRubric` with its isolated
 configuration; malformed or ungrounded output is not silently repaired.
+
+`GET /api/learning/rubrics` lists the owner's rubrics as
+`{ id, status, title, taskCode, sourceId, courseId, objective, dimensions,
+flagged, createdAt }`. `dimensions` counts the BARS dimensions Rubricon
+returned; a flagged rubric has none and reports `flagged: true` instead.
 
 `GET /api/learning/rubrics/:id` and `POST /api/learning/rubrics/:id/approve`
 are instructor-owner review endpoints. Rubrics are not learner delivery

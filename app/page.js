@@ -27,9 +27,15 @@ export default function Landing() {
             SchoolCircle is a grounded, offline, human-led learning platform. Every answer cites the
             manual or refuses — so what Marines learn is what the doctrine actually says.
           </p>
+          {/* One way in, and it is honest about being one way in. The second
+              button used to point at /prototype, which is auth-gated and bounces
+              straight to /login?next=/prototype -- so it promised a guest tour
+              that does not exist and delivered the primary button twice. There is
+              no public tour to link to yet, so the secondary CTA points at the
+              one thing this page can actually show a signed-out visitor. */}
           <div className="scl-cta">
             <Link className="scl-btn scl-btn-primary" href="/login">Sign in to the prototype →</Link>
-            <Link className="scl-btn scl-btn-ghost" href="/prototype">Explore the prototype</Link>
+            <a className="scl-btn scl-btn-ghost" href="#how-it-works">See how it works ↓</a>
           </div>
         </header>
 
@@ -42,7 +48,7 @@ export default function Landing() {
           ))}
         </section>
 
-        <section className="scl-what">
+        <section className="scl-what" id="how-it-works">
           <h2>One grounded loop, end to end</h2>
           <p>
             Instructors build cited courses from doctrine and approve every item. Learners study, ask

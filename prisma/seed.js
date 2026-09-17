@@ -59,6 +59,14 @@ export const DOMAIN_MODELS = Object.freeze([
 
 // Keep the original course fixture content, while making its demo-only status visible in the
 // course name.  These claims/citations are fixture content, not a production verification.
+//
+// No item here carries a `support` score, and none may be added.  `Item.support` is the
+// HHEM entailment measurement taken at approval (lib/learning/verify-support.js) against the
+// passage the item is cited to.  This fixture is typed out by hand and runs offline: nothing
+// has measured it, so there is nothing to record.  The three hardcoded values that used to sit
+// here -- 0.96, 0.95 and 0.93 -- were invented, and they read on a demo screen exactly like
+// verifier output, which is the one thing a confidence number must never do.  The seeded items
+// now show "not verified", which is true of them.
 const SECTIONS = Object.freeze([
   Object.freeze({
     id: DEMO_IDS.sections.functionalElements,
@@ -93,7 +101,6 @@ const ITEMS = Object.freeze([
       pubId: 'TC 3-22.9',
       page: '7-5',
     },
-    support: 0.96,
     status: DEMO_ITEM_STATUS,
   }),
   Object.freeze({
@@ -106,7 +113,6 @@ const ITEMS = Object.freeze([
       pubId: 'TC 3-22.9',
       page: '8-2',
     },
-    support: 0.95,
     status: DEMO_ITEM_STATUS,
   }),
   Object.freeze({
@@ -126,7 +132,6 @@ const ITEMS = Object.freeze([
       citation: 'TC 3-22.9, Ch 6 “Aiming”, para 3',
       pubId: 'TC 3-22.9',
     },
-    support: 0.93,
     status: DEMO_ITEM_STATUS,
   }),
 ]);
