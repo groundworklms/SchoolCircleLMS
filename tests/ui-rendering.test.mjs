@@ -991,6 +991,27 @@ test('rubric generation distinguishes source failures from a successful empty so
   assert.doesNotMatch(emptyMarkup, /Retry loading sources/);
 });
 
+test('the rubric source picker groups by collection and shows cleaned labels, not raw filenames', () => {
+  const { RubricsView } = loadComponent('app/prototype/InstructorFeatures.js', {
+    queryData: {
+      '/sources': [
+        { id: 's1', title: 'BE0207_FrequencyFilters_SHO', status: 'APPROVED', collection: 'Lesson plans' },
+        { id: 's2', title: 'BE0108_OhmsLaw', status: 'APPROVED', collection: 'Student material' },
+      ],
+      '/rubrics': [],
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(RubricsView));
+  // Options are grouped into an <optgroup> per collection.
+  assert.match(markup, /<optgroup label="Lesson plans">/);
+  assert.match(markup, /<optgroup label="Student material">/);
+  // Labels are cleaned: underscores become spaces, so the raw filename is gone.
+  assert.match(markup, /BE0207 FrequencyFilters SHO/);
+  assert.doesNotMatch(markup, /BE0207_FrequencyFilters_SHO/);
+  // The real record id is still the option value used for selection.
+  assert.match(markup, /value="s1"/);
+});
+
 // RubricsView state order: sourceId, taskCode, taskTitle, taskCondition,
 // taskStandard, taskSteps, err, approved, generatedRubricId.
 function reviewedRubricMarkup(rubric, { status = 'PENDING', traceability, validation } = {}) {
@@ -1042,7 +1063,7 @@ test('a flagged rubric reads as the SME referral it is, never as its payload', (
   assert.doesNotMatch(markup, /Approve rubric/);
   // What replaces it has to be an action that exists — the Standard field of
   // the form on this same page.
-  assert.match(markup, /rewrite the standard so it says/);
+  assert.match(markup, /Rewrite the standard so it says/);
   assert.match(markup, /<button[^>]*>Rewrite the standard<\/button>/);
   // verifyTraceability saw no dimensions, so its 100% is the empty case.
   assert.match(markup, /Nothing to trace yet/);
@@ -2102,7 +2123,7 @@ test('a generation whose stream ended without an outcome says so instead of noth
   assert.match(lost, /ended before generation reported an outcome/);
   // It has to name the action that makes it worse, because that is the action
   // the silence was prompting.
-  assert.match(lost, /two copies/);
+  assert.match(lost, /duplicate/);
 
   // A generation still in flight looks exactly the same in the events, so the
   // notice must never be inferred from a missing terminal phase.

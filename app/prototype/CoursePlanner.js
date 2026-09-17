@@ -89,8 +89,6 @@ export function PlanCourseModal({ sources, onCreated }) {
               <h3>Plan a full course</h3>
               <p className="p-src" style={{ margin: 0 }}>
                 Pick every document the course draws on -- program of instruction, lesson plans, student material, references.
-                SchoolCircle reads them in batches, outlines the annexes and lessons, maps the sources to each lesson, then writes
-                one lesson at a time. You review and approve the result like any other draft.
               </p>
             </div>
             <div className="p-modalbody">
@@ -100,7 +98,7 @@ export function PlanCourseModal({ sources, onCreated }) {
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.75rem 0' }}>
                 <input type="checkbox" checked={diagrams} onChange={(e) => setDiagrams(e.target.checked)} />
-                <span>Draw a labelled diagram for each lesson where the source supports one (one more model call per lesson)</span>
+                <span>Draw a labelled diagram for each lesson where the source supports one</span>
               </label>
               <div className="p-field">
                 <span>Sources · {picked.size} of {approved.length} selected</span>

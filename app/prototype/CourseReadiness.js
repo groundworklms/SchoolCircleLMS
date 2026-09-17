@@ -22,7 +22,7 @@ export function CourseReadiness({ courseId, version, candidate, pending, publish
     <section className="p-panel" aria-labelledby="course-readiness-title">
       <h3 id="course-readiness-title">{pending ? 'Review and publish' : 'Published course'}</h3>
       {published && pending && (
-        <p className="p-measure">The previous approved release remains available to learners while you review this revision.</p>
+        <p className="p-measure">The previous release stays available to learners while you review.</p>
       )}
 
       <h4 className="p-sectionlab">Required by the server</h4>
@@ -34,7 +34,7 @@ export function CourseReadiness({ courseId, version, candidate, pending, publish
       <p className="p-truth">These checks run again when you approve. This panel does not certify that they have passed.</p>
 
       <h4 className="p-sectionlab">Human review</h4>
-      <p className="p-measure">Inspect every lesson, cited passage, question and instructor-only answer key below. Request AI revisions where needed, then review the updated version.</p>
+      <p className="p-measure">Inspect every lesson, cited passage, question and answer key below. Request AI revisions where needed.</p>
 
       {pending && (
         <>

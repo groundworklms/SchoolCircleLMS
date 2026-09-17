@@ -47,11 +47,8 @@ function CohortMastery({ course }) {
     <>
       <h2 className="p-h">Class mastery</h2>
       <p className="p-sub">
-        From saved mastery sessions and attempts for this course. Aggregates appear only once
+        From saved mastery sessions and attempts. Aggregates appear only once
         {privacy?.cohortSuppressedBelow ? ` ${privacy.cohortSuppressedBelow}` : ' enough'} distinct learners have contributed — never any one Marine&apos;s answers.
-      </p>
-      <p className="p-src" role="status">
-        Privacy-safe cohort aggregate only. Individual learner sessions and IDs are never shown here.
       </p>
 
       <div className="p-tiles">
@@ -140,7 +137,7 @@ function CohortMastery({ course }) {
             </table>
           </div>
           <p className="p-src">
-            Sextant ranks the objectives the class misses most. The instructor decides what to re-teach.
+            Sextant ranks the objectives the class misses most.
           </p>
         </div>
       )}
@@ -162,8 +159,7 @@ function Mastery({ course }) {
     <>
       <h2 className="p-h">Mastery &amp; Insights</h2>
       <p className="p-sub">
-        Curriculum mastery by topic for the current class. The point is not the score — it is that the
-        weak block is visible while there is still time to do something about it.
+        Curriculum mastery by topic for the current class.
       </p>
 
       <div className="p-tiles">
@@ -225,8 +221,7 @@ function Mastery({ course }) {
           </table>
         </div>
         <p className="p-src">
-          Drafted from item analysis. The instructor decides what to re-teach — the platform only
-          brings it to the top of the pile.
+          Drafted from item analysis. The instructor decides what to re-teach.
         </p>
       </div>
     </>
