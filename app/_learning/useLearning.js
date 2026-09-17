@@ -11,6 +11,39 @@ import { authFetch } from '../../lib/firebase';
 
 const API_BASE = '/api/learning';
 
+/**
+ * Two mounted queries for the identical endpoint -- a lesson's reader and the
+ * tutor rail both need the same course envelope -- used to fire two identical
+ * GETs, because each `useApiQuery` owned its own network call with no idea
+ * the other existed. This shares one in-flight request per URL across
+ * whichever hook instances ask for it at the same time, and is cleared as
+ * soon as it settles so the next render's fetch is never served stale data.
+ *
+ * A deliberate revalidation (`refetch`, a focus/visibility return) does not
+ * go through this map: it bypasses it entirely via `fetchJson`, because the
+ * caller there is asking on purpose and must get its own round trip rather
+ * than whatever another mount happened to kick off first.
+ */
+const inFlightMounts = new Map();
+
+async function fetchJson(url) {
+  const res = await authFetch(url, { headers: { 'Content-Type': 'application/json' } });
+  const json = await res.json();
+  if (!res.ok) throw json;
+  return json;
+}
+
+function dedupedFetch(url) {
+  const existing = inFlightMounts.get(url);
+  if (existing) return existing;
+  const request = fetchJson(url);
+  inFlightMounts.set(url, request);
+  request.finally(() => {
+    if (inFlightMounts.get(url) === request) inFlightMounts.delete(url);
+  });
+  return request;
+}
+
 /** GET `${API_BASE}${path}`; a non-2xx JSON body becomes `error`. */
 export function useApiQuery(path, options) {
   const [data, setData] = useState(null);
@@ -41,7 +74,7 @@ export function useApiQuery(path, options) {
   }, [path]);
 
   const fetcher = useCallback(
-    async (signal) => {
+    async ({ dedupe = true } = {}) => {
       if (
         !enabled
         || !enabledRef.current
@@ -54,22 +87,16 @@ export function useApiQuery(path, options) {
         && enabledRef.current
         && pathRef.current === path
         && requestIdRef.current === requestId
-        && !signal?.aborted
       );
       setLoading(true);
       setError(null);
       try {
-        const res = await authFetch(`${API_BASE}${path}`, {
-          headers: { 'Content-Type': 'application/json' },
-          signal,
-        });
-        const json = await res.json();
-        if (!res.ok) throw json;
+        const url = `${API_BASE}${path}`;
+        const json = await (dedupe ? dedupedFetch(url) : fetchJson(url));
         if (!isCurrent()) return undefined;
         setData(json);
         return json;
       } catch (err) {
-        if (err?.name === 'AbortError') return;
         if (!isCurrent()) return;
         setError(err);
       } finally {
@@ -80,16 +107,16 @@ export function useApiQuery(path, options) {
   );
 
   useEffect(() => {
-    const controller = new AbortController();
     if (!enabled) {
       setLoading(false);
       return undefined;
     }
-    fetcher(controller.signal);
+    fetcher();
     return () => {
-      controller.abort();
-      // Invalidate a response even when an authFetch implementation does not
-      // honor AbortSignal (some browser/test adapters do not).
+      // A stale response is invalidated by requestId rather than by
+      // cancelling the network call: the mount fetch above may be shared
+      // with another query for the same path (see dedupedFetch), and
+      // cancelling it out from under that sibling would break its load too.
       requestIdRef.current += 1;
     };
   }, [fetcher]);
@@ -123,7 +150,14 @@ export function useApiQuery(path, options) {
     };
   }, [enabled, fetcher, refreshOnFocus]);
 
-  return { data, error, loading, refetch: useCallback(() => fetcher(), [fetcher]) };
+  return {
+    data,
+    error,
+    loading,
+    // A caller asking to refetch means now, for real -- never the request
+    // some other mounted query happened to already have in flight.
+    refetch: useCallback(() => fetcher({ dedupe: false }), [fetcher]),
+  };
 }
 
 /** POST/PUT/DELETE to `${API_BASE}${path}`; rejects with the JSON error body. */

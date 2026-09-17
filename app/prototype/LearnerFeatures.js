@@ -123,22 +123,23 @@ export function RealCourseHome({ course, go }) {
  * A section's `cite` is "<source record id> p.85" — the record id is the
  * authenticated page-opening key (lib/learning/core.js `sourcePassages`), and
  * it is a cuid. A learner must never be handed that as a citation, and unlike
- * a materialised Item the section carries no `pubId` to use instead. The
- * approved-source list is the id -> publication-name map the Sources screen
- * already reads; it is the light projection (ids, titles, page counts — no
- * document text), so naming the publication costs one small request rather
- * than re-downloading the source.
+ * a materialised Item the section carries no `pubId` to use instead.
  *
- * Returns '' until it resolves, and '' if the list cannot be read. The caller
- * withholds the citation line in that window rather than printing the key.
+ * This used to mean fetching the whole approved-source list client-side to
+ * find one row. getCourse now resolves the label server-side, into
+ * `course.sourcePublications` (lib/learning/core.js `coursePublicationLabels`)
+ * — it already has to read the source record to authorize the course for
+ * this viewer, so handing the label back costs nothing further: no request
+ * beyond the course fetch every one of these screens already makes.
+ *
+ * Returns '' until the course has loaded, and '' if the id is not among the
+ * ones the course resolved a label for. The caller withholds the citation
+ * line in that window rather than printing the key.
  */
-function usePublicationName(sourceRecordId) {
-  const { data } = useApiQuery('/sources', { enabled: Boolean(sourceRecordId) });
-  if (!sourceRecordId || !Array.isArray(data)) return '';
-  const record = data.find((source) => source?.id === sourceRecordId);
-  // `sourceId` is the Anchor publication label ("TC 3-22.9"); `title` is the
-  // document's own title, which is what a file upload records.
-  return publicationName(record?.sourceId || record?.title || '');
+function publicationFor(course, sourceRecordId) {
+  if (!sourceRecordId) return '';
+  const label = course?.sourcePublications?.[sourceRecordId];
+  return typeof label === 'string' && label ? publicationName(label) : '';
 }
 
 /**
@@ -233,7 +234,7 @@ export function CourseReader({ course }) {
   const [answerError, setAnswerError] = useState(null);
   const attemptKeys = useRef(new Map());
   const sections = envelope?.course?.sections || [];
-  const publication = usePublicationName(envelope?.course?.sourceIds?.[0]);
+  const publication = publicationFor(envelope?.course, envelope?.course?.sourceIds?.[0]);
   const cur = sections[i];
 
   const onAnswer = async (itemId, optionId) => {
@@ -292,8 +293,9 @@ export function CourseReader({ course }) {
      names the passage the lesson itself was written from rather than the
      section's primary label; and because one row is behind both, a page number
      can no longer vouch for a wording that is not the one on screen. `pubId`
-     is the publication label stamped at materialisation; the approved-source
-     list stays as the fallback for a release materialised without one. */
+     is the publication label stamped at materialisation; `publication` (the
+     course's own resolved label, see `publicationFor` above) stays as the
+     fallback for a release materialised without one. */
   const cited = prose?.citation || null;
   const citedPublication = cited?.pubId || publication;
   const lesson = {
@@ -417,7 +419,7 @@ export function MasterySession({ course }) {
     ? envelope.course.masteryPlan
     : envelope?.course?.masteryPlan || null;
   const sourceId = masteryPlan?.sourceId || envelope?.course?.sourceIds?.[0];
-  const publication = usePublicationName(sourceId);
+  const publication = publicationFor(envelope?.course, sourceId);
   const { data: sessions, loading, refetch } = useApiQuery(`/mastery/sessions?courseId=${course.id}`);
   const startSession = useApiMutation('/mastery/sessions', 'POST');
   const [answer, setAnswer] = useState('');
