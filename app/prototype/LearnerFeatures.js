@@ -57,7 +57,7 @@ export function RealCourseHome({ course, go }) {
             <div className="s-hero-num">
               {sections.length} <span>sections</span>
             </div>
-            <div className="s-hero-sub">Drafted from the approved source and reviewed by your instructor.</div>
+            <div className="s-hero-sub">Instructor-approved.</div>
           </div>
           <div className="s-hero-tile">
             <div className="s-label">Items</div>
@@ -85,10 +85,10 @@ export function RealCourseHome({ course, go }) {
         <h4 className="s-label">In this course</h4>
         <div className="s-quick">
           {[
-            ['lessons', 'Lessons', 'The approved course, section by section, with its pre and post checks.'],
-            ['mastery', 'Mastery session', 'Whetstone asks, you answer in your own words, it grades against the source.'],
-            ['path', 'Learning Path', 'Three courses of action from the syllabus and your available time.'],
-            ['progress', 'My Progress', 'What your saved sessions show. Yours only.'],
+            ['lessons', 'Lessons', 'Section by section, with checks.'],
+            ['mastery', 'Mastery session', 'Answer in your own words; graded against the source.'],
+            ['path', 'Learning Path', 'Three plans from your syllabus and time.'],
+            ['progress', 'My Progress', 'Your saved sessions. Yours only.'],
           ].map(([id, t, d]) => (
             <button className="s-quick-btn" key={id} onClick={() => go(id)}>
               <span className="s-quick-t">{t}</span>
@@ -293,7 +293,7 @@ function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = nu
   const lesson = picked && !pending ? withStatus.find((l) => l.id === picked) : null;
 
   if (!withStatus.length) {
-    return <p className="p-src">Nothing in this course has been released to learners yet. Your instructor reviews each lesson and check before it is shown.</p>;
+    return <p className="p-src">Nothing released to learners yet.</p>;
   }
 
   if (lesson) {
@@ -318,11 +318,11 @@ function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = nu
         next={next}
         onPick={(l) => open(l)}
         overviewExtra={<>
-          {lesson.cite && <p className="p-src" style={{ marginTop: '0.75rem' }}>Written from and checked against <strong>{lesson.cite}</strong>.</p>}
+          {lesson.cite && <p className="p-src" style={{ marginTop: '0.75rem' }}>Cited to <strong>{lesson.cite}</strong>.</p>}
           {!lesson.authored && lesson.items.some((it) => it.type === 'page') ? (
             <div className="s-ls-callout note" style={{ marginTop: '1rem' }}>
               <div className="s-ls-callout-t">Short form</div>
-              <div>This lesson is the grounded lesson paragraph, its checks and cards. Your instructor can expand it into full pages from the course review screen.</div>
+              <div>Grounded paragraph, checks and cards. Your instructor can expand it into full pages.</div>
             </div>
           ) : null}
         </>}
@@ -334,10 +334,7 @@ function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = nu
   return (
     <>
       <h2 className="p-h">Lessons</h2>
-      <p className="p-sub">
-        One lesson per objective, written from the approved source and released by your instructor item by item.
-        Every page, check and card had to trace to the cited passage before it could be shown.
-      </p>
+      <p className="p-sub">One lesson per objective, each cited to the source.</p>
       {notice}
 
       <div className="p-tiles">
@@ -578,7 +575,7 @@ export function MasterySession({ course }) {
     setErr(null);
     setLast(null);
     if (masteryPlan?.status !== 'APPROVED') {
-      return setErr('The shared mastery plan is not approved yet. New sessions are unavailable until the instructor approves it.');
+      return setErr('Mastery plan not approved yet.');
     }
     if (!sourceId) return setErr('This course has no source document to grade against.');
     try {
@@ -624,10 +621,7 @@ export function MasterySession({ course }) {
   return (
     <>
       <h2 className="p-h">Mastery session</h2>
-      <p className="p-sub">
-        Whetstone asks about the approved source and grades what you say against it — in your own
-        words, no multiple choice. Each answer is scored on a rubric your instructor approved.
-      </p>
+      <p className="p-sub">Answer in your own words; graded against the source on your instructor's rubric.</p>
       <div className="p-btnrow" style={{ marginBottom: '0.75rem', alignItems: 'flex-end' }}>
         <button
           type="button"
@@ -665,16 +659,16 @@ export function MasterySession({ course }) {
         <div className="p-panel">
           <h3>Start a session</h3>
           <p className="p-src" style={{ marginBottom: '1rem' }}>
-            Grounded on {publication || 'the approved source'}. A session runs until every criterion is assessed or the turn limit is reached.
+            Grounded on {publication || 'the approved source'}.
           </p>
           {masteryPlan?.status === 'PENDING' && (
             <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
-              The shared mastery plan is pending instructor approval. New sessions are unavailable until it is approved.
+              Mastery plan pending instructor approval.
             </p>
           )}
           {!masteryPlan && (
             <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
-              This course has no approved shared mastery plan yet. Ask the instructor to review and approve it before starting.
+              No approved mastery plan yet.
             </p>
           )}
           <button className="p-btn" onClick={handleStart} disabled={startSession.loading || !sourceId || masteryPlan?.status !== 'APPROVED'}>
@@ -697,7 +691,7 @@ export function MasterySession({ course }) {
           )}
           {sessionNeedsApprovedPlan && (
             <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
-              This saved session predates the current approved shared mastery plan. Your previous record is preserved; start a new session for the current revision.
+              This session predates the current plan. Start a new one for the current revision.
             </p>
           )}
           {selected.transcript?.length > 0 && (
@@ -732,14 +726,14 @@ export function MasterySession({ course }) {
           {sessionNeedsApprovedPlan && (
             <>
               <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
-                This session predates the current approved shared plan. It is read-only; start a new session for the current revision.
+                This session predates the current plan. Read-only — start a new one for the current revision.
               </p>
               <button className="p-btn ghost" onClick={handleStart} disabled={startSession.loading || !sourceId}>
                 {startSession.loading ? 'Starting…' : 'Start current-plan session'}
               </button>
             </>
           )}
-          <p className="s-mastery-q">{active.currentQuestion || 'Session initialised — submit any answer to receive the first question.'}</p>
+          <p className="s-mastery-q">{active.currentQuestion || 'Submit any answer to get the first question.'}</p>
 
           {last && (
             <div className="p-rationale" style={{ marginBottom: '1rem' }}>
@@ -839,9 +833,9 @@ export function MasterySession({ course }) {
 /* ---------- learning path (Cadence) ---------- */
 
 const COA_META = {
-  catch_up: { icon: '▼', color: 'var(--p-critical)', blurb: 'Catch-up plan. More minutes per day, front-loaded on what is due first.' },
-  maintain: { icon: '●', color: 'var(--p-good)', blurb: 'Maintenance plan. Keeps pace with the syllabus at your available time.' },
-  get_ahead: { icon: '▲', color: 'var(--p-accent)', blurb: 'Extension plan. Finishes early and leaves room for review.' },
+  catch_up: { icon: '▼', color: 'var(--p-critical)', blurb: 'Catch-up. More per day, due first.' },
+  maintain: { icon: '●', color: 'var(--p-good)', blurb: 'Maintenance. Keeps pace with the syllabus.' },
+  get_ahead: { icon: '▲', color: 'var(--p-accent)', blurb: 'Get ahead. Finishes early, leaves review time.' },
 };
 
 function fmtDate(iso) {
@@ -881,11 +875,7 @@ export function StudyPlan({ course }) {
   return (
     <>
       <h2 className="p-h">My Learning Path</h2>
-      <p className="p-sub">
-        Built by Cadence from the course syllabus and your available time. Three courses of action,
-        because &quot;behind&quot; and &quot;ahead&quot; need different plans — not the same plan at a
-        different speed.
-      </p>
+      <p className="p-sub">Three plans from your syllabus and available time.</p>
 
       <Err msg={err} />
       {loading && <p>Loading plan…</p>}
@@ -895,7 +885,7 @@ export function StudyPlan({ course }) {
         <div className="p-panel">
           <h3>No plan yet</h3>
           <p className="p-src" style={{ marginBottom: '1rem' }}>
-            Cadence needs the course syllabus (your instructor attaches it) and how much time you can give each day.
+            Needs the course syllabus and your daily time.
           </p>
           <div className="s-plan-setup">
             <label className="p-field">
@@ -1007,7 +997,7 @@ export function LearnerProgress({ courseId }) {
   return (
     <>
       <h2 className="p-h">My Progress</h2>
-      <p className="p-sub">What your saved mastery sessions show, by competency. Yours only — instructors see the class, never one Marine.</p>
+      <p className="p-sub">By competency, from your saved sessions. Yours only.</p>
 
       <div className="p-tiles">
         <div className="p-tile">
@@ -1134,7 +1124,7 @@ export function WaypointSurvey() {
             {(data.recommendations || []).slice(0, 2).join(' ')}
           </div>
           <div className="s-profile-meta">
-            Pace: {profile.pace} · structure: {profile.structure} · {profile.answered} of {INSTRUMENT.length} answered · shared with your instructors as part of the class profile only
+            Pace: {profile.pace} · structure: {profile.structure} · {profile.answered} of {INSTRUMENT.length} answered · shared as class profile only
           </div>
         </div>
         <div className="p-btnrow" style={{ marginTop: '0.9rem' }}>
@@ -1148,8 +1138,7 @@ export function WaypointSurvey() {
     return (
       <div>
         <p className="s-settings-p">
-          Twelve quick statements. Waypoint turns them into a learning profile that shapes how your study plan is
-          built; instructors see the class profile (never individual answers) when they plan lessons.
+          Twelve quick statements shape your study plan. Instructors see the class profile, never individual answers.
         </p>
         <button className="p-btn" onClick={begin}>Start</button>
       </div>
