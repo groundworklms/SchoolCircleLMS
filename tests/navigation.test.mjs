@@ -8,7 +8,6 @@ import {
   canAccessLocation,
   href,
   parse,
-  publishedCourseHref,
   settingsHref,
 } from '../app/prototype/routes.js';
 
@@ -50,15 +49,9 @@ test('canonical roots select the correct role and area', () => {
   assert.equal(href(parse('/prototype/instructor')), '/prototype/instructor/courses');
 });
 
-test('published reader paths are explicit and ids round-trip safely', () => {
-  assert.deepEqual(parse('/prototype/published/course%201'), {
-    role: 'student',
-    area: 'published',
-    courseId: 'course 1',
-    view: null,
-  });
-  assert.equal(publishedCourseHref('course 1'), '/prototype/published/course%201');
-  assert.equal(href(parse('/prototype/published/course%201')), '/prototype/published/course%201');
+test('the retired published reader route is an explicit not-found location', () => {
+  assert.equal(parse('/prototype/published/course%201').area, 'not-found');
+  assert.equal(href({ role: 'student', area: 'published', courseId: 'course 1' }), '/prototype/not-found');
   assert.equal(href(parse('/prototype/course/course%201/lessons/lesson%201/2')), '/prototype/course/course%201/lessons/lesson%201/2');
 });
 
@@ -100,6 +93,7 @@ test('invalid, retired, malformed, and extra paths become not-found', () => {
     '/prototype/instructor/M092721/not-a-tool',
     '/prototype/course/M092721/lessons/L1/not-a-page',
     '/prototype/course/M092721/discussions/lesson',
+    '/prototype/published/course-1',
     '/prototype/published/course-1/lessons',
     '/prototype/course/%E0%A4%A',
     '/prototype/course/course%2Fwith-slash',
@@ -111,7 +105,7 @@ test('invalid, retired, malformed, and extra paths become not-found', () => {
 test('saved-role access permits only the instructor preview locations', () => {
   const instructor = { role: 'INSTRUCTOR' };
   assert.equal(canAccessLocation(instructor, parse('/prototype/courses'), true), true);
-  assert.equal(canAccessLocation(instructor, parse('/prototype/published/course-1'), true), true);
+  assert.equal(canAccessLocation(instructor, parse('/prototype/published/course-1'), true), false);
   assert.equal(canAccessLocation(instructor, parse('/prototype'), true), false);
   assert.equal(canAccessLocation(instructor, parse('/prototype/course/course-1'), true), false);
   assert.equal(canAccessLocation({ role: 'LEARNER' }, parse('/prototype/instructor'), true), false);
@@ -197,7 +191,6 @@ test('a learner surface is decided by the address, not by the caller', async () 
     '/prototype/calendar',
     '/prototype/settings',
     '/prototype/course/M092721/lessons',
-    '/prototype/published/course-1',
   ]) {
     assert.equal(isLearnerSurface(path), true, path);
   }

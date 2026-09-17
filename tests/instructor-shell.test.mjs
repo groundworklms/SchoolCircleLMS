@@ -240,14 +240,25 @@ test('the course sub-rail groups its tools by what they are for', () => {
   );
 });
 
-test('a legacy manual course prints no empty group headings', () => {
-  const course = { id: 'legacy-1', name: 'Manual course', manual: true, record: { id: 'legacy-1' } };
+test('legacy-origin records are neither listed nor routed as generated courses', () => {
+  const course = {
+    id: 'legacy-1',
+    name: 'Manual course',
+    manual: true,
+    courseType: 'MANUAL_COURSE',
+    record: { id: 'legacy-1', type: 'MANUAL_COURSE' },
+  };
   const { default: InstructorShell } = loadInstructorShell({ courses: [course] });
-  const markup = renderToStaticMarkup(React.createElement(InstructorShell, {
+  const libraryMarkup = renderToStaticMarkup(React.createElement(InstructorShell, {
+    nav: { area: 'library', view: 'courses', courseId: null },
+  }));
+  assert.doesNotMatch(libraryMarkup, /Manual course|legacy-1/);
+
+  const deepLinkMarkup = renderToStaticMarkup(React.createElement(InstructorShell, {
     nav: { area: 'course', courseId: course.id, view: 'roster' },
   }));
-  assert.match(markup, />Roster</);
-  assert.doesNotMatch(markup, /Quality checks|How the class did/);
+  assert.match(deepLinkMarkup, /Course not found/);
+  assert.doesNotMatch(deepLinkMarkup, />Roster<\/button>|Quality checks|How the class did/);
 });
 
 test('a course row cannot trap its own actions menu under the next card', () => {

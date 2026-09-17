@@ -12,14 +12,14 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('Courses removes only its right-side agenda and keeps the original course sections', () => {
+test('Courses omits the agenda and retired manual library while keeping current course sections', () => {
   const source = fs.readFileSync(path.join(workspace, 'app/prototype/StudentShell.js'), 'utf8');
   const courses = source.slice(source.indexOf('function Courses('), source.indexOf('/* ---------- course view'));
   assert.doesNotMatch(courses, /<Agenda|Demo schedule|className="s-two"/);
-  for (const section of ['Available courses', 'Published courses', 'Demo courses and training (not enrolled)', 'Required training', 'Completed']) {
+  for (const section of ['Available courses', 'Demo courses and training (not enrolled)', 'Required training', 'Completed']) {
     assert.ok(courses.includes(section), `preserves ${section}`);
   }
-  assert.match(courses, /<LibraryList onOpen=\{onOpenPublished\}/);
+  assert.doesNotMatch(courses, /Published courses|LibraryList/);
   assert.match(courses, /onOpen\(c\.id, 'home'\)/);
   assert.equal((source.match(/<Agenda /g) || []).length, 2, 'dashboard and course-home agendas remain');
 });
@@ -32,8 +32,8 @@ test('shared instructor shell omits breadcrumbs while retaining course status an
   // must use courseHeaderStatus so a pending revision still reads as needing
   // review rather than flattening to Approved/Draft.
   assert.match(source, /<main className="s-main">[\s\S]*courseHeaderStatus\(course\)/);
-  // A legacy manual course keeps the school label the breadcrumb showed.
-  assert.match(source, /isManual && course\.school/);
+  assert.doesNotMatch(source, /Legacy|authoring\/courses/i);
+  assert.match(source, /id: 'roster'/);
 });
 
 test('the student shell drops the breadcrumb but keeps a way up where the rail collapses', () => {
@@ -47,6 +47,11 @@ test('the student shell drops the breadcrumb but keeps a way up where the rail c
   const css = fs.readFileSync(path.join(workspace, 'app/prototype/student.css'), 'utf8');
   assert.match(css, /\.s-railcontext \{ display: none; \}/);
   assert.match(css, /@media \(max-width: 900px\) \{[\s\S]*?\.s-railcontext \{ display: flex;/);
+});
+
+test('the student shell no longer renders the retired published-course library', () => {
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/StudentShell.js'), 'utf8');
+  assert.doesNotMatch(source, /Published courses|PublishedCourseReader|LibraryList|onOpenPublished|area === 'published'/);
 });
 
 test('a fixed side column cannot be widened into a horizontal scrollbar', () => {
@@ -1592,7 +1597,8 @@ test('student settings splits account from app without losing a panel', () => {
   }
 });
 
-test('library rows carry a three-dots menu, and legacy courses cannot be renamed', () => {
+test('library rows carry generated-course actions without legacy rows or endpoints', () => {
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/Library.js'), 'utf8');
   const { CoursesLibrary } = loadComponent('app/prototype/Library.js', {
     queryData: { '/sources': [] },
   });
@@ -1600,7 +1606,6 @@ test('library rows carry a three-dots menu, and legacy courses cannot be renamed
   const markup = renderToStaticMarkup(React.createElement(CoursesLibrary, {
     courses: [
       { id: 'gen-1', name: 'Generated course', sections: 3, status: 'APPROVED' },
-      { id: 'man-1', name: 'Old manual course', manual: true, status: 'PUBLISHED' },
     ],
     loading: false,
     error: null,
@@ -1612,11 +1617,9 @@ test('library rows carry a three-dots menu, and legacy courses cannot be renamed
   assert.match(markup, /row-actions-trigger/, 'no three-dots trigger rendered');
   assert.match(markup, /Actions for course/);
 
-  // A legacy remnant is visible in the library so it can be cleared -- it used
-  // to be filtered out here and reachable only from the rail.
-  assert.match(markup, /Old manual course/);
-  assert.match(markup, /s-legacy-tag/);
-  assert.match(markup, /retired manual workflow/);
+  assert.match(markup, /Generated course/);
+  assert.match(source, /endpoint=\{`\/api\/learning\/courses\/\$\{c\.id\}`\}/);
+  assert.doesNotMatch(markup, /manual|legacy|authoring\/courses/i);
 
   // The row's open affordance must be a SIBLING of the menu, not its parent:
   // a button inside a button is invalid HTML and the inner click would bubble
@@ -1651,20 +1654,17 @@ test('a source card exposes rename and remove', () => {
   assert.match(markup, /Actions for source/);
 });
 
-test('the course hook refreshes the legacy list too, not just generated courses', async () => {
-  // Removing a legacy course succeeded on the server while its row stayed on
-  // screen, because the manual list was fetched once with no reload path and
-  // the shared refetch only covered /courses. That is indistinguishable from
-  // the delete not working.
+test('the course hook is generated-only and keeps list refresh and roster navigation', () => {
   const source = fs.readFileSync(path.join(workspace, 'app/prototype/learning.js'), 'utf8');
+  const shell = fs.readFileSync(path.join(workspace, 'app/prototype/InstructorShell.js'), 'utf8');
 
-  // The manual list must expose a way to reload.
-  assert.match(source, /refetch:\s*\(\)\s*=>\s*setReload/, 'useManualCourses exposes no refetch');
-  assert.match(source, /\[enabled,\s*reload\]/, 'the manual effect does not depend on a reload trigger');
-
-  // And the hook's shared refetch must drive it.
-  const returned = source.slice(source.indexOf('    manualEnabled,'));
-  assert.match(returned, /manual\.refetch/, 'the shared refetch does not refresh the manual list');
+  assert.match(source, /useApiQuery\('\/courses', \{ enabled \}\)/);
+  assert.match(source, /refetch,/);
+  assert.match(source, /refetchGenerated: refetch/);
+  assert.doesNotMatch(source, /authoring\/courses|includeManual|manualCourses|manualLoading|manualError/i);
+  assert.match(shell, /id: 'roster', label: 'Roster'/);
+  assert.match(shell, /SCREENS\[view\]/);
+  assert.doesNotMatch(shell, /authoring\/courses|includeManual|manualCourses|manualLoading|manualError|isManual/i);
 });
 
 test('a section the server dropped leaves the progress list and joins what is not covered', () => {
