@@ -454,7 +454,7 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
         </div>
       </div>
 
-      <PlansList plans={Array.isArray(plans.data) ? plans.data : []} onOpen={setOpenPlanId} />
+      <PlansList plans={Array.isArray(plans.data) ? plans.data : []} onOpen={setOpenPlanId} onChanged={plans.refetch} />
 
       {loading && <p>Loading courses…</p>}
       {error && <p className="s-shell-error" role="alert">{errText(error, 'Could not load courses.')}</p>}

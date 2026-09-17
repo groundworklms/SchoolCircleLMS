@@ -96,7 +96,7 @@ const dbMock = {
     r.version += 1;
     return true;
   },
-  async deleteLearningRecords() { return 0; },
+  async deleteLearningRecords(ids) { let n = 0; for (const id of ids) n += records.delete(id) ? 1 : 0; return { records: n, courses: 0 }; },
   async courseEvidenceCount() { return 0; },
   async createCourseRevisionAtomically() { return null; },
   async approveCourseAtomically() { return null; },
@@ -250,4 +250,22 @@ test('plans are owner-only', async () => {
   assert.deepEqual((await plan.listPlans(other)).json, []);
   assert.equal((await plan.listPlans(OWNER)).json.length, 1);
   await assert.rejects(plan.createPlan(OWNER, { body: { sourceIds: ['missing'] } }), /Source not found/);
+});
+
+test('deleting a plan removes the plan and leaves the draft it built alone', async () => {
+  records.clear(); nextId = 1;
+  seedSources();
+  const created = (await plan.createPlan(OWNER, { body: { sourceIds: ['poi', 's-elec', 's-net'] } })).json;
+  await runUntil(plan.surveyPlanStep, created.id, (v) => v.status === 'outline');
+  await plan.outlinePlanStep(OWNER, { params: { id: created.id }, body: {} });
+  await plan.mapPlanStep(OWNER, { params: { id: created.id } });
+  const built = (await plan.buildPlanStep(OWNER, { params: { id: created.id } })).json;
+  assert.ok(built.courseId);
+
+  await assert.rejects(plan.deletePlan({ id: 'other', role: 'INSTRUCTOR' }, { params: { id: created.id } }), /Plan not found/);
+  const gone = (await plan.deletePlan(OWNER, { params: { id: created.id } })).json;
+  assert.deepEqual(gone, { id: created.id, deleted: true, courseId: built.courseId });
+  assert.equal(records.get(created.id), undefined);
+  assert.equal(records.get(built.courseId).type, 'COURSE_DRAFT');
+  await assert.rejects(plan.getPlan(OWNER, { params: { id: created.id } }), /Plan not found/);
 });
