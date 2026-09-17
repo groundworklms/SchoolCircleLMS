@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { downloadAuthenticated, useApiQuery, useApiMutation, useApiStream } from '../_learning/useLearning';
+import { downloadAuthenticated, useApiQuery, useApiMutation, useCourseJob } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
 import { pageOf, publicationName, withoutPage } from '../_course/provenance';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
@@ -637,7 +637,14 @@ function DraftCourseModal({ courses = [], sources, sourcesLoading, sourcesError,
     lostStream && knownCourseIds.current
       ? courses.find((course) => course?.id && !knownCourseIds.current.has(course.id)) || null
       : null;
-  const draft = useApiStream('/courses/draft/stream');
+  /* A job, not a held-open stream.
+   *
+   * The stream was cut at five minutes by the platform, which on a real course
+   * is around section five -- and the generation died with it, so the modal's
+   * "the reporting stopped, not the generation" was true of the design and not
+   * of what happened. Generation now runs off the request and this polls it.
+   * See lib/learning/job.js. */
+  const draft = useCourseJob();
   const approvedSources = sources.filter((source) => source.status === 'APPROVED');
   const approvedGroups = groupSourcesByCollection(approvedSources);
   const selectedIds = sourceIds.filter((id) => approvedSources.some((source) => source.id === id));
@@ -667,7 +674,16 @@ function DraftCourseModal({ courses = [], sources, sourcesLoading, sourcesError,
           setEvents((current) => [...(current || []), event]);
         },
       );
-      // The stream carries its own failure so the partial progress stays on
+      // A job whose row stopped being written to. The instance that owned it is
+      // gone -- which is what a deploy mid-generation looks like from here --
+      // and that is a different thing from a connection dropping under a
+      // generation still running: there is nothing to wait for.
+      if (last?.phase === 'stalled') {
+        setLostStream(true);
+        await onDrafted?.();
+        return;
+      }
+      // The job carries its own failure so the partial progress stays on
       // screen next to the reason, rather than collapsing to one error line.
       if (last?.phase === 'failed') return;
       if (last?.phase !== 'saved') {
