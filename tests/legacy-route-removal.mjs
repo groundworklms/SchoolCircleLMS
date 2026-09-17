@@ -36,6 +36,16 @@ test('active app source contains no legacy route redirects or links', () => {
   assert.deepEqual(matches, []);
 });
 
+test('the retired published manual frontend has no route tree or imports', () => {
+  assert.deepEqual(filesUnder('app/prototype/published'), []);
+  const publishedFrontend = /(?:\/prototype\/published|app\/prototype\/published|publishedCourseHref|Published(?:Library|CourseReader)|LibraryList)/;
+  const matches = appSourceFiles().flatMap((file) => {
+    const source = fs.readFileSync(path.join(workspace, file), 'utf8');
+    return publishedFrontend.test(source) ? [file] : [];
+  });
+  assert.deepEqual(matches, []);
+});
+
 test('mastery-session helper lives outside retired route trees', () => {
   const selected = selectMasterySession(
     [

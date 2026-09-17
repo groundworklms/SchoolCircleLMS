@@ -28,28 +28,20 @@ function snapshot(row) {
 }
 
 const learningRecord = {
+  // The source library (#109) looks up SOURCE_PDF rows by id list and, when
+  // an adapter is not Prisma, insists it is a declared in-memory double.
+  sourcePdfTestAdapter: 'memory',
   async findUnique({ where }) {
     return snapshot(records.get(where.id) || null);
   },
   async findMany({ where = {} } = {}) {
+    const ids = Array.isArray(where.id?.in) ? new Set(where.id.in) : null;
     return [...records.values()]
+      .filter((r) => !ids || ids.has(r.id))
       .filter((r) => !where.type || r.type === where.type)
       .filter((r) => !where.status || r.status === where.status)
       .filter((r) => !where.ownerId || r.ownerId === where.ownerId)
       .map(snapshot);
-  },
-  // deleteSource looks the source's SOURCE_PDF row up before removing it, and
-  // that lookup falls back to a payload match for rows written before the id
-  // became deterministic. Only the shapes that path actually uses are modelled.
-  async findFirst({ where = {} } = {}) {
-    const paths = (where.OR || []).map((clause) => ({
-      key: clause?.payload?.path?.[0],
-      value: clause?.payload?.equals,
-    }));
-    return [...records.values()].map(snapshot).find((r) => (
-      (!where.type || r.type === where.type)
-      && (!paths.length || paths.some(({ key, value }) => key && r.payload?.[key] === value))
-    )) || null;
   },
   async create({ data }) {
     const row = { id: data.id || `rec-${++seq}`, version: 0, status: 'PENDING', ...data };

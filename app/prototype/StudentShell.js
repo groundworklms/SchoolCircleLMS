@@ -23,8 +23,6 @@ import { StudentSettings } from './Settings';
 import { usePrefs } from './prefs';
 import { useLearningCourses, resolveCourse } from './learning';
 import { RealCourseHome, CourseReader, MasterySession, StudyPlan, LearnerProgress } from './LearnerFeatures';
-import LibraryList from './published/Library';
-import PublishedCourseReader from './published/CourseReader';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
 import CoursesMenu from './CoursesMenu';
@@ -145,14 +143,13 @@ function Agenda({ courseId, onOpen }) {
 
 function Courses({
   onOpen,
-  onOpenPublished,
   realCourses = [],
   learningLoading = false,
   learningError = null,
 }) {
   const list = Object.values(COURSES);
   return (
-    <div className="s-two">
+    <div>
       <div>
         <div className="s-pagehead">
           <h1>Courses</h1>
@@ -187,9 +184,6 @@ function Courses({
             </p>
           )}
         </div>
-
-        <h4 className="s-label">Published courses</h4>
-        <LibraryList onOpen={onOpenPublished} />
 
         <details>
           <summary className="s-label">Demo courses and training (not enrolled)</summary>
@@ -260,10 +254,6 @@ function Courses({
         </div>
       </div>
 
-      <details>
-        <summary className="s-label">Demo schedule</summary>
-        <Agenda courseId={null} onOpen={onOpen} />
-      </details>
     </div>
   );
 }
@@ -429,13 +419,12 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const { area, courseId, view, lessonId, page, threadId } = nav;
   const prefs = usePrefs();
   const learning = useLearningCourses();
-  const isPublished = area === 'published';
   // Do not render a cached course after the learning service reports an error.
   // A successful refetch with no matching id resolves to CourseUnavailable,
   // which is the explicit deleted-course state instead of a stale detail view.
-  const course = isPublished ? null : resolveCourse(courseId, learning.error ? [] : learning.courses);
+  const course = resolveCourse(courseId, learning.error ? [] : learning.courses);
   const isReal = Boolean(course?.record);
-  const pendingCourse = !isPublished && area === 'course' && Boolean(courseId) && !course && learning.loading;
+  const pendingCourse = area === 'course' && Boolean(courseId) && !course && learning.loading;
   const NAV = isReal ? REAL_COURSE_NAV : COURSE_NAV;
   const inboxUnread = useInboxMessages().filter((m) => m.unread).length;
   const [expandedCourseIds, setExpandedCourseIds] = useState(() => initialExpandedCourseIds(courseId));
@@ -489,7 +478,6 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
     nav.go({ area: 'course', courseId, view: v, lessonId: remembered?.lessonId ?? null, page: remembered?.page ?? null, threadId: null });
   };
   const open = (id, v = 'home') => nav.go({ area: 'course', courseId: id, view: v || 'home', lessonId: null, page: null });
-  const openPublished = (id) => nav.go({ area: 'published', courseId: id, view: null, lessonId: null, page: null, threadId: null });
   const openLesson = (id, pg = null) => nav.go({ area: 'course', courseId, view: 'lessons', lessonId: id, page: pg, threadId: null });
   const openThread = (id, forLesson = null) => nav.go({ area: 'course', courseId, view: 'discussions', threadId: id, lessonId: forLesson, page: null });
   const toggleCourse = (id) => setExpandedCourseIds((expanded) => toggleExpandedCourse(expanded, id));
@@ -513,9 +501,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
     : null;
 
   let body;
-  if (area === 'published') {
-    body = <PublishedCourseReader courseId={courseId} onBack={() => setArea('courses')} />;
-  } else if (pendingCourse) body = <p role="status">Loading course…</p>;
+  if (pendingCourse) body = <p role="status">Loading course…</p>;
   else if (area === 'course' && !course) body = <CourseUnavailable courseId={courseId} error={learning.error} />;
   else if (area === 'dashboard') {
     body = (
@@ -532,7 +518,6 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
     body = (
       <Courses
         onOpen={open}
-        onOpenPublished={openPublished}
         realCourses={learning.courses}
         learningLoading={learning.loading}
         learningError={learning.error}
@@ -660,7 +645,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
         </main>
       </div>
 
-      {!isPublished && <CourseChat key={course?.id || 'doctrine'} course={course} view={view} />}
+      <CourseChat key={course?.id || 'doctrine'} course={course} view={view} />
     </div>
   );
 }

@@ -1,12 +1,9 @@
 'use client';
 
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import './student.css';
 
 import { I, RailButton, UserMenu } from './shell';
-import InstructorCoursesMenu from './InstructorCoursesMenu';
-import { expandCourse, expandOnCourseSelection, initialExpandedCourseIds, toggleExpandedCourse } from './instructorCourseTreeState.mjs';
-import { COURSES } from './data';
 import { InstructorSettings } from './Settings';
 import LiveControl from './LiveControl';
 import Mastery from './Mastery';
@@ -27,18 +24,14 @@ import { accountDisplay } from '../_auth/account-display';
    Rubrics is an optional advanced tool.
 
    A course gets its tools only after the learning service has resolved it.
-   The nested sample-course tree is a read-only orientation surface. It never
-   substitutes for a service-backed authoring record: real courses remain in
-   the Teaching section and the Course library child remains the authoring
-   route. The student shell still carries its own demo content.
+   There are no sample courses here: an instructor's rail shows the real ones
+   they own, and an unresolved id is an explicit not-found rather than a
+   placeholder standing in for a course. The student shell still carries demo
+   content, which is why the shared resolveCourse is left alone.
 
-   Courses published through the retired manual workflow appear as "Legacy"
-   and expose a roster view only. Authoring them is gone (those endpoints
-   answer 410), but their enrolled learners and results were deliberately
-   preserved, so the roster has to remain reachable. */
+    Every course in the instructor workspace is a generated course record. */
 
 const INSTRUCTOR = { name: 'SSgt Okafor', initials: 'SO', role: 'Instructor' };
-const SAMPLE_COURSES = Object.values(COURSES);
 
 // Ordered by how often an instructor needs them -- the course list first, the
 // account last. They were briefly four one-item groups under four headings,
@@ -84,31 +77,17 @@ const REAL_VIEWS = [
   { id: 'aar', label: 'Course AAR', group: 'results' },
 ];
 
-// Fixture courses must never reach service-backed tools. These are the
-// approved local destinations: the live-session simulator, hand-authored AAR,
-// and preference-only course settings are safe; Class Mastery is shown as
-// unavailable below because its existing screen queries cohort analytics.
-const SAMPLE_VIEWS = [
-  { id: 'builder', label: 'Sample overview' },
-  { id: 'control', label: 'Run Live Session' },
-  { id: 'mastery', label: 'Class Mastery' },
-  { id: 'aar', label: 'Course AAR' },
-  { id: 'settings', label: 'Course settings' },
-];
-
-export function courseListWithSelectedFallback(
-  courses,
-  selectedCourse,
-  { pendingRefresh = false, authoritativeCourse = null } = {},
-) {
-  const list = Array.isArray(courses) ? courses : [];
+export function courseListWithSelectedFallback(courses, selectedCourse) {
+  const list = Array.isArray(courses) ? courses.filter(isGeneratedCourse) : [];
   if (!selectedCourse?.id || list.some((item) => item.id === selectedCourse.id)) return list;
-  if (authoritativeCourse?.id === selectedCourse.id) return [...list, authoritativeCourse];
-  // A POST response is only a temporary shell row until the list refetch
-  // settles. Never keep an optimistic course visible after a successful
-  // refresh says it does not exist.
-  if (!pendingRefresh) return list;
-  return [...list, courseFromRecord(selectedCourse)];
+  const fallback = courseFromRecord(selectedCourse);
+  return isGeneratedCourse(fallback) ? [...list, fallback] : list;
+}
+
+function isGeneratedCourse(course) {
+  const record = course?.record;
+  const type = course?.type || course?.courseType || record?.type || record?.courseType;
+  return !course?.manual && !record?.manual && String(type || '').toUpperCase() !== 'MANUAL_COURSE';
 }
 
 export function courseHeaderStatus(course) {
@@ -121,20 +100,10 @@ export function courseHeaderStatus(course) {
   return 'Needs review';
 }
 
-const LEGACY_MANUAL_VIEWS = [
-  { id: 'roster', label: 'Roster' },
-];
-
 const SCREENS = {
   roster: Roster,
   control: LiveControl,
   mastery: Mastery,
-  aar: AAR,
-  settings: InstructorSettings,
-};
-
-const SAMPLE_SCREENS = {
-  control: LiveControl,
   aar: AAR,
   settings: InstructorSettings,
 };
@@ -160,18 +129,6 @@ function CourseUnavailable({ courseId, title = 'Course unavailable', children })
   );
 }
 
-function SampleCourse({ course }) {
-  return (
-    <>
-      <h2 className="p-h">{course.name}</h2>
-      <p className="p-sub">
-        This sample course is view-only. Course drafts are created and reviewed from the signed-in Course library;
-        sample data never creates or edits an authoring record.
-      </p>
-    </>
-  );
-}
-
 export default function InstructorShell({ nav, onSwitchRole, role: profileRole }) {
   const { ready: authReady, profile, signOut, signOutError } = useAuth();
   const {
@@ -180,12 +137,13 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     rank: displayRank,
     initials,
   } = accountDisplay({ ready: authReady, profile, demo: INSTRUCTOR });
-  const learning = useLearningCourses({ includeManual: true });
-  const [selectedCourseRefresh, setSelectedCourseRefresh] = useState({
-    course: null,
-    pending: false,
-    authoritative: null,
-  });
+  const learning = useLearningCourses();
+  const [selectedCourse, setSelectedCourse] = useState(null);
+  // The learning hook is generated-only, but keep this boundary defensive
+  // while stale caches and injected fixtures can still contain retired records.
+  const generatedCourses = Array.isArray(learning.courses)
+    ? learning.courses.filter(isGeneratedCourse)
+    : [];
 
   const inLibrary = nav.area === 'library';
   const inCourse = nav.area === 'course';
@@ -193,109 +151,61 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   const libraryView = libraryEntry?.id || null;
   const invalidArea = !inLibrary && !inCourse;
 
-  // Which course is on screen. Real courses are service-backed; sample
-  // courses are explicitly marked in the rail as view-only. While the real
+  // Which course is on screen. Instructors see only real courses: while the
   // list is loading we hold rather than substitute anything, and an id that
-  // resolves to nothing is an explicit service/not-found state below.
+  // resolves to nothing is an explicit service/not-found state below. An old
+  // sample deep link therefore reads as not-found rather than as a read-only
+  // placeholder sitting where a real course should be.
   //
   // Immediately after creating a course the POST has returned its id, but the
   // list query may not have committed the new row yet. Keep that creation
   // response as a short-lived shell fallback so the instructor lands in
   // review instead of seeing a false not-found state.
-  const selectedCourse = selectedCourseRefresh.course;
-  const selectedCreatedCourseId = selectedCourse?.id || null;
+  const selectedCourseId = selectedCourse?.id || null;
   const hasAuthoritativeSelectedCourse = Boolean(
-    selectedCreatedCourseId && learning.courses.some((item) => item.id === selectedCreatedCourseId),
+    selectedCourseId && generatedCourses.some((item) => item.id === selectedCourseId),
   );
   useEffect(() => {
-    if (hasAuthoritativeSelectedCourse) {
-      setSelectedCourseRefresh({ course: null, pending: false, authoritative: null });
-    }
+    if (hasAuthoritativeSelectedCourse) setSelectedCourse(null);
   }, [hasAuthoritativeSelectedCourse]);
-  const courses = courseListWithSelectedFallback(learning.courses, selectedCourse, {
-    pendingRefresh: selectedCourseRefresh.pending,
-    authoritativeCourse: selectedCourseRefresh.authoritative,
-  });
-  const sampleCourse = inCourse ? SAMPLE_COURSES.find((candidate) => candidate.id === nav.courseId) || null : null;
+  const courses = courseListWithSelectedFallback(generatedCourses, selectedCourse);
   const course = inCourse
-    ? (courses.find((candidate) => candidate.id === nav.courseId) || sampleCourse)
+    ? (courses.find((candidate) => candidate.id === nav.courseId) || null)
     : null;
   const isReal = Boolean(course?.record);
-  const isManual = Boolean(course?.manual);
-  const isSample = Boolean(course && !isReal && !isManual);
-  const VIEWS = isSample ? SAMPLE_VIEWS : isManual ? LEGACY_MANUAL_VIEWS : REAL_VIEWS;
+  const VIEWS = REAL_VIEWS;
   const current = course
     ? VIEWS.find((v) => v.id === nav.view) || (nav.view ? null : VIEWS[0])
     : null;
   const view = current?.id || null;
-  const activeCourseId = course?.id || null;
-  const menuView = inCourse ? view : libraryView;
-  const [coursesExpanded, setCoursesExpanded] = useState(() => Boolean(activeCourseId));
-  const [expandedCourseIds, setExpandedCourseIds] = useState(() => initialExpandedCourseIds(activeCourseId));
-  const previousCourseId = useRef(activeCourseId);
-
-  useEffect(() => {
-    setExpandedCourseIds((expanded) => expandOnCourseSelection(expanded, previousCourseId.current, activeCourseId));
-    if (activeCourseId && activeCourseId !== previousCourseId.current) setCoursesExpanded(true);
-    previousCourseId.current = activeCourseId;
-  }, [activeCourseId]);
 
   const go = (patch) => {
-    const requested = patch.view || view || (isManual ? 'roster' : 'builder');
-    const nextView = isManual && requested !== 'roster' ? 'roster' : requested;
+    const nextView = patch.view || view || 'builder';
     nav.go({
       role: 'instructor',
       area: 'course',
       courseId: course?.id || nav.courseId,
       view: nextView,
       ...patch,
-      ...(isManual && nextView !== patch.view ? { view: nextView } : {}),
     });
   };
   const goLibrary = (v) => nav.go({ role: 'instructor', area: 'library', courseId: null, view: v });
-  const openCourse = (id, courseView = null) => {
-    const target = learning.courses.find((candidate) => candidate.id === id);
-    nav.go({
-      role: 'instructor',
-      area: 'course',
-      courseId: id,
-      view: courseView || (target?.manual ? 'roster' : 'builder'),
-    });
+  const openCourse = (id) => {
+    nav.go({ role: 'instructor', area: 'course', courseId: id, view: 'builder' });
   };
   const handleDrafted = async (created) => {
     const record = created?.record || created?.course || created;
     const id = created?.id || record?.id || null;
     if (id) {
-      const optimisticCourse = {
+      setSelectedCourse({
         ...record,
         id,
         title: created?.title || record?.title || record?.name,
         status: created?.status || record?.status || 'PENDING',
         sections: created?.sections ?? record?.sections,
         sourceIds: created?.sourceIds || record?.sourceIds || [],
-      };
-      setSelectedCourseRefresh({
-        course: optimisticCourse,
-        pending: true,
-        authoritative: null,
       });
       openCourse(id);
-      try {
-        const refreshed = await learning.refetch();
-        const persisted = Array.isArray(refreshed)
-          ? refreshed.find((entry) => entry?.id === id)
-          : null;
-        setSelectedCourseRefresh({
-          course: persisted ? optimisticCourse : null,
-          pending: false,
-          authoritative: persisted ? courseFromRecord(persisted) : null,
-        });
-      } catch {
-        // The learning hook exposes the request error in the shell. Drop the
-        // optimistic row now so an error or missing record cannot look real.
-        setSelectedCourseRefresh({ course: null, pending: false, authoritative: null });
-      }
-      return;
     }
     await learning.refetch();
   };
@@ -309,9 +219,9 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
   };
 
   const courseLookupLoading = inCourse && !course && Boolean(nav.courseId) && (
-    !authReady || (learning.enabled && (learning.loading || learning.manualLoading))
+    !authReady || (learning.enabled && learning.loading)
   );
-  const courseServiceError = inCourse && !course && !courseLookupLoading && Boolean(learning.error || learning.manualError);
+  const courseServiceError = inCourse && !course && !courseLookupLoading && Boolean(learning.error);
   const courseUnavailable = inCourse && !course && !courseLookupLoading && !courseServiceError && !learning.enabled;
   const courseNotFound = inCourse && !course && !courseLookupLoading && !courseServiceError && !courseUnavailable;
   const unsupportedRealView = Boolean(course?.record && nav.view && !current);
@@ -351,9 +261,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
         account={profile}
         authenticated={authenticated}
         tab={nav.tab}
-        // Legacy manual courses are left out: they expose a roster and nothing
-        // else, so there are no course settings to send anyone to.
-        courses={learning.courses.filter((entry) => !entry.manual)}
+        courses={generatedCourses}
         onOpenCourseSettings={(id) => nav.go({
           role: 'instructor', area: 'course', courseId: id, view: 'settings',
         })}
@@ -378,10 +286,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
     else {
       body = (
         <CoursesLibrary
-          // Legacy manual courses are included so they can be cleared: they
-          // were filtered out here, which left them visible only in the rail
-          // with no way to manage or remove them.
-          courses={learning.courses}
+          courses={generatedCourses}
           loading={learning.loading}
           error={learning.error}
           onOpen={openCourse}
@@ -389,39 +294,14 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
         />
       );
     }
-  } else if (inCourse && isSample) {
-    if (view === 'builder') body = <SampleCourse key={course.id} course={course} />;
-    else if (view === 'control' || view === 'aar' || view === 'settings') {
-      const Screen = SAMPLE_SCREENS[view];
-      body = Screen
-        ? <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} courseScoped={view === 'settings'} />
-        : <CourseUnavailable courseId={course.id} title="Sample course tool unavailable" />;
-    } else {
-      body = (
-        <CourseUnavailable courseId={course.id} title="Sample course tool unavailable">
-          This local sample does not connect to live analytics or authoring services. Choose another sample tool.
-        </CourseUnavailable>
-      );
-    }
   } else if (inCourse && unsupportedRealView) {
     body = (
-      <CourseUnavailable courseId={course.id} title={isManual ? 'Legacy course tool unavailable' : 'Course tool unavailable'}>
-        {isManual
-          ? 'Legacy manual courses are available here for roster management only. Choose Roster under the selected course.'
-          : 'This tool is not available for this service-backed course. Choose one of the tools listed under the selected course.'}
+      <CourseUnavailable courseId={course.id} title="Course tool unavailable">
+        This tool is not available for this service-backed course. Choose one of the tools listed under the selected course.
       </CourseUnavailable>
     );
   } else if (isReal) {
-    if (isManual) {
-      const Screen = SCREENS[view];
-      body = Screen ? (
-        <Screen key={course.id} course={course} account={profile} authenticated={authenticated} instructorName={displayName} />
-      ) : (
-        <CourseUnavailable courseId={course.id} title="Legacy course tool unavailable">
-          Legacy manual courses are available here for roster management only. Choose Roster under the selected course.
-        </CourseUnavailable>
-      );
-    } else if (view === 'builder') body = <CourseDraft key={course.id} course={course} onChanged={learning.refetch} />;
+    if (view === 'builder') body = <CourseDraft key={course.id} course={course} onChanged={learning.refetch} />;
     else if (view === 'fidelity') {
       body = (
         <>
@@ -472,49 +352,37 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
 
         <div className="s-rail-scroll" tabIndex={0} role="region" aria-label="Library and course navigation">
         <div className="s-rail-sec" style={{ paddingTop: '0.2rem' }}>Library</div>
-        <InstructorCoursesMenu
-          expanded={coursesExpanded}
-          onToggle={() => setCoursesExpanded((expanded) => !expanded)}
-          selectedCourseId={activeCourseId}
-          selectedView={menuView}
-          expandedCourseIds={expandedCourseIds}
-          onToggleCourse={(id) => setExpandedCourseIds((expanded) => toggleExpandedCourse(expanded, id))}
-          onExpandCourse={(id) => setExpandedCourseIds((expanded) => expandCourse(expanded, id))}
-          onOpenCourse={openCourse}
-          onOpenLibrary={() => goLibrary('courses')}
-          courses={SAMPLE_COURSES}
-          items={SAMPLE_VIEWS}
-          homeView="builder"
-        />
-        {LIBRARY.filter((item) => item.id !== 'courses').map((l) => (
+        {LIBRARY.map((l) => (
           <RailButton key={l.id} icon={l.icon} label={l.label} on={inLibrary && libraryView === l.id} onClick={() => goLibrary(l.id)} />
         ))}
 
-        {learning.courses.length > 0 && (
+        {generatedCourses.length > 0 && (
           <>
             <div className="s-rail-sec">Teaching</div>
-            {learning.courses.map((c) => (
+            {generatedCourses.map((c) => (
               <RailButton
                 key={c.id}
                 sub
                 on={inCourse && c.id === course?.id}
-                icon={<span className="s-rail-dot" style={{ background: c.manual ? 'var(--p-dim)' : c.status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }} />}
-                label={c.manual ? `Legacy · ${c.name}` : c.name}
+                icon={<span className="s-rail-dot" style={{ background: c.status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }} />}
+                label={c.name}
                 onClick={() => openCourse(c.id)}
               />
             ))}
           </>
         )}
-        {inCourse && course && !isSample && (
+        {/* No instructor-side sample-course rail, and no COURSES fixture import:
+            instructors see only the real courses they own. The student shell
+            still carries demo content. */}
+
+        {inCourse && course && (
           <>
             <div className="s-rail-sec">
               <span className="s-rail-sec-name">{course.name}</span>
               {!isReal && <code>{course.id}</code>}
             </div>
             {/* Everything an instructor reaches for while teaching the course,
-                under a heading that says what the group is for. A group with
-                nothing in it -- a legacy manual course has only Roster --
-                prints no heading. */}
+                under a heading that says what the group is for. */}
             {COURSE_GROUPS.map(({ id, label }) => {
               const group = VIEWS.filter((v) => (v.group || null) === id);
               if (group.length === 0) return null;
@@ -546,24 +414,15 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
           <div className="s-container">
             {/* The breadcrumb row is gone; the course status it carried is not.
                 courseHeaderStatus is used rather than a raw status string so a
-                pending revision still reads as needing review, and a legacy
-                manual course keeps the school label it used to show. */}
-            {inCourse && course && isReal && !isManual && (
+                pending revision still reads as needing review. */}
+            {inCourse && course && isReal && (
               <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
                 {course.sections} sections · {courseHeaderStatus(course)}
               </p>
             )}
-            {inCourse && course && isManual && course.school && (
-              <p className="p-src" style={{ margin: '0 0 0.75rem' }}>{course.school}</p>
-            )}
             {signOutError && (
               <div className="s-shell-error" role="alert">
                 {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}
-              </div>
-            )}
-            {learning.manualError && (
-              <div className="s-shell-error" role="alert">
-                {learning.manualError.error || learning.manualError.message || 'Unable to load manual courses.'}
               </div>
             )}
             {body}

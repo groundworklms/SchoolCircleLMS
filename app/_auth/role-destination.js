@@ -40,7 +40,7 @@ export function isSafeDeepLink(next, profile) {
   const location = parse(path);
   if (location.area === 'not-found') return false;
   // `canAccessLocation` contains the one intentional exception: an
-  // instructor may preview only the published reader or student library.
+  // instructor may preview the student library.
   return canAccessLocation(profile, location, true);
 }
 
