@@ -44,6 +44,18 @@
    a learner screen sits underneath. Only while the bar is actually there. */
 .p-root:has(> .p-studentview) .s-main { padding-bottom: 8rem; }
 
+/* The bar's own bottom-right footprint overlaps the two floating actions that
+   already live in that corner -- the "Ask" tutor (.s-chat-fab, student.css)
+   and the "Report an issue" QA widget (.scw-fab.issue, widgets.css), the
+   button testers are told to file bugs with. Lifting both by the same 8rem
+   budgeted for .s-main above clears the bar's worst wrapped case (two lines
+   of copy plus the button dropping to its own row) while keeping the 4.1rem
+   gap the two FABs already keep between each other intact, since both move
+   by the same amount. QaWidget mounts outside .p-root (app/layout.js), so it
+   needs its own :has() off body rather than riding the .p-root rule above. */
+.p-root:has(> .p-studentview) .s-chat-fab { bottom: calc(1.6rem + 8rem); }
+body:has(.p-studentview) .scw-fab.issue { bottom: calc(5.4rem + 8rem); }
+
 .p-studentview-text { flex: 1 1 18rem; min-width: 0; }
 .p-studentview-text b { display: block; font-weight: 650; }
 .p-studentview .p-btn { flex: none; }
