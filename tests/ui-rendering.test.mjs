@@ -809,8 +809,59 @@ test('course chat renders Sourcerer and Anchor citations in one shape', () => {
   const course = { id: 'course-1', name: 'Rifle Marksmanship', record: { id: 'course-1' } };
   const markup = renderToStaticMarkup(React.createElement(CourseChat, { course }));
   assert.match(markup, /Course sources selected/);
-  assert.match(markup, /Field manual · p\.4/);
-  assert.match(markup, /TC 3-22\.9 · p\.88/);
+  // One provenance line for every surface: publication, then page (provenanceOf).
+  assert.match(markup, /Field manual p\.4/);
+  assert.match(markup, /TC 3-22\.9 p\.88/);
+});
+
+/* The grounded tutor's own citation shape.
+ *
+ * The server stamps `n` -- the inline marker the answer carries -- and `pubId`,
+ * the publication it resolved from the approved source record; the passage
+ * `source` is the locator "<source record id> p.N", and that record id is a
+ * cuid: the authenticated page-opening key, never a citation a learner reads.
+ * The two defects this pins are a marker in the prose with no chip of that
+ * number to follow, and a chip that printed the key. */
+test('course chat labels each citation with its own marker and names the publication', () => {
+  const PUBLICATION = 'AY27 8670 Prerequisite Coursebook Instructor-Led Moodle';
+  const RECORD = 'cmu4xdph30016s6014fn9n9y8';
+  const { normaliseCitation } = loadComponent('app/prototype/CourseChat.js');
+  // As lib/learning/core.js `courseCitations` delivers them: the answer marked
+  // [1] and [4], so those are the numbers, not 1 and 2.
+  const cited = [
+    { n: 1, id: `${RECORD}:chunk:18`, text: 'Military goals serve the political outcome.', source: `${RECORD} p.19`, sourceId: RECORD, pubId: PUBLICATION },
+    { n: 4, id: `${RECORD}:chunk:16`, text: 'Strategy translates that outcome into military aims.', source: `${RECORD} p.17`, sourceId: RECORD, pubId: PUBLICATION },
+  ].map(normaliseCitation);
+  // A passage cited in three sentences is still one citation, cited twice here.
+  const answer = 'Military goals serve the political outcome. [1][4] Strategy translates that outcome. [1]';
+
+  const { default: CourseChat } = loadComponent('app/prototype/CourseChat.js', {
+    queryData: { '/courses/course-1': { id: 'course-1', course: { sourceIds: [RECORD] } } },
+    // SignedInCourseChat state order: open, msgs, text, busy.
+    stateValues: [
+      [true, () => {}],
+      [[{ role: 'assistant', answer, citations: cited }], () => {}],
+      ['', () => {}],
+      [false, () => {}],
+    ],
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseChat, {
+    course: { id: 'course-1', name: 'Joint Operations', record: { id: 'course-1' } },
+  }));
+
+  // Every marker the prose carries is a chip, and every chip is a marker.
+  const markers = [...answer.matchAll(/\[(\d+)\]/g)].map((match) => Number(match[1]));
+  const chips = [...markup.matchAll(/<b>\[(\d+)\]<\/b>/g)].map((match) => Number(match[1]));
+  assert.deepEqual(chips, [1, 4]);
+  assert.deepEqual(new Set(chips), new Set(markers));
+
+  // The chip reads like the lesson line above it, and the page comes off the
+  // locator rather than being dropped.
+  assert.ok(markup.includes(`<b>[1]</b> ${PUBLICATION} p.19`), markup);
+  assert.ok(markup.includes(`<b>[4]</b> ${PUBLICATION} p.17`), markup);
+  // The locator is still there, exactly, one hover away -- and nowhere else.
+  assert.ok(markup.includes(`title="${RECORD} p.19"`), markup);
+  assert.equal(markup.replace(/title="[^"]*"/g, '').includes(RECORD), false);
 });
 
 test('course chat citation locators select the matching approved source record', () => {
