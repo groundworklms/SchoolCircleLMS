@@ -12,19 +12,20 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('Courses omits the agenda and retired manual library while keeping current course sections', () => {
+test('student courses are generated-only and keep loading/error/empty states', () => {
   const source = fs.readFileSync(path.join(workspace, 'app/prototype/StudentShell.js'), 'utf8');
-  const courses = source.slice(source.indexOf('function Courses('), source.indexOf('/* ---------- course view'));
-  assert.doesNotMatch(courses, /<Agenda|Demo schedule|className="s-two"/);
-  for (const section of ['Available courses', 'Demo courses and training (not enrolled)', 'Required training', 'Completed']) {
-    assert.ok(courses.includes(section), `preserves ${section}`);
+  assert.doesNotMatch(source, /from ['"]\.\/data['"]|from ['"]\.\/agenda['"]/);
+  assert.doesNotMatch(source, /Demo samples|demo course|COURSES|TODO|UPCOMING|<Agenda/);
+  assert.doesNotMatch(source, /import\s+(?:StudentPath|StudyMaterials|LiveSession|MyProgress|Assignments|Lessons|Grades|Discussions)/);
+  for (const section of ['Available courses', 'Loading courses', 'Unable to load courses', 'Nothing published to you yet']) {
+    assert.ok(source.includes(section), `preserves ${section}`);
   }
-  assert.doesNotMatch(courses, /Published courses|LibraryList/);
-  assert.match(courses, /onOpen\(c\.id, 'home'\)/);
-  // One, not two: the focused dashboard replaced the old Dashboard, and it
-  // reads the same TODO/UPCOMING agenda data through focusedAgendaItems rather
-  // than rendering the <Agenda> component. Course home still renders it.
-  assert.equal((source.match(/<Agenda /g) || []).length, 1, 'the course-home agenda remains');
+  assert.match(source, /courses\.map/);
+  assert.match(source, /RealCourseHome/);
+  assert.match(source, /CourseUnavailable/);
+  assert.match(source, /UnsupportedCourseTool/);
+  assert.match(source, /FocusedDashboard/);
+  assert.match(source, /CoursesMenu/);
 });
 
 test('shared instructor shell omits breadcrumbs while retaining course status and navigation', () => {

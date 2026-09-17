@@ -10,7 +10,7 @@
     "test:model": "node --experimental-test-module-mocks --test test/model-openrouter.test.mjs test/model-settings.test.mjs test/model-catalog.test.mjs",
     "test:doctrine": "node --experimental-test-module-mocks --test test/doctrine-settings.test.mjs",
     "test:student-grounding": "node --experimental-test-module-mocks --test test/student-model.test.mjs test/student-grounding.test.mjs test/student-grounding-doctrine.test.mjs",
-    "test:ui-rendering": "node --test app/prototype/courseTreeState.test.mjs tests/learning-query-race.test.mjs tests/ui-rendering.test.mjs tests/inbox-filter-contrast.test.mjs tests/auth-guard-chrome.test.mjs tests/theme-contrast.test.mjs",
+    "test:ui-rendering": "node --test app/prototype/courseTreeState.test.mjs tests/learning-query-race.test.mjs tests/ui-rendering.test.mjs tests/inbox-filter-contrast.test.mjs tests/auth-guard-chrome.test.mjs tests/theme-contrast.test.mjs tests/student-demo-shell.test.mjs tests/student-demo-globals.test.mjs",
     "test:source-library": "node --experimental-test-module-mocks --test test/source-library.test.mjs test/source-library-hermetic.test.mjs tests/source-upload.test.mjs",
     "test:ai-authoring": "node --experimental-test-module-mocks --test test/course-revisions.test.mjs test/course-revision-handlers.test.mjs test/course-revision-transaction.test.mjs test/delivery.test.mjs test/delivery-route.test.mjs tests/learner-redaction.test.mjs tests/authoring-retired.test.mjs",
     "test:authoring": "node --test tests/authoring-server.test.mjs tests/authoring-retired.test.mjs",
