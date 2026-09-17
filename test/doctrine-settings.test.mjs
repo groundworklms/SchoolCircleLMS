@@ -129,7 +129,12 @@ test('unconfigured reports the unchanged message and no source', async () => {
   const status = doctrine.doctrineProvider();
   assert.equal(status.ready, false);
   assert.equal(status.source, null);
-  assert.match(status.reason, /^No doctrine service configured\. Set DOCTRINE_BASE_URL/);
+  // The unconfigured reason must offer the RUNTIME path first: apphosting.yaml
+  // deliberately leaves DOCTRINE_BASE_URL unset, so pointing only at the env var
+  // would tell an operator to redeploy for something Settings changes live.
+  assert.match(status.reason, /^No doctrine engine configured\./);
+  assert.match(status.reason, /Settings -> Doctrine engine/);
+  assert.match(status.reason, /DOCTRINE_BASE_URL/);
   assert.match(status.reason, /citations are unavailable\.$/);
 });
 
@@ -180,7 +185,7 @@ test('clearing with no environment returns to the unconfigured message', async (
   await primeDoctrineSettings();
   const status = doctrine.doctrineProvider();
   assert.equal(status.ready, false);
-  assert.match(status.reason, /^No doctrine service configured/);
+  assert.match(status.reason, /^No doctrine engine configured/);
 });
 
 /* ------------------------------- resilience ------------------------------- */
@@ -347,7 +352,7 @@ test('an unconfigured engine is its own state, and probes nothing', async () => 
       const health = await healthOf();
       assert.equal(health.state, 'unconfigured');
       assert.equal(health.baseUrl, null);
-      assert.match(health.detail, /^No doctrine service configured/);
+      assert.match(health.detail, /^No doctrine engine configured/);
     },
   );
 });
