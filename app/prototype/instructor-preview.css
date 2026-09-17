@@ -6,56 +6,33 @@
  * chrome, and the one question the control exists to answer -- "is this what a
  * learner gets?" -- has no visible answer on screen.
  *
- * Deliberately a fixed bar rather than a header row: the student shell owns its
- * own layout, and a marker that pushes the learner chrome down would make the
- * preview a slightly different page from the one being previewed.
+ * A real bar in the column flow at the top of the shell, not a floating box.
+ * .p-root is a flex column; a flex:none bar placed before the shell (.s-root,
+ * flex:1) reserves its own height and the shell shrinks to fit beneath it.
+ * Nothing can end up underneath it: not a lesson list (the shell's own scroll
+ * region starts below the bar), and not the tutor panel or the corner action
+ * buttons, which are all pinned to the bottom-right of the viewport, the
+ * opposite end of the screen from this bar. It bounds the content instead of
+ * covering it, so no clearance or lift hacks are needed anywhere else.
  *
- * It borrows .p-truth's treatment -- accent rule, accent tint, body text -- so
- * it reads as one of the product's statements of fact rather than a new idiom,
- * and inherits that pairing's contrast in both themes.
+ * Informational, not an alert: it states a fact about scope, so it takes a
+ * neutral surface and a quiet slate rule rather than the accent red, which on
+ * a large banner reads as an error.
  */
 .p-studentview {
-  position: fixed;
-  left: 50%;
-  bottom: 1.1rem;
-  transform: translateX(-50%);
-  z-index: 60;
+  flex: none;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 0.9rem;
-  /* A set width rather than a maximum: left to shrink-wrap, the flex row
-     collapsed to a narrow column of text on a phone. */
-  width: min(44rem, calc(100vw - 2rem));
-  padding: 0.6rem 0.9rem;
-  border-radius: 12px;
-  border-left: 3px solid var(--p-accent);
-  /* .p-truth's tint, but backed by the surface it normally sits on. The tint
-     is translucent by design; floating free over a learner screen it would let
-     the page read through the bar. */
-  background: linear-gradient(var(--p-accent-tint), var(--p-accent-tint)) var(--p-surface);
-  color: var(--p-text);
-  box-shadow: var(--p-shadow-lift);
-  font-size: 0.84rem;
-  line-height: 1.45;
+  align-items: baseline;
+  gap: 0.15rem 0.8rem;
+  padding: 0.55rem 2.6rem;
+  border-bottom: 1px solid var(--p-border);
+  border-left: 3px solid var(--p-seq-600);
+  background: var(--p-surface-2);
+  color: var(--p-dim);
+  font-size: 0.82rem;
+  line-height: 1.4;
 }
 
-/* The bar floats, so the scroll column has to end above it or the last line of
-   a learner screen sits underneath. Only while the bar is actually there. */
-.p-root:has(> .p-studentview) .s-main { padding-bottom: 8rem; }
-
-/* The bar's own bottom-right footprint overlaps the two floating actions that
-   already live in that corner -- the "Ask" tutor (.s-chat-fab, student.css)
-   and the "Report an issue" QA widget (.scw-fab.issue, widgets.css), the
-   button testers are told to file bugs with. Lifting both by the same 8rem
-   budgeted for .s-main above clears the bar's worst wrapped case (two lines
-   of copy plus the button dropping to its own row) while keeping the 4.1rem
-   gap the two FABs already keep between each other intact, since both move
-   by the same amount. QaWidget mounts outside .p-root (app/layout.js), so it
-   needs its own :has() off body rather than riding the .p-root rule above. */
-.p-root:has(> .p-studentview) .s-chat-fab { bottom: calc(1.6rem + 8rem); }
-body:has(.p-studentview) .scw-fab.issue { bottom: calc(5.4rem + 8rem); }
-
-.p-studentview-text { flex: 1 1 18rem; min-width: 0; }
-.p-studentview-text b { display: block; font-weight: 650; }
-.p-studentview .p-btn { flex: none; }
+.p-studentview-text { min-width: 0; }
+.p-studentview-text b { font-weight: 650; color: var(--p-text); margin-right: 0.15rem; }

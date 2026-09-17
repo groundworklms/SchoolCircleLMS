@@ -32,7 +32,6 @@ function CourseRow({ course, onOpen }) {
         ) : (
           <span className="f-prog-text f-course-sections">
             {row.sections === null ? 'Course' : `${row.sections} sections`}
-            {row.status === 'APPROVED' ? ' · approved' : ''}
           </span>
         )}
       </div>
@@ -72,19 +71,11 @@ export default function FocusedDashboard({
     <div className="focused-dashboard-content">
       <header className="f-header">
         <div className="f-header-title">Dashboard</div>
-        <div className="f-header-date">Generated courses for this account</div>
+        <div className="f-header-date">Your courses</div>
       </header>
       <div className="f-main">
         <div className="f-container">
-          <section>
-            <h2 className="f-section-title">Up Next</h2>
-            <p className="f-empty">No schedule or assignment records are available.</p>
-          </section>
           <CourseList courses={courses} loading={loading} error={error} onOpen={onOpen} />
-          <section>
-            <h2 className="f-section-title">Required Training</h2>
-            <p className="f-empty">No training requirements are available.</p>
-          </section>
         </div>
       </div>
     </div>

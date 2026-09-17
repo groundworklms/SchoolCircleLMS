@@ -113,6 +113,16 @@ export default function Prototype() {
   return (
     <div className="p-root">
       <WalkthroughProvider nav={nav} enabled={canTour}>
+      {inStudentView && (
+        <div className="p-studentview" role="status">
+          <span className="p-studentview-text">
+            <b>Student view.</b>
+            Course visibility here is learner-scoped: a draft you own but have not published is
+            hidden, exactly as it is for a learner. Your instructor account is still signed in — use
+            {' '}“View as instructor” in the rail to switch back.
+          </span>
+        </div>
+      )}
       {nav.role === 'student' ? (
         <StudentShell
           nav={nav}
@@ -125,18 +135,6 @@ export default function Prototype() {
           role={profile?.role}
           onSwitchRole={canLearn ? toStudent : null}
         />
-      )}
-      {inStudentView && (
-        <div className="p-studentview" role="status">
-          <span className="p-studentview-text">
-            <b>Student view</b>
-            Course visibility here is learner-scoped: a draft you own but have not published is
-            hidden, exactly as it is for a learner. Your instructor account is still signed in.
-          </span>
-          <button type="button" className="p-btn quiet" onClick={toInstructor}>
-            Back to instructor view
-          </button>
-        </div>
       )}
       </WalkthroughProvider>
     </div>
