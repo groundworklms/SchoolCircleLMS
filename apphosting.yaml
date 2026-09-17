@@ -37,7 +37,7 @@ env:
   # NOTE: this is a TEMPORARY Cloudflare quick-tunnel URL — it changes whenever the
   # tunnel restarts. For a stable setup use a named Cloudflare tunnel. Update if restarted.
   - variable: DOCTRINE_BASE_URL
-    value: https://calculations-probability-dozens-recommended.trycloudflare.com
+    value: https://maryland-naples-repeat-campbell.trycloudflare.com
     availability:
       - RUNTIME
   - variable: DOCTRINE_TIMEOUT_MS
