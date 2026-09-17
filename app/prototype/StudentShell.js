@@ -92,10 +92,7 @@ function Courses({
           </button>
         ))}
         {!courses.length && !learningLoading && !learningError && (
-          <p className="s-cal-empty">
-            Nothing published to you yet. A course appears here once an instructor approves it for
-            your account.
-          </p>
+          <p className="s-cal-empty">Nothing published to you yet.</p>
         )}
       </div>
     </div>
@@ -116,10 +113,7 @@ function UnsupportedCourseTool({ course, view }) {
   return (
     <div className="s-shell-error" role="alert">
       <h2>Tool unavailable</h2>
-      <p>
-        {course?.name || 'This course'} does not support the “{view || 'unknown'}” learner tool.
-        Choose one of the tools listed for this course.
-      </p>
+      <p>{course?.name || 'This course'} does not support the “{view || 'unknown'}” tool.</p>
     </div>
   );
 }

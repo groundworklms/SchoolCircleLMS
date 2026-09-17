@@ -437,7 +437,7 @@ test('a learner is cited to a publication and a page, never to a record id', () 
   const markup = renderReader({}, { page: 1 });
   // The publication, named the way the Sources screen names it: the upload's
   // extension off and its underscores back to spaces.
-  assert.match(markup, /Written from and checked against/);
+  assert.match(markup, /Cited to/);
   assert.match(markup, /AY27 8670 Prerequisite Coursebook Instructor-Led Moodle p\.135/);
   assert.doesNotMatch(markup, /cmu4xdph30016s6014fn9n9y8/);
 });

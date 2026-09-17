@@ -239,10 +239,7 @@ export default function StudentInbox({ onOpen, onArea, inbox = EMPTY_INBOX }) {
       <div className="s-pagehead s-cal-head">
         <div>
           <h1>Inbox</h1>
-          <p>
-            {unreadCount === 0 ? 'Nothing unread.' : `${unreadCount} unread.`} Instructor announcements, reminders from your
-            plan, and requirement notices.
-          </p>
+          <p>{unreadCount === 0 ? 'Nothing unread.' : `${unreadCount} unread.`}</p>
         </div>
         <div className="s-inbox-filters">
           {FILTERS.map((f) => (
@@ -253,7 +250,7 @@ export default function StudentInbox({ onOpen, onArea, inbox = EMPTY_INBOX }) {
           ))}
         </div>
       </div>
-      {ready && !live && !loading && <div className="s-ro-state" role="status"><strong>Sign in required.</strong> Sign in to view your instructor messages.</div>}
+      {ready && !live && !loading && <div className="s-ro-state" role="status"><strong>Sign in required.</strong> View your instructor messages.</div>}
       {loading && <div className="s-ro-state" role="status">Loading your inbox…</div>}
       {error && <div className="s-ro-error" role="alert">{error}</div>}
       {readError && <div className="s-ro-error" role="alert">{readError}</div>}
@@ -340,7 +337,7 @@ export default function StudentInbox({ onOpen, onArea, inbox = EMPTY_INBOX }) {
                   <button className="p-btn ghost" disabled={!reply.trim()} onClick={() => setReply('')}>
                     Send
                   </button>
-                  <span className="s-reply-note">Replies go to the instructor only — never to the class.</span>
+                  <span className="s-reply-note">To the instructor only, never the class.</span>
                 </div>
               </div>
             )}

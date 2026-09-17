@@ -148,7 +148,7 @@ const AUTHORED = {
           { front: 'Copper loss', back: 'I²R in the windings. Rises with load current.' },
         ] },
       ] },
-      { type: 'practice', title: 'Practice set', text: 'Twelve adaptive questions on this lesson, weighted toward what you have missed before. Not graded — it is how you find out what you would miss on the exam.' },
+      { type: 'practice', title: 'Practice set', text: 'Twelve adaptive questions, weighted to what you have missed. Not graded.' },
       { type: 'attachments', title: 'Attachments' },
     ],
   },
@@ -249,9 +249,9 @@ function scaffold(lesson, course) {
     items: [
       { type: 'page', title: 'Objectives', blocks: [
         { type: 'list', items: course.objectives },
-        { type: 'callout', kind: 'note', title: 'Not yet authored', text: 'The objective wording above is placeholder — the POI provides counts, not text. The instructor authors this lesson from the student outline; until then this page shows the structure only.' },
+        { type: 'callout', kind: 'note', title: 'Not yet authored', text: 'Placeholder wording. Your instructor authors this lesson from the outline.' },
       ] },
-      { type: 'practice', title: 'Practice set', text: 'Practice questions for this lesson are generated from the outline once the instructor approves them.' },
+      { type: 'practice', title: 'Practice set', text: 'Generated once your instructor approves the outline.' },
       { type: 'attachments', title: 'Attachments' },
     ],
     scaffold: true,

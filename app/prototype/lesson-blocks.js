@@ -196,7 +196,7 @@ function InteractiveVideo({ block }) {
         </div>
         <span className="s-vid-time">{fmt(block.duration)}</span>
       </div>
-      <div className="s-vid-foot">{block.title} · {block.prompts.filter((p) => p.kind === 'question').length} questions in the video. Tap a marker to jump to it.</div>
+      <div className="s-vid-foot">{block.title} · {block.prompts.filter((p) => p.kind === 'question').length} questions · tap a marker to jump.</div>
     </div>
   );
 }
