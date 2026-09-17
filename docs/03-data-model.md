@@ -13,14 +13,22 @@ never be handed one Marine's answers — is enforced *here, in the schema*, not 
 
 - **Postgres** for the real product — local dev via `docker-compose.yml`; managed Postgres in the
   approved enclave for the enterprise / Track-B deployment.
-- **The SAME schema on SQLite** for offline/edge (a Jetson at a schoolhouse): change the Prisma
-  `datasource` `provider` to `sqlite` and point `DATABASE_URL` at a file. **No other change.** One
-  schema, a connection-string swap — that is the whole edge-to-enterprise story.
+- **The SAME schema on the edge too (a Jetson at a schoolhouse) — also PostgreSQL**, not SQLite:
+  run a local PostgreSQL on the board and point `DATABASE_URL` at it. The provider stays
+  `postgresql`; **only the URL changes.** One schema, one provider, two databases — that is the
+  edge-to-enterprise story.
+
+  > **This used to say "swap the provider to `sqlite`, no other change" — that is not true and has
+  > been corrected.** `docs/CLOUD_POSTGRES.md` states it plainly: *"Keep `provider =
+  > "postgresql"`; SQLite is not a connection-string-only swap."* `prisma/schema.prisma` agrees in
+  > its header comment. A SQLite target is a legitimate goal, but it is real work — the schema uses
+  > Postgres-specific types and behaviour — and it is not what ships today. Note also that the two
+  > databases hold independent data: changing the URL does not synchronise them.
 - **Prisma** as the ORM + migration tool.
 
 ```prisma
 datasource db {
-  provider = "postgresql"   // swap to "sqlite" for offline/edge; see .env.example
+  provider = "postgresql"   // cloud AND edge; change DATABASE_URL, not the provider
   url      = env("DATABASE_URL")
 }
 ```
@@ -35,15 +43,16 @@ design decisions, not just documentation.
 ```prisma
 // Data model for the grounded LMS.
 //
-// Postgres for the real product; the SAME schema runs on SQLite for offline/edge (a Jetson
-// at a schoolhouse) -- change the datasource `provider` + DATABASE_URL, nothing else.
+// PostgreSQL for both cloud and offline/edge. Use Cloud SQL in the cloud and local
+// PostgreSQL on the hardware; keep this provider/schema and change DATABASE_URL.
+// The two databases have independent data; switching URLs does not synchronize them.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"          // swap to "sqlite" for offline/edge; see .env.example
+  provider = "postgresql"          // cloud AND edge; change DATABASE_URL, not the provider
   url      = env("DATABASE_URL")
 }
 
@@ -224,15 +233,17 @@ construction*.
 ## Get it running (local)
 
 ```bash
-docker compose up -d          # local Postgres on :5432 (container schoolcircle-dev, host :5433 in dev)
+docker compose up -d          # local Postgres: container schoolcircle-db, host port 5432
 cp .env.example .env.local    # then set DATABASE_URL (default matches the compose file)
 npm install                   # runs prisma generate
 npm run db:migrate            # create the tables
 npm run db:seed               # a runnable TC 3-22.9 course + 1 instructor + 1 learner
 ```
 
-**Edge build:** set `provider = "sqlite"` and `DATABASE_URL="file:./schoolcircle.db"`, then
-`npm run db:migrate`. The seed and every query are unchanged.
+**Edge build:** install PostgreSQL on the board, point `DATABASE_URL` at it, then
+`npm run db:migrate`. The provider, the seed and every query are unchanged. Do **not** set
+`provider = "sqlite"`/`file:./schoolcircle.db`: SQLite is not a connection-string-only swap (see
+`docs/CLOUD_POSTGRES.md`).
 
 **Conventions:** migrations are Prisma-managed (`prisma migrate dev` in dev, `migrate deploy` in the
 enclave). The seed is idempotent and produces a demo-ready state: one instructor, one learner, and a

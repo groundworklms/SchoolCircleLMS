@@ -2,7 +2,8 @@
 
 The document stack that turns the grounded-training platform into a buildable, definitive spec:
 **the ultimate learning loop for the learner, and the ultimate course build / plan / review tool
-for the instructor** — grounded in doctrine, verified on-device, offline-capable, human-led.
+for the instructor** — grounded in doctrine, verified on-device, human-led, and grounded **offline**
+on the edge (Anchor; see the scope note below).
 
 This stack is the companion to the two gameday artifacts (the **Cold Bore plan** and the
 **Range Card**). A fresh instance should read those two first for the mission and the wiring, then
@@ -16,8 +17,8 @@ into the new repo on day one** so the knowledge travels with the code.
 | 00 | [north-star](00-north-star.md) | The vision, the four principles, the two closed loops, how the 12 soldiers map on |
 | 01 | [design-system](01-design-system.md) | Exact tokens, the frosted-rail shell, every component, the two widgets, responsive rules |
 | 02 | [architecture](02-architecture.md) | The spine, edge/host/cloud, the three flows, the adapter pattern, offline |
-| 03 | [data-model](03-data-model.md) | The full Prisma schema, privacy-by-query, edge SQLite swap, MarineNet-readiness |
-| 04 | [grounding-and-anchor](04-grounding-and-anchor.md) | The Anchor adapter + exact `/api/ask` contract, abstention-returns-200, the premise gate + HHEM |
+| 03 | [data-model](03-data-model.md) | The full Prisma schema, privacy-by-query, the Postgres-both-ends story, MarineNet-readiness |
+| 04 | [grounding-and-anchor](04-grounding-and-anchor.md) | The Anchor adapter + Anchor’s `/api/ask` contract, abstention-returns-200, the premise gate + HHEM |
 | 05 | [arsenal-contracts](05-arsenal-contracts.md) | Every repo: install, exports, exact call, in→out, which surface/route/table it drives |
 | 06 | [learner-loop](06-learner-loop.md) | The learning loop, screen by screen — calibration + spaced repetition engine |
 | 07 | [instructor-loop](07-instructor-loop.md) | The build/plan/review loop, screen by screen |
@@ -28,7 +29,12 @@ into the new repo on day one** so the knowledge travels with the code.
 
 1. **Grounded** — every claim cites the exact paragraph, or the system refuses. Never invent doctrine.
 2. **Verified** — HHEM entailment on-device checks the asserted specifics; proven, not asserted.
-3. **Offline** — the delivery loop runs on a Jetson with the network pulled; $0 per answer.
+3. **Offline (scoped)** — **Anchor**, the grounding engine, runs on a Jetson with the network cable
+   pulled: retrieval, citations, refusal and on-device generation, at $0 per answer. **SchoolCircle
+   itself is not offline yet** — as deployed today (measured 17 Sep 2026) its sign-in calls Firebase Authentication over the
+   internet, so cable out, Anchor answers and the app cannot log a new user in. That is an
+   auth-configuration property of the deployment, not of the board. Claim Anchor’s offline proof,
+   never the app’s.
 4. **Human-led** — AI drafts; an instructor ratifies. Nothing `PENDING` reaches a student.
 
 ## The arsenal

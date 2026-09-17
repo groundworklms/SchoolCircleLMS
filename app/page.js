@@ -1,10 +1,17 @@
 import Link from 'next/link';
 import './landing.css';
 
+// The "Offline grounding" claim is deliberately scoped to the GROUNDING ENGINE
+// and not to the platform. Anchor on the Jetson genuinely answers with citations
+// and refuses out-of-corpus questions with the network cable out -- measured. The
+// web app's own sign-in, as this deployment is configured today (measured
+// 17 Sep 2026), calls Firebase Auth over the internet. So "the delivery loop
+// runs with the network pulled", which this list used to say, is a claim a judge
+// could disprove by pulling the cable and reloading the page.
 const PRINCIPLES = [
   ['Grounded', 'Every answer cites the exact paragraph of doctrine — or the system refuses. It never invents.'],
   ['Verified', 'An on-device entailment check confirms the specifics are actually supported by the source.'],
-  ['Offline', 'The delivery loop runs on a Jetson at the edge with the network pulled. $0 per answer.'],
+  ['Offline grounding', 'The doctrine engine runs on a Jetson at the edge — cited answers and refusals with the network pulled, $0 per answer.'],
   ['Human-led', 'AI drafts; an instructor approves, edits, or rejects. Nothing unreviewed reaches a student.'],
 ];
 
@@ -21,11 +28,12 @@ export default function Landing() {
 
       <div className="scl-wrap">
         <header className="scl-hero">
-          <span className="scl-eyebrow">Grounded · Verified · Offline · Human-led</span>
+          <span className="scl-eyebrow">Grounded · Verified · Offline grounding · Human-led</span>
           <h1>Training that cannot make things up.</h1>
           <p className="scl-sub">
-            SchoolCircle is a grounded, offline, human-led learning platform. Every answer cites the
-            manual or refuses — so what Marines learn is what the doctrine actually says.
+            SchoolCircle is a grounded, human-led learning platform built on a doctrine engine that
+            runs offline at the edge. Every answer cites the manual or refuses — so what Marines
+            learn is what the doctrine actually says.
           </p>
           {/* One way in, and it is honest about being one way in. The second
               button used to point at /prototype, which is auth-gated and bounces
@@ -58,7 +66,7 @@ export default function Landing() {
         </section>
 
         <footer className="scl-foot">
-          SchoolCircle · a Groundwork project · grounded, verified, offline, human-led.
+          SchoolCircle · a Groundwork project · grounded, verified, human-led — grounding runs offline.
         </footer>
       </div>
     </div>

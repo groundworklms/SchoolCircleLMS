@@ -46,8 +46,13 @@ The path (Cadence) re-plans from real signals — `Mastery` per section, the lea
 and what's due for review — not from a fixed sequence. Behind → catch up; on track → maintain; ahead →
 get ahead (see [05 · Arsenal](05-arsenal-contracts.md) → cadence).
 
-Everything above runs **grounded and offline-capable**: lessons, tutor answers, and practice rationale
-all trace to a cited paragraph or are refused (see [04 · Grounding & Anchor](04-grounding-and-anchor.md)).
+Everything above runs **grounded**: lessons, tutor answers, and practice rationale all trace to a cited
+paragraph or are refused (see [04 · Grounding & Anchor](04-grounding-and-anchor.md)). On *offline*, be
+precise — **Anchor**, the grounding engine on the Orin, is proven to answer with the network cable out;
+**SchoolCircle itself is not offline as configured today**, because its sign-in calls Firebase
+Authentication over the internet (measured 17 Sep 2026). Whether a deployment can sign in without
+a Google endpoint is an auth-configuration question; this one does not. Cable out, Anchor keeps
+answering and the app cannot log a new learner in.
 
 ---
 
@@ -81,7 +86,9 @@ screen (so a stuck learner never has to leave what they're doing).
   out-of-corpus question gets an honest refusal, not a guess. The `Understudy` fidelity gate keeps the
   answer on-doctrine.
 - *Repos*: sourcerer + anchor (+ understudy). *Contract*: [04](04-grounding-and-anchor.md). *Route*:
-  `POST /api/ask`. *Reads*: `Chunk` (FTS fallback if the tunnel drops — still cited).
+  `POST /api/learning/tutor`. *Reads*: the course’s approved source records. **If Anchor is
+  unreachable the tutor says the grounding engine is unavailable and records the turn `FAILED`** —
+  there is no full-text-search fallback and no second answerer in the code.
 
 ### Mastery check
 Discuss-to-mastery, not a multiple-choice gate.
@@ -89,22 +96,24 @@ Discuss-to-mastery, not a multiple-choice gate.
   and **scores each answer against the rubric**, coaching the gap and advancing when a criterion is met.
 - The **rubric criteria fill in visibly** as the learner demonstrates each — mastery is legible, not a
   black-box score. Sessions always terminate (attempt/turn caps → a recorded partial if stalled).
-- *Repo*: whetstone. *Routes*: `POST /api/mastery/start`, `/api/mastery/turn`. *Writes*: `Attempt`,
-  `Mastery`.
+- *Repo*: whetstone. *Routes*: `POST /api/learning/mastery/sessions`,
+  `POST /api/learning/mastery/sessions/[id]/turn`. *Writes*: `LearningRecord` rows of type `MASTERY_SESSION` and `MASTERY_ATTEMPT`.
 
 ### Study Plan
 The calendar half of the loop.
 - The learner's status (behind / on track / ahead) and a plan across **three courses of action**
   (Cadence), laid out on a **week calendar** with blocks placed by day, plus spaced-review blocks.
 - **Export to calendar (.ics)** with reminders — the plan leaves the app and lands in Outlook/Google.
-- *Repo*: cadence. *Route*: `POST /api/plan`. *Writes*: `Schedule`.
+- *Repo*: cadence. *Route*: `/api/learning/study-plan`. *Writes*: `Schedule`. (`/api/plan` is a
+  different, unrelated route that serves `PLAN.md`.)
 
 ### My Progress
 The learner's own evidence — **theirs only** (the aggregate class view is the instructor's, and is a
 query that never selects `learnerId`; see [03](03-data-model.md)).
 - Mastery bars by topic; **learning gain** pre→post; and the **calibration gap** — the honest signal
   most LMSs never show a learner.
-- *Repo*: sextant (learner-scoped read). *Reads*: `Mastery`, `Attempt` (self).
+- *Repo*: sextant (learner-scoped read). *Route*: `GET /api/learning/analytics`. *Reads*: `Mastery`,
+  `Attempt` (self).
 
 ---
 
@@ -113,13 +122,13 @@ query that never selects `learnerId`; see [03](03-data-model.md)).
 | Step | Screen | Repo(s) | Route | Tables |
 |---|---|---|---|---|
 | ① Onboard | (survey) | waypoint | — | (profile → planning) |
-| ② Path | Study Plan | cadence | `/api/plan` | Schedule |
+| ② Path | Study Plan | cadence | `/api/learning/study-plan` | Schedule |
 | ③ Lesson | Course / Lesson | coursewright · quarry | — | Section, Item, citation |
-| ④ Ask | Ask + widget | sourcerer · anchor · understudy | `/api/ask` | Chunk |
-| ⑤ Mastery | Mastery check | whetstone | `/api/mastery/*` | Attempt, Mastery |
-| ⑥ Practice | Quiz/practice | coursewright + grounding | `/api/attempts` | Attempt (confidence) |
-| ⑦ Review | Dashboard up-next | cadence / spacing | `/api/plan` | Schedule |
-| ⑧ Progress | My Progress | sextant | — | Mastery, Attempt (self) |
+| ④ Ask | Ask + widget | sourcerer · anchor · understudy | `/api/learning/tutor` | LearningRecord (SOURCE, TUTOR_TURN) |
+| ⑤ Mastery | Mastery check | whetstone | `/api/learning/mastery/sessions/*` | LearningRecord (MASTERY_SESSION, MASTERY_ATTEMPT) |
+| ⑥ Practice | Quiz/practice | coursewright + grounding | `/api/learning/courses/[id]/attempts` | Attempt (confidence) |
+| ⑦ Review | Dashboard up-next | cadence / spacing | `/api/learning/study-plan` | Schedule |
+| ⑧ Progress | My Progress | sextant | `/api/learning/analytics` | Mastery, Attempt (self) |
 
 See [05 · Arsenal & Contracts](05-arsenal-contracts.md) for each repo's exact API, and
 [01 · Design System](01-design-system.md) for the components each screen is built from.

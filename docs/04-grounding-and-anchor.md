@@ -23,20 +23,27 @@ Instructor review (the `PENDING → APPROVED` gate) is far cheaper when each cla
 ## The seam
 
 - **Adapter:** `lib/doctrine.js` — same shape as any other provider capability.
-- **Routes:** `app/api/doctrine/route.js` (`GET` status, `POST` a question) and `app/api/ask/route.js` (the tutor path via `tutor.askDoctrine`).
+- **Routes:** `app/api/learning/tutor/route.js` (`POST` a question — the tutor path, `tutor()` in `lib/learning/core.js`) and `app/api/doctrine/route.js` (`POST`, the legacy entry point, which delegates to the same course-scoped `tutor()`). There is **no** `/api/ask` route in this app — `/api/ask` is Anchor's own endpoint on the Orin, which the adapter calls.
 - **Registration:** `grounding` is a **non-critical** capability in `lib/providers.js`. With `DOCTRINE_BASE_URL` unset, nothing changes — `/api/capabilities` reports the same blocking set (`["text"]`) and the capabilities screen shows grounding as unavailable with a reason.
 
 ```bash
 # .env.local
-DOCTRINE_BASE_URL=http://192.168.55.1:8000   # Anchor over the USB/SSH tunnel; unset = grounding off
+DOCTRINE_BASE_URL=http://192.168.55.1:8000   # Anchor's direct USB bind; unset = grounding off
 DOCTRINE_TIMEOUT_MS=30000                     # optional
 ```
+
+`192.168.55.1:8000` is the Orin's **USB device-mode** address — a point-to-point link to the one laptop the board is cabled to, **not** a tunnel and not routable from anywhere else. A hosted deployment can never reach it; on hosted, `DOCTRINE_BASE_URL` is deliberately unset and the address is entered at runtime in **Settings → Doctrine engine**. See `docs/orin-offline-config.md`.
 
 `DOCTRINE_BASE_URL` is just a URL — **anything returning the contract below works.** Anchor is the reference backend; the seam is deliberately thin so the backend is replaceable.
 
 ---
 
-## The contract (exact, captured from a live service)
+## The contract (as the adapter hands it to the app)
+
+These are the shapes `lib/doctrine.js` returns. Anchor's own wire format is snake_case — a direct
+`curl` to `POST /api/ask` gives you `abstain_reason`, `top_rerank_score` and `latency_s`, which the
+adapter renames to `abstainReason`, `topScore` and `latencyMs` (`lib/doctrine.js:145-155`). Same
+data, one translation; don't quote the camelCase names as Anchor's wire contract.
 
 **Answered** (`POST /api/ask` with a question in-corpus):
 
@@ -93,7 +100,7 @@ Fields:
 | `DOCTRINE_UNREACHABLE` / `DOCTRINE_BAD_RESPONSE` / `DOCTRINE_ERROR` | 502 |
 | `BAD_REQUEST` | 400 |
 
-On any of these the LMS **refuses or degrades to cited FTS — it never silently falls back to an ungrounded model.**
+On any of these the LMS **refuses and says the grounding engine is unavailable — it never falls back to a second answerer.** There is no Postgres full-text-search fallback in the code and no ungrounded path: if Anchor cannot be reached, the turn is recorded as failed and the learner is told so.
 
 ---
 
@@ -122,11 +129,13 @@ The premise gate moved false-answer **22.1% → 15.8%** at a rise in over-refusa
 ## How the LMS consumes it
 
 - **Authoring** (`lib/learning/verify-support.js`, called from `approveCourse` in `lib/learning/core.js`): on approval, before the materialisation transaction opens, each item's own claim — a lesson's prose, or a question's stem with its **keyed** answer and rationale — is scored by `POST /api/verify` against the passage text its **own** citation resolves to. The score is written to `Item.support` and the item lands `PENDING` for review. **A low score is a finding, not a deletion:** it is recorded and shown to the reviewer, because "the source does not support this" is exactly what a ratifier needs to see. **An unmeasured item is never given a number:** unconfigured, unreachable, timed out or over budget leaves `support` null and the review panel reads "not verified". Bounds: at most `DOCTRINE_VERIFY_CONCURRENCY` (2) calls in flight and `DOCTRINE_VERIFY_BUDGET_MS` (60s) for a whole course, measured at roughly 2.7s an item — a course larger than that finishes partly verified rather than partly invented.
-- **Tutor Ask** (`lib/tutor.js` → `askDoctrine`, `/api/ask`): cite-or-refuse straight to the learner; the answer shows the citation and (in the widget) the HHEM badge. Anchor down → cited Postgres FTS fallback (`source = fts`).
+- **Tutor Ask** (`tutor()` in `lib/learning/core.js`, behind `POST /api/learning/tutor`): cite-or-refuse straight to the learner; the answer shows the citation and (in the widget) the HHEM badge. **Anchor down → the tutor reports the engine unavailable and records the turn `FAILED`.** There is no second answerer and no FTS fallback; an operator waiting for a degraded cited answer would be waiting for a state the code cannot produce.
 - **Enforced citation gate:** an answer that asserts factual sentences but carries **zero valid in-range `[n]` markers abstains** (`abstainReason: uncited_answer`) — independent of the verifier, so the floor ships even when HHEM is off. Never synthesize citations after the fact.
 
 ---
 
 ## The service behind it
 
-**Anchor** — [github.com/groundworklms/anchor](https://github.com/groundworklms/anchor), Apache-2.0, offline. Runs on a Jetson Orin Nano; holds 13 publications and 4,230 paragraphs (all publicly releasable, screened before ingest). Access details (SSH, tunnel, ops scripts) are in the **Cold Bore plan (ACCESS)** and the **Range Card (RUNBOOK)**. The tunnel is **not** persistent — if the tutor shows `source = fts`, re-run `ops/tunnel.sh`; the FTS fallback is graceful if it drops mid-demo.
+**Anchor** — [github.com/groundworklms/anchor](https://github.com/groundworklms/anchor), Apache-2.0, offline. Runs on a Jetson Orin Nano; holds **4,731 chunks across 14 publications** (MCDP 1, 1-0, 1-1, 1-2, 1-3, 2, 3, 5, 6, 7, MCWP 3-11.3, MCWP 5-10, TC 3-22.9, TCCC — all publicly releasable, screened before ingest). `GET /api/corpus` is the check; quote the `documents` array, not `index_meta.corpus_documents`, which is stale build metadata reading `13`.
+
+Anchor binds the USB device-mode interface directly, so **no tunnel is needed** from the cabled laptop (`ops/tunnel.sh` exists only for reaching it from elsewhere). If the link drops there is nothing to degrade to: the tutor says the engine is unavailable. Re-seat the cable or restart `tutor-api`. Access details (SSH, ops scripts) are in the **Cold Bore plan (ACCESS)** and the **Range Card (RUNBOOK)**; the applied board config is in `docs/orin-offline-config.md`.

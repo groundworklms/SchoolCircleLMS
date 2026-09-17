@@ -40,5 +40,13 @@ read these three, then jump to your lane's deep docs in [`../`](../README.md).
   close to Done automatically; the middle is on you.
 
 ## The one rule that never bends
-Grounded, verified, offline, human-led. Every claim cites the manual or the system refuses;
-nothing `PENDING` reaches a learner. That guarantee is the product — protect it in every lane.
+Grounded, verified, offline **at the edge**, human-led. Every claim cites the manual or the system
+refuses; nothing `PENDING` reaches a learner. That guarantee is the product — protect it in every
+lane.
+
+**Scope the offline word.** *Anchor*, the grounding engine on the Orin, is offline-proven: network
+cable out, it still serves health, corpus and `/api/ask` with paragraph-level citations, and still
+refuses out-of-corpus questions. *SchoolCircle* is not offline-capable yet — its sign-in calls
+Firebase Authentication over the internet, as configured today.
+Say "the grounding engine runs offline," never "the product runs offline." The honest version is the
+one that survives a judge unplugging the cable.
