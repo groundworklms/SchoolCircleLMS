@@ -20,3 +20,11 @@ The owner explicitly approved granting instructor permissions immediately when
 Instructor or Both is saved; no approval queue is required. Changing back to
 Student removes instructor permissions. Keep authorization tied to the saved
 database role, never to an unverified token claim or a client-only view switch.
+
+## Retired manual-course experience
+
+Student and instructor interfaces use the generated-course workflow only. Do not
+restore the old manual-course library, reader, teaching-list entries, or editing
+links merely because legacy authoring APIs still exist. Stored manual courses
+and learner history are retained for compatibility and administrative cleanup;
+removing those records requires separate, explicit authorization.

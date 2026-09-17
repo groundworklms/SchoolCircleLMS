@@ -475,12 +475,9 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
                 <div className="s-courserow-main">
                   <div className="s-card-title">
                     {c.name || c.title}
-                    {c.manual && <span className="s-legacy-tag">Legacy</span>}
                   </div>
                   <div className="s-card-school">
-                    {c.manual
-                      ? 'Published through the retired manual workflow · roster only'
-                      : <>{c.sections} sections · <strong>{c.hasPendingRevision || c.record?.hasPendingRevision ? `${c.status === 'APPROVED' ? 'Published' : 'Draft'} · revision needs review` : c.status === 'APPROVED' ? 'Published' : 'Needs review'}</strong></>}
+                    {c.sections} sections · <strong>{c.hasPendingRevision || c.record?.hasPendingRevision ? `${c.status === 'APPROVED' ? 'Published' : 'Draft'} · revision needs review` : c.status === 'APPROVED' ? 'Published' : 'Needs review'}</strong>
                   </div>
                 </div>
                 <span className="s-quick-arrow">→</span>
@@ -488,12 +485,8 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
               <RowActions
                 label="course"
                 title={c.name || c.title}
-                /* Legacy courses live on the authoring API, where renaming is
-                   retired (410), so only removal is offered for them. */
-                endpoint={c.manual
-                  ? `/api/authoring/courses/${c.id}`
-                  : `/api/learning/courses/${c.id}`}
-                canRename={!c.manual}
+                endpoint={`/api/learning/courses/${c.id}`}
+                canRename
                 onChanged={onDrafted}
                 removeNote="A course learners have worked in is archived instead, and their work is kept."
               />
@@ -781,8 +774,8 @@ function stableTextId(value, fallback) {
 }
 
 function sectionStableId(section, sectionNumber) {
-  // Matches the backend's one-time legacy normalisation. New payloads always
-  // carry persisted ids; this fallback only keeps pre-id records addressable.
+  // Matches the backend's one-time id normalisation. New payloads always carry
+  // persisted ids; this fallback only keeps pre-id records addressable.
   return String(section?.id || section?.sectionId || `section-${sectionNumber + 1}`);
 }
 
