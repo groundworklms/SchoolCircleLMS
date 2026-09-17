@@ -7,7 +7,7 @@ import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures'
 import { SourceViewer } from './SourceViewer';
 import { CourseReadiness } from './CourseReadiness';
 import { CourseItemReview } from './ItemReview';
-import { GenerationProgress } from './GenerationProgress';
+import { GenerationProgress, ThinCoverageNotice } from './GenerationProgress';
 import { RowActions } from './RowActions';
 
 /* The instructor library — the parts of the persisted learning loop that are
@@ -842,11 +842,15 @@ export function CourseDraft({ course, onChanged }) {
           generation modal said it once while the instructor watched; this is
           the same fact days later, when they are deciding whether to approve a
           course that covers three of the four objectives they asked for. Older
-          drafts stored bare objective strings, so both shapes render. */}
+          drafts stored bare objective strings, so both shapes render.
+
+          The heading names the course, not the sources: an entry here may be a
+          topic the sources cover perfectly well and the outline scoped out, and
+          its reason says so. */}
       {notCovered.length > 0 && (
         <div className="p-panel" style={{ marginBottom: '1rem' }}>
           <p className="p-src" style={{ margin: 0 }}>
-            Not covered by the selected sources, so not written:
+            Not covered by this course:
           </p>
           <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
             {notCovered.map((entry) => (
@@ -856,6 +860,7 @@ export function CourseDraft({ course, onChanged }) {
               </li>
             ))}
           </ul>
+          {draft?.thinCoverage === true && <ThinCoverageNotice />}
         </div>
       )}
 
