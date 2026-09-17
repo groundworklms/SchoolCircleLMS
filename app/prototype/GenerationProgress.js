@@ -107,6 +107,12 @@ export function generationView(events) {
       }
     } else if (event.phase === 'title') {
       view.title = event.title || '';
+      // The title check reports after every section exists, so it arrives on
+      // this phase long after the title itself did. It does not replace the
+      // title; it says which of its words nothing under it delivers.
+      if (Array.isArray(event.notTaught) && event.notTaught.length > 0) {
+        view.titleNotTaught = event.notTaught;
+      }
     } else if (event.phase === 'sections') {
       view.total = event.total || 0;
       view.passages = event.passages || 0;
@@ -247,6 +253,12 @@ export function GenerationProgress({ events, interrupted = false }) {
         </p>
       )}
       {view.title && <Step label={`Titled "${view.title}"`} state="done" />}
+      {view.titleNotTaught?.length > 0 && (
+        <p className="p-src" style={{ margin: '0 0 0.4rem 1.5rem', color: 'var(--p-warning)' }}>
+          No section covers {view.titleNotTaught.map((word) => `"${word}"`).join(', ')}. Rename the
+          course, or add what the title promises.
+        </p>
+      )}
       {view.total > 0 && (
         <Step
           /* Say what actually happened. A section is grounded in the union of
@@ -302,6 +314,11 @@ export function GenerationProgress({ events, interrupted = false }) {
                   were written, and some of the items ask about something the
                   written pages do not teach. That is a note to the reviewer
                   about where to look, so it reads as a sentence. */}
+              {section.artifacts.title?.ok === false && (
+                <p className="p-src" style={{ margin: '0.35rem 0 0', color: 'var(--p-warning)' }}>
+                  {section.artifacts.title.reason}
+                </p>
+              )}
               {section.artifacts['item-support']?.items > 0 && (
                 <p className="p-src" style={{ margin: '0.35rem 0 0', color: 'var(--p-warning)' }}>
                   {section.artifacts['item-support'].items === 1
