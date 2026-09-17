@@ -106,12 +106,27 @@ and does not silently downgrade. Returned/persisted stage metadata reports only
 it does not disclose local endpoint topology or credentials.
 
 The Orin guide's `http://192.168.55.1:8080/v1` is an eligible local-server
-address, but the guide documents only the model filename, not its API model ID.
-Discover the ID from the local `/models` response before setting
-`STUDENT_LOCAL_MODEL_ID`. This server fallback cannot make a cloud-hosted
-SchoolCircle browser session work offline: authentication, application/data
-services, and the scoped Anchor `/api/ground` endpoint must also be reachable
-locally.
+address, and **the served model ID is now known and documented**: it is the
+literal string `/opt/tutor/models/gemma-4-E2B_q4_0-it.gguf`, which is verbatim
+what that server returns as `data[0].id` from `/v1/models` (verified 16 Sep
+2026 — llama-server names a model by the full path it loaded from). So
+`STUDENT_LOCAL_MODEL_ID=/opt/tutor/models/gemma-4-E2B_q4_0-it.gguf`. See
+`docs/orin-offline-config.md`. The bare filename on its own is still not the
+ID — the leading path and `.gguf` extension are part of it — and you should
+re-read `/v1/models` after any reimage or model swap rather than trusting a
+documented value.
+
+> **Git Bash trap.** On Windows, `STUDENT_LOCAL_MODEL_ID=/opt/tutor/...` typed
+> in Git Bash is silently rewritten by MSYS path conversion to
+> `C:/Program Files/Git/opt/tutor/...`. The mangled value then fails the
+> adapter's exact-match check and surfaces as
+> `STUDENT_LOCAL_MODEL_UNAVAILABLE`, which reads like an unreachable board
+> rather than a quoting bug. Prefix with `MSYS_NO_PATHCONV=1`, or set it from
+> `.env.local`/PowerShell/WSL. `echo` the variable back before blaming the Orin.
+
+This server fallback cannot make a cloud-hosted SchoolCircle browser session
+work offline: authentication, application/data services, and the scoped Anchor
+`/api/ground` endpoint must also be reachable locally.
 
 The requested name is **GPT 6 Astra**. The pre-existing `gpt-6-astra` occurrence
 was only a test fixture. After the user supplied the server-side credential,

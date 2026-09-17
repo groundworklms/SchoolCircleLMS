@@ -21,9 +21,27 @@ for u in tutor-api tutor-gen tutor-embed tutor-rerank tutor-verify; do
 done
 echo "== health =="
 echo -n "  "; curl -s --max-time 4 http://192.168.55.1:8000/api/health; echo
-echo "== corpus (expect TC 3-22.9 among the pubs) =="
-curl -s --max-time 4 http://192.168.55.1:8000/api/corpus | tr ',' '\n' | grep -i "3-22.9" | head -1 | sed 's/^/  /' || echo "  (could not read corpus)"
+echo "== corpus (expect 14 publications / 4731 chunks, TC 3-22.9 among them) =="
+CORPUS=$(curl -s --max-time 4 http://192.168.55.1:8000/api/corpus)
+if [ -z "$CORPUS" ]; then
+  echo "  (could not read corpus)"
+else
+  echo "$CORPUS" | grep -i -o "TC 3-22.9" | head -1 | sed 's/^/  found /'
+  # The chunk total is the cheap way to catch a reflashed or half-ingested
+  # board: "it answered" does not distinguish a loaded index from an empty one.
+  if echo "$CORPUS" | grep -q '"total_chunks":[ ]*4731'; then
+    echo "  OK  chunk count matches the verified corpus (4731 / 14 pubs)"
+  else
+    echo "  !!  chunk count is NOT 4731 - this is not the index that was verified"
+  fi
+fi
 REMOTE
 
 echo "== done =="
-echo "  If the tutor shows source = fts, the tunnel dropped — re-run ops/tunnel.sh."
+# There is NO Postgres-FTS fallback in this application -- "source = fts" is a
+# state the app cannot produce, so an operator told to watch for it is watching
+# for nothing. If Anchor is unreachable the grounded turn FAILS and says so.
+echo "  If grounding fails, Anchor is unreachable - check the address in"
+echo "  Settings -> Doctrine engine (http://192.168.55.1:8000 over USB)."
+echo "  No tunnel is needed for the local path: Anchor binds the USB interface"
+echo "  directly. ops/tunnel.sh is only for reaching it from elsewhere."
