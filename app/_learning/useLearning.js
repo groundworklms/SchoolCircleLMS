@@ -261,6 +261,90 @@ export function useApiStream(path) {
   return { start, loading };
 }
 
+/**
+ * Start a course generation as a job and follow it by polling.
+ *
+ * The streaming hook above cannot be used for this any more. It holds one
+ * response open for the length of the generation, and Cloud Run cuts a response
+ * at 300 seconds however much data is still flowing -- so every course longer
+ * than five or six sections lost its report, and the generation with it. The
+ * POST here returns as soon as the job row exists, and progress is read from
+ * short requests that cannot be cut.
+ *
+ * The polling is doing two jobs. It is how this screen learns what has been
+ * written, and it is what keeps the server instance handling requests, which is
+ * what keeps the detached generation running. Stopping the poll does not lose
+ * the job -- it is a row, and `GET /job` finds it again -- but it can stall it,
+ * so the loop keeps going until the job reports an outcome.
+ *
+ * `onEvent` is given every event exactly once, in order, so the same reducer
+ * that rendered the stream renders this unchanged.
+ */
+export function useCourseJob(path = '/courses/draft/job') {
+  const [loading, setLoading] = useState(false);
+
+  const start = async (payload, onEvent, { pollMs = 2500, signal } = {}) => {
+    setLoading(true);
+    try {
+      const res = await authFetch(`${API_BASE}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      let json = null;
+      try { json = await res.json(); } catch {}
+      if (!res.ok) throw json || new Error(`Status ${res.status}`);
+      const id = json?.id;
+      if (!id) throw new Error('The server did not return a generation job.');
+      return await follow(id, onEvent, { pollMs, signal });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Follow a job that already exists -- one this tab started, or one found by
+   * `GET /job` after a reload.
+   *
+   * `seen` is a count rather than a set of ids: the events are an append-only
+   * list on the row, so everything past the count is new and nothing needs
+   * identifying. That is also what makes a re-attach cheap, since the whole
+   * list arrives and only the tail is replayed.
+   */
+  const follow = async (id, onEvent, { pollMs = 2500, signal } = {}) => {
+    let seen = 0;
+    for (;;) {
+      if (signal?.aborted) return null;
+      const res = await authFetch(`${API_BASE}${path}/${encodeURIComponent(id)}`);
+      let json = null;
+      try { json = await res.json(); } catch {}
+      if (!res.ok) throw json || new Error(`Status ${res.status}`);
+
+      const events = Array.isArray(json?.events) ? json.events : [];
+      for (const event of events.slice(seen)) onEvent(event);
+      seen = events.length;
+
+      if (json?.status === 'DONE') {
+        // Shaped like the stream's last event, so callers that already knew
+        // what a finished generation looks like do not learn a second shape.
+        return { phase: 'saved', status: 'PENDING', record: json.record || null, jobId: id };
+      }
+      if (json?.status === 'FAILED') {
+        return { phase: 'failed', error: json.error, code: json.code, jobId: id };
+      }
+      if (json?.stale) {
+        // RUNNING, but nothing has touched the row in minutes. The instance
+        // that owned it is gone -- a deploy is the way this happens -- and
+        // waiting longer only looks like progress.
+        return { phase: 'stalled', jobId: id };
+      }
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+    }
+  };
+
+  return { start, follow, loading };
+}
+
 export async function downloadAuthenticated(path, filename) {
   const response = await authFetch(path);
   if (!response.ok) {
