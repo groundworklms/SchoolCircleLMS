@@ -194,7 +194,12 @@ test('learner progress renders a non-empty mastery record', () => {
 /* The learner's reader. A section's `cite` is "<source record id> p.N", and the
    record id is a cuid: the authenticated page-opening key, never a citation a
    person reads. These fixtures use the real shapes -- the course envelope's
-   sourceIds and the light approved-source list that names the publication. */
+   sourceIds and the light approved-source list that names the publication.
+
+   The checks come from a SECOND response, /courses/:id/attempts, which lists
+   only the items an instructor has ratified. The draft below deliberately
+   carries a second question the ratified set omits, because "a learner never
+   sees unreviewed content" is the claim the reader has to keep. */
 function learnerReaderFixture(overrides = {}) {
   return {
     '/courses/course-1': {
@@ -214,8 +219,28 @@ function learnerReaderFixture(overrides = {}) {
             answer: 0,
             rationale: 'The answer key must stay server-side.',
           }],
+          post: [{
+            id: 'question-2',
+            stem: 'This question is still awaiting review.',
+            options: ['Yes', 'No'],
+            answer: 1,
+          }],
         }],
       },
+    },
+    '/courses/course-1/attempts': {
+      id: 'course-1',
+      releaseId: 'course-1',
+      items: [{
+        id: 'course-1:s1:pre1',
+        sectionIndex: 0,
+        sectionTitle: 'Movement fundamentals',
+        phase: 'pre',
+        ordinal: 1,
+        stem: 'Which principle applies?',
+        options: ['Use cover', 'Ignore terrain'],
+      }],
+      answers: {},
     },
     '/sources': [{
       id: 'cmu4xdph30016s6014fn9n9y8',
@@ -240,6 +265,73 @@ test('learning course reader reuses shared lesson blocks without exposing answer
   assert.match(markup, /Which principle applies/);
   assert.match(markup, /course-option/);
   assert.doesNotMatch(markup, /answer key must stay server-side/);
+});
+
+test('a learner can actually answer a check in a generated course', () => {
+  // The defect this pins: the reader rendered <CourseLesson content={lesson} />
+  // with no onAnswer, and the shared presentation disables every choice when
+  // it has nowhere to send the answer. The click did nothing and no request
+  // was ever made, so no attempt existed for any instructor surface to read.
+  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: learnerReaderFixture(),
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
+    course: { id: 'course-1' },
+  }));
+  assert.doesNotMatch(markup, /class="course-option[^"]*"\s+disabled/);
+  // The block id is the materialised Item id, so the answer is attributable to
+  // the exact row an instructor ratified.
+  assert.match(markup, /data-block-id="course-1:s1:pre1"/);
+});
+
+test('a check a human has not ratified is not rendered at all', () => {
+  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: learnerReaderFixture(),
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
+    course: { id: 'course-1' },
+  }));
+  assert.doesNotMatch(markup, /still awaiting review/);
+  assert.equal(markup.match(/course-check/g).length, 1);
+});
+
+test('nothing is answerable until the ratified set is known', () => {
+  // A failed or still-loading answerable set must not fall back to the draft's
+  // own questions: that is precisely the unreviewed content the gate exists to
+  // withhold. The lesson prose still reads.
+  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: learnerReaderFixture({ '/courses/course-1/attempts': null }),
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
+    course: { id: 'course-1' },
+  }));
+  assert.match(markup, /Read the approved movement guidance/);
+  assert.doesNotMatch(markup, /course-check/);
+  assert.doesNotMatch(markup, /Which principle applies/);
+});
+
+test('an answer recorded earlier comes back with its grade and its reason', () => {
+  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: learnerReaderFixture({
+      '/courses/course-1/attempts': {
+        ...learnerReaderFixture()['/courses/course-1/attempts'],
+        answers: {
+          'course-1:s1:pre1': {
+            optionId: '0',
+            correct: true,
+            feedback: 'Cover is what the source names first.',
+          },
+        },
+      },
+    }),
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
+    course: { id: 'course-1' },
+  }));
+  assert.match(markup, /course-feedback is-correct/);
+  assert.match(markup, /Cover is what the source names first/);
+  // The choice they made is still the selected one after a reload.
+  assert.match(markup, /course-option is-selected/);
 });
 
 test('a learner is cited to a publication and a page, never to a record id', () => {

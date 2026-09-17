@@ -134,20 +134,86 @@ function usePublicationName(sourceRecordId) {
   return publicationName(record?.sourceId || record?.title || '');
 }
 
-/* The approved course, one section at a time. The server has already
-   removed answer keys and rationale for learners; the checks are here to
-   think with, and Whetstone is where grading happens. */
+/**
+ * A fresh idempotency key per (check, chosen option).
+ *
+ * The same rule the published reader uses (app/prototype/published/client.js
+ * `createStableAttemptManager`): a failed request keeps its key, so retrying
+ * the SAME answer replays rather than banks a second attempt, while choosing a
+ * different option is deliberately a new attempt and gets a new key.
+ */
+function attemptKeyFor(keys, itemId, optionId) {
+  const previous = keys.get(itemId);
+  if (previous && previous.optionId === optionId) return previous.attemptId;
+  const attemptId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `attempt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  keys.set(itemId, { optionId, attemptId });
+  return attemptId;
+}
+
+/* The approved course, one section at a time.
+ *
+ * The lesson prose, section titles and citation come from the course record;
+ * the CHECKS come from /courses/:id/attempts, which returns only the items an
+ * instructor has ratified. That is deliberate and is the whole gate: a PENDING
+ * or rejected question is not in that response, so it is never rendered and
+ * there is nothing on screen to answer. Answer keys and rationale are not in
+ * it either — the rationale reaches the learner only in the reply to their own
+ * answer, after they have committed to a choice. */
 export function CourseReader({ course }) {
   const { data: envelope, loading, error } = useApiQuery(`/courses/${course.id}`);
+  const { data: delivery } = useApiQuery(`/courses/${course.id}/attempts`);
+  const record = useApiMutation(`/courses/${course.id}/attempts`, 'POST');
   const [i, setI] = useState(0);
+  const [saving, setSaving] = useState({});
+  // Answers recorded in THIS sitting, over the ones the server returned for
+  // earlier ones. Both are the same shape the shared presentation reads, so a
+  // reload and a fresh answer light up the same way.
+  const [justAnswered, setJustAnswered] = useState({});
+  const [answerError, setAnswerError] = useState(null);
+  const attemptKeys = useRef(new Map());
   const sections = envelope?.course?.sections || [];
   const publication = usePublicationName(envelope?.course?.sourceIds?.[0]);
   const cur = sections[i];
+
+  const onAnswer = async (itemId, optionId) => {
+    const attemptId = attemptKeyFor(attemptKeys.current, itemId, optionId);
+    setSaving((current) => ({ ...current, [itemId]: true }));
+    setAnswerError(null);
+    try {
+      const response = await record.mutate({
+        itemId,
+        optionId,
+        attemptId,
+        releaseId: delivery?.releaseId,
+      });
+      if (response?.result) {
+        setJustAnswered((current) => ({
+          ...current,
+          [itemId]: {
+            optionId: response.result.optionId,
+            correct: response.result.correct,
+            feedback: response.result.feedback,
+          },
+        }));
+      }
+      return response;
+    } catch (e) {
+      // The shared presentation swallows the rejection; saying what went wrong
+      // is the reader's job, and an unrecorded answer must not look recorded.
+      setAnswerError(errText(e, 'That answer was not recorded. Choose it again to retry.'));
+      throw e;
+    } finally {
+      setSaving((current) => ({ ...current, [itemId]: false }));
+    }
+  };
 
   if (loading) return <p>Loading course…</p>;
   if (error) return <Err msg={errText(error, 'Could not load this course.')} />;
   if (!sections.length) return <p className="p-src">This course has no sections yet.</p>;
 
+  const answers = { ...(delivery?.answers || {}), ...justAnswered };
   const locator = typeof (cur.cite || cur.citation) === 'string' ? cur.cite || cur.citation : '';
   /* No `title`: the section heading belongs to the reader (below), and passing
      it here as well printed every section title twice, once small and once
@@ -166,22 +232,24 @@ export function CourseReader({ course }) {
         type: 'text',
         body: cur.lesson,
       }] : []),
-      ...['pre', 'post'].flatMap((phase) => (Array.isArray(cur[phase]) ? cur[phase] : []).map((question, questionIndex) => {
-        const questionId = String(question.id || `${cur.id || `section-${i + 1}`}:${phase}${questionIndex + 1}`);
-        const options = Array.isArray(question.options)
-          ? question.options.map((option, optionIndex) => ({
-              id: String(option?.id || `${questionId}-option-${optionIndex + 1}`),
-              text: typeof option === 'string' ? option : option?.text || '',
-            }))
-          : [];
-        return {
-          id: questionId,
+      /* Placed by `sectionIndex`, which is the materialised Section.order and
+         therefore this section's own index. The block id IS the Item id, so
+         the answer the learner sends back is attributable to the exact row an
+         instructor ratified -- no id is reconstructed here. A choice has no id
+         of its own on that row: the keyed answer is an index into `options`,
+         so the index is what identifies the choice on the way back. */
+      ...(delivery?.items || [])
+        .filter((item) => item.sectionIndex === i)
+        .map((item) => ({
+          id: item.id,
           type: 'check',
-          title: phase === 'pre' ? 'Before you read' : 'After you read',
-          prompt: question.stem || question.prompt || '',
-          options,
-        };
-      })),
+          title: item.phase === 'post' ? 'After you read' : 'Before you read',
+          prompt: item.stem,
+          options: (item.options || []).map((text, optionIndex) => ({
+            id: String(optionIndex),
+            text,
+          })),
+        })),
     ],
   };
 
@@ -206,7 +274,13 @@ export function CourseReader({ course }) {
           <span className="s-reader-kicker">Section {i + 1} of {sections.length}</span>
           <h1>{cur.title || `Section ${i + 1}`}</h1>
         </div>
-        <CourseLesson content={lesson} />
+        <Err msg={answerError} />
+        <CourseLesson
+          content={lesson}
+          progress={{ answers }}
+          onAnswer={onAnswer}
+          busy={saving}
+        />
 
         <div className="s-reader-nav">
           <button className="s-lesson-navbtn" disabled={i === 0} onClick={() => setI(i - 1)}>← Previous</button>
