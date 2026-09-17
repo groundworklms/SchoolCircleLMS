@@ -6,6 +6,7 @@ import {
   createLearningEvidenceStore,
   db,
   getLearningRecord,
+  updateLearningRecord,
   updateLearningRecordIfVersion,
 } from '../lib/db.js';
 import {
@@ -25,6 +26,10 @@ import {
 } from '../lib/learning/core.js';
 import { createEvidenceHandlers } from '../lib/learning/evidence.js';
 import { errorStatus } from '../lib/learning/http.js';
+// A stored RUBRIC record keeps whatever Rubricon's validators said about it,
+// and the mastery mapper reads that evidence rather than the status column, so
+// the fixtures below produce it with the real validators.
+import { validateRubric, verifyTraceability } from 'rubricon';
 
 // Opt in explicitly: CI sets a placeholder DATABASE_URL for prisma generate only.
 const databaseReady = process.env.RUN_DB_TESTS === '1' && Boolean(process.env.DATABASE_URL);
@@ -171,26 +176,60 @@ test(
       const ownSessions = await listMasterySessions(learner, { query: { courseId: approvedCourse.id } });
       assert.deepEqual(ownSessions.json.map((entry) => entry.id), [savedSession.id]);
 
-      // SCORM export through the real Prisma store: the export is recorded under the instructor.
+      // SCORM export through the real Prisma store. This record was set
+      // APPROVED without ever being materialised, so `getApprovedCourse` falls
+      // back to the draft payload asserted above -- lesson/pre/post with no
+      // item status anywhere in it. Packaging that shipped unratified prose and
+      // questions into another LMS; the export now reads the delivery rows, and
+      // this release has none, so there is nothing ratified to send.
       const evidence = createEvidenceHandlers({ store });
-      const exported = await evidence.exportScorm(instructor, { query: { courseId: approvedCourse.id, version: '1.2' } });
-      assert.equal(exported.headers['content-type'], 'application/zip');
-      assert.ok(exported.body.length > 0);
-      const exportRows = await db.learningRecord.findMany({ where: { ownerId: instructor.id, type: 'SCORM_EXPORT' } });
-      records.push(...exportRows);
-      assert.equal(exportRows.length, 1);
-      assert.equal(exportRows[0].payload.courseId, approvedCourse.id);
+      assert.equal(
+        await status(evidence.exportScorm(instructor, { query: { courseId: approvedCourse.id, version: '1.2' } })),
+        409,
+      );
       assert.equal(await status(evidence.exportScorm(learner, { query: { courseId: approvedCourse.id } })), 403);
 
-      // Approval materialises the draft into Course/Section/Item, keyed by the
-      // record id, with the source's Anchor id on every citation. Twice is safe.
-      for (let pass = 0; pass < 2; pass += 1) {
-        const approved = await approveCourse(instructor, { params: { id: pendingCourse.id } });
-        assert.equal(approved.json.status, 'APPROVED');
-        assert.deepEqual(approved.json.materialised, { courseId: pendingCourse.id, sections: 1, items: 3 });
-      }
+      // Approval materialises the reviewed draft into Course/Section/Item with
+      // the source's Anchor id on every citation. It is an optimistic-concurrency
+      // write: the reviewed version has to be named, and a version that is not
+      // the one on record is refused before any typed row is created.
+      const draftVersion = (await getLearningRecord(pendingCourse.id)).version;
+      assert.equal(await status(approveCourse(instructor, { params: { id: pendingCourse.id } })), 400);
+      assert.equal(
+        await status(
+          approveCourse(instructor, { params: { id: pendingCourse.id }, body: { version: draftVersion + 1 } }),
+        ),
+        409,
+      );
+
+      const approved = await approveCourse(instructor, {
+        params: { id: pendingCourse.id },
+        body: { version: draftVersion },
+      });
+      assert.equal(approved.json.status, 'APPROVED');
+      // Only the first release reuses the record id as its delivery course id;
+      // every later release mints a new one (below), so the typed rows are read
+      // through the id the handler reports rather than the record id.
+      assert.equal(approved.json.deliveryCourseId, pendingCourse.id);
+      assert.deepEqual(approved.json.materialised, {
+        courseId: approved.json.deliveryCourseId,
+        sections: 1,
+        items: 3,
+      });
+
+      // Approving twice is no longer idempotent. Once a release exists there is
+      // nothing left to release until a revision is pending, and re-running the
+      // materialisation over a live release is exactly what the delivery model
+      // forbids -- Attempts and Schedules point at the rows it would rewrite.
+      assert.equal(
+        await status(
+          approveCourse(instructor, { params: { id: pendingCourse.id }, body: { version: approved.json.version } }),
+        ),
+        409,
+      );
+
       const typed = await db.course.findUnique({
-        where: { id: pendingCourse.id },
+        where: { id: approved.json.deliveryCourseId },
         include: { sections: { include: { items: { orderBy: { id: 'asc' } } } } },
       });
       assert.equal(typed.sourceId, `fixture-approved-source-${suffix}`);
@@ -199,9 +238,86 @@ test(
       // the items in it. Each one still needs an instructor's decision.
       assert.deepEqual(typed.sections[0].items.map((item) => [item.kind, item.status]), [['LESSON', 'PENDING'], ['QUESTION', 'PENDING'], ['QUESTION', 'PENDING']]);
       assert.equal(typed.sections[0].items[0].citation.pubId, `fixture-approved-source-${suffix}`);
-      assert.equal(await status(approveCourse(learner, { params: { id: pendingCourse.id } })), 404);
+
+      // The export against the real Prisma read, over a release that has rows.
+      // Untouched, every row is PENDING and the export refuses and says so.
+      const beforeRatification = await status(
+        evidence.exportScorm(instructor, { query: { courseId: pendingCourse.id, version: '1.2' } }),
+      );
+      assert.equal(beforeRatification, 409);
+      // Ratify the lesson and one question, leaving one question PENDING: the
+      // subset only leaves the system when it is asked for deliberately.
+      await db.item.updateMany({
+        where: { id: { in: [typed.sections[0].items[0].id, typed.sections[0].items[1].id] } },
+        data: { status: 'APPROVED' },
+      });
+      assert.equal(
+        await status(evidence.exportScorm(instructor, { query: { courseId: pendingCourse.id } })),
+        409,
+      );
+      const partial = await evidence.exportScorm(instructor, {
+        query: { courseId: pendingCourse.id, version: '1.2', partial: 'true' },
+      });
+      assert.equal(partial.headers['content-type'], 'application/zip');
+      assert.match(partial.headers['content-disposition'], /PARTIAL-RELEASE\.zip/);
+      // What the withheld item's absence looks like on the record; the bytes
+      // themselves are asserted zip-level in test/scorm-export.test.mjs.
+      const exportRows = await db.learningRecord.findMany({ where: { ownerId: instructor.id, type: 'SCORM_EXPORT' } });
+      records.push(...exportRows);
+      assert.equal(exportRows.length, 1);
+      assert.equal(exportRows[0].payload.courseId, pendingCourse.id);
+      assert.equal(exportRows[0].payload.partial, true);
+      assert.equal(exportRows[0].payload.ratified.awaiting.total, 1);
+
+      // The replacement release. A pending revision is what makes a second
+      // approval legal, and it is materialised on a NEW delivery course id
+      // BESIDE the first release -- the id does not persist across releases,
+      // deliberately, so an Attempt or Schedule earned against the first
+      // release keeps pointing at the rows it was earned against.
+      const revision = await createLearningRecord({
+        ownerId: instructor.id,
+        type: 'COURSE_REVISION',
+        status: 'PENDING',
+        payload: {
+          courseId: pendingCourse.id,
+          baseVersion: approved.json.version,
+          reviewedVersion: approved.json.version + 1,
+          sourceIds: [approvedSource.id],
+          course: { ...pendingCourse.payload, title: `Pending ${suffix} v2` },
+        },
+      });
+      records.push(revision);
+      const released = await getLearningRecord(pendingCourse.id);
+      assert.equal(
+        await updateLearningRecordIfVersion(pendingCourse.id, released.version, {
+          payload: { ...released.payload, pendingRevisionId: revision.id },
+        }),
+        true,
+      );
+      const rereleased = await approveCourse(instructor, {
+        params: { id: pendingCourse.id },
+        body: { version: released.version + 1 },
+      });
+      assert.equal(rereleased.json.deliveryCourseId, `${pendingCourse.id}:release:${revision.id}`);
+      assert.notEqual(rereleased.json.deliveryCourseId, approved.json.deliveryCourseId);
+      assert.equal(rereleased.json.materialised.courseId, rereleased.json.deliveryCourseId);
+      assert.ok(await db.course.findUnique({ where: { id: approved.json.deliveryCourseId } }));
+      const rereleasedItems = await db.item.findMany({
+        where: { section: { courseId: rereleased.json.deliveryCourseId } },
+      });
+      // A new release re-derives its item ids from the new delivery id, so the
+      // whole release starts unratified again rather than inheriting approvals
+      // made against content that has since been rewritten.
+      assert.deepEqual([...new Set(rereleasedItems.map((item) => item.status))], ['PENDING']);
+
+      assert.equal(
+        await status(
+          approveCourse(learner, { params: { id: pendingCourse.id }, body: { version: rereleased.json.version } }),
+        ),
+        404,
+      );
     } finally {
-      await db.course.deleteMany({ where: { id: pendingCourse.id } });
+      await db.course.deleteMany({ where: { id: { startsWith: pendingCourse.id } } });
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((entry) => entry.id) } } });
       await db.user.deleteMany({ where: { id: { in: [instructorRow.id, learnerRow.id] } } });
     }
@@ -493,8 +609,15 @@ test(
         sourceId: source.id,
         revision: pendingPlan.revision,
       });
-      assert.equal(crossOwnerView.json.course.sections[0].pre[0].answer, undefined);
-      assert.equal(crossOwnerView.json.course.sections[0].pre[0].indicators, undefined);
+      // A cross-owner reader is a learner here, and the learner projection no
+      // longer redacts the answer key out of a question it still ships -- it does
+      // not ship the question. Course approval releases a shape; every sentence
+      // inside it stays a PENDING Item until a human ratifies it, so the draft's
+      // lesson/pre/post never cross this boundary at all. Asserting the absence of
+      // the containers, not of a field inside them, is what pins that.
+      assert.equal(crossOwnerView.json.course.sections[0].pre, undefined);
+      assert.equal(crossOwnerView.json.course.sections[0].post, undefined);
+      assert.equal(crossOwnerView.json.course.sections[0].lesson, undefined);
       assert.equal(JSON.stringify(crossOwnerView).includes('Performs the operation.'), false);
     } finally {
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
@@ -541,12 +664,23 @@ test(
       payload: {
         title: `Aiming ${suffix}`,
         sourceIds: [source.id],
+        // Every load-bearing claim has to clear the same deterministic
+        // token-grounding floor approveCourse applies (validateCourseDraft),
+        // so the stems are worded from the cited passage rather than around it.
         sections: [{
           title: 'Aiming',
           cite: `${source.id} p.1`,
           lesson: 'Sight alignment is the relationship between the post and the aperture.',
-          pre: [{ stem: 'Where does the post sit?', options: ['Left of the aperture', 'Centred in the aperture'], answer: 1 }],
-          post: [{ stem: 'Why does alignment matter?', options: ['It does not', 'Angular error grows with range'], answer: 1 }],
+          pre: [{
+            stem: 'Sight alignment describes the relationship between the post and what?',
+            options: ['The stock', 'The aperture'],
+            answer: 1,
+          }],
+          post: [{
+            stem: 'Which relationship does sight alignment describe between the post and the aperture?',
+            options: ['Trigger to sear', 'Post to aperture'],
+            answer: 1,
+          }],
         }],
       },
     });
@@ -563,8 +697,15 @@ test(
       assert.equal(listed.json.deliveryCourseId, deliveryCourseId);
       assert.deepEqual(listed.json.counts, { PENDING: 3, APPROVED: 0, REJECTED: 0 });
       assert.equal(listed.json.readyForLearners, false);
-      const [lesson, pre, post] = listed.json.sections[0].items;
-      assert.deepEqual(listed.json.sections[0].items.map((i) => i.status), ['PENDING', 'PENDING', 'PENDING']);
+      // Addressed by what they are, not by position: every item of a release is
+      // written in one transaction, so their createdAt values tie and the read
+      // order of equal timestamps is not a contract.
+      const items = listed.json.sections[0].items;
+      const lesson = items.find((item) => item.kind === 'LESSON');
+      const pre = items.find((item) => item.stem.startsWith('Sight alignment describes'));
+      const post = items.find((item) => item.stem.startsWith('Which relationship'));
+      assert.ok(lesson && pre && post);
+      assert.deepEqual(items.map((i) => i.status), ['PENDING', 'PENDING', 'PENDING']);
 
       // Another instructor owns neither the draft nor its items.
       assert.equal(await status(listCourseItems(other, { params: { id: course.id } })), 404);
@@ -606,7 +747,10 @@ test(
         where: { id: deliveryCourseId },
         include: { sections: { include: { items: { where: { status: 'APPROVED' }, orderBy: { createdAt: 'asc' } } } } },
       });
-      assert.deepEqual(delivered.sections[0].items.map((item) => item.id), [lesson.id, pre.id]);
+      assert.deepEqual(
+        delivered.sections[0].items.map((item) => item.id).sort(),
+        [lesson.id, pre.id].sort(),
+      );
     } finally {
       await db.course.deleteMany({ where: { id: { startsWith: course.id } } });
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((entry) => entry.id) } } });
@@ -707,3 +851,233 @@ test('count-only cohort seam responses fail closed instead of adding unknown cou
   assert.equal(result.json.gain.status, 'insufficient_evidence');
   assert.equal(result.json.mastery.status, 'insufficient_evidence');
 });
+
+/* An instructor's approved rubric is the plan their learners are graded
+ * against. Everything below is the wiring between the rubrics screen and the
+ * mastery plan -- which approved rubric answers which objective, and what has
+ * to be true before one is allowed to. */
+const RUBRIC_SOURCE_TEXT = [
+  'The gunner confirms the weapon is clear before handling it.',
+  'The gunner announces a misfire and waits five seconds before opening the feed tray cover.',
+  'The assistant gunner keeps the belt flat and free of twists while feeding the weapon.',
+].join(' ');
+
+function clearingDimensions() {
+  return [
+    {
+      name: 'Confirms the weapon is clear before handling',
+      source: 'confirms the weapon is clear before handling it',
+      anchors: {
+        unsatisfactory: 'Handles the weapon before it is confirmed clear.',
+        satisfactory: 'Confirms the weapon is clear before handling it.',
+        proficient: 'Confirms the weapon is clear and announces it before handling it.',
+      },
+    },
+    {
+      name: 'Announces a misfire before opening the feed tray cover',
+      source: 'announces a misfire and waits five seconds',
+      anchors: {
+        unsatisfactory: 'Opens the feed tray cover without announcing the misfire.',
+        satisfactory: 'Announces a misfire and waits five seconds before opening the feed tray cover.',
+        proficient: 'Announces a misfire, waits five seconds, then opens the feed tray cover.',
+      },
+    },
+  ];
+}
+
+/* What generateRubric stores beside a rubric: Rubricon's own verdicts, kept so
+ * a later reader can re-ask the questions approveRubric asked instead of
+ * trusting a status column any write path can set. Produced here rather than
+ * hand-written, so a flagged rubric carries Rubricon's real answer for one --
+ * valid, grounded and 100% covered, all of it true about zero dimensions. */
+function rubricEvidence(rubric, sourceTextForRubric = RUBRIC_SOURCE_TEXT) {
+  return {
+    rubric,
+    validation: validateRubric(rubric),
+    traceability: verifyTraceability(rubric, sourceTextForRubric),
+  };
+}
+
+test(
+  'an approved rubric becomes the course mastery plan, and nothing else does',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `rubric-plan-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Rubric Plan Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `rubric-plan-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+    const clearing = 'Clear and handle the weapon safely';
+    const feeding = 'Feed the weapon without inducing a stoppage';
+
+    const source = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Rubric plan source ${suffix}`,
+        sourceId: `rubric-plan-source-${suffix}`,
+        text: RUBRIC_SOURCE_TEXT,
+        pages: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+        chunks: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    const otherSource = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Unrelated source ${suffix}`,
+        sourceId: `unrelated-source-${suffix}`,
+        text: 'The armourer records every weapon serial number in the logbook.',
+        pages: [{ page: 1, text: 'The armourer records every weapon serial number in the logbook.' }],
+      },
+    });
+    records.push(source, otherSource);
+
+    // One course whose every objective has an approved rubric, and one whose
+    // only objective has nothing a human has signed.
+    const ratifiedCourse = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      payload: {
+        title: `Ratified course ${suffix}`,
+        sourceIds: [source.id, otherSource.id],
+        objectives: [clearing],
+      },
+    });
+    const flaggedCourse = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      payload: {
+        title: `Flagged course ${suffix}`,
+        sourceIds: [source.id],
+        objectives: [feeding],
+      },
+    });
+    records.push(ratifiedCourse, flaggedCourse);
+
+    const approvedRubric = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'RUBRIC',
+      status: 'APPROVED',
+      payload: {
+        sourceId: source.id,
+        courseId: ratifiedCourse.id,
+        objective: clearing,
+        ...rubricEvidence({ flagged: false, dimensions: clearingDimensions() }),
+      },
+    });
+    // Approved, for the right objective -- but recorded against a document this
+    // plan is not grounded against. Its evidence is deliberately left as clean
+    // as the rubric above's, so the ONLY thing that can exclude it is the
+    // source filter.
+    const foreignRubric = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'RUBRIC',
+      status: 'APPROVED',
+      payload: {
+        sourceId: otherSource.id,
+        courseId: ratifiedCourse.id,
+        objective: clearing,
+        ...rubricEvidence({ flagged: false, dimensions: clearingDimensions() }),
+      },
+    });
+    // Rubricon refused to anchor this standard. approveRubric will not approve
+    // it; the row is forced APPROVED anyway so the mastery path has to prove it
+    // refuses a flagged rubric on its own, not by relying on the status column.
+    const flaggedRubric = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'RUBRIC',
+      payload: {
+        sourceId: source.id,
+        courseId: flaggedCourse.id,
+        objective: feeding,
+        ...rubricEvidence({ flagged: true, reason: 'Too subjective to anchor.', needsSME: 'Define a stoppage.' }),
+      },
+    });
+    records.push(approvedRubric, foreignRubric, flaggedRubric);
+
+    try {
+      // The front door: a flagged rubric is not approvable, ever.
+      assert.equal(await status(approveRubric(instructor, { params: { id: flaggedRubric.id } })), 409);
+      await updateLearningRecord(flaggedRubric.id, { status: 'APPROVED' });
+
+      // No model is configured in tests, so reaching the model at all is a 503.
+      // That is the assertion: the flagged rubric did NOT supply the criteria.
+      assert.equal(
+        await status(
+          generateMasteryPlan(instructor, {
+            params: { id: flaggedCourse.id },
+            body: { sourceId: source.id },
+          }),
+        ),
+        503,
+      );
+
+      // The same defect one step subtler: a rubric that is not flagged, whose
+      // anchors still overlap the source, but that never passed structural
+      // validation -- so approveRubric would have refused it. The status column
+      // says APPROVED; the stored evidence says otherwise, and the mapper reads
+      // the evidence. Every objective on this course is covered, so no model
+      // call is available to hide behind: a 201 here would mean the plan was
+      // built from a rubric no human could have approved.
+      const soundPayload = (await getLearningRecord(approvedRubric.id)).payload;
+      await updateLearningRecord(approvedRubric.id, {
+        payload: {
+          ...soundPayload,
+          validation: { valid: false, flagged: false, issues: ['dimension 2 (…) has indistinct tiers'] },
+        },
+      });
+      assert.equal(
+        await status(
+          generateMasteryPlan(instructor, {
+            params: { id: ratifiedCourse.id },
+            body: { sourceId: source.id },
+          }),
+        ),
+        422,
+      );
+      await updateLearningRecord(approvedRubric.id, { payload: soundPayload });
+
+      // The ratified course generates without a model call at all.
+      const generated = await generateMasteryPlan(instructor, {
+        params: { id: ratifiedCourse.id },
+        body: { sourceId: source.id },
+      });
+      assert.equal(generated.status, 201);
+      assert.equal(generated.json.provenance.origin, 'RATIFIED');
+      assert.deepEqual(
+        generated.json.masteryPlan.criteria.map((criterion) => criterion.elo),
+        clearingDimensions().map((dimension) => dimension.name),
+      );
+      assert.deepEqual(generated.json.masteryPlan.criteria[0].indicators, {
+        developing: clearingDimensions()[0].anchors.unsatisfactory,
+        competent: clearingDimensions()[0].anchors.satisfactory,
+        mastered: clearingDimensions()[0].anchors.proficient,
+      });
+      // The newest approved rubric written from THIS source, not the one
+      // approved against another document.
+      const rubricIds = generated.json.provenance.rubricIds;
+      assert.deepEqual(rubricIds, [approvedRubric.id]);
+      assert.ok(!rubricIds.includes(foreignRubric.id));
+
+      // Approval keeps the instructor's name on the criteria it persists.
+      const approvedPlan = await approveMasteryPlan(instructor, {
+        params: { id: ratifiedCourse.id },
+        body: { revision: generated.json.revision },
+      });
+      assert.equal(approvedPlan.json.masteryPlan.status, 'APPROVED');
+      assert.equal(approvedPlan.json.masteryPlan.provenance.origin, 'RATIFIED');
+      assert.equal(
+        approvedPlan.json.masteryPlan.criteria[0].provenance.rubricId,
+        approvedRubric.id,
+      );
+      assert.equal(approvedPlan.json.masteryPlan.criteria[0].provenance.objective, clearing);
+    } finally {
+      await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
+      await db.user.deleteMany({ where: { id: instructorRow.id } });
+    }
+  },
+);

@@ -6,6 +6,7 @@ import { contentFor } from './lessonContent';
 import { usePrefs, setPref } from './prefs';
 import { countForLesson } from './Discussions';
 import { useDoctrineCourse } from './grounded';
+import { provenanceOf, publicationName } from '../_course/provenance';
 
 /* ---------- real cited items from the DB (issue #8) ----------
    The lesson reader's structure is POI-driven and real; its teaching CONTENT was mock.
@@ -41,19 +42,29 @@ function GroundedKeyPoints({ course, lesson }) {
       <ul className="s-gkp-list">
         {lessons.map((it, i) => {
           const c = it.citation || {};
+          /* The learner is who this citation is for, so the pill names the
+             publication and the page. `citation.citation` is the locator the
+             source viewer addresses a passage by — a source record id — and it
+             stays on `title` rather than being read out as the citation. */
+          const provenance = provenanceOf(c);
           const isOpen = open === i;
           return (
             <li key={it.id} className={`s-gkp-item${isOpen ? ' open' : ''}`}>
               <p className="s-gkp-stem">{it.stem}</p>
-              <button className="s-gkp-cite" onClick={() => setOpen(isOpen ? null : i)} aria-expanded={isOpen}>
+              <button
+                className="s-gkp-cite"
+                onClick={() => setOpen(isOpen ? null : i)}
+                aria-expanded={isOpen}
+                title={provenance?.locator || undefined}
+              >
                 <span className="s-gkp-cite-mark">§</span>
-                <span className="s-gkp-cite-txt">{c.citation || 'citation'}</span>
+                <span className="s-gkp-cite-txt">{provenance?.text || 'No citation recorded'}</span>
                 <span className="s-gkp-cite-chev">{isOpen ? '▾' : '▸'}</span>
               </button>
               {isOpen && (
                 <div className="s-gkp-passage">
                   <div className="s-gkp-loc">
-                    <span><b>Publication</b> {c.pubId || '—'}</span>
+                    <span><b>Publication</b> {publicationName(c.pubId) || '—'}</span>
                     {c.page && <span><b>Page</b> {c.page}</span>}
                     {typeof it.support === 'number' && (
                       <span><b>HHEM support</b> {(it.support * 100).toFixed(0)}%</span>

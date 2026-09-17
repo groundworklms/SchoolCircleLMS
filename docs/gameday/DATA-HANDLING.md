@@ -26,8 +26,11 @@ Read this before your first commit. It is short on purpose.
 ## Safe to commit
 
 - Code, configuration schemas, thresholds, and the spec stack.
-- Publicly releasable doctrine, and only that. The thirteen publications in the
-  Anchor corpus are the reference example.
+- Publicly releasable doctrine, and only that. The **fourteen** publications in
+  the Anchor corpus — all Distribution A, listed in `RANGE-CARD.md` — are the
+  reference example. NAVMC 3500.44E is **not** among them and must not become
+  one: it is CUI / Distribution Statement C, and that applies to a task count
+  derived from it just as much as to the PDF.
 - Derived POI structure: annexes, concept cards, hours, lesson IDs, objective
   counts. Not the POI itself.
 - Synthetic sample data with invented names, and invented reference tags.

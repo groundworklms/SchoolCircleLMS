@@ -8,7 +8,16 @@ const saved = {
   sections: [{ items: [{ stem: 'Check?', options: ['Yes', 'No'], answer: 0, rationale: 'Key', support: 1 }] }],
 };
 mock.module('../lib/auth.js', {
-  namedExports: { requireAnyRole: async () => ({ id: 'fixture', role }) },
+  // The route drops the instructor capability when the request was made from a
+  // learner surface, so the mock has to carry that export too.
+  namedExports: {
+    requireAnyRole: async () => ({ id: 'fixture', role }),
+    learnerScopedIdentity: (identity) => (
+      identity?.role === 'INSTRUCTOR' || identity?.role === 'BOTH'
+        ? { ...identity, role: 'LEARNER' }
+        : identity
+    ),
+  },
 });
 mock.module('../lib/db.js', {
   namedExports: {
@@ -43,4 +52,18 @@ test('instructor legacy detail retains assessment review fields', async () => {
   const body = await response.json();
   assert.equal(body.course.sections[0].items[0].answer, 0);
   assert.deepEqual(body.availableReleaseIds, ['legacy']);
+});
+test('an instructor reading from the student view gets the learner projection', async () => {
+  // "View as student" is worthless if it answers with the owner's view. The
+  // same account, the same course, the same route -- and no answer key.
+  role = 'INSTRUCTOR';
+  const response = await GET(
+    new Request('http://fixture/api/courses/legacy', {
+      headers: { 'x-schoolcircle-view': 'learner' },
+    }),
+    { params: { id: 'legacy' } },
+  );
+  const body = await response.json();
+  assert.deepEqual(body.course.sections[0].items[0], { stem: 'Check?', options: ['Yes', 'No'] });
+  assert.equal(body.availableReleaseIds, undefined);
 });
