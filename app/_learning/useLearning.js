@@ -382,7 +382,30 @@ export function useCourseJob(path = '/courses/draft/job') {
     }
   };
 
-  return { start, follow, loading };
+  /**
+   * Generations already running for this instructor.
+   *
+   * A job lives on a row, not in this tab, so a reload, a second tab or a
+   * closed laptop leaves one running with nobody watching -- and since the
+   * polling is also what keeps the server working on it, nobody watching is
+   * how a job stalls. Asking for the list on the way in is what lets a page
+   * load pick one back up, and what revives one that stalled.
+   */
+  const running = async () => {
+    try {
+      const res = await authFetch(`${API_BASE}${path}`);
+      if (!res.ok) return [];
+      const json = await res.json();
+      return Array.isArray(json) ? json : [];
+    } catch {
+      // Nothing to rejoin is the same outcome as not being able to ask, and
+      // neither is worth an error on a page the instructor did not come here
+      // to debug.
+      return [];
+    }
+  };
+
+  return { start, follow, running, loading };
 }
 
 export async function downloadAuthenticated(path, filename) {
