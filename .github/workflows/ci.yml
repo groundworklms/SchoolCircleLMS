@@ -74,6 +74,11 @@ jobs:
       - name: Grounded student chat contracts
         run: npm run test:student-grounding
 
+      # Source library: ownership, PDF originals, collections, and batch
+      # approval, which must apply the single-source gate per id.
+      - name: Source library contracts
+        run: npm run test:source-library
+
       # Roster and in-app messaging. These are the delivery-authorization contracts:
       # a message is bound to a User row rather than a token email claim, a
       # recipient needs real participation in the course, a learner can only touch
