@@ -314,6 +314,11 @@ export function GenerationProgress({ events, interrupted = false }) {
                   were written, and some of the items ask about something the
                   written pages do not teach. That is a note to the reviewer
                   about where to look, so it reads as a sentence. */}
+              {section.artifacts.terms?.ok === false && (
+                <p className="p-src" style={{ margin: '0.35rem 0 0', color: 'var(--p-warning)' }}>
+                  Term drift: {section.artifacts.terms.reason}
+                </p>
+              )}
               {section.artifacts.title?.ok === false && (
                 <p className="p-src" style={{ margin: '0.35rem 0 0', color: 'var(--p-warning)' }}>
                   {section.artifacts.title.reason}
