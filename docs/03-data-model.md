@@ -233,7 +233,7 @@ construction*.
 ## Get it running (local)
 
 ```bash
-docker compose up -d          # local Postgres on :5432 (container schoolcircle-dev, host :5433 in dev)
+docker compose up -d          # local Postgres: container schoolcircle-db, host port 5432
 cp .env.example .env.local    # then set DATABASE_URL (default matches the compose file)
 npm install                   # runs prisma generate
 npm run db:migrate            # create the tables
