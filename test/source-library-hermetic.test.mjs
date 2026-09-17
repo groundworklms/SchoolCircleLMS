@@ -134,6 +134,7 @@ mock.module('../lib/auth.js', {
 mock.module('../lib/arsenal-core.js', {
   namedExports: {
     answerMasterySession: async () => null,
+    validateKeyDistribution: () => ({ valid: true, issues: [], total: 0 }),
     sourcePassageIndex: () => null,
     masteryPlanProvenance: () => null,
     deriveMasteryPlan: async () => null,
