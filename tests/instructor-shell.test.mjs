@@ -105,6 +105,15 @@ function loadInstructorShell({ courses = [] } = {}) {
           }),
         };
       }
+      if (request === './walkthrough-context') {
+        // No tour provider is mounted in this harness, so the shell sees a
+        // start-less context and omits the tour menu item -- the correct
+        // behaviour when the tour cannot run.
+        return { useWalkthrough: () => ({ start: null, running: false, scriptLabel: null }) };
+      }
+      if (request === './walkthrough-anchors') {
+        return { instructorTourAnchor: () => null, studentTourAnchor: () => null };
+      }
       throw new Error(`Unexpected InstructorShell dependency: ${request}`);
     },
   };
