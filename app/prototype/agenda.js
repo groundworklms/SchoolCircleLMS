@@ -16,4 +16,12 @@ const UPCOMING = [
   { title: 'Radio net practical', when: 'Next Tue', courseId: 'M09CVS1' },
 ];
 
-export { TODO, UPCOMING };
+const REQUIREMENTS = [
+  { name: 'Annual cyber awareness', state: 'Complete', color: 'var(--f-good)' },
+  { name: 'Rank EPME — enrolled', state: 'In progress', color: 'var(--f-warning)' },
+  { name: 'CY range qualification', state: 'Due in 22 days', color: 'var(--f-warning)' },
+  { name: 'Course prerequisite packet', state: 'Complete', color: 'var(--f-good)' },
+  { name: 'FY safety standdown', state: 'Overdue', color: 'var(--f-critical)' },
+];
+
+export { TODO, UPCOMING, REQUIREMENTS };

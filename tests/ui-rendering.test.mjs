@@ -21,7 +21,10 @@ test('Courses omits the agenda and retired manual library while keeping current 
   }
   assert.doesNotMatch(courses, /Published courses|LibraryList/);
   assert.match(courses, /onOpen\(c\.id, 'home'\)/);
-  assert.equal((source.match(/<Agenda /g) || []).length, 2, 'dashboard and course-home agendas remain');
+  // One, not two: the focused dashboard replaced the old Dashboard, and it
+  // reads the same TODO/UPCOMING agenda data through focusedAgendaItems rather
+  // than rendering the <Agenda> component. Course home still renders it.
+  assert.equal((source.match(/<Agenda /g) || []).length, 1, 'the course-home agenda remains');
 });
 
 test('shared instructor shell omits breadcrumbs while retaining course status and navigation', () => {

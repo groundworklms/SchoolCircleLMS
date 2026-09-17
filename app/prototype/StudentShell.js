@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import './student.css';
 
 import { COURSES } from './data';
+import FocusedDashboard from './FocusedDashboard';
 import StudentPath from './StudentPath';
 import StudyMaterials from './StudyMaterials';
 import LiveSession from './LiveSession';
@@ -24,9 +25,18 @@ import { useLearningCourses, resolveCourse } from './learning';
 import { RealCourseHome, CourseReader, MasterySession, StudyPlan, LearnerProgress } from './LearnerFeatures';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
+import CoursesMenu from './CoursesMenu';
+import {
+  COURSE_NAV as TREE_COURSE_NAV,
+  expandCourse,
+  expandOnCourseSelection,
+  initialExpandedCourseIds,
+  pruneExpandedCourseIds,
+  toggleExpandedCourse,
+} from './courseTreeState.mjs';
 
-/* Student shell. Canvas-shaped — global icon rail, dashboard with course cards,
-   course sub-nav, breadcrumb, and a To-Do column — on a neutral palette.
+/* Student shell. Canvas-shaped — global icon rail, focused dashboard with
+   action cards and course rows, course sub-nav, and breadcrumb — on a neutral palette.
    The screens it mounts are untouched; this file only decides where they sit.
 
    Courses come from two places (see learning.js): approved LearningRecord
@@ -129,152 +139,7 @@ function Agenda({ courseId, onOpen }) {
   );
 }
 
-/* ---------- dashboard ---------- */
-
-function RealCourseCard({ c, onOpen }) {
-  return (
-    <button className="s-card" onClick={() => onOpen(c.id, 'home')}>
-      <div className="s-card-head">
-        <div>
-          <div className="s-card-title">{c.name}</div>
-          <div className="s-card-school">{c.school}</div>
-        </div>
-        <div className="s-card-avg">
-          <span style={{ color: 'var(--p-good)' }}>✓</span>
-          <small>cited</small>
-        </div>
-      </div>
-      <div className="s-card-foot">
-        <span>{c.sections} sections · {c.status === 'APPROVED' ? 'approved by your instructor' : 'generated course'}</span>
-      </div>
-    </button>
-  );
-}
-
-function Dashboard({
-  onOpen,
-  realCourses = [],
-  learningLoading = false,
-  learningError = null,
-}) {
-  const list = Object.values(COURSES);
-
-  // Up next: anything overdue, then the first due item per course.
-  const upNext = [
-    ...TODO.filter((t) => t.late),
-    ...list.map((c) => TODO.find((t) => t.courseId === c.id)).filter(Boolean),
-  ];
-
-  return (
-    <div className="s-two">
-      <div>
-        <div className="s-pagehead">
-          <h1>Dashboard</h1>
-          {learningLoading ? (
-            <p role="status">Loading courses…</p>
-          ) : learningError ? (
-            <p className="s-shell-error" role="alert">
-              Unable to load courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
-            </p>
-          ) : realCourses.length ? (
-            <p>
-              {realCourses.length} course{realCourses.length === 1 ? '' : 's'} available to you ·
-              {' '}everything marked Demo below is sample content.
-            </p>
-          ) : (
-            /* The count is the truth about courses an instructor has actually
-               published to this account, and it is often zero. Saying only
-               "0 available courses" over a screen of demo cards reads as a bug,
-               so the headline names what the rest of the page is instead. */
-            <p>No courses published to you yet — everything below is demo content.</p>
-          )}
-        </div>
-
-        <h4 className="s-label">Up next · Demo</h4>
-        <div className="s-next">
-          {upNext.map((t) => (
-            <button
-              key={t.title}
-              className={`s-next-card${t.late ? ' late' : ''}`}
-              onClick={() => t.courseId && onOpen(t.courseId, t.view)}
-            >
-              <span className="s-next-kind">{t.courseId ? COURSES[t.courseId]?.name || t.courseId : t.kind}</span>
-              <span className="s-next-title">{t.title}</span>
-              <span className="s-next-meta">
-                <b>{t.due}</b>
-                {t.minutes ? ` · ~${t.minutes} min` : ''}
-              </span>
-            </button>
-          ))}
-        </div>
-
-        <h4 className="s-label">Available courses</h4>
-        <div className="s-cards">
-          {realCourses.map((c) => (
-            <RealCourseCard key={c.id} c={c} onOpen={onOpen} />
-          ))}
-          {!realCourses.length && !learningLoading && !learningError && (
-            <p className="s-cal-empty">
-              Nothing published to you yet. A course appears here once an instructor approves it for
-              your account — the demo courses below are sample content, not enrolments.
-            </p>
-          )}
-        </div>
-
-        <details>
-          <summary className="s-label">Demo courses (not enrolled)</summary>
-          <div className="s-cards">
-            {list.map((c) => {
-              const avg = courseAvg(c);
-              const pct = Math.round((c.week / c.weeks) * 100);
-              const next = UPCOMING.find((u) => u.courseId === c.id);
-              return (
-                <button className="s-card" key={c.id} onClick={() => onOpen(c.id, 'home')}>
-                  <div className="s-card-head">
-                    <div>
-                      <div className="s-card-title">
-                        {c.name} <code>{c.id}</code>
-                      </div>
-                      <div className="s-card-school">Demo · {c.school}</div>
-                    </div>
-                    <div className="s-card-avg">
-                      <span>{avg}%</span>
-                      <small>demo mastery</small>
-                    </div>
-                  </div>
-                  <div className="s-prog">
-                    <div className="s-prog-track"><div className="s-prog-fill" style={{ width: `${pct}%` }} /></div>
-                    <span>Week {c.week} of {c.weeks}</span>
-                  </div>
-                  {next && <div className="s-card-foot"><span>Next: {next.title.split(' — ')[0]} · {next.when}</span></div>}
-                </button>
-              );
-            })}
-          </div>
-        </details>
-
-        <h4 className="s-label">Required training · Demo</h4>
-        <div className="s-req">
-          {[
-            ['Annual cyber awareness', 'Complete', 'var(--p-good)'],
-            ['Rank EPME — enrolled', 'In progress', 'var(--p-warning)'],
-            ['CY range qualification', 'Due in 22 days', 'var(--p-warning)'],
-            ['Course prerequisite packet', 'Complete', 'var(--p-good)'],
-            ['FY safety standdown', 'Overdue', 'var(--p-critical)'],
-          ].map(([name, state, color]) => (
-            <div className="s-req-row" key={name}>
-              <span style={{ color, fontSize: '0.75em' }}>●</span>
-              <span className="s-req-name">{name}</span>
-              <span style={{ color, fontSize: '0.85em' }}>{state}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <Agenda courseId={null} onOpen={onOpen} />
-    </div>
-  );
-}
+/* ---------- course library ---------- */
 
 function Courses({
   onOpen,
@@ -554,11 +419,48 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const { area, courseId, view, lessonId, page, threadId } = nav;
   const prefs = usePrefs();
   const learning = useLearningCourses();
-  const course = resolveCourse(courseId, learning.courses);
+  // Do not render a cached course after the learning service reports an error.
+  // A successful refetch with no matching id resolves to CourseUnavailable,
+  // which is the explicit deleted-course state instead of a stale detail view.
+  const course = resolveCourse(courseId, learning.error ? [] : learning.courses);
   const isReal = Boolean(course?.record);
   const pendingCourse = area === 'course' && Boolean(courseId) && !course && learning.loading;
   const NAV = isReal ? REAL_COURSE_NAV : COURSE_NAV;
   const inboxUnread = useInboxMessages().filter((m) => m.unread).length;
+  const [expandedCourseIds, setExpandedCourseIds] = useState(() => initialExpandedCourseIds(courseId));
+  const [coursesExpanded, setCoursesExpanded] = useState(() => Boolean(courseId));
+  const previousCourseId = useRef(courseId);
+  const previousLearningCourseIds = useRef(null);
+
+  useEffect(() => {
+    setExpandedCourseIds((expanded) => (
+      expandOnCourseSelection(expanded, previousCourseId.current, courseId)
+    ));
+    if (courseId) setCoursesExpanded(true);
+    previousCourseId.current = courseId;
+  }, [courseId]);
+
+  // Keep disclosure state bounded to the current API projection. A removed
+  // course must not leave a stale entry that re-opens if its ID is later
+  // reused; a newly re-added selected course starts expanded again.
+  const learningCourseIds = learning.courses
+    .map((entry) => entry?.id)
+    .filter((id) => id !== null && id !== undefined && String(id));
+  const normalizedLearningCourseIds = learningCourseIds.map((id) => String(id));
+  const learningCourseSignature = JSON.stringify(normalizedLearningCourseIds);
+  useEffect(() => {
+    if (!learning.enabled || learning.loading || learning.error) return;
+    const previousIds = previousLearningCourseIds.current;
+    const selectedWasReadded = courseId
+      && normalizedLearningCourseIds.includes(String(courseId))
+      && previousIds
+      && !previousIds.includes(String(courseId));
+    setExpandedCourseIds((expanded) => {
+      const pruned = pruneExpandedCourseIds(expanded, learningCourseIds);
+      return selectedWasReadded ? expandCourse(pruned, courseId) : pruned;
+    });
+    previousLearningCourseIds.current = normalizedLearningCourseIds;
+  }, [courseId, learning.enabled, learning.loading, learning.error, learningCourseSignature]);
 
   // Remember the lesson + page you were on per course, so leaving Lessons for
   // another screen and coming back resumes where you left off instead of the
@@ -578,6 +480,8 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const open = (id, v = 'home') => nav.go({ area: 'course', courseId: id, view: v || 'home', lessonId: null, page: null });
   const openLesson = (id, pg = null) => nav.go({ area: 'course', courseId, view: 'lessons', lessonId: id, page: pg, threadId: null });
   const openThread = (id, forLesson = null) => nav.go({ area: 'course', courseId, view: 'discussions', threadId: id, lessonId: forLesson, page: null });
+  const toggleCourse = (id) => setExpandedCourseIds((expanded) => toggleExpandedCourse(expanded, id));
+  const expandSelectedCourse = (id) => setExpandedCourseIds((expanded) => expandCourse(expanded, id));
 
   /* The breadcrumb row is gone: the rail already names the course and marks the
      section you are in, and a reading surface should not spend a row saying it
@@ -601,11 +505,12 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   else if (area === 'course' && !course) body = <CourseUnavailable courseId={courseId} error={learning.error} />;
   else if (area === 'dashboard') {
     body = (
-      <Dashboard
+      <FocusedDashboard
         onOpen={open}
-        realCourses={learning.courses}
-        learningLoading={learning.loading}
-        learningError={learning.error}
+        onCalendar={() => setArea('calendar')}
+        courses={learning.courses}
+        loading={learning.loading}
+        error={learning.error}
       />
     );
   }
@@ -649,7 +554,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
 
   return (
     <div className="s-root" style={{ '--scale': prefs.textScale }}>
-      <nav className="s-rail">
+      <nav className="s-rail" aria-label="Student navigation">
         <UserMenu
           name={displayName}
           role={!profileRole ? 'Student' : profileRole === 'BOTH' ? 'Learner · Instructor' : 'Learner'}
@@ -663,13 +568,26 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
           ]}
         />
         <RailButton icon={I.dashboard} label="Dashboard" on={area === 'dashboard'} onClick={() => setArea('dashboard')} />
-        <RailButton icon={I.courses} label="Courses" on={area === 'courses'} onClick={() => setArea('courses')} />
+        <CoursesMenu
+          expanded={coursesExpanded}
+          onToggle={() => setCoursesExpanded((expanded) => !expanded)}
+          selectedCourseId={course?.record ? courseId : null}
+          selectedView={course?.record ? view : null}
+          expandedCourseIds={expandedCourseIds}
+          onToggleCourse={toggleCourse}
+          onExpandCourse={expandSelectedCourse}
+          onOpenCourse={open}
+          courses={learning.courses}
+          loading={learning.loading}
+          error={learning.error}
+          navForCourse={(entry) => (entry.record ? REAL_COURSE_NAV : TREE_COURSE_NAV)}
+        />
         {prefs.showCalendar !== false && (
           <RailButton icon={I.calendar} label="Calendar" on={area === 'calendar'} onClick={() => setArea('calendar')} />
         )}
         <RailButton icon={I.inbox} label="Inbox" on={area === 'inbox'} onClick={() => setArea('inbox')} badge={inboxUnread} />
 
-        {area === 'course' && course ? (
+        {area === 'course' && course && !course.record ? (
           <>
             <div className="s-rail-sec">
               <span className="s-rail-sec-name">{course.name}</span>
@@ -679,18 +597,13 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
               <RailButton key={n.id} label={n.label} sub on={view === n.id} onClick={() => setView(n.id)} />
             ))}
           </>
+        ) : area === 'course' && !course ? (
+          <div className="s-rail-sec">
+            <span className="s-rail-sec-name">Course unavailable</span>
+            {courseId && <code>{courseId}</code>}
+          </div>
         ) : (
           <>
-            <div className="s-rail-sec">Available courses</div>
-            {learning.courses.map((c) => (
-              <RailButton
-                key={c.id}
-                sub
-                icon={<span className="s-rail-dot" style={{ background: 'var(--p-good)' }} />}
-                label={c.name}
-                onClick={() => open(c.id, 'home')}
-              />
-            ))}
             <div className="s-rail-sec">Demo samples</div>
             {Object.values(COURSES).map((c) => (
               <RailButton
