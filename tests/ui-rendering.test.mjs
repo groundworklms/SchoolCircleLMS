@@ -132,6 +132,23 @@ function loadComponent(relativePath, {
         }),
       };
     },
+    // Generation is a job the client polls rather than a stream it holds open,
+    // but from a component's side the shape is the same: start it, get every
+    // event once, get an outcome. Keyed on the job path so a fixture can drive
+    // it exactly as it drove the stream.
+    useCourseJob(requestPath = '/courses/draft/job') {
+      const configured = mutationStates[requestPath] || {};
+      const replay = async (payload, onEvent) => {
+        const events = configured.events || [{ phase: 'saved', record: configured.result ?? {} }];
+        for (const event of events) onEvent(event);
+        return events[events.length - 1];
+      };
+      return {
+        loading: configured.loading ?? false,
+        start: configured.start || replay,
+        follow: configured.follow || ((id, onEvent) => replay(null, onEvent)),
+      };
+    },
   };
   const sandbox = {
     module,
@@ -683,9 +700,9 @@ test('course creation modal keeps ingestion, explicit approval, and approved-onl
   const { DraftCourseModal } = loadComponent('app/prototype/Library.js', {
     expose: ['DraftCourseModal'],
     mutationStates: {
-      // Generation streams its progress; the modal reads the stream and takes
-      // the course from the terminal `saved` event.
-      '/courses/draft/stream': {
+      // Generation is a job the modal polls; it takes the course from the
+      // terminal `saved` outcome, the same shape the stream ended with.
+      '/courses/draft/job': {
         start: async (payload, onEvent) => {
           generationCalls.push(payload);
           const saved = { phase: 'saved', record: { id: 'course-created', status: 'PENDING' } };
@@ -1983,7 +2000,7 @@ test('a lost stream offers waiting as the primary action and regenerating as the
   const { DraftCourseModal } = loadComponent('app/prototype/Library.js', {
     expose: ['DraftCourseModal'],
     mutationStates: {
-      '/courses/draft/stream': {
+      '/courses/draft/job': {
         start: async (payload) => {
           generationCalls.push(payload);
           return null;
