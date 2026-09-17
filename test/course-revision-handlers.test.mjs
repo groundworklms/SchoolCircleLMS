@@ -430,6 +430,7 @@ mock.module('../lib/arsenal-core.js', {
     generateRubric: async () => null,
     ingestSource: async () => null,
     learningModelStatus: () => ({ model: { ready: false } }),
+    masteryPlanProvenance: realArsenal.masteryPlanProvenance,
     masteryView: () => null,
     redactCourse: realArsenal.redactCourse,
     restoreMasterySession: async () => null,
