@@ -80,22 +80,59 @@ export function pickDemoCourse(courses) {
   return list.find((course) => course?.status === 'APPROVED') || list[0] || null;
 }
 
-/* Card placement: below the target if it fits, above if it does not, and
-   clamped inside the viewport either way so it is never half off-screen. */
+/* Card placement.
+ *
+ * The one rule the presenter cares about: the card must never sit on top of the
+ * thing being pointed at. So rather than "below, else above", this measures the
+ * clear space on each side of the spotlight and docks the card into whichever
+ * gap is largest. A target that fills the viewport (a whole content column) has
+ * no side gap big enough, so the card falls back to the bottom-right corner --
+ * out of the reading path either way -- and the caller is told, so it can shrink
+ * the card to a compact strip that covers as little as possible.
+ */
+const CARD_EST_HEIGHT = 200;
+
 function placeCard(rect, viewport) {
+  const centerLeft = Math.max(VIEWPORT_MARGIN, (viewport.width - CARD_WIDTH) / 2);
   if (!rect) {
-    return { left: Math.max(VIEWPORT_MARGIN, (viewport.width - CARD_WIDTH) / 2), top: viewport.height * 0.34, centered: true };
+    return { left: centerLeft, top: Math.round(viewport.height * 0.32), placement: 'center' };
   }
-  const below = rect.bottom + CARD_GAP;
-  const estimatedHeight = 210;
-  const fitsBelow = below + estimatedHeight < viewport.height - VIEWPORT_MARGIN;
-  const top = fitsBelow ? below : Math.max(VIEWPORT_MARGIN, rect.top - CARD_GAP - estimatedHeight);
-  const preferredLeft = rect.left + rect.width / 2 - CARD_WIDTH / 2;
-  const left = Math.min(
-    Math.max(VIEWPORT_MARGIN, preferredLeft),
-    Math.max(VIEWPORT_MARGIN, viewport.width - CARD_WIDTH - VIEWPORT_MARGIN),
-  );
-  return { left, top, centered: false };
+
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+  const maxLeft = viewport.width - CARD_WIDTH - VIEWPORT_MARGIN;
+  const maxTop = viewport.height - CARD_EST_HEIGHT - VIEWPORT_MARGIN;
+
+  // Clear space beyond each edge of the spotlight.
+  const gap = {
+    right: viewport.width - rect.right,
+    left: rect.left,
+    bottom: viewport.height - rect.bottom,
+    top: rect.top,
+  };
+  const needSide = CARD_WIDTH + CARD_GAP + VIEWPORT_MARGIN;
+  const needStack = CARD_EST_HEIGHT + CARD_GAP + VIEWPORT_MARGIN;
+
+  // Prefer a side dock (keeps the card beside the focus, reading left-to-right),
+  // then below, then above. First candidate that clears the spotlight wins.
+  if (gap.right >= needSide) {
+    const top = clamp(rect.top, VIEWPORT_MARGIN, maxTop);
+    return { left: clamp(rect.right + CARD_GAP, VIEWPORT_MARGIN, maxLeft), top, placement: 'right' };
+  }
+  if (gap.left >= needSide) {
+    const top = clamp(rect.top, VIEWPORT_MARGIN, maxTop);
+    return { left: clamp(rect.left - CARD_GAP - CARD_WIDTH, VIEWPORT_MARGIN, maxLeft), top, placement: 'left' };
+  }
+  const preferredLeft = clamp(rect.left + rect.width / 2 - CARD_WIDTH / 2, VIEWPORT_MARGIN, maxLeft);
+  if (gap.bottom >= needStack) {
+    return { left: preferredLeft, top: clamp(rect.bottom + CARD_GAP, VIEWPORT_MARGIN, maxTop), placement: 'bottom' };
+  }
+  if (gap.top >= needStack) {
+    return { left: preferredLeft, top: clamp(rect.top - CARD_GAP - CARD_EST_HEIGHT, VIEWPORT_MARGIN, maxTop), placement: 'top' };
+  }
+
+  // The spotlight leaves no clear gap (it fills the viewport). Dock to the
+  // bottom-right corner as a compact strip; 'corner' tells the card to shrink.
+  return { left: maxLeft, top: maxTop, placement: 'corner' };
 }
 
 export default function WalkthroughProvider({ nav, enabled = true, children }) {
@@ -107,6 +144,13 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
   const [targetMissing, setTargetMissing] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [viewport, setViewport] = useState({ width: 1280, height: 800 });
+  // The presenter's escape hatch: if the card ever sits where they want to
+  // point, they drag it, and it collapses to a pill on demand. drag is a manual
+  // offset from the computed dock; reset whenever the step (and so the dock)
+  // changes, so each step starts from a sensible place.
+  const [drag, setDrag] = useState(null); // {x, y} px offset, or null
+  const [minimized, setMinimized] = useState(false);
+  const dragRef = useRef(null);
 
   const step = STEPS[state.index] || null;
   const scriptTotal = useMemo(() => budgetSeconds(), []);
@@ -141,6 +185,34 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
     return () => window.clearInterval(id);
   }, [state.running, state.startedAt]);
 
+  // Each step computes its own dock, so a drag offset from the previous step
+  // would land the card somewhere arbitrary. Clear it when the step changes.
+  useEffect(() => { setDrag(null); }, [state.index]);
+
+  /* Drag the card by its header. Pointer capture keeps the drag alive even if
+     the cursor outruns the card, and the offset is clamped loosely so it can
+     never be thrown fully off-screen. */
+  const onDragStart = useCallback((event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const base = dragRef.current || { x: 0, y: 0 };
+    const move = (e) => {
+      setDrag({
+        x: base.x + (e.clientX - startX),
+        y: base.y + (e.clientY - startY),
+      });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }, []);
+  useEffect(() => { dragRef.current = drag; }, [drag]);
+
   const persist = useCallback((next) => {
     writeSaved({ index: next.index, startedAt: next.startedAt, dismissed: next.dismissed });
   }, []);
@@ -157,6 +229,8 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
   const start = useCallback(() => {
     const next = { running: true, index: 0, startedAt: Date.now(), dismissed: false };
     setState(next);
+    setMinimized(false);
+    setDrag(null);
     persist(next);
   }, [persist]);
 
@@ -276,10 +350,13 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
   const pace = overBudget ? 'over' : drift > 20 ? 'behind' : drift < -20 ? 'ahead' : 'onpace';
   const card = placeCard(rect, viewport);
   const waitingForCourse = needsCourse(step) && !demoCourse;
+  const left = card.left + (drag?.x || 0);
+  const top = card.top + (drag?.y || 0);
+  const isLast = state.index === STEPS.length - 1;
 
   return (
     <div className="sc-tour" role="dialog" aria-modal="false" aria-label={`Guided tour, step ${state.index + 1} of ${STEPS.length}`}>
-      {rect ? (
+      {rect && !minimized && (
         <div
           className="sc-tour-spot"
           style={{
@@ -289,60 +366,87 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
             height: rect.height + SPOTLIGHT_PAD * 2,
           }}
         />
-      ) : (
-        <div className="sc-tour-scrim" />
       )}
 
-      <section
-        className={`sc-tour-card${card.centered ? ' is-centered' : ''}`}
-        style={{ top: card.top, left: card.left, width: CARD_WIDTH }}
-      >
-        <header className="sc-tour-head">
-          <span className="sc-tour-act">
-            Act {actNumber} of {ACTS.length} · {act?.label}
-          </span>
-          <span className={`sc-tour-clock is-${pace}`} title={`Scripted ${formatClock(scheduled)} by this point`}>
-            {formatClock(elapsed)} / {formatClock(scriptTotal)}
-          </span>
-        </header>
+      {minimized ? (
+        <button
+          type="button"
+          className="sc-tour-pill"
+          style={{ left, top }}
+          onClick={() => setMinimized(false)}
+          title="Reopen the tour"
+        >
+          <span className={`sc-tour-pilldot is-${pace}`} aria-hidden="true" />
+          <span className="sc-tour-pilltime">{formatClock(elapsed)}</span>
+          <span className="sc-tour-pilllabel">Step {state.index + 1}/{STEPS.length}</span>
+        </button>
+      ) : (
+        <section
+          className={`sc-tour-card is-${card.placement}${drag ? ' is-dragged' : ''}`}
+          style={{ top, left, width: CARD_WIDTH }}
+        >
+          <header className="sc-tour-head" onPointerDown={onDragStart}>
+            <span className="sc-tour-act">
+              <span className="sc-tour-actnum">{actNumber}</span>
+              {act?.label}
+            </span>
+            <span className="sc-tour-headright">
+              <span className={`sc-tour-clock is-${pace}`} title={`Scripted ${formatClock(scheduled)} by this point`}>
+                {formatClock(elapsed)}
+                <span className="sc-tour-clocktotal"> / {formatClock(scriptTotal)}</span>
+              </span>
+              <button
+                type="button"
+                className="sc-tour-icon"
+                onClick={() => setMinimized(true)}
+                onPointerDown={(e) => e.stopPropagation()}
+                aria-label="Minimize the tour"
+                title="Minimize"
+              >
+                –
+              </button>
+            </span>
+          </header>
 
-        <h2 className="sc-tour-title">{step.title}</h2>
-        <p className="sc-tour-body">{step.body}</p>
+          <h2 className="sc-tour-title">{step.title}</h2>
+          <p className="sc-tour-body">{step.body}</p>
 
-        {waitingForCourse && (
-          <p className="sc-tour-note">
-            This step needs a published course. Publish one from the instructor library and the
-            tour will pick it up.
-          </p>
-        )}
-        {targetMissing && !waitingForCourse && (
-          <p className="sc-tour-note">
-            Still loading this screen — the narration above is the point; the highlight will catch up.
-          </p>
-        )}
+          {waitingForCourse && (
+            <p className="sc-tour-note">
+              This step needs a published course. Publish one from the instructor library and the
+              tour will pick it up.
+            </p>
+          )}
+          {targetMissing && !waitingForCourse && (
+            <p className="sc-tour-note">
+              Still loading this screen — the narration above is the point; the highlight will catch up.
+            </p>
+          )}
 
-        <footer className="sc-tour-foot">
           <div className="sc-tour-progress" aria-hidden="true">
             {STEPS.map((s, i) => (
               <span key={s.id} className={`sc-tour-pip${i === state.index ? ' is-now' : ''}${i < state.index ? ' is-done' : ''}`} />
             ))}
           </div>
-          <div className="sc-tour-actions">
+
+          <footer className="sc-tour-foot">
             <button type="button" className="sc-tour-btn quiet" onClick={() => stop(true)}>
               Exit
             </button>
-            <button type="button" className="sc-tour-btn" onClick={back} disabled={state.index === 0}>
-              Back
-            </button>
-            <button type="button" className="sc-tour-btn primary" onClick={next}>
-              {state.index === STEPS.length - 1 ? 'Finish' : 'Next'}
-            </button>
-          </div>
-        </footer>
-        <p className="sc-tour-hint">
-          Step {state.index + 1} of {STEPS.length} · arrow keys to move, Esc to leave
-        </p>
-      </section>
+            <div className="sc-tour-nav">
+              <button type="button" className="sc-tour-btn" onClick={back} disabled={state.index === 0}>
+                Back
+              </button>
+              <button type="button" className="sc-tour-btn primary" onClick={next}>
+                {isLast ? 'Finish' : 'Next'}
+              </button>
+            </div>
+          </footer>
+          <p className="sc-tour-hint">
+            Step {state.index + 1} of {STEPS.length} · drag to move · ← → to step · Esc to leave
+          </p>
+        </section>
+      )}
     </div>
   );
   }
