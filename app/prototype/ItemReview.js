@@ -47,6 +47,23 @@ function withoutPage(label) {
   return label.replace(/\s*\bp\.\s*[0-9A-Za-z-]+\s*$/, '').trim();
 }
 
+/* A source uploaded as a file is often recorded under its filename, so the
+   provenance line came out as "MCWP_2-10.pdf" -- an instructor vouching for a
+   passage under a path. The extension comes off and the underscores that stood
+   in for spaces become spaces.
+ *
+ * Presentation only, and deliberately narrow: the extension has to be one of a
+ * known set, so an identifier that merely ends in a dotted segment ("TC 3-22.9")
+ * is left exactly as recorded, and so is anything with no extension at all
+ * ("source-1"). Nothing is written back — `citation.pubId` and the locator on
+ * `Item.citation` are what the source viewer and the SCORM export address. */
+const DOCUMENT_EXTENSION = /\.(pdf|docx?|txt|md|rtf|html?|epub)$/i;
+
+function publicationName(name) {
+  if (!DOCUMENT_EXTENSION.test(name)) return name;
+  return name.replace(DOCUMENT_EXTENSION, '').replace(/_+/g, ' ').trim() || name;
+}
+
 /**
  * The provenance line an instructor ratifies, in words rather than keys.
  *
@@ -70,7 +87,7 @@ function provenanceOf(citation) {
   const page = citation?.page === null || citation?.page === undefined ? '' : String(citation.page).trim();
   // Take the page off the locator only when this line is about to print it;
   // a row with no page field keeps whatever its label already says.
-  const name = pubId || (page ? withoutPage(locator) : locator) || locator;
+  const name = publicationName(pubId || (page ? withoutPage(locator) : locator) || locator);
   if (!name) return null;
   return { text: page ? `${name} p.${page}` : name, locator: locator || null };
 }
@@ -151,7 +168,10 @@ function ReviseForm({ item, busy, onCancel, onSubmit }) {
         <textarea rows={2} value={rationale} onChange={(event) => setRationale(event.target.value)} />
       </label>
 
-      <p className="item-review-note">
+      {/* What saving this form actually does, including the part a reviewer
+          would not guess: it ratifies the item. Set to be read, not filed under
+          the form as a grey footnote. */}
+      <p className="p-truth">
         The citation and support score stay as measured — they describe the passage this item came
         from, not the wording. Saving also approves the item.
       </p>
@@ -204,6 +224,10 @@ function ItemCard({ item, busy, onDecide }) {
       {editing ? (
         <ReviseForm item={item} busy={busy} onCancel={() => setEditing(false)} onSubmit={decide} />
       ) : (
+        /* Three weights, not one. Approve is the affirmative act a named human
+           is accountable for, so it carries the accent; Revise is the neutral
+           middle; Withhold is deliberate and reversible and must not read as an
+           equal-and-opposite button sitting next to the approval. */
         <div className="p-btnrow item-review-actions">
           {item.status !== 'APPROVED' && (
             <button type="button" className="p-btn" disabled={busy} onClick={() => decide({ decision: 'APPROVE' }).catch(() => {})}>
@@ -214,7 +238,7 @@ function ItemCard({ item, busy, onDecide }) {
             Revise
           </button>
           {item.status !== 'REJECTED' && (
-            <button type="button" className="p-btn ghost" disabled={busy} onClick={() => decide({ decision: 'REJECT' }).catch(() => {})}>
+            <button type="button" className="p-btn quiet" disabled={busy} onClick={() => decide({ decision: 'REJECT' }).catch(() => {})}>
               Withhold
             </button>
           )}
@@ -309,7 +333,7 @@ export function CourseItemReview({ courseId, onChanged }) {
             ) : counts.PENDING > 0 ? (
               <>
                 <strong>{counts.PENDING}</strong> of {total} item{total === 1 ? '' : 's'} still
-                {' '}need review. A learner sees only the approved ones.
+                {' '}need review.
               </>
             ) : (
               <>
@@ -322,6 +346,13 @@ export function CourseItemReview({ courseId, onChanged }) {
           {counts.PENDING === 0 ? 'RELEASED' : `${counts.PENDING} PENDING`}
         </span>
       </div>
+
+      {/* The standing guarantee this whole screen exists to enforce. It was a
+          trailing clause on the count line and only appeared while something
+          was still pending; it is true of every release and it is the reason a
+          reviewer can leave an item alone without taking a risk, so it is said
+          plainly and it is always on screen. */}
+      <p className="p-truth">A learner sees only the approved ones.</p>
 
       {error && data && (
         <p className="s-shell-error" role="alert">{errText(error, 'That decision could not be saved.')}</p>

@@ -44,13 +44,35 @@ function highlightText(text, phrase) {
   );
 }
 
+/* How much of the document there is, said the way the record knows it. */
+function extentOf(sourceData) {
+  if (sourceData?.pages?.length) {
+    return `${sourceData.pages.length} page${sourceData.pages.length === 1 ? '' : 's'}`;
+  }
+  if (sourceData?.chunks?.length) {
+    return `${sourceData.chunks.length} passage${sourceData.chunks.length === 1 ? '' : 's'}`;
+  }
+  return '';
+}
+
 /*
  * The approved source behind a course. `compact` renders it as an agenda box
  * (course home sidebar) instead of a full panel. Pages and chunks are kept
  * addressable so a tutor citation can open the exact page and passage.
+ *
+ * Reading happens in a full-screen reader rather than inline. The document was
+ * previously expanded into whichever box held the trigger -- in the source
+ * library that is a ~280px grid card, so a 220-page coursebook was read in a
+ * narrow column with a horizontal scrollbar on its body text, in a card that
+ * had grown several times taller than its neighbours. Inspecting a cited
+ * passage is the act this product asks an instructor to perform before they
+ * put their name to an item, so it gets the whole screen, real page framing
+ * and a fixed measure, and it leaves the layout behind it untouched.
  */
 export function SourceViewer({ sourceId, compact = false, citation = null }) {
   const { data: sourceData, loading, error } = useApiQuery(`/sources/${sourceId}`);
+  // Kept first: the rendering tests drive this component by supplying the
+  // first useState, and `open` is the state they are driving.
   const [open, setOpen] = useState(false);
   const targetRef = useRef(null);
 
@@ -63,12 +85,22 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
     targetRef.current.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
   }, [open, citation, sourceData]);
 
+  // Escape is what a reader that covers the screen has to answer to.
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return undefined;
+    const onKey = (event) => { if (event.key === 'Escape') setOpen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   if (error) {
     return <p className="s-shell-error" role="alert">{error?.error || 'Error loading source'}</p>;
   }
 
   if (loading || !sourceData) return <p>Loading source…</p>;
 
+  const title = sourceData.title || sourceId;
+  const extent = extentOf(sourceData);
   const selectedPage = citationPage(citation);
   const selectedPassage = citationPassage(citation);
   const sourcePages = Array.isArray(sourceData.pages) ? sourceData.pages : [];
@@ -81,6 +113,9 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
         chunk,
       }));
 
+  /* Each page is a page: its own sheet, its own number, one comfortable column
+     of text. The extracted run used to arrive as one undivided block, which is
+     what made it read as a debug dump rather than as the document it is. */
   const pageContent = pages.length > 0 ? (
     pages.map((p, i) => {
       const pageNumber = p.page || i + 1;
@@ -91,79 +126,76 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
         <section
           key={`${pageNumber}-${i}`}
           ref={isSelected ? targetRef : null}
+          className={`p-page${isSelected ? ' is-cited' : ''}`}
           data-source-page={pageNumber}
           data-citation-target={isSelected ? 'true' : undefined}
-          style={{
-            marginBottom: '1rem',
-            padding: isSelected ? '0.5rem' : 0,
-            borderRadius: '6px',
-            outline: isSelected ? '2px solid var(--p-good)' : undefined,
-          }}
         >
-          <strong style={{ display: 'block', marginBottom: '0.25rem', color: 'var(--p-dim)' }}>
-            Page {pageNumber}
-          </strong>
+          <strong className="p-pagenum">Page {pageNumber}</strong>
           {pageChunks.length > 0 ? (
             pageChunks.map((chunk, chunkIndex) => (
-              <p key={chunkIndex} data-source-passage={isSelected ? 'true' : undefined} style={{ margin: '0 0 0.5rem' }}>
+              <p
+                key={chunkIndex}
+                className="p-pagetext"
+                data-source-passage={isSelected ? 'true' : undefined}
+              >
                 {highlightText(chunk.text || '', isSelected ? selectedPassage : '')}
               </p>
             ))
           ) : (
-            <p style={{ margin: 0 }}>{highlightText(text, isSelected ? selectedPassage : '')}</p>
+            <p className="p-pagetext">{highlightText(text, isSelected ? selectedPassage : '')}</p>
           )}
         </section>
       );
     })
   ) : (
-    sourceData.text || 'No content available.'
+    <section className="p-page">
+      <p className="p-pagetext">{sourceData.text || 'No content available.'}</p>
+    </section>
   );
+
+  const reader = open ? (
+    <div className="p-reader" role="dialog" aria-modal="true" aria-label={`Source document: ${title}`}>
+      <header className="p-readerhead">
+        <div className="p-readertitle">
+          <h2>{title}</h2>
+          <p>{extent ? `${extent} · ` : ''}Approved source</p>
+        </div>
+        <button type="button" className="p-btn ghost" onClick={() => setOpen(false)}>Close</button>
+      </header>
+      <div className="p-readerscroll">
+        <div className="p-readerdoc">
+          {citation && selectedPage && (
+            <p className="p-readercited" role="status">
+              Opened citation on page {selectedPage}{selectedPassage ? ' and highlighted the passage' : ''}.
+            </p>
+          )}
+          {pageContent}
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   if (compact) {
     return (
       <section className="s-box">
         <h4 className="s-label">Source</h4>
-        <p style={{ margin: '0 0 0.6rem', fontWeight: 600 }}>{sourceData.title || sourceId}</p>
-        <p className="p-src" style={{ margin: '0 0 0.6rem' }}>
-          {sourceData.pages?.length ? `${sourceData.pages.length} pages` : sourceData.chunks?.length ? `${sourceData.chunks.length} passages` : 'Approved'} · every item in this course cites it.
+        <p style={{ margin: '0 0 0.6rem', fontWeight: 600 }}>{title}</p>
+        <p className="p-src" style={{ margin: '0 0 0.8rem' }}>
+          {extent || 'Approved'} · every item in this course cites it.
         </p>
-        {!open ? (
-          <button className="p-btn ghost" onClick={() => setOpen(true)}>Open document</button>
-        ) : (
-          <>
-            <button className="p-btn ghost" onClick={() => setOpen(false)} style={{ marginBottom: '0.6rem' }}>Close</button>
-            {citation && selectedPage && (
-              <p role="status" style={{ color: 'var(--p-good)', fontSize: '0.82em', margin: '0 0 0.6rem' }}>
-                Opened citation on page {selectedPage}{selectedPassage ? ' and highlighted passage' : ''}.
-              </p>
-            )}
-            <div style={{ maxHeight: '50vh', overflowY: 'auto', fontSize: '0.85em', whiteSpace: 'pre-wrap' }}>
-              {pageContent}
-            </div>
-          </>
-        )}
+        <button type="button" className="p-btn ghost" onClick={() => setOpen(true)}>Open document</button>
+        {reader}
       </section>
     );
   }
 
   return (
     <div className="p-panel" style={{ marginTop: '2rem' }}>
-      <h3>Source Document: {sourceData.title || sourceId}</h3>
-      {!open ? (
-        <button className="p-btn ghost" onClick={() => setOpen(true)}>Open Document</button>
-      ) : (
-        <div>
-          <button className="p-btn ghost" onClick={() => setOpen(false)} style={{ marginBottom: '1rem' }}>Close Document</button>
-          {citation && selectedPage && (
-            <p role="status" style={{ color: 'var(--p-good)', fontSize: '0.85em', margin: '0 0 0.75rem' }}>
-              Opened citation on page {selectedPage}{selectedPassage ? ' and highlighted passage' : ''}.
-            </p>
-          )}
-          <div style={{ background: 'var(--p-surface-2)', padding: '1rem', borderRadius: '8px', maxHeight: '400px', overflowY: 'auto', fontSize: '0.9em', whiteSpace: 'pre-wrap' }}>
-            {pageContent}
-          </div>
-        </div>
-      )}
+      <h3>Source document</h3>
+      <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>{title}</p>
+      <p className="p-src" style={{ margin: '0 0 0.9rem' }}>{extent || 'Approved source'}</p>
+      <button type="button" className="p-btn ghost" onClick={() => setOpen(true)}>Open document</button>
+      {reader}
     </div>
   );
 }

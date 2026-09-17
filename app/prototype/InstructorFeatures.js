@@ -280,10 +280,19 @@ export function InstructorSyllabus({ courseId }) {
         Add one dated row per lesson or exam.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {/* Row fields carry their own labels. A repeated row of bare inputs
+            leaves a screen reader announcing "edit text" twice per row, and
+            leaves anyone re-reading a filled row with no field names at all. */}
         {syllabus.map((item, i) => (
-          <div key={i} style={{ display: 'flex', gap: '0.5rem' }}>
-            <input className="scw-ti" placeholder="Title" value={item.title} onChange={(e) => update(i, 'title', e.target.value)} style={{ flex: 1 }} />
-            <input className="scw-ti" type="date" value={item.due} onChange={(e) => update(i, 'due', e.target.value)} />
+          <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+            <label className="p-field" style={{ flex: 1 }}>
+              <span>Lesson or exam {i + 1}</span>
+              <input className="scw-ti" placeholder="Annex B practical" value={item.title} onChange={(e) => update(i, 'title', e.target.value)} style={{ width: '100%' }} />
+            </label>
+            <label className="p-field">
+              <span>Date</span>
+              <input className="scw-ti" type="date" value={item.due} onChange={(e) => update(i, 'due', e.target.value)} />
+            </label>
           </div>
         ))}
         <button className="p-btn ghost" onClick={() => setSyllabus((rows) => [...rows, { title: '', due: '' }])} style={{ alignSelf: 'flex-start' }}>
@@ -354,12 +363,26 @@ export function InstructorFidelity({ courseId }) {
             Optional advanced tool.{' '}
             Situations a learner might raise, and what doctrine says should come back. Understudy runs each through the tutor and grades the answer against the approved sources.
           </p>
-          <input className="scw-ti" placeholder="Source IDs (comma-separated)" value={sourceIdsStr} onChange={(e) => setSourceIdsStr(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
-          <input className="scw-ti" placeholder="Persona (e.g. a new Lance Corporal on the range)" value={persona} onChange={(e) => setPersona(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
+          <div className="p-fieldset" style={{ marginBottom: '0.75rem' }}>
+            <label className="p-field">
+              <span>Source IDs</span>
+              <input className="scw-ti" placeholder="Comma-separated" value={sourceIdsStr} onChange={(e) => setSourceIdsStr(e.target.value)} style={{ width: '100%' }} />
+            </label>
+            <label className="p-field">
+              <span>Persona</span>
+              <input className="scw-ti" placeholder="A new Lance Corporal on the range" value={persona} onChange={(e) => setPersona(e.target.value)} style={{ width: '100%' }} />
+            </label>
+          </div>
           {casesList.map((c, i) => (
-            <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <input className="scw-ti" placeholder="Situation" value={c.situation} onChange={(e) => updateCase(i, 'situation', e.target.value)} style={{ flex: 1 }} />
-              <input className="scw-ti" placeholder="Expected doctrine" value={c.expect} onChange={(e) => updateCase(i, 'expect', e.target.value)} style={{ flex: 1 }} />
+            <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <label className="p-field" style={{ flex: 1 }}>
+                <span>Situation {i + 1}</span>
+                <input className="scw-ti" value={c.situation} onChange={(e) => updateCase(i, 'situation', e.target.value)} style={{ width: '100%' }} />
+              </label>
+              <label className="p-field" style={{ flex: 1 }}>
+                <span>Expected doctrine</span>
+                <input className="scw-ti" value={c.expect} onChange={(e) => updateCase(i, 'expect', e.target.value)} style={{ width: '100%' }} />
+              </label>
             </div>
           ))}
           <div className="p-btnrow">
@@ -501,14 +524,23 @@ export function InstructorAAR({ courseId }) {
         <p className="p-src" style={{ marginBottom: '0.75rem' }}>
           Record instructor or survey feedback here to build the AAR.
         </p>
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <input className="scw-ti" placeholder="Area (e.g. Annex B practical)" value={critiqueArea} onChange={(e) => setCritiqueArea(e.target.value)} style={{ flex: 1 }} />
-          <select className="scw-ti" value={critiqueKind} onChange={(e) => setCritiqueKind(e.target.value)}>
-            <option value="sustain">Sustain</option>
-            <option value="improve">Improve</option>
-          </select>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'flex-end' }}>
+          <label className="p-field" style={{ flex: 1 }}>
+            <span>Area</span>
+            <input className="scw-ti" placeholder="Annex B practical" value={critiqueArea} onChange={(e) => setCritiqueArea(e.target.value)} style={{ width: '100%' }} />
+          </label>
+          <label className="p-field">
+            <span>Kind</span>
+            <select className="scw-ti" value={critiqueKind} onChange={(e) => setCritiqueKind(e.target.value)}>
+              <option value="sustain">Sustain</option>
+              <option value="improve">Improve</option>
+            </select>
+          </label>
         </div>
-        <textarea className="scw-ti" placeholder="What happened, and what to keep or change" value={critiqueText} onChange={(e) => setCritiqueText(e.target.value)} rows={2} style={{ width: '100%', marginBottom: '0.5rem' }} />
+        <label className="p-field" style={{ marginBottom: '0.75rem' }}>
+          <span>What happened, and what to keep or change</span>
+          <textarea className="scw-ti" value={critiqueText} onChange={(e) => setCritiqueText(e.target.value)} rows={2} style={{ width: '100%' }} />
+        </label>
         <Err msg={err} />
         {saved && <p className="p-src" style={{ color: 'var(--p-good)' }}>Critique recorded.</p>}
         <button className="p-btn ghost" onClick={handleCritiques} disabled={submitCritiques.loading || !critiqueArea || !critiqueText}>
@@ -1010,7 +1042,7 @@ export function RubricsView() {
           <p className="p-src">No approved sources. Add and approve one before generating.</p>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <select className="scw-ti" value={sourceId} onChange={(e) => setSourceId(e.target.value)} disabled={sourcesUnavailable}>
+          <select className="scw-ti" aria-label="Approved source for this rubric" value={sourceId} onChange={(e) => setSourceId(e.target.value)} disabled={sourcesUnavailable}>
             <option value="">Select an approved source…</option>
             {approvedSources.map((s) => (
               <option key={s.id} value={s.id}>{s.title}</option>
@@ -1049,17 +1081,32 @@ export function RubricsView() {
           {suggestionError && (
             <p className="p-src" role="status">{suggestionError} Fill the fields in by hand.</p>
           )}
-          <input className="scw-ti" placeholder="Task code (e.g. 0311-M16-1001)" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} disabled={sourcesUnavailable} />
+          <label className="p-field">
+            <span>Task code</span>
+            <input className="scw-ti" placeholder="0311-M16-1001" aria-label="Task code" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} disabled={sourcesUnavailable} />
+          </label>
           {suggestions[suggestionIndex]?.codeGenerated && taskCode === suggestions[suggestionIndex]?.code && (
             <small style={{ color: 'var(--p-faint)', marginTop: '-0.25rem' }}>
               This source carries no task code, so one was derived from the title. Replace it with
               the real code if the task has one.
             </small>
           )}
-          <input className="scw-ti" placeholder="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} disabled={sourcesUnavailable} />
-          <input className="scw-ti" placeholder="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} disabled={sourcesUnavailable} />
-          <input ref={standardRef} className="scw-ti" placeholder="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
-          <textarea ref={stepsRef} className="scw-ti" placeholder="Performance steps (one per line)" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
+          <label className="p-field">
+            <span>Task title</span>
+            <input className="scw-ti" aria-label="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} disabled={sourcesUnavailable} />
+          </label>
+          <label className="p-field">
+            <span>Condition</span>
+            <input className="scw-ti" aria-label="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} disabled={sourcesUnavailable} />
+          </label>
+          <label className="p-field">
+            <span>Standard</span>
+            <input ref={standardRef} className="scw-ti" aria-label="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
+          </label>
+          <label className="p-field">
+            <span>Performance steps</span>
+            <textarea ref={stepsRef} className="scw-ti" placeholder="One per line" aria-label="Performance steps" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
+          </label>
           <Err msg={err} />
           <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || suggesting || sourcesUnavailable || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
             {generateRubric.loading ? 'Generating…' : 'Generate rubric'}
@@ -1217,10 +1264,22 @@ function ObjectiveRubricForm({ courseId, objective, sourceOptions, existingRubri
           <p className="p-src" role="status">{suggestionError} Fill the fields in by hand.</p>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-          <input className="scw-ti" placeholder="Task code" aria-label="Task code" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} />
-          <input className="scw-ti" placeholder="Condition" aria-label="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} />
-          <input ref={standardRef} className="scw-ti" placeholder="Standard" aria-label="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} />
-          <textarea ref={stepsRef} className="scw-ti" placeholder="Performance steps (one per line)" aria-label="Performance steps" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} />
+          <label className="p-field">
+            <span>Task code</span>
+            <input className="scw-ti" placeholder="0311-M16-1001" aria-label="Task code" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} />
+          </label>
+          <label className="p-field">
+            <span>Condition</span>
+            <input className="scw-ti" aria-label="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} />
+          </label>
+          <label className="p-field">
+            <span>Standard</span>
+            <input ref={standardRef} className="scw-ti" aria-label="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} />
+          </label>
+          <label className="p-field">
+            <span>Performance steps</span>
+            <textarea ref={stepsRef} className="scw-ti" placeholder="One per line" aria-label="Performance steps" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} />
+          </label>
           <Err msg={err} />
           <button
             className="p-btn"
