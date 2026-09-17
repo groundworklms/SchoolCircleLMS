@@ -25,6 +25,7 @@ import {
 import {
   extractedRubricTasks,
   canViewCourse,
+  courseCitations,
   learnerCourseProjection,
   savedMasteryView,
   sourceDocuments,
@@ -1182,6 +1183,54 @@ test('learner course projection exposes only approved plan source and revision',
     revision: 'approved-revision',
   });
   assert.equal(JSON.stringify(approved).includes('answer key'), false);
+});
+
+/* A tutor citation, on its way to a learner.
+ *
+ * Its `source` is the locator "<source record id> p.N" -- the record id is the
+ * authenticated page-opening key (sourcePassages) and a cuid, so the chip that
+ * printed it was showing a learner a primary key. The approved source record is
+ * already resolved here to authorize the citation, so the publication is named
+ * from it in the same step; the locator itself is never rewritten, because it
+ * is the addressing contract the source viewer opens. */
+test('a delivered citation names its publication and keeps its marker and locator', () => {
+  const record = {
+    id: 'cmu4xdph30016s6014fn9n9y8',
+    type: 'SOURCE',
+    status: 'APPROVED',
+    payload: {
+      title: 'AY27_8670_Prerequisite_Coursebook.pdf',
+      sourceId: 'AY27 8670 Prerequisite Coursebook Instructor-Led Moodle',
+      pages: [],
+      chunks: [],
+    },
+  };
+  // `n` is the inline marker the answer carries, not this list's order.
+  const delivered = courseCitations(
+    [
+      { n: 4, id: 'cmu4xdph30016s6014fn9n9y8:chunk:18', text: 'Military goals serve the political outcome.', source: 'cmu4xdph30016s6014fn9n9y8 p.19' },
+      // No approved, selected source owns this one: it cannot be opened, so it
+      // cannot support a student-facing answer.
+      { n: 5, id: 'other:chunk:1', text: 'Elsewhere.', source: 'cmz9elsewhere0001 p.2' },
+    ],
+    [record],
+  );
+  assert.deepEqual(delivered, [{
+    n: 4,
+    id: 'cmu4xdph30016s6014fn9n9y8:chunk:18',
+    text: 'Military goals serve the political outcome.',
+    source: 'cmu4xdph30016s6014fn9n9y8 p.19',
+    sourceId: 'cmu4xdph30016s6014fn9n9y8',
+    pubId: 'AY27 8670 Prerequisite Coursebook Instructor-Led Moodle',
+  }]);
+
+  // `sourceId` is the publication label the Sources screen shows; a source
+  // recorded under no label at all is still named by its title.
+  const titled = courseCitations(
+    [{ n: 1, source: 'cmu4xdph30016s6014fn9n9y8 p.19' }],
+    [{ ...record, payload: { ...record.payload, sourceId: '' } }],
+  );
+  assert.equal(titled[0].pubId, 'AY27_8670_Prerequisite_Coursebook.pdf');
 });
 
 test('student tutor course visibility matches the authenticated course-view convention', async () => {

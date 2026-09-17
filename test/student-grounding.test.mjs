@@ -55,7 +55,7 @@ test('grounds the complete candidate through Anchor, strict Sourcerer, and Under
       },
     );
     assert.equal(result.refused, false);
-    assert.deepEqual(result.citations, [passages[0]]);
+    assert.deepEqual(result.citations, [{ n: 1, ...passages[0] }]);
     assert.equal(result.faithfulness.faithful, true);
     assert.equal(result.stages.sourcerer.faithfulness.faithful, true);
     assert.equal(result.stages.understudy.status, 'accepted');
@@ -571,10 +571,50 @@ test('accepts a passage cited in several sentences without inflating the citatio
     assert.equal(result.answer, answer);
     // One citation per distinct cited passage, in `used` order -- a repeated
     // marker must never add a second copy of the same evidence.
-    assert.deepEqual(result.citations, [passages[0], passages[1]]);
+    assert.deepEqual(result.citations, [{ n: 1, ...passages[0] }, { n: 2, ...passages[1] }]);
     assert.equal(result.stages.understudy.status, 'accepted');
   });
   assert.deepEqual(judged, [answer]);
+});
+
+// The inline markers are 1-based into the RETRIEVED passages, while the
+// citation list is `used` order -- two numberings that agree only when `used`
+// happens to be 1..n. An answer resting on the second passage alone arrived
+// marked [2] beside a citation renumbered [1], and a real answer marked [1][4]
+// showed citations [1][2]: a marker pointing at nothing the learner can open.
+// Following a citation is the point of this path, so the number travels with
+// the passage and no consumer re-derives one from list position.
+test('numbers every citation with the marker its sentences carry', async () => {
+  const answer = [
+    'The systems check follows launch. [2]',
+    'That systems check is the one that follows launch. [2]',
+  ].join(' ');
+  await withDoctrine(async () => {
+    const result = await groundedStudentAnswer(
+      { question: 'What happens before launch?', passages },
+      {
+        fetch: anchor({ abstained: false, passages, contract: 'schoolcircle-grounding-v1' }),
+        chat: async (system) => {
+          if (system.includes('strict fact-checker')) {
+            return { claims: [{ claim: 'The systems check follows launch.', supported: true }], unsupported: [] };
+          }
+          if (system.includes('strict doctrine examiner')) {
+            return { verdict: 'in-doctrine', conforms: true };
+          }
+          return { refused: false, answer, used: [2] };
+        },
+      },
+    );
+    assert.equal(result.refused, false);
+    assert.equal(result.answer, answer);
+    // One citation, for the one passage cited, labelled [2] -- the marker both
+    // sentences carry. Its position in this list is not its number.
+    assert.deepEqual(result.citations, [{ n: 2, ...passages[1] }]);
+    // Stated as the guarantee itself: every marker in the delivered prose has a
+    // citation of that number, and every citation's number is a marker.
+    const markers = new Set([...result.answer.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1])));
+    assert.deepEqual(new Set(result.citations.map((citation) => citation.n)), markers);
+  });
 });
 
 test('still refuses every answer whose markers and used set disagree', async () => {

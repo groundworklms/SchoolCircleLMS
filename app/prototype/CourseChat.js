@@ -7,7 +7,7 @@ import { useApiQuery } from '../_learning/useLearning';
 import { unlockedLessonIds } from './Lessons';
 import { usePrefs } from './prefs';
 import { SourceViewer } from './SourceViewer';
-import { publicationName } from '../_course/provenance';
+import { pageOf, provenanceOf } from '../_course/provenance';
 
 /* The one chat. It answers only within a persisted course's server-selected,
    approved source set. The API derives both source selection and prior history
@@ -60,12 +60,18 @@ function findLockedLesson(lockedLessons, question) {
 }
 
 /* Anchor returns { n, citation, pub_id, page_printed }; Sourcerer returns
-   { label, source, page }. One shape for the renderer. */
+   { label, source, page }. One shape for the renderer.
+ *
+ * The grounded tutor supplies both fields deliberately: `n` is the inline
+ * marker the answer carries (lib/student-grounding.js `citedPassages`), so the
+ * chip is never renumbered by its position here, and `pubId` is the publication
+ * the server resolved from the approved source record. Both lead the fallback
+ * chains -- a provider that sends neither keeps exactly its old rendering. */
 export function normaliseCitation(c, i) {
   const citation = {
     n: c.n ?? i + 1,
     citation: c.citation ?? c.label ?? c.source ?? 'source',
-    pub_id: c.pub_id ?? c.source ?? c.sourceId ?? '',
+    pub_id: c.pubId ?? c.pub_id ?? c.source ?? c.sourceId ?? '',
     page: c.page_printed ?? c.page ?? null,
   };
   const sourceId = c.sourceId ?? c.source_id;
@@ -81,6 +87,28 @@ export function normaliseCitation(c, i) {
     Object.defineProperty(citation, 'source', { value: c.source, enumerable: false });
   }
   return citation;
+}
+
+/**
+ * The line a learner reads on a citation chip.
+ *
+ * Built with the shared provenance helper, from the same resolved shape the
+ * course reader hands it, so a chip reads exactly like the lesson line above
+ * it: publication name, then page. A tutor citation's locator is "<source
+ * record id> p.19" and the record id is a cuid — the authenticated
+ * page-opening key, never the citation itself — so the publication name comes
+ * from the server (`pubId`, lib/learning/core.js `courseCitations`) and the
+ * page is read back off the locator, as CourseReader does.
+ *
+ * `pub_id` falls back to the locator for older provider shapes that carry no
+ * publication at all. That is not a name, and passing it through would print
+ * the locator and then its page again, so it is dropped: provenanceOf then
+ * prints the locator alone, which is what those shapes already showed.
+ */
+export function citationProvenance(citation) {
+  const locator = citation?.citation || '';
+  const pubId = citation?.pub_id === locator ? '' : citation?.pub_id;
+  return provenanceOf({ citation: locator, pubId, page: citation?.page ?? pageOf(locator) });
 }
 
 function citationSourceText(citation) {
@@ -283,20 +311,24 @@ function SignedInCourseChat({ course, view }) {
                   </div>
                   {m.citations?.length > 0 && (
                     <div className="s-chat-cites">
-                      {m.citations.map((c) => (
-                         <button
-                           key={c.n}
-                           type="button"
-                           className="s-chat-cite"
-                           title={c.citation}
-                           onClick={() => setSelectedCitation(c)}
-                         >
-                          {/* pub_id is the publication; a file-backed source
-                              records it as a filename, which is a path, not a
-                              citation. The locator stays on `title`. */}
-                          <b>[{c.n}]</b> {publicationName(c.pub_id) || c.citation}{c.page ? ` · p.${c.page}` : ''}
-                        </button>
-                      ))}
+                      {m.citations.map((c) => {
+                        const provenance = citationProvenance(c);
+                        return (
+                          <button
+                            key={c.n}
+                            type="button"
+                            className="s-chat-cite"
+                            title={provenance?.locator || c.citation}
+                            onClick={() => setSelectedCitation(c)}
+                          >
+                            {/* [n] is the marker the answer carries, so a chip
+                                and the sentence that cites it always name the
+                                same passage. The exact locator stays on
+                                `title`: it is what opens the page. */}
+                            <b>[{c.n}]</b> {provenance?.text || c.citation}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
