@@ -1,0 +1,478 @@
+.focused-dashboard-content {
+  --f-bg: #f8f9fa;
+  --f-surface: #ffffff;
+  --f-border: #e9ecef;
+  --f-border-hover: #dee2e6;
+  --f-text: #212529;
+  --f-dim: #495057;
+  --f-faint: #868e96;
+  --f-rail-hover: #e9ecef;
+  --f-accent: #a31d2e;
+  --f-accent-tint: #fcf1f2;
+  --f-critical: #c92a2a;
+  --f-critical-tint: #fff5f5;
+  --f-good: #2b8a3e;
+  --f-warning: #e67700;
+  --f-radius: 8px;
+  --f-radius-lg: 12px;
+  --f-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --f-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --f-mono: "SF Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+  color: var(--f-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color-scheme: light;
+  margin: -0.6rem -2.6rem -3.5rem;
+  min-height: 100%;
+}
+
+html[data-theme="dark"] .focused-dashboard-content {
+  --f-bg: #121212;
+  --f-surface: #1e1e1e;
+  --f-border: #333333;
+  --f-border-hover: #444444;
+  --f-text: #f0f0f0;
+  --f-dim: #a0a0a0;
+  --f-faint: #666666;
+  --f-accent: #e0334f;
+  --f-accent-tint: rgba(224, 51, 79, 0.12);
+  --f-critical: #ff7b72;
+  --f-critical-tint: rgba(255, 123, 114, 0.12);
+  --f-good: #34d058;
+  --f-warning: #e3b341;
+  --f-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --f-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) .focused-dashboard-content {
+    --f-bg: #121212;
+    --f-surface: #1e1e1e;
+    --f-border: #333333;
+    --f-border-hover: #444444;
+    --f-text: #f0f0f0;
+    --f-dim: #a0a0a0;
+    --f-faint: #666666;
+    --f-accent: #e0334f;
+    --f-accent-tint: rgba(224, 51, 79, 0.12);
+    --f-critical: #ff7b72;
+    --f-critical-tint: rgba(255, 123, 114, 0.12);
+    --f-good: #34d058;
+    --f-warning: #e3b341;
+    --f-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --f-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+}
+
+.focused-dashboard-content button:focus-visible {
+  outline: 2px solid var(--f-accent);
+  outline-offset: 2px;
+}
+
+.focused-dashboard-content .f-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--f-border);
+  padding: 1rem 3rem;
+  background: var(--f-surface);
+}
+
+.focused-dashboard-content .f-header-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.focused-dashboard-content .f-header-date {
+  color: var(--f-faint);
+  font-size: 0.85rem;
+}
+
+.focused-dashboard-content .f-main {
+  background: var(--f-bg);
+  padding: 2rem 3rem 4rem;
+}
+
+.focused-dashboard-content .f-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.focused-dashboard-content .f-section-title {
+  color: var(--f-faint);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+}
+
+.focused-dashboard-content .f-empty,
+.focused-dashboard-content .f-status {
+  background: var(--f-surface);
+  border: 1px dashed var(--f-border);
+  border-radius: var(--f-radius-lg);
+  color: var(--f-faint);
+  margin: 0;
+  padding: 1.25rem;
+}
+
+.focused-dashboard-content .f-status {
+  border-style: solid;
+}
+
+.focused-dashboard-content .f-status-error {
+  background: var(--f-critical-tint);
+  border-color: var(--f-critical-tint);
+  color: var(--f-critical);
+}
+
+.focused-dashboard-content .f-task-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.focused-dashboard-content .f-task-card {
+  background: var(--f-surface);
+  border: 1px solid var(--f-border);
+  border-radius: var(--f-radius-lg);
+  box-shadow: var(--f-shadow);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  font: inherit;
+  gap: 0.5rem;
+  padding: 1.25rem;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.focused-dashboard-content .f-task-card:hover {
+  border-color: var(--f-border-hover);
+  box-shadow: var(--f-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.focused-dashboard-content .f-task-card.f-late {
+  background: var(--f-critical-tint);
+  border-color: var(--f-critical-tint);
+}
+
+.focused-dashboard-content .f-task-course {
+  color: var(--f-faint);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.focused-dashboard-content .f-task-card.f-late .f-task-course,
+.focused-dashboard-content .f-task-card.f-late .f-task-meta strong {
+  color: var(--f-critical);
+}
+
+.focused-dashboard-content .f-task-title {
+  color: var(--f-text);
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.focused-dashboard-content .f-task-meta {
+  align-items: center;
+  color: var(--f-dim);
+  display: flex;
+  font-size: 0.8rem;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.focused-dashboard-content .f-task-meta strong {
+  color: var(--f-text);
+  font-weight: 500;
+}
+
+.focused-dashboard-content .f-task-exam {
+  background: var(--f-accent-tint);
+  border-radius: 4px;
+  color: var(--f-accent);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.4rem;
+}
+
+.focused-dashboard-content .f-course-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.focused-dashboard-content .f-course-row {
+  align-items: center;
+  background: var(--f-surface);
+  border: 1px solid var(--f-border);
+  border-radius: var(--f-radius);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.focused-dashboard-content .f-course-row:hover {
+  background: var(--f-rail-hover);
+  border-color: var(--f-border-hover);
+}
+
+.focused-dashboard-content .f-course-info {
+  align-items: baseline;
+  display: flex;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.focused-dashboard-content .f-course-id {
+  background: var(--f-bg);
+  border-radius: 4px;
+  color: var(--f-dim);
+  flex: none;
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.focused-dashboard-content .f-course-name {
+  color: var(--f-text);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.focused-dashboard-content .f-course-prog {
+  align-items: center;
+  display: flex;
+  flex: none;
+  gap: 1rem;
+}
+
+.focused-dashboard-content .f-prog-bar {
+  background: var(--f-border);
+  border-radius: 2px;
+  height: 4px;
+  overflow: hidden;
+  width: 100px;
+}
+
+.focused-dashboard-content .f-prog-fill {
+  background: var(--f-dim);
+  border-radius: 2px;
+  height: 100%;
+}
+
+.focused-dashboard-content .f-prog-text {
+  color: var(--f-dim);
+  font-size: 0.8rem;
+  min-width: 4rem;
+  text-align: right;
+}
+
+.focused-dashboard-content .f-course-sections {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.focused-dashboard-content .f-demo-courses {
+  margin-top: 1.5rem;
+}
+
+.focused-dashboard-content .f-demo-courses .f-section-title {
+  cursor: pointer;
+  list-style: none;
+  margin-bottom: 1rem;
+}
+
+.focused-dashboard-content .f-demo-courses .f-section-title::-webkit-details-marker {
+  display: none;
+}
+
+.focused-dashboard-content .f-demo-courses .f-section-title::before {
+  color: var(--f-dim);
+  content: '▸';
+  font-size: 0.8em;
+  margin-right: 0.5rem;
+}
+
+.focused-dashboard-content .f-demo-courses[open] .f-section-title::before {
+  content: '▾';
+}
+
+.focused-dashboard-content .f-disclosure-wrapper {
+  background: var(--f-surface);
+  border: 1px solid var(--f-border);
+  border-radius: var(--f-radius-lg);
+  box-shadow: var(--f-shadow);
+  overflow: hidden;
+}
+
+.focused-dashboard-content .f-disclosure-btn {
+  align-items: center;
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  justify-content: space-between;
+  padding: 1.15rem 1.25rem;
+  text-align: left;
+  transition: background 0.2s;
+  width: 100%;
+}
+
+.focused-dashboard-content .f-disclosure-btn:hover {
+  background: var(--f-bg);
+}
+
+.focused-dashboard-content .f-disclosure-btn.open {
+  border-bottom: 1px solid var(--f-border);
+}
+
+.focused-dashboard-content .f-disclosure-title {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+}
+
+.focused-dashboard-content .f-disclosure-title h2 {
+  color: var(--f-text);
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.focused-dashboard-content .f-badge {
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+}
+
+.focused-dashboard-content .f-badge.critical {
+  background: var(--f-critical-tint);
+  color: var(--f-critical);
+}
+
+.focused-dashboard-content .f-disclosure-icon {
+  color: var(--f-faint);
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.focused-dashboard-content .f-disclosure-content {
+  padding: 0.5rem 1.25rem 1rem;
+}
+
+.focused-dashboard-content .f-disclosure-note {
+  color: var(--f-dim);
+  font-size: 0.84rem;
+  line-height: 1.45;
+  margin: 0.35rem 0 0.5rem;
+}
+
+.focused-dashboard-content .f-req-row {
+  align-items: center;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--f-border);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 0.9rem;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  text-align: left;
+  width: 100%;
+}
+
+.focused-dashboard-content .f-req-row:hover {
+  color: var(--f-accent);
+}
+
+.focused-dashboard-content .f-req-row:last-child {
+  border-bottom: none;
+}
+
+.focused-dashboard-content .f-req-dot {
+  border-radius: 50%;
+  flex: none;
+  height: 6px;
+  width: 6px;
+}
+
+.focused-dashboard-content .f-req-name {
+  color: var(--f-text);
+  flex: 1;
+}
+
+.focused-dashboard-content .f-req-state {
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+@media (max-width: 700px) {
+  .focused-dashboard-content {
+    margin-left: -1.2rem;
+    margin-right: -1.2rem;
+  }
+
+  .focused-dashboard-content .f-main {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .focused-dashboard-content .f-course-info {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .focused-dashboard-content .f-course-prog {
+    display: none;
+  }
+}
+
+@media (min-width: 701px) and (max-width: 900px) {
+  .focused-dashboard-content {
+    margin-left: -1.2rem;
+    margin-right: -1.2rem;
+  }
+
+  .focused-dashboard-content .f-header {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  .focused-dashboard-content .f-main {
+    padding: 1.5rem 1.5rem 3rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focused-dashboard-content *,
+  .focused-dashboard-content *::before,
+  .focused-dashboard-content *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition: none !important;
+  }
+}

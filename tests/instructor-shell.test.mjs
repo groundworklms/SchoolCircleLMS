@@ -57,6 +57,16 @@ function loadInstructorShell({ courses = [] } = {}) {
     RailButton: ({ label, onClick }) => React.createElement('button', { onClick }, label),
     UserMenu: () => React.createElement('div', null, 'user-menu'),
   };
+  const sampleCourses = {
+    TC32209: {
+      id: 'TC32209',
+      name: 'Rifle Marksmanship — TC 3-22.9',
+    },
+    M092721: {
+      id: 'M092721',
+      name: 'Basic Electronics Course',
+    },
+  };
   const sandbox = {
     module,
     exports: module.exports,
@@ -65,6 +75,28 @@ function loadInstructorShell({ courses = [] } = {}) {
       if (request === 'react') return React;
       if (request === './student.css') return {};
       if (request === './shell') return shell;
+      if (request === './data') return { COURSES: sampleCourses };
+      if (request === './InstructorCoursesMenu') {
+        return function MockInstructorCoursesMenu({ label = 'Courses', courses = [], onOpenLibrary }) {
+          return React.createElement(
+            'div',
+            null,
+            label,
+            React.createElement('button', { onClick: onOpenLibrary }, 'Course library'),
+            courses.map((course) => React.createElement('div', { key: course.id }, course.name)),
+          );
+        };
+      }
+      if (request === './instructorCourseTreeState.mjs') {
+        return {
+          initialExpandedCourseIds: (id) => (id ? { [id]: true } : {}),
+          toggleExpandedCourse: (expanded, id) => ({ ...expanded, [id]: !expanded[id] }),
+          expandCourse: (expanded, id) => ({ ...expanded, [id]: true }),
+          expandOnCourseSelection: (expanded, previous, selected) => (
+            selected && selected !== previous ? { ...expanded, [selected]: true } : expanded
+          ),
+        };
+      }
       if (request === './learning') return learning;
       if (request === './Settings') return { InstructorSettings: component('settings') };
       if (request === './LiveControl') return component('live-control');
@@ -123,7 +155,7 @@ test('authoritative course refresh replaces the selected creation fallback', () 
     status: 'PENDING',
     sourceIds: ['source-1'],
   };
-  const fallback = courseListWithSelectedFallback([], created);
+  const fallback = courseListWithSelectedFallback([], created, { pendingRefresh: true });
   assert.equal(fallback.length, 1);
   assert.equal(fallback[0].status, 'PENDING');
   assert.equal(courseHeaderStatus(fallback[0]), 'Needs review');
@@ -146,10 +178,39 @@ test('authoritative course refresh replaces the selected creation fallback', () 
   assert.equal(courseHeaderStatus({ status: 'DRAFT' }), 'Needs review');
 });
 
-/* The stubbed bridge deliberately still offers a demoCourses collection. The
-   instructor rail must ignore it: an instructor sees only the real courses they
-   own, and the grouped library rail is what replaces the old sample rail. */
-test('the instructor rail exposes no sample or demo courses', () => {
+test('a deferred refresh bounds the optimistic row and preserves an authoritative response', () => {
+  const { courseListWithSelectedFallback } = loadInstructorShell();
+  const created = {
+    id: 'course-2',
+    title: 'Eventually persisted',
+    status: 'PENDING',
+  };
+
+  const duringRefresh = courseListWithSelectedFallback([], created, { pendingRefresh: true });
+  assert.equal(duringRefresh.length, 1);
+
+  // A successful list response that omits the selected record is authoritative
+  // deletion/not-found, not permission to keep rendering stale controls.
+  const afterDeletedRefresh = courseListWithSelectedFallback([], created, { pendingRefresh: false });
+  assert.deepEqual(afterDeletedRefresh, []);
+
+  const authoritative = {
+    id: created.id,
+    name: created.title,
+    status: 'APPROVED',
+    record: { id: created.id, status: 'APPROVED' },
+  };
+  const afterPersistedRefresh = courseListWithSelectedFallback([], created, {
+    pendingRefresh: false,
+    authoritativeCourse: authoritative,
+  });
+  assert.equal(afterPersistedRefresh.length, 1);
+  assert.equal(afterPersistedRefresh[0].id, authoritative.id);
+  assert.equal(afterPersistedRefresh[0].status, 'APPROVED');
+  assert.equal(afterPersistedRefresh[0].record.status, 'APPROVED');
+});
+
+test('the instructor rail nests sample courses under Courses and keeps the library route', () => {
   const { default: InstructorShell } = loadInstructorShell();
   const markup = renderToStaticMarkup(React.createElement(InstructorShell, {
     nav: {
@@ -158,11 +219,11 @@ test('the instructor rail exposes no sample or demo courses', () => {
       courseId: null,
     },
   }));
-  assert.doesNotMatch(markup, />Demo</);
-  assert.doesNotMatch(markup, />Demo courses</);
   assert.doesNotMatch(markup, /Sample courses/);
-  assert.doesNotMatch(markup, /Rifle Marksmanship/);
-  assert.match(markup, />Courses</);
+  assert.match(markup, /Courses/);
+  assert.match(markup, /Course library/);
+  assert.match(markup, /Rifle Marksmanship/);
+  assert.match(markup, /Basic Electronics Course/);
   assert.match(markup, />Sources</);
   assert.match(markup, />Rubrics</);
   assert.match(markup, />Settings</);
@@ -170,13 +231,32 @@ test('the instructor rail exposes no sample or demo courses', () => {
   assert.doesNotMatch(markup, />Planning board</);
 });
 
-test('an unresolved instructor course id is an explicit not-found', () => {
+test('an unknown instructor course id is an explicit not-found', () => {
+  const { default: InstructorShell } = loadInstructorShell();
+  const markup = renderToStaticMarkup(React.createElement(InstructorShell, {
+    nav: { area: 'course', courseId: 'not-a-course', view: 'builder' },
+  }));
+  assert.match(markup, /Course not found/);
+});
+
+test('sample courses use instructor destinations without authoring records', () => {
   const { default: InstructorShell } = loadInstructorShell();
   const markup = renderToStaticMarkup(React.createElement(InstructorShell, {
     nav: { area: 'course', courseId: 'TC32209', view: 'builder' },
   }));
-  assert.match(markup, /Course not found/);
-  assert.doesNotMatch(markup, /Rifle Marksmanship/);
+  assert.match(markup, /Rifle Marksmanship/);
+  assert.match(markup, /sample course is view-only/i);
+  assert.doesNotMatch(markup, /Course not found/);
+});
+
+test('sample analytics destination stays unavailable instead of calling the live tool', () => {
+  const { default: InstructorShell } = loadInstructorShell();
+  const markup = renderToStaticMarkup(React.createElement(InstructorShell, {
+    nav: { area: 'course', courseId: 'TC32209', view: 'mastery' },
+  }));
+  assert.match(markup, /Sample course tool unavailable/);
+  assert.match(markup, /does not connect to live analytics or authoring services/);
+  assert.doesNotMatch(markup, /<div>mastery<\/div>/);
 });
 
 test('service-backed courses retain the roster rail entry and roster deep link', () => {
