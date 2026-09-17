@@ -189,6 +189,7 @@ const LESSON_STATE = {
   drafted: ['Built', 'var(--p-good)'],
   failed: ['Failed', 'var(--p-critical)'],
   ungrounded: ['No source covers it', 'var(--p-warning)'],
+  skipped: ['Exam · not generated', 'var(--p-faint)'],
 };
 
 export function CoursePlanner({ planId, onBack, onOpenCourse }) {
@@ -257,7 +258,10 @@ export function CoursePlanner({ planId, onBack, onOpenCourse }) {
   };
 
   const reoutline = async () => {
-    if (typeof window !== 'undefined' && !window.confirm('Outline again? The current annexes and lessons are replaced.')) return;
+    const warning = plan.courseId
+      ? 'Outline again? The annexes and lessons are replaced and building starts over in a new draft. The draft built so far stays in Courses until you remove it.'
+      : 'Outline again? The current annexes and lessons are replaced.';
+    if (typeof window !== 'undefined' && !window.confirm(warning)) return;
     try {
       setPlan(await post(`/plans/${planId}/outline`, { again: true }));
       note('Outlined again');
@@ -271,7 +275,7 @@ export function CoursePlanner({ planId, onBack, onOpenCourse }) {
 
   const stageIndex = STAGE_ORDER.indexOf(plan.status);
   const total = plan.lessons || 0;
-  const done = (plan.counts.drafted || 0) + (plan.counts.failed || 0);
+  const done = (plan.counts.drafted || 0) + (plan.counts.failed || 0) + (plan.counts.skipped || 0);
   const canRun = plan.status !== 'complete';
 
   return (
@@ -296,14 +300,14 @@ export function CoursePlanner({ planId, onBack, onOpenCourse }) {
         {canRun && !running && <button type="button" className="p-btn" onClick={run}>{plan.status === 'survey' && plan.surveyed === 0 ? 'Start the plan' : 'Continue'}</button>}
         {running && <button type="button" className="p-btn ghost" onClick={pause}>Pause after this step</button>}
         {plan.courseId && <button type="button" className="p-btn ghost" onClick={() => onOpenCourse(plan.courseId)}>Open the course draft{plan.status !== 'complete' ? ' so far' : ''}</button>}
-        {stageIndex >= 2 && !plan.courseId && !running && <button type="button" className="p-btn ghost" onClick={reoutline}>Outline again</button>}
+        {stageIndex >= 2 && !running && <button type="button" className="p-btn ghost" onClick={reoutline}>Outline again{plan.courseId ? ' (new draft)' : ''}</button>}
       </div>
 
       <ol className="p-plan" style={{ marginBottom: '1.25rem' }}>
         {STAGE_ORDER.slice(0, 4).map((stage, i) => {
           const state = i < stageIndex ? 'done' : i === stageIndex ? (running ? 'running' : 'current') : 'waiting';
           const detail = stage === 'survey' ? `${plan.surveyed}/${plan.sourceIds.length}`
-            : stage === 'outline' ? (plan.lessons ? `${plan.annexes.length} annexes · ${plan.lessons} lessons` : '')
+            : stage === 'outline' ? (plan.lessons ? `${plan.annexes.length} annexes · ${plan.lessons} lessons${plan.outlinedFrom === 'lesson-codes' ? ' · from the lesson codes' : ''}` : '')
             : stage === 'map' ? (stageIndex > 2 ? `${plan.counts.ungrounded || 0} ungrounded` : '')
             : stage === 'build' ? (total ? `${done}/${total}` : '') : '';
           return (
@@ -349,11 +353,11 @@ export function CoursePlanner({ planId, onBack, onOpenCourse }) {
                       <li key={l.id}>
                         <div className="s-lesson" style={{ cursor: 'default' }}>
                           <span className="s-lesson-mark">{l.status === 'drafted' ? '✓' : l.status === 'failed' || l.status === 'ungrounded' ? '!' : ''}</span>
-                          <code>{l.id}</code>
+                          <code>{l.code || l.id}</code>
                           <span className="s-lesson-title">
                             {l.title}
                             <div className="p-src" style={{ margin: '0.15rem 0 0', fontSize: '0.85em' }}>
-                              {l.objective}
+                              {l.objective}{l.objectiveFallback ? ' (objective not written by the model; the title stands in)' : ''}
                               {l.sourceIds?.length ? ` · ${l.sourceIds.length} source${l.sourceIds.length === 1 ? '' : 's'}, ${l.passages || 0} passages` : ''}
                               {l.reason ? ` · ${l.reason}` : ''}
                             </div>
