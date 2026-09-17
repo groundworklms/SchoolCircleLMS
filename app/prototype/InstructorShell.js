@@ -14,6 +14,8 @@ import { CourseRubrics, InstructorFidelity, RubricsView } from './InstructorFeat
 import { courseFromRecord, useLearningCourses } from './learning';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
+import { useWalkthrough } from './walkthrough-context';
+import { instructorTourAnchor } from './walkthrough-anchors';
 
 /* Instructor shell. Same rail and content column as the student side; what
    changes is who is signed in and what is in the rail.
@@ -128,9 +130,9 @@ function CourseUnavailable({ courseId, title = 'Course unavailable', children })
     </StatusMessage>
   );
 }
-
 export default function InstructorShell({ nav, onSwitchRole, role: profileRole }) {
   const { ready: authReady, profile, signOut, signOutError } = useAuth();
+  const tour = useWalkthrough();
   const {
     authenticated,
     name: displayName,
@@ -345,6 +347,11 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
           inst
           items={[
             { label: 'Settings', hint: 'Account settings', onClick: () => goLibrary('settings') },
+            /* Omitted when the tour cannot run for this account, rather than
+               offered as something that would dead-end half way through. */
+            ...(tour.start && !tour.running
+              ? [{ label: 'Guided tour', hint: `Walk the whole product · ${tour.scriptLabel}`, onClick: tour.start }]
+              : []),
             ...(onSwitchRole ? [{ label: 'View as student', onClick: onSwitchRole }, 'divider'] : ['divider']),
             { label: 'Sign out', danger: true, onClick: handleSignOut },
           ]}
@@ -410,7 +417,7 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
       </nav>
 
       <div className="s-content">
-        <main className="s-main">
+        <main className="s-main" data-tour={instructorTourAnchor(nav)}>
           <div className="s-container">
             {/* The breadcrumb row is gone; the course status it carried is not.
                 courseHeaderStatus is used rather than a raw status string so a

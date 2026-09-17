@@ -9,6 +9,7 @@ import StudentShell from './StudentShell';
 import InstructorShell from './InstructorShell';
 import { useAuth } from '../_auth/AuthProvider';
 import PrototypeNotFound from './NotFound';
+import WalkthroughProvider from './Walkthrough';
 
 /* Entry. The URL decides the role (see nav.js); each role has a shell built
    from the same rail and content column, so switching roles changes what is
@@ -103,8 +104,15 @@ export default function Prototype() {
   // is a learner's.
   const inStudentView = nav.role === 'student' && ready && Boolean(profile) && canTeach;
 
+  /* The guided tour crosses from instructor to student and back, so it is only
+     offered to an account that can do both -- otherwise half the script would
+     dead-end on a redirect. The provider sits above both shells so its state
+     survives the role switch. */
+  const canTour = canTeach && canLearn;
+
   return (
     <div className="p-root">
+      <WalkthroughProvider nav={nav} enabled={canTour}>
       {nav.role === 'student' ? (
         <StudentShell
           nav={nav}
@@ -130,6 +138,7 @@ export default function Prototype() {
           </button>
         </div>
       )}
+      </WalkthroughProvider>
     </div>
   );
 }
