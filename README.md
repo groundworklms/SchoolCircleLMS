@@ -8,7 +8,7 @@
 
 Every answer cites the manual — or the system refuses. Nothing unreviewed reaches a student.
 
-**[▶ Live demo](https://groundworklms.github.io/SchoolCircleLMS)** · [Spec stack](docs/README.md) · [Gameday kit](docs/gameday/README.md)
+**[▶ Live app](https://schoolcircle.tannerwhite.net)** · [Spec stack](docs/README.md) · [Gameday kit](docs/gameday/README.md)
 
 </div>
 
@@ -34,12 +34,14 @@ product.
 | `docs/gameday/` | The operator kit — Range Card, Cold Bore plan, team plan, boot prompts. |
 | `app/`, `lib/`, `prisma/` | The Next.js 15 application (the real product). |
 
-## The live demo
+## The live app
 
-The interactive showcase in `web/` deploys automatically to
-**https://groundworklms.github.io/SchoolCircleLMS** on every push to `main`. It's an illustrative
-prototype of the full instructor + student experience — the spec stack is how it becomes the real
-thing.
+**https://schoolcircle.tannerwhite.net** — the real product, on Firebase App Hosting, deployed from
+`main`. Grounded generation, human approval, cited delivery: what it shows, it can back.
+
+`web/` holds an illustrative static prototype of screens that do not exist yet. It is a design
+reference, not a deliverable, and it is no longer published anywhere — a showcase that promises
+surfaces the product cannot deliver is worse than no showcase. Demo the live app.
 
 ## Run the app locally
 
