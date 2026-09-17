@@ -66,9 +66,8 @@ export default function Prototype() {
     }
   }, [ready, profile, nav.role, nav.area, canTeach, canUseLocation, nav.go]);
 
-  // Keep the old click-through demo available when Firebase is not configured,
-  // but never render a stale role shell while an authenticated downgrade is
-  // being redirected.
+  // Never render a stale role shell while an authenticated downgrade is
+  // being redirected. Signed-out student views contain no sample learner data.
   if (ready && profile && nav.area !== 'not-found' && !canUseLocation) {
     return <div className="scl-fullcenter">Updating your access…</div>;
   }

@@ -12,19 +12,20 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-test('Courses omits the agenda and retired manual library while keeping current course sections', () => {
+test('student courses are generated-only and keep loading/error/empty states', () => {
   const source = fs.readFileSync(path.join(workspace, 'app/prototype/StudentShell.js'), 'utf8');
-  const courses = source.slice(source.indexOf('function Courses('), source.indexOf('/* ---------- course view'));
-  assert.doesNotMatch(courses, /<Agenda|Demo schedule|className="s-two"/);
-  for (const section of ['Available courses', 'Demo courses and training (not enrolled)', 'Required training', 'Completed']) {
-    assert.ok(courses.includes(section), `preserves ${section}`);
+  assert.doesNotMatch(source, /from ['"]\.\/data['"]|from ['"]\.\/agenda['"]/);
+  assert.doesNotMatch(source, /Demo samples|demo course|COURSES|TODO|UPCOMING|<Agenda/);
+  assert.doesNotMatch(source, /import\s+(?:StudentPath|StudyMaterials|LiveSession|MyProgress|Assignments|Lessons|Grades|Discussions)/);
+  for (const section of ['Available courses', 'Loading courses', 'Unable to load courses', 'Nothing published to you yet']) {
+    assert.ok(source.includes(section), `preserves ${section}`);
   }
-  assert.doesNotMatch(courses, /Published courses|LibraryList/);
-  assert.match(courses, /onOpen\(c\.id, 'home'\)/);
-  // One, not two: the focused dashboard replaced the old Dashboard, and it
-  // reads the same TODO/UPCOMING agenda data through focusedAgendaItems rather
-  // than rendering the <Agenda> component. Course home still renders it.
-  assert.equal((source.match(/<Agenda /g) || []).length, 1, 'the course-home agenda remains');
+  assert.match(source, /courses\.map/);
+  assert.match(source, /RealCourseHome/);
+  assert.match(source, /CourseUnavailable/);
+  assert.match(source, /UnsupportedCourseTool/);
+  assert.match(source, /FocusedDashboard/);
+  assert.match(source, /CoursesMenu/);
 });
 
 test('shared instructor shell omits breadcrumbs while retaining course status and navigation', () => {
@@ -1966,11 +1967,72 @@ test('a missed check never names a key the result does not carry', () => {
 
   // A result that does carry the key still names it, and answer 0 is "A".
   const localMiss = render({ picked: 2, correct: false, answer: 0, rationale: '' });
-  assert.match(localMiss, /The keyed answer is A./);
+  assert.match(localMiss, /The keyed answer is A\./);
   assert.match(localMiss, /p-ans correct/);
 
   // The rationale, when there is one, wins over either line.
-  assert.match(render({ picked: 2, correct: false, answer: null, rationale: 'Because.' }), /Because./);
+  assert.match(render({ picked: 2, correct: false, answer: null, rationale: 'Because.' }), /Because\./);
+});
+
+test('the course picker selects a whole collection at once', () => {
+  // A collection is a zip of fifty lesson plans, and the course is built from
+  // all of it. Ticking fifty boxes is the defect; the heading toggles the group.
+  const sources = [
+    { id: 'lp-1', title: 'Lesson 1', status: 'APPROVED', collection: 'Lesson plans' },
+    { id: 'lp-2', title: 'Lesson 2', status: 'APPROVED', collection: 'Lesson plans' },
+    { id: 'lp-3', title: 'Lesson 3', status: 'PENDING', collection: 'Lesson plans' },
+    { id: 'loose', title: 'Syllabus', status: 'APPROVED' },
+  ];
+  const render = (selected) => {
+    const updates = [];
+    const { DraftCourseModal } = loadComponent('app/prototype/Library.js', {
+      expose: ['DraftCourseModal'],
+      stateValues: [
+        [true, () => {}],                 // open
+        ['', () => {}],                   // title
+        ['', () => {}],                   // objectives
+        [selected, (next) => updates.push(next)], // sourceIds
+      ],
+    });
+    const elements = collectReactElements(DraftCourseModal({
+      sources, sourcesLoading: false, sourcesError: null, onRetrySources: () => {}, onDrafted: () => {},
+    }));
+    const headings = elements.filter((element) => element.props?.className === 'source-pick-heading');
+    const groupButton = (name) => {
+      const heading = headings.find((element) => JSON.stringify(element.props.children).includes(name));
+      return collectReactElements(heading).find((element) => element.type === 'button');
+    };
+    // The setter receives an updater; applying it to the current selection is
+    // what the real useState would do. Spread into this realm: the component
+    // runs in a vm context, whose Array.prototype strict equality rejects.
+    const apply = (button) => { button.props.onClick(); return updates.map((next) => [...next(selected)]); };
+    return { headings, groupButton, apply };
+  };
+
+  const empty = render([]);
+  assert.equal(empty.headings.length, 2, 'every collection, and the ungrouped rest, gets a heading');
+  const selectAll = empty.groupButton('Lesson plans');
+  assert.equal(selectAll.props.children, 'Select all 2', 'counts approved documents only');
+  assert.deepEqual(empty.apply(selectAll), [['lp-1', 'lp-2']], 'the pending document is not selectable');
+
+  const partial = render(['lp-1', 'loose']);
+  assert.equal(partial.groupButton('Lesson plans').props.children, 'Select all 2');
+  assert.deepEqual(partial.apply(partial.groupButton('Lesson plans')), [['lp-1', 'loose', 'lp-2']],
+    'filling the group keeps what was already ticked, in and out of it');
+
+  const full = render(['lp-1', 'lp-2', 'loose']);
+  const clear = full.groupButton('Lesson plans');
+  assert.equal(clear.props.children, 'Clear');
+  assert.deepEqual(full.apply(clear), [['loose']], 'clearing a group leaves other selections alone');
+
+  // One approved document with no collection: nothing to select "all" of.
+  const single = collectReactElements(loadComponent('app/prototype/Library.js', {
+    expose: ['DraftCourseModal'],
+    stateValues: [[true, () => {}]],
+  }).DraftCourseModal({
+    sources: [sources[3]], sourcesLoading: false, sourcesError: null, onRetrySources: () => {}, onDrafted: () => {},
+  }));
+  assert.equal(single.filter((element) => element.props?.className === 'source-pick-heading').length, 0);
 });
 
 test('a generation whose stream ended without an outcome says so instead of nothing', () => {
