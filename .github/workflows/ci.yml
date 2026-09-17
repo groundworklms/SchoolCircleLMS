@@ -40,6 +40,8 @@ jobs:
       # already in this list, which is why there is no separate test:navigation step.
       # test/scorm-verification.test.mjs skips its two mode-0700 cases off-POSIX and
       # runs them for real here on ubuntu -- see the skip reason in that file.
+      # scripts/scorm/runtime-harness.test.mjs is here too: it had no script at all
+      # and so had never gated a merge.
       - name: Test
         run: npm test
 
@@ -150,3 +152,10 @@ jobs:
       #     defined so it is ready, but `node --test` exits 1 when every named path is
       #     missing, so it must stay out of CI and out of `npm test` until those files
       #     are on main.
+      #
+      #   npm run test:offline-verify  (scripts/offline/verify.test.mjs)
+      #     Green on Node 20 Linux and on ~25 local runs, but it asserts stalled- and
+      #     oversized-response behaviour against loopback HTTP servers with real
+      #     timers, and it failed once on a machine that was out of resources at that
+      #     moment. Timing-sensitive by construction, so it is kept out of the shared
+      #     gate rather than risk an intermittent red for every branch.
