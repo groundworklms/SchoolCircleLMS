@@ -8,6 +8,18 @@ and the installed public corpus have not been supplied or tested in this task.
 Any connected cloud-model run is not offline evidence.
 No cloud model or OpenRouter key is needed by this kit.
 
+**Authentication is no longer a standing blocker, but is not yet demonstrated.**
+A deployment may now opt into local operator sign-in
+([offline-operator-auth.md](offline-operator-auth.md)): `AUTH_MODE=offline` plus
+`OFFLINE_AUTH_SECRET` enables a session that is signed and verified entirely on
+the local machine and lasts its whole configured window rather than expiring in
+about an hour. That removes the dependency this document recorded on Google's
+identity endpoints and on `OFFLINE_FIREBASE_ID_TOKEN` as a one-hour band-aid.
+It is verified by unit tests and a successful build only: **it has not been
+exercised on a network-pulled deployment, or against a real database on that
+path,** and it says nothing about whether retrieval, the local model, assets, or
+the browser journey survive isolation. Every other limit below stands unchanged.
+
 The portable runner uses only Node 20+ built-ins. Copy `scripts/offline/verify.mjs`
 to the authorized operator workstation; no installation, database migration,
 SSH operation, service restart, or app configuration change is performed.
@@ -20,7 +32,7 @@ public or synthetic questions. The kit does not create or delete learning data.
 |---|---|
 | Direct target `/api/health`, `/api/ask` | HTTP reachability followed by actual cited/refused inference requests. Health alone is insufficient. |
 | SchoolCircle `/api/doctrine` GET | `ready` is configuration, **not** reachable Anchor or working inference. |
-| SchoolCircle `/api/doctrine` POST | Authenticated proxy transport, independently exercised. Requires the current Firebase ID token; this is not the learning-evidence session credential. |
+| SchoolCircle `/api/doctrine` POST | Authenticated proxy transport, independently exercised. Requires a current bearer credential; this is not the learning-evidence session credential. The runner still reads only `OFFLINE_FIREBASE_ID_TOKEN`; on a deployment running `AUTH_MODE=offline` an offline operator token is an accepted value for it, which is what lets this check outlive the one-hour Firebase expiry. |
 | Local cited fallback | Reported unavailable/unverified. The current native doctrine route returns 502/503 on failure; the historical `/api/ask` FTS fallback is not present here. Do not route this check to `/api/learning` to compensate: that can invoke a configured cloud model. |
 | Text, speech, images, video | Not invoked. Registry readiness is configuration (or a browser fallback), not measured availability. A separate local text model and local assets are prerequisites for any broader offline learning/authoring claim. |
 
@@ -59,11 +71,23 @@ no-cloud claim, including when individual responses assert a source.
 - Locally running SchoolCircle, local database, required assets and local
    inference dependencies. A cloud-hosted app cannot demonstrate complete
   disconnected delivery just because the Orin works offline.
-- A valid signed-in test operator session before isolation. Token refresh or
-  online auth dependencies may block the proxy offline; report that limitation,
-   do not bypass auth. Supply the existing Firebase ID token using a secure
-   environment/secret manager as `OFFLINE_FIREBASE_ID_TOKEN`. Never put its
-   value in shell commands/history, fixtures, reports, screenshots or chat.
+- A valid test operator session before isolation. Supply its bearer token using
+   a secure environment/secret manager as `OFFLINE_FIREBASE_ID_TOKEN`. Never put
+   its value in shell commands/history, fixtures, reports, screenshots or chat.
+   Two ways to hold one, and they are not equivalent:
+   - **A Firebase ID token** (the hosted path) expires in about an hour and
+     cannot be refreshed while isolated. Token refresh and online auth
+     dependencies then block the proxy; report that limitation, do not bypass
+     auth. A long isolation window will outlive it.
+   - **A local operator token**, on a deployment configured with
+     `AUTH_MODE=offline` ([offline-operator-auth.md](offline-operator-auth.md)).
+     It is signed and verified on the local machine, needs no network at issue
+     or at use, and lasts its configured window (default 12 h). This is the
+     intended credential for the network-pulled phase, and it can be minted
+     *during* isolation rather than staged beforehand. It is not a bypass:
+     `/api/doctrine` still goes through `requireAnyRole` unchanged, and the role
+     still comes from the Prisma `User` row.
+     **Untested under real isolation — record it as such.**
 - Verify privately that the proxy's doctrine upstream is the intended local
   Anchor tunnel and that all inference services use installed local weights.
   The runner restricts targets to loopback/private IPs and rejects redirects,

@@ -30,7 +30,13 @@ export default function AuthGuard({ children }) {
   } = useAuth();
   const router = useRouter();
 
-  const denied = Boolean(user) && !isAllowedEmail(user.email);
+  /* The email allowlist gates Firebase sign-in, where anyone with a Google
+     account can present a credential. A local operator session is already
+     gated by the operator roster on the server, and operators need no email
+     address at all, so the allowlist does not apply to it -- otherwise a
+     deployment with NEXT_PUBLIC_ALLOWED_EMAILS set would bounce every offline
+     operator on sight. */
+  const denied = Boolean(user) && user.offline !== true && !isAllowedEmail(user.email);
   // Set once we have bounced a denied session: the sign-out flips `user` to
   // null and re-runs this effect, which must not issue a second redirect that
   // would drop the ?denied flag.
