@@ -254,6 +254,29 @@ So the gate that actually catches the case `minScore` could not is the strict
 stage Anchor's contract says the caller is responsible for running. Gate 2b was
 not adding safety; it was only removing answers.
 
+### The answerable side, end to end
+
+`scripts/retrieval-threshold-e2e.mjs --class answerable --min-score 0 --limit 10`
+on the same hardware:
+
+```
+answered: 5   refused: 2   errored/inconclusive: 3
+UNCITED ANSWERS (must be 0): 0
+```
+
+Five of ten produced a real cited answer that cleared every stage
+(`sourcerer=answered`, `understudy=accepted`, one citation each). Of the rest,
+two were refused `no_citation` — the 2B on-device model did not satisfy the
+inline-marker contract — and three failed with
+`STUDENT_LOCAL_MODEL_UNAVAILABLE`, the local-model latency issue described in
+§7. Neither failure class is the retrieval floor, and no run produced an
+answer without a citation.
+
+The honest reading: lowering the floor is necessary but not sufficient for a
+smooth demo. It removes a refusal that was purely an artefact of comparing two
+incompatible scores, and the next constraint is the on-device model, not
+retrieval.
+
 ## 7. Recommendation
 
 **Default `minScore` to 0, keep it tunable via `SOURCERER_MIN_SCORE`.**
