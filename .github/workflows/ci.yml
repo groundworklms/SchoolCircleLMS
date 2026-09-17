@@ -153,6 +153,11 @@ jobs:
       #     missing, so it must stay out of CI and out of `npm test` until those files
       #     are on main.
       #
+      #   npm run test:claims  (tests/deployment-claims.test.mjs)
+      #     Lane C's deployment-claims guard, landing with PR #140. Defined here so
+      #     it is ready; same reason as test:offline-auth for staying out of CI until
+      #     the file is on main. Wire it as a build-job step once it is.
+      #
       #   npm run test:offline-verify  (scripts/offline/verify.test.mjs)
       #     Green on Node 20 Linux and on ~25 local runs, but it asserts stalled- and
       #     oversized-response behaviour against loopback HTTP servers with real
