@@ -1,15 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { COURSES } from './data';
 import { usePrefs, setPref } from './prefs';
 import AccountProfile from '../_auth/AccountProfile';
 import { WaypointSurvey } from './LearnerFeatures';
 import { ModelProviderSettings } from './ModelProviderSettings';
 import { DoctrineSettings } from './DoctrineSettings';
 
-/* Settings, both roles. Preferences persist in the browser (prefs.js) so the
-   instructor's per-course toggles show up on the student side in a demo. */
+/* Settings for both roles. Preferences persist in the browser (prefs.js) so
+   local app choices survive a reload. */
 
 /**
  * Tab chrome for the one Settings destination. The active tab lives in the URL
@@ -153,7 +152,11 @@ function Survey({ result, onDone }) {
     const primary = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
     const paceTag = next[3];
     const pace = { short: 'short blocks, often', long: 'long blocks', mixed: 'mixed', late: 'deadline-driven' }[paceTag];
-    onDone({ primary, pace, when: '13 Sep 2026' });
+    onDone({
+      primary,
+      pace,
+      when: new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
+    });
     setTaking(false);
   };
   return (
@@ -185,8 +188,7 @@ function isValidPhone(phone) {
 export function StudentSettings({ onSignOut, account, authenticated = false, tab, onTab }) {
   const prefs = usePrefs();
   const r = { ...prefs.reminders, phone: prefs.reminders.phone || '' };
-  const displayName = account?.name || (authenticated ? 'Account' : 'Cpl Rivera');
-  const displayEmail = account?.email || (authenticated ? 'signed-in account' : 'rivera.j@usmc.mil');
+  const accountLabel = [account?.name, account?.email].filter(Boolean).join(' · ');
   const active = tab === 'app' ? 'app' : 'account';
 
   return (
@@ -194,7 +196,7 @@ export function StudentSettings({ onSignOut, account, authenticated = false, tab
       <div className="s-pagehead">
         <h1>Settings</h1>
         <p>
-          {displayName} · signed in via MCeLE · {displayEmail}
+          {authenticated ? (accountLabel || 'Signed-in account') : 'Sign in to manage your account settings.'}
         </p>
       </div>
 
@@ -212,19 +214,19 @@ export function StudentSettings({ onSignOut, account, authenticated = false, tab
       <section className="p-panel">
         <h3>Account</h3>
         {authenticated && <AccountProfile />}
-        <div className="s-settings-row">
-          <span>Identity</span>
-          <span className="s-settings-val">
-            {account?.name || (authenticated ? 'Account' : 'MCeLE / MarineNet SSO')}
-            {account?.rank ? ` · ${account.rank}` : ''}
-          </span>
-        </div>
-        <div className="s-settings-row">
-          <span>Courses</span>
-          <span className="s-settings-val">{Object.values(COURSES).map((c) => c.id).join(' · ')}</span>
-        </div>
+        {authenticated ? (
+          <div className="s-settings-row">
+            <span>Identity</span>
+            <span className="s-settings-val">
+              {account?.name || 'Signed-in account'}
+              {account?.rank ? ` · ${account.rank}` : ''}
+            </span>
+          </div>
+        ) : (
+          <p className="s-settings-p">Sign in to view account details.</p>
+        )}
         <div className="p-btnrow" style={{ marginTop: '0.8rem' }}>
-          <button className="p-btn ghost" onClick={onSignOut}>Sign out</button>
+          {authenticated && <button className="p-btn ghost" onClick={onSignOut}>Sign out</button>}
         </div>
       </section>
         </>

@@ -4,8 +4,8 @@
  * The demo's headline beat is the grounded tutor — a cited answer, and an
  * honest refusal when the sources do not cover the question. That beat needs a
  * *persisted* course with approved sources behind it (see courseForTutor in
- * lib/learning/core.js); the mock courses in app/prototype/data.js are screen
- * fixtures with no LearningRecord, so they can never satisfy it. Live
+ * lib/learning/core.js); a screen fixture without a LearningRecord cannot
+ * satisfy it. Live
  * generation is a minute of model calls that the venue's network may not
  * survive, which is why docs/gameday/WINPLAN.md keeps a banked course as the
  * floor.
