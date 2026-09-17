@@ -1,0 +1,129 @@
+/**
+ * Per-item ratification (app/prototype/ItemReview.js).
+ *
+ * Self-contained on purpose: this screen sits inside the course review panel
+ * but is its own decision surface, and PENDING has to be impossible to miss —
+ * an unreviewed item is an item no learner can see.
+ */
+
+.item-review-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.item-review-head h3 { margin: 0; }
+.item-review-head p { margin: 0.25rem 0 0; }
+
+.item-review-section { margin-top: 0.75rem; }
+
+.item-review-section > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.55rem 0.2rem;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 650;
+}
+
+.item-review-section > summary::-webkit-details-marker { display: none; }
+.item-review-section > summary::before { content: "\25B8"; color: var(--p-faint, #86868b); }
+.item-review-section[open] > summary::before { content: "\25BE"; }
+.item-review-section > summary small { margin-left: auto; color: var(--p-faint, #86868b); font-weight: 400; }
+
+.item-review-list { margin: 0.25rem 0 0; padding: 0; list-style: none; }
+
+.item-review-card {
+  margin: 0 0 0.6rem;
+  padding: 0.85rem 0.95rem;
+  background: var(--p-surface, #fff);
+  border-left: 3px solid var(--p-warning, #b0731a);
+  border-radius: 10px;
+  box-shadow: 0 0 0 .5px var(--p-border, rgba(0, 0, 0, .08));
+}
+
+.item-review-card.is-approved { border-left-color: var(--p-good, #1e7a3c); }
+.item-review-card.is-rejected { border-left-color: var(--p-bad, #d70015); }
+
+.item-review-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: var(--p-dim, #6e6e73);
+  font-size: 0.78rem;
+}
+
+.item-review-status { white-space: nowrap; color: var(--p-warning, #b0731a); }
+.item-review-card.is-approved .item-review-status { color: var(--p-good, #1e7a3c); }
+.item-review-card.is-rejected .item-review-status { color: var(--p-bad, #d70015); }
+
+.item-review-stem { margin: 0.4rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.item-review-options { margin: 0.5rem 0 0; padding-left: 1.3rem; }
+.item-review-options li { padding: 0.1rem 0; }
+.item-review-options li.is-key { font-weight: 650; }
+.item-review-options li.is-key span { color: var(--p-good, #1e7a3c); font-weight: 600; }
+
+.item-review-rationale,
+.item-review-evidence { margin: 0.4rem 0 0; color: var(--p-dim, #6e6e73); font-size: 0.82rem; }
+.item-review-evidence { font-feature-settings: "tnum"; font-variant-numeric: tabular-nums; }
+.item-review-evidence.is-unverified { color: var(--p-warning, #b0731a); }
+
+.item-review-actions { margin-top: 0.7rem; }
+
+.item-review-form {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+  padding: 0.75rem;
+  background: var(--p-bg, #f5f5f7);
+  border-radius: 12px;
+}
+
+.item-review-form label {
+  display: grid;
+  gap: 0.3rem;
+  color: var(--p-dim, #6e6e73);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* A literal black inset ring is invisible on a dark card, which left these
+   fields with no edge at all in the dark theme. The border token carries a
+   theme-correct value, and the focus ring matches the shared .p-input. */
+.item-review-form textarea,
+.item-review-form input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.7rem;
+  color: var(--p-text, #1d1d1f);
+  background: var(--p-surface, #fff);
+  border: 1px solid var(--p-border-strong, rgba(0, 0, 0, .18));
+  border-radius: 9px;
+  font: inherit;
+  line-height: 1.45;
+}
+
+.item-review-form textarea:focus,
+.item-review-form input[type="text"]:focus {
+  outline: none;
+  border-color: var(--p-accent, #b3122e);
+  box-shadow: 0 0 0 3px var(--p-accent-tint, rgba(179, 18, 46, .10));
+}
+
+.item-review-form textarea { min-height: 3.5rem; resize: vertical; }
+
+.item-review-option {
+  display: flex !important;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 500;
+}
+
+.item-review-option input[type="radio"] { flex: none; width: auto; margin: 0; }
+
+.item-review-note { margin: 0; color: var(--p-dim, #6e6e73); font-size: 0.78rem; line-height: 1.45; }

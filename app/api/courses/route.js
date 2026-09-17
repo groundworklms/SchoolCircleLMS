@@ -1,4 +1,5 @@
-import { requireAnyRole } from '../../../lib/auth.js';
+import { learnerScopedIdentity, requireAnyRole } from '../../../lib/auth.js';
+import { asksForLearnerView } from '../../../lib/learner-view.js';
 import { db } from '../../../lib/db.js';
 import {
   projectDeliveryCourse,
@@ -65,7 +66,11 @@ function errorResponse(error, label) {
 
 export async function GET(request) {
   try {
-    const identity = await requireAnyRole(request, ['LEARNER', 'INSTRUCTOR']);
+    const verified = await requireAnyRole(request, ['LEARNER', 'INSTRUCTOR']);
+    // A request from a learner surface is answered as a learner: the student
+    // preview is there to show what a learner gets, and an instructor reading
+    // it with answer keys and rationales attached is not that.
+    const identity = asksForLearnerView(request) ? learnerScopedIdentity(verified) : verified;
     const full = identity.role === 'INSTRUCTOR' || identity.role === 'BOTH';
     const [courses, approvals] = await Promise.all([
       db.course.findMany({

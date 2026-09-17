@@ -9,6 +9,7 @@ const realArsenal = await import('../lib/arsenal-core.js');
 const records = new Map();
 const typedReleases = new Map();
 const releaseEvidence = new Map();
+const approvalSupport = [];
 const modelCalls = [];
 let nextRecordId = 1;
 let modelGate = null;
@@ -25,6 +26,7 @@ function resetStore() {
   records.clear();
   typedReleases.clear();
   releaseEvidence.clear();
+  approvalSupport.length = 0;
   modelCalls.length = 0;
   nextRecordId = 1;
   modelGate = null;
@@ -184,9 +186,14 @@ async function approveCourseAtomically({
   candidatePayload,
   sourceId,
   sections,
+  support = null,
   revisionId = null,
   revisionHistory = [],
 }) {
+  // The entailment measurement the caller took before opening the transaction.
+  // Captured so a test can assert what a course approval actually measured --
+  // and, with no doctrine service configured here, that it measured nothing.
+  approvalSupport.push(support);
   const current = records.get(courseId);
   if (
     !current ||
@@ -354,6 +361,18 @@ const dbMock = {
   async getLearningRecord(id) {
     return snapshot(records.get(id) || null);
   },
+  async listDeliveryCourseItems() {
+    // Per-item ratification (863f724) added these to lib/db.js. The mock has
+    // to offer every export core.js imports or the module fails to link and
+    // the whole suite reports one failure with no useful assertion.
+    return [];
+  },
+  async getDeliveryCourseItem() {
+    return null;
+  },
+  async updateDeliveryCourseItem() {
+    return null;
+  },
   async courseEvidenceCount() {
     // No typed delivery rows in this fixture, so no learner evidence. The
     // delete path reads this to decide archive-vs-remove.
@@ -411,11 +430,13 @@ mock.module('../lib/arsenal-core.js', {
     generateRubric: async () => null,
     ingestSource: async () => null,
     learningModelStatus: () => ({ model: { ready: false } }),
+    masteryPlanProvenance: realArsenal.masteryPlanProvenance,
     masteryView: () => null,
     redactCourse: realArsenal.redactCourse,
     restoreMasterySession: async () => null,
     reviseCourseContent,
     serialiseMasterySession: () => null,
+    sourcePassageIndex: realArsenal.sourcePassageIndex,
     startMasterySession: async () => null,
     tutorAnswer: async () => null,
     validateCourseDraft: realArsenal.validateCourseDraft,
@@ -536,12 +557,24 @@ test('revision stores a pending candidate while learners retain the prior releas
 
   const learnerView = await getCourse(LEARNER, { params: { id: course.id } });
   assert.equal(learnerView.json.hasPendingRevision, false);
+  /* A learner does not see the pending revision -- and no longer sees the
+     APPROVED draft's questions either. Both are unratified text: approving a
+     course releases its shape, and every sentence in it is a PENDING Item
+     until an instructor ratifies it one at a time. The learner reader now
+     takes all content from the delivery projection, which is the response that
+     has passed that gate, so nothing here is left to leak. */
+  assert.equal(learnerView.json.course.sections[0].pre, undefined);
+  assert.equal(learnerView.json.course.sections[0].post, undefined);
+  assert.equal(learnerView.json.course.sections[0].lesson, undefined);
+  const learnerJson = JSON.stringify(learnerView.json.course);
   assert.equal(
-    learnerView.json.course.sections[0].pre[0].stem,
-    original.sections[0].pre[0].stem,
-    'a learner must not see a pending revision',
+    learnerJson.includes(original.sections[0].pre[0].stem),
+    false,
+    'a learner must not see a pending revision, nor the unratified draft it revises',
   );
-  assert.equal(learnerView.json.course.sections[0].pre[0].answer, undefined);
+  assert.equal(learnerJson.includes(revisedQuestion().question.stem), false);
+  // The shape the approval did release is still there.
+  assert.equal(learnerView.json.course.sections[0].title, original.sections[0].title);
   assert.equal(learnerView.json.course.pendingRevisionId, undefined);
   assert.deepEqual(
     (await listCourses(LEARNER)).json,
@@ -647,4 +680,38 @@ test('approval rejects an exact-version mismatch, then atomically creates a new 
     (await dbMock.getLearningRecord(course.id)).payload.pendingRevisionId,
     undefined,
   );
+});
+
+/* An approval must never fail, stall, or invent a number because the entailment
+ * verifier is unreachable -- it must simply produce unverified items. No
+ * doctrine service is configured here, which is exactly that path: the
+ * measurement step runs, measures nothing, and the release materialises with
+ * every Item.support null. */
+test('approval succeeds with no verifier, and measures nothing rather than defaulting', async () => {
+  resetStore();
+  const savedUrl = process.env.DOCTRINE_BASE_URL;
+  delete process.env.DOCTRINE_BASE_URL;
+  try {
+    const course = seedRevisionFixture();
+    const revised = await reviseCourse(OWNER, {
+      params: { id: course.id },
+      body: revisionRequest(course.version),
+    });
+    const approved = await approveCourse(OWNER, {
+      params: { id: course.id },
+      body: { version: revised.json.version },
+    });
+
+    assert.equal(approved.json.status, 'APPROVED');
+    assert.ok(typedReleases.has(approved.json.deliveryCourseId));
+    assert.equal(approvalSupport.length, 1);
+    const support = approvalSupport[0];
+    assert.ok(support instanceof Map, 'the transaction is handed measurements, keyed by item id');
+    // Empty, not populated with zeroes, floors or estimates. There is no
+    // default value anywhere in this path.
+    assert.equal(support.size, 0);
+  } finally {
+    if (savedUrl === undefined) delete process.env.DOCTRINE_BASE_URL;
+    else process.env.DOCTRINE_BASE_URL = savedUrl;
+  }
 });

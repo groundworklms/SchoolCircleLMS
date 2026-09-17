@@ -232,7 +232,7 @@ function Thread({ course, thread, onBack, onOpenLesson, local, save }) {
       </div>
 
       <div className="s-dq-compose">
-        <textarea rows={3} placeholder="Write a reply…" value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea rows={3} aria-label="Your reply" placeholder="Write a reply…" value={text} onChange={(e) => setText(e.target.value)} />
         <div className="p-btnrow">
           <button className="p-btn" disabled={!text.trim()} onClick={post}>Reply</button>
           {!thread.resolved && <button className="p-btn ghost" onClick={() => resolve(true)}>Mark resolved</button>}
@@ -254,18 +254,32 @@ function NewThread({ course, defaultLesson, onCancel, onCreate }) {
   return (
     <div className="s-dq-new">
       <div className="s-label">New question</div>
-      <input className="s-dq-input" placeholder="What are you stuck on? One line." value={title} onChange={(e) => setTitle(e.target.value)} />
-      <select className="s-dq-select" value={lessonId} onChange={(e) => setLessonId(e.target.value)}>
-        <option value="">General — whole course</option>
-        {annexes.map((a) => (
-          <optgroup key={a.letter} label={`Annex ${a.letter} — ${a.title}`}>
-            {a.lessons.map((l) => (
-              <option key={l.id} value={l.id}>{l.id} · {l.title}</option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-      <textarea rows={4} placeholder="What have you tried? Where exactly did it go wrong?" value={body} onChange={(e) => setBody(e.target.value)} />
+      {/* Every field is named. A placeholder is gone the moment it is used, so
+          three stacked boxes left a student rereading their own post with no
+          way to tell which box was the question and which was the detail --
+          and the lesson picker had no name at all. The placeholders stay as
+          examples of the shape of an answer. */}
+      <label className="p-field">
+        <span>Question</span>
+        <input className="s-dq-input" placeholder="What are you stuck on? One line." value={title} onChange={(e) => setTitle(e.target.value)} />
+      </label>
+      <label className="p-field">
+        <span>About</span>
+        <select className="s-dq-select" value={lessonId} onChange={(e) => setLessonId(e.target.value)}>
+          <option value="">General — whole course</option>
+          {annexes.map((a) => (
+            <optgroup key={a.letter} label={`Annex ${a.letter} — ${a.title}`}>
+              {a.lessons.map((l) => (
+                <option key={l.id} value={l.id}>{l.id} · {l.title}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </label>
+      <label className="p-field">
+        <span>What you have tried</span>
+        <textarea rows={4} placeholder="What have you tried? Where exactly did it go wrong?" value={body} onChange={(e) => setBody(e.target.value)} />
+      </label>
       <div className="p-btnrow">
         <button className="p-btn" disabled={!title.trim() || !body.trim()} onClick={() => onCreate({ title: title.trim(), body: body.trim(), lessonId: lessonId || null })}>Post</button>
         <button className="p-btn ghost" onClick={onCancel}>Cancel</button>
@@ -330,7 +344,7 @@ function Discussions({ course, threadId, lessonFilter, onOpenThread, onOpenLesso
             </button>
           ))}
         </div>
-        <select className="s-dq-select small" value={lessonOnly} onChange={(e) => setLessonOnly(e.target.value)}>
+        <select className="s-dq-select small" aria-label="Filter questions by lesson" value={lessonOnly} onChange={(e) => setLessonOnly(e.target.value)}>
           <option value="">Every lesson</option>
           {lessonOpts.map((l) => (
             <option key={l.id} value={l.id}>{l.id} · {l.title} ({byLesson[l.id]})</option>

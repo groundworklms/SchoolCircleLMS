@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
+import { pageOf, publicationName } from '../_course/provenance';
 import { SourceViewer } from './SourceViewer';
 
 /* Learner-side arsenal features for a real (LearningRecord) course: the
@@ -27,10 +28,17 @@ function pct(v) {
 
 export function RealCourseHome({ course, go }) {
   const { data: envelope, loading } = useApiQuery(`/courses/${course.id}`);
+  /* Structure from the course record; COUNTS from the delivery projection.
+     The record no longer carries the draft's questions to a learner (see
+     lib/learning/core.js `learnerCourseProjection`), and counting them there
+     was promising a number of checks that included ones no instructor had
+     ratified. What is counted here is what this learner can actually open. */
+  const { data: delivery } = useApiQuery(`/courses/${course.id}/attempts`);
   const draft = envelope?.course;
   const sections = draft?.sections || [];
   const objectives = draft?.objectives || [];
   const sourceId = draft?.sourceIds?.[0];
+  const approvedChecks = (delivery?.items || []).length;
 
   return (
     <div className="s-two">
@@ -50,8 +58,8 @@ export function RealCourseHome({ course, go }) {
           </div>
           <div className="s-hero-tile">
             <div className="s-label">Items</div>
-            <div className="s-hero-num">{sections.reduce((n, s) => n + (s.pre?.length || 0) + (s.post?.length || 0), 0)}</div>
-            <div className="s-hero-sub">pre and post checks</div>
+            <div className="s-hero-num">{approvedChecks}</div>
+            <div className="s-hero-sub">approved pre and post checks</div>
           </div>
           <div className="s-hero-tile">
             <div className="s-label">Grounding</div>
@@ -109,44 +117,215 @@ export function RealCourseHome({ course, go }) {
 
 /* ---------- reader ---------- */
 
-/* The approved course, one section at a time. The server has already
-   removed answer keys and rationale for learners; the checks are here to
-   think with, and Whetstone is where grading happens. */
+/**
+ * The publication a course's sections cite, by name.
+ *
+ * A section's `cite` is "<source record id> p.85" — the record id is the
+ * authenticated page-opening key (lib/learning/core.js `sourcePassages`), and
+ * it is a cuid. A learner must never be handed that as a citation, and unlike
+ * a materialised Item the section carries no `pubId` to use instead. The
+ * approved-source list is the id -> publication-name map the Sources screen
+ * already reads; it is the light projection (ids, titles, page counts — no
+ * document text), so naming the publication costs one small request rather
+ * than re-downloading the source.
+ *
+ * Returns '' until it resolves, and '' if the list cannot be read. The caller
+ * withholds the citation line in that window rather than printing the key.
+ */
+function usePublicationName(sourceRecordId) {
+  const { data } = useApiQuery('/sources', { enabled: Boolean(sourceRecordId) });
+  if (!sourceRecordId || !Array.isArray(data)) return '';
+  const record = data.find((source) => source?.id === sourceRecordId);
+  // `sourceId` is the Anchor publication label ("TC 3-22.9"); `title` is the
+  // document's own title, which is what a file upload records.
+  return publicationName(record?.sourceId || record?.title || '');
+}
+
+/**
+ * A fresh idempotency key per (check, chosen option).
+ *
+ * The same rule the published reader uses (app/prototype/published/client.js
+ * `createStableAttemptManager`): a failed request keeps its key, so retrying
+ * the SAME answer replays rather than banks a second attempt, while choosing a
+ * different option is deliberately a new attempt and gets a new key.
+ */
+function attemptKeyFor(keys, itemId, optionId) {
+  const previous = keys.get(itemId);
+  if (previous && previous.optionId === optionId) return previous.attemptId;
+  const attemptId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `attempt-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  keys.set(itemId, { optionId, attemptId });
+  return attemptId;
+}
+
+/**
+ * What a learner is shown where an unratified lesson's prose would have gone.
+ *
+ * THE OPTIONS, AND WHY THIS ONE. Hiding the whole section was the obvious
+ * alternative and is worse: section numbering is how a learner and an
+ * instructor refer to the same thing out loud ("section 4"), the course would
+ * silently shrink for some readers and not others, and any check in that
+ * section that HAD been approved would quietly become unanswerable — evidence
+ * missing from their record with nothing on screen to explain it. Leaving the
+ * body blank is worse still: an empty page is indistinguishable from a broken
+ * one, and a learner who cannot interpret it has no idea whether to wait, to
+ * reload, or to ask.
+ *
+ * So the section stays, its approved checks stay, and the missing prose is
+ * named. The copy says what SchoolCircle HAS done (drafted this section from
+ * the source) and what it has NOT (had it approved), and it does not dress the
+ * refusal up as an outage: this is the product working, and a learner reading
+ * it should come away understanding the rule rather than suspecting a bug.
+ *
+ * PENDING and withheld read the same. The learner is told the text is not
+ * approved, which is true of both; which way their instructor is leaning on a
+ * passage is not theirs to read off a screen.
+ */
+function UnreleasedLesson({ publication, hasChecks }) {
+  return (
+    <aside className="s-ls-callout note" role="note">
+      <div className="s-ls-callout-t">Lesson text not released</div>
+      <p>
+        SchoolCircle drafted this section from{' '}
+        {publication ? <strong>{publication}</strong> : 'the approved source'}, and your
+        instructor has not approved the text. Nothing unreviewed reaches a student, so
+        it is not shown here.
+      </p>
+      <p>
+        {hasChecks
+          ? 'The checks below were approved separately and are yours to answer now.'
+          : 'Nothing else in this section has been approved yet either, so there is nothing here to work through until your instructor has reviewed it.'}
+      </p>
+    </aside>
+  );
+}
+
+/* The approved course, one section at a time.
+ *
+ * EVERY WORD OF CONTENT ON THIS SCREEN COMES FROM /courses/:id/attempts, which
+ * returns only what an instructor has ratified item by item — the lesson prose
+ * and the checks alike. That is the whole gate: a PENDING or withheld item is
+ * simply not in that response, so it cannot be rendered, and the reader has
+ * nothing to fall back on that would render it anyway.
+ *
+ * It used to be half true. The checks came from there, but the prose came from
+ * the authoring draft at /courses/:id, which no ratification decision touches,
+ * so a lesson an instructor had not approved — or had approved a DIFFERENT
+ * wording of, since REVISE edits the row and not the draft — was what a learner
+ * read. The course record is now used only for what course approval actually
+ * released: the section list, their titles and order, and which source they are
+ * grounded in.
+ *
+ * Answer keys and rationale are in neither response. The rationale reaches the
+ * learner only in the reply to their own answer, after they have committed to a
+ * choice. */
 export function CourseReader({ course }) {
   const { data: envelope, loading, error } = useApiQuery(`/courses/${course.id}`);
+  const { data: delivery } = useApiQuery(`/courses/${course.id}/attempts`);
+  const record = useApiMutation(`/courses/${course.id}/attempts`, 'POST');
   const [i, setI] = useState(0);
+  const [saving, setSaving] = useState({});
+  // Answers recorded in THIS sitting, over the ones the server returned for
+  // earlier ones. Both are the same shape the shared presentation reads, so a
+  // reload and a fresh answer light up the same way.
+  const [justAnswered, setJustAnswered] = useState({});
+  const [answerError, setAnswerError] = useState(null);
+  const attemptKeys = useRef(new Map());
   const sections = envelope?.course?.sections || [];
+  const publication = usePublicationName(envelope?.course?.sourceIds?.[0]);
   const cur = sections[i];
+
+  const onAnswer = async (itemId, optionId) => {
+    const attemptId = attemptKeyFor(attemptKeys.current, itemId, optionId);
+    setSaving((current) => ({ ...current, [itemId]: true }));
+    setAnswerError(null);
+    try {
+      const response = await record.mutate({
+        itemId,
+        optionId,
+        attemptId,
+        releaseId: delivery?.releaseId,
+      });
+      if (response?.result) {
+        setJustAnswered((current) => ({
+          ...current,
+          [itemId]: {
+            optionId: response.result.optionId,
+            correct: response.result.correct,
+            feedback: response.result.feedback,
+          },
+        }));
+      }
+      return response;
+    } catch (e) {
+      // The shared presentation swallows the rejection; saying what went wrong
+      // is the reader's job, and an unrecorded answer must not look recorded.
+      setAnswerError(errText(e, 'That answer was not recorded. Choose it again to retry.'));
+      throw e;
+    } finally {
+      setSaving((current) => ({ ...current, [itemId]: false }));
+    }
+  };
 
   if (loading) return <p>Loading course…</p>;
   if (error) return <Err msg={errText(error, 'Could not load this course.')} />;
   if (!sections.length) return <p className="p-src">This course has no sections yet.</p>;
 
+  const answers = { ...(delivery?.answers || {}), ...justAnswered };
+  /* The ratified prose for this section, if the release has any. Absent
+     entirely when the section never had a lesson to ratify; present with
+     `released: false` when it has one an instructor has not approved — which
+     is the case the notice below exists to explain. */
+  const prose = (delivery?.lessons || []).find((entry) => entry.sectionIndex === i) || null;
+  const withheld = Boolean(prose && !prose.released);
+  const checks = (delivery?.items || []).filter((item) => item.sectionIndex === i);
+  /* No `title`: the section heading belongs to the reader (below), and passing
+     it here as well printed every section title twice, once small and once
+     large. The citation is handed over as the resolved shape -- publication
+     name, page, and the stored locator untouched -- so the learner is cited to
+     a publication and the key stays addressable but unread. Without a name
+     there is no line: a record id is not a citation.
+
+     It is the LESSON ROW's citation now, read from the same row as the words
+     it sits under. Materialisation resolves a citation per item, so the row
+     names the passage the lesson itself was written from rather than the
+     section's primary label; and because one row is behind both, a page number
+     can no longer vouch for a wording that is not the one on screen. `pubId`
+     is the publication label stamped at materialisation; the approved-source
+     list stays as the fallback for a release materialised without one. */
+  const cited = prose?.citation || null;
+  const citedPublication = cited?.pubId || publication;
   const lesson = {
     id: String(cur.id || `section-${i + 1}`),
-    title: cur.title || `Section ${i + 1}`,
-    citation: cur.cite || cur.citation || '',
+    citation: cited?.citation && citedPublication
+      ? {
+          citation: cited.citation,
+          pubId: citedPublication,
+          page: cited.page ?? pageOf(cited.citation),
+        }
+      : null,
     blocks: [
-      ...(cur.lesson ? [{
-        id: `${cur.id || `section-${i + 1}`}:lesson`,
+      ...(prose?.released && prose.text ? [{
+        id: prose.id,
         type: 'text',
-        body: cur.lesson,
+        body: prose.text,
       }] : []),
-      ...['pre', 'post'].flatMap((phase) => (Array.isArray(cur[phase]) ? cur[phase] : []).map((question, questionIndex) => {
-        const questionId = String(question.id || `${cur.id || `section-${i + 1}`}:${phase}${questionIndex + 1}`);
-        const options = Array.isArray(question.options)
-          ? question.options.map((option, optionIndex) => ({
-              id: String(option?.id || `${questionId}-option-${optionIndex + 1}`),
-              text: typeof option === 'string' ? option : option?.text || '',
-            }))
-          : [];
-        return {
-          id: questionId,
-          type: 'check',
-          title: phase === 'pre' ? 'Before you read' : 'After you read',
-          prompt: question.stem || question.prompt || '',
-          options,
-        };
+      /* Placed by `sectionIndex`, which is the materialised Section.order and
+         therefore this section's own index. The block id IS the Item id, so
+         the answer the learner sends back is attributable to the exact row an
+         instructor ratified -- no id is reconstructed here. A choice has no id
+         of its own on that row: the keyed answer is an index into `options`,
+         so the index is what identifies the choice on the way back. */
+      ...checks.map((item) => ({
+        id: item.id,
+        type: 'check',
+        title: item.phase === 'post' ? 'After you read' : 'Before you read',
+        prompt: item.stem,
+        options: (item.options || []).map((text, optionIndex) => ({
+          id: String(optionIndex),
+          text,
+        })),
       })),
     ],
   };
@@ -170,9 +349,25 @@ export function CourseReader({ course }) {
       <article className="s-reader-body">
         <div className="s-reader-head">
           <span className="s-reader-kicker">Section {i + 1} of {sections.length}</span>
-          <h2>{cur.title || `Section ${i + 1}`}</h2>
+          <h1>{cur.title || `Section ${i + 1}`}</h1>
         </div>
-        <CourseLesson content={lesson} />
+        <Err msg={answerError} />
+        {withheld ? (
+          <UnreleasedLesson publication={publication} hasChecks={checks.length > 0} />
+        ) : null}
+        {/* The presentation's own empty state ("This lesson has no content
+            yet") is true but uninformative, and printing it under a notice
+            that has just said exactly why the section is empty reads like two
+            different explanations. When the notice is up and there is nothing
+            ratified to render, the notice is the whole answer. */}
+        {lesson.blocks.length > 0 || !withheld ? (
+          <CourseLesson
+            content={lesson}
+            progress={{ answers }}
+            onAnswer={onAnswer}
+            busy={saving}
+          />
+        ) : null}
 
         <div className="s-reader-nav">
           <button className="s-lesson-navbtn" disabled={i === 0} onClick={() => setI(i - 1)}>← Previous</button>
@@ -222,6 +417,7 @@ export function MasterySession({ course }) {
     ? envelope.course.masteryPlan
     : envelope?.course?.masteryPlan || null;
   const sourceId = masteryPlan?.sourceId || envelope?.course?.sourceIds?.[0];
+  const publication = usePublicationName(sourceId);
   const { data: sessions, loading, refetch } = useApiQuery(`/mastery/sessions?courseId=${course.id}`);
   const startSession = useApiMutation('/mastery/sessions', 'POST');
   const [answer, setAnswer] = useState('');
@@ -310,7 +506,7 @@ export function MasterySession({ course }) {
         Whetstone asks about the approved source and grades what you say against it — in your own
         words, no multiple choice. Each answer is scored on a rubric your instructor approved.
       </p>
-      <div className="p-btnrow" style={{ marginBottom: '0.75rem' }}>
+      <div className="p-btnrow" style={{ marginBottom: '0.75rem', alignItems: 'flex-end' }}>
         <button
           type="button"
           className="p-btn ghost"
@@ -320,11 +516,10 @@ export function MasterySession({ course }) {
           {loading ? 'Reloading…' : 'Reload saved sessions'}
         </button>
         {sessions?.length > 0 && (
-          <label className="p-src" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-            Selected session
+          <label className="p-field s-mastery-pick">
+            <span>Selected session</span>
             <select
-              className="scw-ti"
-              aria-label="Selected saved mastery session"
+              className="p-input"
               value={selected?.id || ''}
               onChange={(event) => {
                 setLast(null);
@@ -333,7 +528,7 @@ export function MasterySession({ course }) {
             >
               {sessions.map((session) => (
                 <option key={session.id} value={session.id}>
-                  {session.id.slice(-6)} · {session.status}{session.masteryPlanRevision ? ` · ${session.masteryPlanRevision}` : ''}
+                  Session {session.id.slice(-6)} · {session.status}{session.masteryPlanRevision ? ` · ${session.masteryPlanRevision}` : ''}
                 </option>
               ))}
             </select>
@@ -348,7 +543,7 @@ export function MasterySession({ course }) {
         <div className="p-panel">
           <h3>Start a session</h3>
           <p className="p-src" style={{ marginBottom: '1rem' }}>
-            Grounded on <code>{sourceId || '—'}</code>. A session runs until every criterion is assessed or the turn limit is reached.
+            Grounded on {publication || 'the approved source'}. A session runs until every criterion is assessed or the turn limit is reached.
           </p>
           {masteryPlan?.status === 'PENDING' && (
             <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
@@ -431,22 +626,24 @@ export function MasterySession({ course }) {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <textarea
-              ref={inputRef}
-              className="scw-ti"
-              style={{ flex: 1, padding: '0.6rem', minHeight: '4.5rem' }}
-              placeholder="Answer in your own words…"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleTurn();
-                }
-              }}
-            />
-            <button className="p-btn" onClick={handleTurn} disabled={turn.loading || !answer.trim() || sessionNeedsApprovedPlan} style={{ alignSelf: 'flex-end' }}>
+          <div className="s-mastery-answer">
+            <label className="p-field">
+              <span>Your answer</span>
+              <textarea
+                ref={inputRef}
+                className="p-input"
+                placeholder="Answer in your own words…"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleTurn();
+                  }
+                }}
+              />
+            </label>
+            <button className="p-btn" onClick={handleTurn} disabled={turn.loading || !answer.trim() || sessionNeedsApprovedPlan}>
               {turn.loading ? 'Grading…' : 'Submit'}
             </button>
           </div>
@@ -578,10 +775,17 @@ export function StudyPlan({ course }) {
           <p className="p-src" style={{ marginBottom: '1rem' }}>
             Cadence needs the course syllabus (your instructor attaches it) and how much time you can give each day.
           </p>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <label>
-              Minutes per day
-              <input type="number" min="10" max="480" className="scw-ti" style={{ width: '90px', marginLeft: '0.5rem', padding: '0.3rem 0.5rem' }} value={availability} onChange={(e) => setAvailability(parseInt(e.target.value, 10) || 60)} />
+          <div className="s-plan-setup">
+            <label className="p-field">
+              <span>Minutes per day</span>
+              <input
+                type="number"
+                min="10"
+                max="480"
+                className="p-input"
+                value={availability}
+                onChange={(e) => setAvailability(parseInt(e.target.value, 10) || 60)}
+              />
             </label>
             <button className="p-btn" onClick={handleCreate} disabled={create.loading}>
               {create.loading ? 'Building…' : 'Build my plan'}
