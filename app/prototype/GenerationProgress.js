@@ -181,7 +181,15 @@ function Step({ label, state, detail }) {
   );
 }
 
-export function GenerationProgress({ events }) {
+/**
+ * @param {{ events: Array, interrupted?: boolean }} props
+ *   `interrupted` is the one fact this screen cannot fold out of the events:
+ *   the stream stopped without a `saved` or a `failed`. Only the caller holding
+ *   the reader knows that, so it is passed in rather than inferred from the
+ *   absence of a terminal event — which is also what a generation still in
+ *   flight looks like.
+ */
+export function GenerationProgress({ events, interrupted = false }) {
   const view = generationView(events);
   const built = view.sections.filter((section) => section.artifacts.lesson?.ok).length;
 
@@ -285,6 +293,25 @@ export function GenerationProgress({ events }) {
               reason={view.apply[artifact.kind]?.reason}
             />
           ))}
+        </div>
+      )}
+
+      {/* The stream ended without saying how. The server is not the client's
+          to speak for -- it may still be writing, or it may have saved already
+          -- so this says only what is known, and names the one action that
+          makes it worse. Generating again is how the same course gets written
+          twice, and an instructor who is told nothing does exactly that. */}
+      {interrupted && !view.saved && !view.failure && (
+        <div className="s-shell-error" role="alert" style={{ marginTop: '1rem' }}>
+          <p style={{ margin: 0 }}>
+            The connection carrying this progress ended before generation reported an outcome.
+            That stopped the reporting, not the generation: the server keeps writing, and a
+            course it finishes is saved and appears in the course list on its own.
+          </p>
+          <p style={{ margin: '0.5rem 0 0' }}>
+            Close this and check the course list — give it a few minutes for a long course.
+            Generating again before it appears is what produces two copies of it.
+          </p>
         </div>
       )}
 

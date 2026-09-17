@@ -1299,3 +1299,121 @@ test('a thin draft still points at the objectives box after the modal is gone', 
   assert.match(wholeMarkup, /Signals intelligence support/);
   assert.doesNotMatch(wholeMarkup, /covers part of the selected sources/);
 });
+
+test('the item review provenance line names the publication, not the row it is stored under', () => {
+  // The citation is stored as the locator the rest of the system addresses
+  // passages by -- "<source record id> p.23" -- and that record id is a cuid.
+  // Printing it here showed the one human being asked to vouch for an item's
+  // provenance a primary key, and printed the page twice on the way: once off
+  // the end of the locator and once out of the page field beside it.
+  const { Evidence } = loadComponent('app/prototype/ItemReview.js', { expose: ['Evidence'] });
+  const citation = {
+    citation: 'cmu4nugk2000qs601lnoxtuj7 p.23',
+    pubId: 'MCWP 2-10',
+    page: '23',
+  };
+  const markup = renderToStaticMarkup(
+    React.createElement(Evidence, { item: { citation, support: null } }),
+  );
+  // The rendered text, not the title attribute the locator is kept on.
+  const shown = markup.replace(/ title="[^"]*"/g, '');
+  assert.match(shown, /Grounded in MCWP 2-10 p\.23/);
+  assert.doesNotMatch(shown, /cmu4nugk2000qs601lnoxtuj7/);
+  assert.doesNotMatch(shown, /p\.23[\s\S]*p\.23/);
+  // The exact locator on record stays reachable; it is what the source viewer
+  // and the SCORM export address the passage by.
+  assert.match(markup, /title="cmu4nugk2000qs601lnoxtuj7 p\.23"/);
+
+  // Nothing measures HHEM support on a generated item, so "not verified" is a
+  // true statement about this row and must keep being made.
+  assert.match(markup, /not verified/);
+  const scored = renderToStaticMarkup(
+    React.createElement(Evidence, { item: { citation, support: 0.94 } }),
+  );
+  assert.match(scored, /support 0\.94/);
+
+  // A row with no publication name falls back to the locator -- still with the
+  // page printed once -- rather than to nothing.
+  const bare = renderToStaticMarkup(
+    React.createElement(Evidence, { item: { citation: { citation: 'source-1 p.4', page: '4' } } }),
+  );
+  assert.match(bare, /Grounded in source-1 p\.4/);
+  assert.doesNotMatch(bare.replace(/ title="[^"]*"/g, ''), /p\.4[\s\S]*p\.4/);
+});
+
+test('the generated-course preview states the answer key it asks an instructor to ratify', () => {
+  // The preview renders the choices as buttons a learner picks from: nothing
+  // marks the key, and clicking one grades that click rather than revealing it.
+  // Under a banner promising "Answer keys are instructor-only", the instructor
+  // was being asked to approve a key they could only find by guessing.
+  const { CourseDraft } = loadComponent('app/prototype/Library.js', {
+    queryData: {
+      '/courses/course-1': {
+        status: 'PENDING',
+        version: 0,
+        course: {
+          title: 'MAGTF intelligence',
+          sourceIds: ['source-1'],
+          sections: [{
+            id: 'section-1',
+            title: 'Dissemination methods',
+            cite: 'source-1 p.23',
+            lesson: 'Supply-push sends intelligence to the units that need it without a request.',
+            pre: [{
+              stem: 'Which statement defines the supply-push method of intelligence dissemination?',
+              options: ['The unit requests a product', 'Intelligence is sent without a request'],
+              answer: 1,
+              rationale: 'Supply-push anticipates the requirement rather than waiting for it.',
+            }],
+          }],
+        },
+      },
+      '/sources': [],
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseDraft, { course: { id: 'course-1' } }));
+  assert.match(markup, /Keyed answer/);
+  assert.match(markup, /2\. Intelligence is sent without a request/);
+  // The rationale is the evidence for the key, so it travels with it.
+  assert.match(markup, /Supply-push anticipates the requirement/);
+});
+
+test('a generation whose stream ended without an outcome says so instead of nothing', () => {
+  // draftCourseStream ends with 'saved' or 'failed'. When the response body
+  // ends before either -- a proxy idle timeout on a long course -- the server
+  // keeps generating and saves minutes later. Saying nothing is what makes an
+  // instructor conclude it failed and generate a second copy of the course.
+  const { GenerationProgress } = loadComponent('app/prototype/GenerationProgress.js');
+  const events = [
+    { phase: 'accepted' },
+    { phase: 'sections', total: 19, passages: 26 },
+    { phase: 'coursewright', step: 'section', section: 'Dissemination methods' },
+    { phase: 'coursewright', kind: 'lesson', ok: true, section: 'Dissemination methods' },
+  ];
+  const lost = renderToStaticMarkup(
+    React.createElement(GenerationProgress, { events, interrupted: true }),
+  );
+  assert.match(lost, /role="alert"/);
+  assert.match(lost, /ended before generation reported an outcome/);
+  // It has to name the action that makes it worse, because that is the action
+  // the silence was prompting.
+  assert.match(lost, /two copies/);
+
+  // A generation still in flight looks exactly the same in the events, so the
+  // notice must never be inferred from a missing terminal phase.
+  const running = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
+  assert.doesNotMatch(running, /ended before generation reported an outcome/);
+
+  // Nor after an outcome did arrive, in either direction.
+  const saved = renderToStaticMarkup(React.createElement(GenerationProgress, {
+    events: [...events, { phase: 'saved', record: { id: 'course-1' } }],
+    interrupted: true,
+  }));
+  assert.doesNotMatch(saved, /ended before generation reported an outcome/);
+  const failed = renderToStaticMarkup(React.createElement(GenerationProgress, {
+    events: [...events, { phase: 'failed', error: 'Course generation failed' }],
+    interrupted: true,
+  }));
+  assert.doesNotMatch(failed, /ended before generation reported an outcome/);
+  assert.match(failed, /Course generation failed/);
+});
