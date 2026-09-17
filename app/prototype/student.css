@@ -1156,7 +1156,10 @@ details[open] > summary.s-label::before { content: '▾'; }
 .s-ls-fig { margin: 0.4rem 0 1.3rem; }
 .s-ls-fig-art { background: var(--p-surface); border-radius: var(--p-radius); box-shadow: var(--p-shadow); padding: 1.2rem 1.5rem; }
 .s-ls-fig-art svg { width: 100%; height: auto; display: block; max-height: 18rem; }
-.s-ls-fig figcaption { font-size: 0.85em; color: var(--p-dim); margin-top: 0.6rem; line-height: 1.45; }
+/* Wraps and breaks. A caption is a sentence the model wrote and its length is
+   not knowable here, so it must be able to take the room it needs rather than
+   run out of the figure and across the drawing above it. */
+.s-ls-fig figcaption { font-size: 0.85em; color: var(--p-dim); margin-top: 0.6rem; line-height: 1.45; overflow-wrap: anywhere; white-space: normal; }
 
 .s-ls-ex { background: var(--p-surface); box-shadow: var(--p-shadow); border-radius: var(--p-radius); padding: 1.1rem 1.3rem; margin: 0 0 1.2rem; }
 .s-ls-ex-t { font-weight: 600; margin-bottom: 0.6rem; }
@@ -1260,7 +1263,14 @@ details[open] > summary.s-label::before { content: '▾'; }
 .s-acc-item.open .s-acc-chev { color: var(--p-accent); }
 .s-acc-body { padding: 0 1rem 0.95rem; font-size: 0.95em; line-height: 1.55; color: var(--p-dim); }
 
-.s-hs-art { position: relative; }
+/* Shrink-wrapped to the rendered drawing, not to the column. Hotspot dots are
+   positioned as a percentage of THIS box, and the svg below is capped by
+   max-height, so a tall diagram renders narrower than its container -- leaving
+   every dot offset from the part it points at, which reads as a marker
+   floating in empty space. Sizing the box to the svg makes the percentages
+   mean what they say. */
+.s-hs-art { position: relative; width: fit-content; max-width: 100%; margin-inline: auto; }
+.s-hs-art svg { display: block; max-width: 100%; height: auto; max-height: 22rem; }
 .s-hs-dot {
   position: absolute; transform: translate(-50%, -50%);
   width: 1.7rem; height: 1.7rem; border-radius: 50%; border: none;
