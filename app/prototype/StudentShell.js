@@ -248,7 +248,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   } else {
     const Screen = REAL_SCREENS[view];
     body = Screen
-      ? <Screen key={`${course.id}:${view}`} course={course} />
+      ? <Screen key={`${course.id}:${view}`} course={course} lessonId={lessonId} page={page} onOpenLesson={openLesson} />
       : <UnsupportedCourseTool course={course} view={view} />;
   }
 

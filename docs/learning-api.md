@@ -204,6 +204,27 @@ model wrapper as its injectable ask callback. Grounding refusals remain in the
 stored result. The response is `201` with a `PENDING COURSE_DRAFT` record id,
 title, section count, and source ids.
 
+After Coursewright, each usable section gets a second grounded pass -- `pages`
+(default on; `"pages": false` opts out) -- that expands the lesson paragraph
+into a short lesson a learner reads one screen at a time: an `intro`, 3-5
+`pages` of typed blocks (`p`, `h`, `list`, `callout`, `terms`, `example`,
+`accordion`) and a one-sentence explanation per diagram `label`. Every block is
+checked against the same passage union the lesson was grounded in, at the same
+overlap floor, and a block the passage cannot back is dropped rather than
+saved; a section whose pages cannot be grounded keeps its paragraph and records
+`refusals.pages`. The streaming twin reports the pass as `phase: "pages"`, one
+event per section.
+
+### `POST /api/learning/courses/:id/pages` — instructor owner
+
+Runs the same page pass over a saved course -- one drafted before the pass
+existed, or whose sections refused. Each section's citation is resolved back to
+the approved source text it was grounded in. Responds with `expanded` and a
+per-section `{ id, title, pages, reason }`. On an `APPROVED` course the new
+content is also carried onto the release's `LESSON` rows, and an approved row
+goes back to `PENDING`: the words a learner reads the lesson through changed,
+so the instructor ratifies them again. `503` when no model is configured.
+
 ### `GET /api/learning/courses` and `GET /api/learning/courses/:id` —
 authenticated
 
@@ -248,6 +269,57 @@ optional `releaseId`; mastery sessions persist the selected `releaseId` and
 analytics default to the current release while retaining explicit historical
 selection.
 
+## Planning a whole course
+
+A hundred documents and forty-eight lessons do not fit the single-draft path:
+the outline prompt pastes every selected source, and the objective cap is
+twelve. A plan runs the same generation one bounded step per request.
+
+### `POST /api/learning/plans` — instructor
+
+`{ "title": "", "sourceIds": [...], "diagrams": true }` -> `201` with the plan.
+Every source must be approved. `GET /api/learning/plans` lists the caller's
+plans; `GET /api/learning/plans/:id` returns one (owner only). A plan carries
+`status` (`survey` | `outline` | `map` | `build` | `complete`), `survey`
+(one entry per source read: kind, summary, topics, lessons it enumerates),
+`annexes[].lessons[]` (id `A.01`, title, objective, `sourceIds`, `cites`,
+`status` planned/drafted/failed/ungrounded with `reason`), `dropped` (what the
+outline asked for and the rules rejected), `counts` and `courseId`.
+
+### `POST /api/learning/plans/:id/{survey|outline|map|build}` — owner
+
+One step of the stage the plan is in; a call for another stage is a no-op that
+returns the plan. The client repeats the call until `status` moves on:
+
+- `survey` reads the next three unsurveyed sources -- each sampled evenly
+  within a character budget -- and catalogues them in one model call per batch.
+- `outline`: when the sources are named by lesson code -- "BE0603 Cabling
+  Performance Exam LP", "BE0405_DCtoDCConverters_SHO": course prefix, annex,
+  lesson, name, role -- the annexes and lessons come from the codes
+  deterministically (`outlinedFrom: "lesson-codes"`), each lesson's own plan
+  and handout are its suggested sources, exams and critiques are kept in place
+  as `kind: "exam"` / `status: "skipped"` and never generated, and the model
+  is asked only for one objective per lesson in batches of twelve (a lesson it
+  declines gets "Explain <title>." and `objectiveFallback: true`). An uncoded
+  corpus gets one model call over the catalogue instead, capped at 12 annexes
+  / 60 lessons. `{ "again": true }` re-outlines at any later stage; a draft
+  already built is left in Courses and the next build starts a new one.
+- `map` is retrieval, no model: the passages that cover each objective are
+  ranked across every selected source and the lesson's `sourceIds` are the
+  sources they belong to. A lesson nothing covers is `ungrounded` and not built.
+- `build` drafts the next planned lesson through `draftCourse` (grounding,
+  citations, refusals and the page pass unchanged) over the lesson's mapped
+  sources, and appends it as a section -- carrying `annex` and `lessonId` --
+  to the plan's `COURSE_DRAFT`, created on the first build. The response
+  carries `built: { id, title, ok, reason }`.
+
+`POST /api/learning/plans/:id/retry` `{ "lessonId": "B.03" }` queues a failed or
+ungrounded lesson again. `DELETE /api/learning/plans/:id` removes the plan
+only; a draft it built keeps its own lifecycle under `/courses/:id`. The finished draft is reviewed, approved and ratified
+like any other; `POST /api/learning/courses/:id/items/approve-all` approves
+every item still PENDING on the release in one deliberate action (withheld
+items are untouched).
+
 ## Answering a check in a generated course
 
 ### `GET /api/learning/courses/:id/attempts` — learner or instructor
@@ -268,6 +340,16 @@ selection.
   "answers": { "record-id:s1:pre1": { "optionId": "0", "correct": true, "feedback": "…" } }
 }
 ```
+
+`lessons` carries the release's `LESSON` rows: `released` is whether the row is
+`APPROVED`, and only then `text`, `citation` and `content` are present.
+`content` is the structured teaching content that rides on the same row
+(`intro`, `pages`, `labels`, `diagram`, `flashcards` -- see
+`lib/learning/project-course.js` `lessonContent`), so one ratification decision
+governs the prose and the pages a learner reads it through; a withheld row
+withholds all of it. The learner reader (`app/prototype/LearnerFeatures.js`)
+builds its screens from this response alone, through
+`lib/learning/lesson-pages.js`.
 
 The answerable set is the `APPROVED` `QUESTION` half of the selected release's
 materialised items and nothing else, so a `PENDING` or `REJECTED` item is never

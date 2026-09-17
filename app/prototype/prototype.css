@@ -7,7 +7,7 @@
   --p-border-strong: rgba(0, 0, 0, 0.18);
   --p-text: #1d1d1f;
   --p-dim: #6e6e73;
-  --p-faint: #86868b;
+  --p-faint: #6f6f79;
   --p-rail: rgba(255, 255, 255, 0.72);
   --p-ink: #1d1d1f;
   --p-control: rgba(0, 0, 0, 0.05);
@@ -68,11 +68,14 @@ html[data-theme="dark"] .p-root {
   --p-border-strong: rgba(255, 255, 255, 0.18);
   --p-text: #f5f5f7;
   --p-dim: #a1a1a6;
-  --p-faint: #8e8e93;
+  --p-faint: #9a9aa0;
   --p-rail: rgba(28, 28, 30, 0.72);
   --p-control: rgba(255, 255, 255, 0.10);
   --p-control-hover: rgba(255, 255, 255, 0.16);
   --p-control-selected: #3a3a3c;
+  /* Lightened for dark with the tint and border below, which were already
+     lightened while the accent itself was left at the light-theme value. */
+  --p-accent: #ff7b8e;
   --p-accent-tint: rgba(224, 51, 79, 0.16);
   --p-accent-border: rgba(224, 51, 79, 0.55);
   --p-good: #3ac262;
@@ -99,11 +102,14 @@ html[data-theme="dark"] .p-root {
     --p-border-strong: rgba(255, 255, 255, 0.18);
     --p-text: #f5f5f7;
     --p-dim: #a1a1a6;
-    --p-faint: #8e8e93;
+    --p-faint: #9a9aa0;
     --p-rail: rgba(28, 28, 30, 0.72);
     --p-control: rgba(255, 255, 255, 0.10);
     --p-control-hover: rgba(255, 255, 255, 0.16);
     --p-control-selected: #3a3a3c;
+    /* Lightened for dark with the tint and border below, which were already
+       lightened while the accent itself was left at the light-theme value. */
+    --p-accent: #ff7b8e;
     --p-accent-tint: rgba(224, 51, 79, 0.16);
     --p-accent-border: rgba(224, 51, 79, 0.55);
     --p-good: #3ac262;

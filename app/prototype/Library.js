@@ -1,15 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useReducer, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation, useApiStream } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { CourseReadiness } from './CourseReadiness';
 import { CourseItemReview } from './ItemReview';
 import { GenerationProgress, ThinCoverageNotice } from './GenerationProgress';
+import { CoursePreview } from './LearnerFeatures';
 import { RowActions } from './RowActions';
 import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
 import { collectionFromFilename, isPdfFile, isZipFile, pdfEntriesFromZip, zipEntryForm } from './source-upload';
+import { groupSourcesByCollection } from './source-groups';
+import { CoursePlanner, PlanCourseModal, PlansList, usePlans } from './CoursePlanner';
 import './source-library.css';
 
 /* The instructor library — the parts of the persisted learning loop that are
@@ -23,27 +26,7 @@ function errText(e, fallback) {
 
 /* ---------- sources ---------- */
 
-const NO_COLLECTION = 'Other documents';
-
-/* Sources grouped by the collection they were uploaded under -- "Lesson plans",
-   "Student material" -- with the ungrouped ones last. Order inside a group puts
-   what still needs a decision first. */
-export function groupSourcesByCollection(sources) {
-  const groups = new Map();
-  for (const source of Array.isArray(sources) ? sources : []) {
-    const key = source.collection || NO_COLLECTION;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(source);
-  }
-  const named = [...groups.keys()].filter((key) => key !== NO_COLLECTION).sort((a, b) => a.localeCompare(b));
-  const keys = groups.has(NO_COLLECTION) ? [...named, NO_COLLECTION] : named;
-  return keys.map((name) => {
-    const items = groups.get(name);
-    const pending = items.filter((source) => source.status !== 'APPROVED');
-    const approved = items.filter((source) => source.status === 'APPROVED');
-    return { name, sources: [...pending, ...approved], pending, approved };
-  });
-}
+export { groupSourcesByCollection } from './source-groups';
 
 export function SourcesView() {
   const { data: sources, loading, error, refetch } = useApiQuery('/sources');
@@ -429,6 +412,22 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
     error: sourcesError,
     refetch: refetchSources,
   } = useApiQuery('/sources');
+  // A whole-course plan opens in place of the library; the shell's course
+  // navigation is unchanged, and the plan hands off to onOpen for its draft.
+  const plans = usePlans();
+  // useReducer rather than useState on purpose: the render harness in
+  // tests/ui-rendering.test.mjs feeds useState positionally, and a state
+  // slot here would shift every slot the draft dialog below expects.
+  const [openPlanId, setOpenPlanId] = useReducer((_, next) => next, null);
+  if (openPlanId) {
+    return (
+      <CoursePlanner
+        planId={openPlanId}
+        onBack={() => { setOpenPlanId(null); plans.refetch(); onDrafted?.(); }}
+        onOpenCourse={(id) => { onDrafted?.(); onOpen(id); }}
+      />
+    );
+  }
   // useApiQuery starts with no data before its first effect runs. Treat that
   // state as pending rather than presenting it as a successful empty library.
   const sourcesPending = sourcesLoading || (sources == null && !sourcesError);
@@ -440,14 +439,22 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
         <div>
           <h1>Courses</h1>
         </div>
-        <DraftCourseModal
-          sources={Array.isArray(sources) ? sources : []}
-          sourcesLoading={sourcesPending}
-          sourcesError={sourcesError}
-          onRetrySources={refetchSources}
-          onDrafted={onDrafted}
-        />
+        <div className="p-btnrow">
+          <PlanCourseModal
+            sources={Array.isArray(sources) ? sources : []}
+            onCreated={(plan) => { plans.refetch(); setOpenPlanId(plan.id); }}
+          />
+          <DraftCourseModal
+            sources={Array.isArray(sources) ? sources : []}
+            sourcesLoading={sourcesPending}
+            sourcesError={sourcesError}
+            onRetrySources={refetchSources}
+            onDrafted={onDrafted}
+          />
+        </div>
       </div>
+
+      <PlansList plans={Array.isArray(plans.data) ? plans.data : []} onOpen={setOpenPlanId} onChanged={plans.refetch} />
 
       {loading && <p>Loading courses…</p>}
       {error && <p className="s-shell-error" role="alert">{errText(error, 'Could not load courses.')}</p>}
@@ -672,7 +679,9 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
                   />
                   <span>
                     <strong>{s.title}</strong>
-                    <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages · {s.id}</small>
+                    <small style={{ display: 'block', color: 'var(--p-faint)' }}>
+                      {s.pages || 0} pages{s.sourceId && s.sourceId !== s.title ? ` · ${s.sourceId}` : ''}
+                    </small>
                   </span>
                 </label>
               ))}
@@ -1108,6 +1117,8 @@ export function CourseDraft({ course, onChanged }) {
   const { data: sources } = useApiQuery('/sources');
   const revise = useApiMutation(`/courses/${course.id}/revise`, 'POST');
   const approve = useApiMutation(`/courses/${course.id}/approve`, 'POST');
+  const writePages = useApiMutation(`/courses/${course.id}/pages`, 'POST');
+  const [preview, setPreview] = useState(false);
 
   const draft = envelope?.course || course.record?.course || course.record || course;
   const status = envelope?.status || course.status;
@@ -1152,6 +1163,22 @@ export function CourseDraft({ course, onChanged }) {
       await refresh();
     } catch (error) {
       setErr(errText(error, 'The course could not be approved.'));
+    }
+  };
+
+  // Lesson pages are a second grounded pass over each section's passage.
+  // New drafts get them during generation; this writes them for a course
+  // drafted before that pass existed, or fills in sections it refused.
+  const handleWritePages = async () => {
+    setErr(null);
+    setNotice('');
+    try {
+      const result = await writePages.mutate();
+      const written = result?.sections?.filter((s) => s.pages > 0).length || 0;
+      setNotice(`Lesson pages written for ${written} of ${result?.sections?.length || 0} sections.`);
+      await refresh();
+    } catch (error) {
+      setErr(errText(error, 'Lesson pages could not be written.'));
     }
   };
 
@@ -1235,6 +1262,18 @@ export function CourseDraft({ course, onChanged }) {
       {notice && <p className="p-check ok" role="status"><strong>{notice}</strong></p>}
 
       <div className="p-btnrow" style={{ marginBottom: '1.25rem' }}>
+        <button type="button" className={`p-btn${preview ? '' : ' ghost'}`} onClick={() => setPreview((v) => !v)} disabled={showingLoading}>
+          {preview ? 'Back to review' : 'Preview as a learner'}
+        </button>
+        {!showingLoading && sections.some((s) => s?.lesson && !s.refused) && (
+          <button type="button" className="p-btn ghost" onClick={handleWritePages} disabled={writePages.loading || Boolean(pendingRevision) || hasPendingRevision || approve.loading}>
+            {writePages.loading
+              ? 'Writing lesson pages…'
+              : sections.some((s) => Array.isArray(s?.pages) && s.pages.length)
+                ? `Rewrite lesson pages (${sections.filter((s) => Array.isArray(s?.pages) && s.pages.length).length}/${sections.filter((s) => s?.lesson && !s.refused).length} written)`
+                : 'Write lesson pages'}
+          </button>
+        )}
         {status === 'APPROVED' && !hasPendingRevision && (
           <>
             <button type="button" className="p-btn ghost" onClick={() => exportScorm('1.2')}>Export SCORM 1.2</button>
@@ -1248,7 +1287,16 @@ export function CourseDraft({ course, onChanged }) {
         )}
       </div>
 
-      <CourseReadiness
+      {preview && !showingLoading && (
+        <div className="p-panel" style={{ marginBottom: '1.25rem' }}>
+          <p className="p-src" style={{ marginTop: 0 }}>
+            Exactly what a learner sees, on the same player. Your copy carries the answer keys, so checks grade here; a learner&apos;s copy does not, and grades on the server.
+          </p>
+          <CoursePreview key={version} course={{ id: course.id, name: draft?.title || course.name || 'Course draft' }} draft={draft} />
+        </div>
+      )}
+
+      {!preview && <CourseReadiness
         courseId={course.id}
         version={version}
         candidate={draft}
@@ -1257,17 +1305,17 @@ export function CourseDraft({ course, onChanged }) {
         busy={approve.loading || Boolean(pendingRevision)}
         unavailable={showingLoading || Boolean(draftError) || !envelope}
         onApprove={handleApprove}
-      />
+      />}
 
       {/* Approving the course released this snapshot; it did not release the
           items in it. Every materialised item starts PENDING and a learner only
           ever sees APPROVED, so the gate stays open until a human closes it. */}
-      {status === 'APPROVED' && !showingLoading && (
+      {status === 'APPROVED' && !showingLoading && !preview && (
         <CourseItemReview courseId={course.id} onChanged={onChanged} />
       )}
 
       {showingLoading && <p>Loading generated course…</p>}
-      {!showingLoading && (
+      {!showingLoading && !preview && (
         <div className="p-panel">
           <GeneratedCoursePreview
             course={draft || {}}
