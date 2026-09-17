@@ -36,6 +36,12 @@ jobs:
         run: npm run build
 
       # Arsenal adapter + evidence contract tests (no database; RUN_DB_TESTS is unset).
+      # `npm test` is the de-duplicated pass: every file named by test:navigation is
+      # already in this list, which is why there is no separate test:navigation step.
+      # test/scorm-verification.test.mjs skips its two mode-0700 cases off-POSIX and
+      # runs them for real here on ubuntu -- see the skip reason in that file.
+      # scripts/scorm/runtime-harness.test.mjs is here too: it had no script at all
+      # and so had never gated a merge.
       - name: Test
         run: npm test
 
@@ -65,6 +71,13 @@ jobs:
       # the environment instead of taking grounding down.
       - name: Doctrine endpoint configuration
         run: npm run test:doctrine
+
+      # The doctrine client must attach a Firebase ID token and must never fetch
+      # without a session. The script has existed since the seam landed but no job
+      # ran it, so it had never gated a merge. Needs --experimental-test-module-mocks;
+      # the script carries the flag.
+      - name: Doctrine client authorization
+        run: npm run test:doctrine-auth
 
       # Renaming and removing library records. The delete guards decide whether
       # learner attempts survive, so they gate merges.
@@ -124,3 +137,30 @@ jobs:
         run: npm run test:authoring-db
       - name: Roster persistence
         run: npm run test:roster-db
+
+      # Deliberately NOT wired as steps yet -- do not add them without evidence:
+      #
+      #   npm run test:cohort-privacy-db  (test/cohort-privacy-postgres.mjs)
+      #     Needs initdb/pg_ctl AND a Linux Prisma query engine. It could not be
+      #     executed on the Windows dev machine (no PostgreSQL server) and could not
+      #     be executed in a Linux container (the checked-out node_modules carries
+      #     Windows Prisma engines), so nobody has seen it pass or fail. Run it once
+      #     on Linux and wire it here if it is green.
+      #
+      #   npm run test:offline-auth
+      #     Its three files land with the offline-auth seam (PR #139). The script is
+      #     defined so it is ready, but `node --test` exits 1 when every named path is
+      #     missing, so it must stay out of CI and out of `npm test` until those files
+      #     are on main.
+      #
+      #   npm run test:claims  (tests/deployment-claims.test.mjs)
+      #     Lane C's deployment-claims guard, landing with PR #140. Defined here so
+      #     it is ready; same reason as test:offline-auth for staying out of CI until
+      #     the file is on main. Wire it as a build-job step once it is.
+      #
+      #   npm run test:offline-verify  (scripts/offline/verify.test.mjs)
+      #     Green on Node 20 Linux and on ~25 local runs, but it asserts stalled- and
+      #     oversized-response behaviour against loopback HTTP servers with real
+      #     timers, and it failed once on a machine that was out of resources at that
+      #     moment. Timing-sensitive by construction, so it is kept out of the shared
+      #     gate rather than risk an intermittent red for every branch.
