@@ -211,6 +211,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   else if (area === 'dashboard') {
     body = (
       <FocusedDashboard
+        student={authenticated ? profile : STUDENT}
         onOpen={open}
         onCalendar={() => setArea('calendar')}
         courses={learning.courses}

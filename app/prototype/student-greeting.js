@@ -6,6 +6,14 @@ export function studentGreeting(date = new Date()) {
   return 'Good evening';
 }
 
+export function formatStudentGreeting(greeting, student) {
+  const clean = (value) => typeof value === 'string' ? value.trim() : '';
+  const name = clean(student?.name);
+  const lastName = clean(student?.lastName) || name.split(/\s+/).filter(Boolean).at(-1) || '';
+  const recipient = [clean(student?.rank), lastName].filter(Boolean).join(' ');
+  return recipient ? `${greeting}, ${recipient}` : greeting;
+}
+
 export function subscribeStudentGreeting(onChange, windowTarget = window, documentTarget = document) {
   const refresh = () => onChange(studentGreeting());
   refresh();
