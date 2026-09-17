@@ -1123,3 +1123,66 @@ test('the course hook refreshes the legacy list too, not just generated courses'
   const returned = source.slice(source.indexOf('    manualEnabled,'));
   assert.match(returned, /manual\.refetch/, 'the shared refetch does not refresh the manual list');
 });
+
+test('a section the server dropped leaves the progress list and joins what is not covered', () => {
+  // The refusal's reason is the most useful thing on this screen: it is the
+  // difference between "pick a source that covers this" and "the source covers
+  // it, the generator would not teach it from that page". Losing it -- or
+  // leaving the dropped section in the list beside sections that were saved --
+  // is how an instructor ends up not knowing the course is incomplete.
+  const { generationView, GenerationProgress } = loadComponent('app/prototype/GenerationProgress.js');
+  const reason = 'the passage identifies CI/HUMINT reporting categories but its counterintelligence discussion is incomplete';
+  const events = [
+    { phase: 'sections', total: 3, passages: 4 },
+    { phase: 'coursewright', step: 'skipped', section: 'Explain collection management', reason: 'no approved passage covers this objective' },
+    { phase: 'coursewright', step: 'section', section: 'Identify the six intelligence functions' },
+    { phase: 'coursewright', kind: 'lesson', ok: true, section: 'Identify the six intelligence functions' },
+    { phase: 'coursewright', step: 'section', section: 'Explain how counterintelligence supports the MAGTF commander' },
+    { phase: 'coursewright', kind: 'lesson', ok: false, section: 'Explain how counterintelligence supports the MAGTF commander', reason },
+    { phase: 'coursewright', step: 'dropped', section: 'Explain how counterintelligence supports the MAGTF commander', reason },
+    { phase: 'coursewright', step: 'done' },
+    { phase: 'saved', record: { id: 'course-1', sections: 1 } },
+  ];
+
+  // The view is built inside the component's vm realm, so compare its shape
+  // rather than its prototypes.
+  const view = JSON.parse(JSON.stringify(generationView(events)));
+  assert.deepEqual(view.sections.map((section) => section.title), ['Identify the six intelligence functions']);
+  assert.deepEqual(view.skipped, [
+    { objective: 'Explain collection management', reason: 'no approved passage covers this objective' },
+    { objective: 'Explain how counterintelligence supports the MAGTF commander', reason },
+  ]);
+  assert.equal(view.failure, null);
+
+  const markup = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
+  assert.match(markup, /Not covered by the selected sources/);
+  assert.match(markup, /counterintelligence discussion is incomplete/);
+  assert.match(markup, /no approved passage covers this objective/);
+  // Written, so the instructor is not told a saved course failed.
+  assert.doesNotMatch(markup, /s-shell-error/);
+});
+
+test('a pending draft still says what it does not cover, after the modal is gone', () => {
+  const { CourseDraft } = loadComponent('app/prototype/Library.js', {
+    queryData: {
+      '/courses/course-1': {
+        status: 'PENDING',
+        version: 0,
+        course: {
+          title: 'MAGTF intelligence',
+          sourceIds: ['source-1'],
+          sections: [{ id: 'section-1', title: 'Identify the six intelligence functions', cite: 'source-1 p.3', lesson: 'The six intelligence functions are planning and direction, collection, processing, production, dissemination, and utilization.' }],
+          skippedObjectives: [{
+            objective: 'Explain how counterintelligence supports the MAGTF commander',
+            reason: 'its counterintelligence discussion is incomplete',
+          }],
+        },
+      },
+      '/sources': [],
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseDraft, { course: { id: 'course-1' } }));
+  assert.match(markup, /Not covered by the selected sources/);
+  assert.match(markup, /counterintelligence supports the MAGTF commander/);
+  assert.match(markup, /its counterintelligence discussion is incomplete/);
+});

@@ -29,6 +29,7 @@ import {
   tutor,
 } from '../lib/learning/core.js';
 import { matchesApprovedMasteryPlan } from '../lib/db.js';
+import { projectCourseRows } from '../lib/learning/project-course.js';
 
 const upstream = (name) => import(name);
 
@@ -266,22 +267,27 @@ test('Coursewright documents retain page labels and grounding stays on cited pas
 });
 
 test('Coursewright draft uses an injected model and keeps refusal output', async () => {
-  const course = await draftCourse(
-    {
-      title: 'Grounded draft',
-      objectives: ['Explain the standard safety check'],
-      documents: [{ text: 'The standard requires a safety check.', source: 'contract-1' }],
-      diagrams: false,
-    },
-    {
-      load: upstream,
-      ask: async () => ({ refused: true, reason: 'contract test refusal' }),
-    },
+  // The refusal reason is still carried out of the injected model, so the
+  // contract this test guards is unchanged; it is carried out against the
+  // objective it cost rather than on a section that has nothing in it.
+  await assert.rejects(
+    () => draftCourse(
+      {
+        title: 'Grounded draft',
+        objectives: ['Explain the standard safety check'],
+        documents: [{ text: 'The standard requires a safety check.', source: 'contract-1' }],
+        diagrams: false,
+      },
+      {
+        load: upstream,
+        ask: async () => ({ refused: true, reason: 'contract test refusal' }),
+      },
+    ),
+    (error) =>
+      error.code === 'COURSE_GENERATION_EMPTY' &&
+      error.message.includes('Explain the standard safety check') &&
+      error.message.includes('contract test refusal'),
   );
-
-  assert.equal(course.sections.length, 1);
-  assert.equal(course.sections[0].refused, true);
-  assert.equal(course.sections[0].reason, 'contract test refusal');
 });
 
 test('empty objectives derive a grounded outline before Coursewright builds every section', async () => {
@@ -432,7 +438,9 @@ test('an uncovered objective is named, not a reason to throw the whole course aw
 
   assert.equal(course.sections.length, 1);
   assert.deepEqual(course.objectives, ['Clear the rifle before disassembly begins']);
-  assert.deepEqual(course.skippedObjectives, ['chamber carbon']);
+  assert.deepEqual(course.skippedObjectives, [
+    { objective: 'chamber carbon', reason: 'no approved passage covers this objective' },
+  ]);
 });
 
 test('nothing grounded at all is still an explicit failure, never an empty course', async () => {
@@ -446,6 +454,197 @@ test('nothing grounded at all is still an explicit failure, never an empty cours
       error.status === 422 &&
       /chamber carbon/.test(error.message),
   );
+});
+
+/* ---------- a refused section costs its objective, not the course ---------- */
+
+/* The live MCWP 2-10 run, reduced to what reproduces it: three objectives,
+   three pages that each cover one of them, and a generator that will write two
+   and refuse the third. The refusal is the real one -- "the passage identifies
+   CI/HUMINT reporting categories ... but its counterintelligence discussion is
+   incomplete" -- and it cost two fully grounded, fully cited sections. */
+const MAGTF_PAGES = [
+  { page: 3, text: 'The six intelligence functions are planning and direction, collection, processing, production, dissemination, and utilization.' },
+  { page: 4, text: 'Intelligence preparation of the battlespace has four steps: define the battlespace environment, describe the battlespace effects, evaluate the adversary, and determine adversary courses of action.' },
+  { page: 7, text: 'Counterintelligence and human intelligence reporting categories are submitted to the MAGTF commander through the intelligence section.' },
+];
+const MAGTF_SOURCE = {
+  id: 'source-mcwp',
+  status: 'APPROVED',
+  payload: {
+    title: 'MCWP 2-10',
+    sourceId: 'mcwp-2-10',
+    pages: MAGTF_PAGES,
+  },
+};
+// The documents as sourceDocuments builds them: one per page, cited by the
+// record id and page, which is what validateCourseDraft resolves labels against.
+const MAGTF_DOCUMENTS = MAGTF_PAGES.map((page) => ({
+  source: `${MAGTF_SOURCE.id} p.${page.page}`,
+  text: page.text,
+}));
+const MAGTF_OBJECTIVES = [
+  'Identify the six intelligence functions',
+  'Describe the four steps of intelligence preparation of the battlespace',
+  'Explain how counterintelligence supports the MAGTF commander',
+];
+const CI_REFUSAL =
+  'the passage identifies CI/HUMINT reporting categories but its counterintelligence discussion is incomplete';
+
+/* Teach from the page, verbatim, so nothing here can pass a grounding floor the
+   real generator would fail -- except the counterintelligence objective, which
+   the generator refuses exactly as it did live. */
+function magtfAsk({ refuseAll = false } = {}) {
+  const pageFor = (objective) => {
+    if (objective.includes('six intelligence functions')) return MAGTF_PAGES[0].text;
+    if (objective.includes('four steps')) return MAGTF_PAGES[1].text;
+    return MAGTF_PAGES[2].text;
+  };
+  return async (model, system, prompt) => {
+    const objective = (/Objective:\s*(.*)/.exec(prompt)?.[1] || '').trim();
+    const refuses = refuseAll || objective.includes('counterintelligence');
+    if (system.includes('micro-lesson')) {
+      return refuses
+        ? { refused: true, reason: CI_REFUSAL }
+        : { refused: false, lesson: pageFor(objective) };
+    }
+    if (system.includes('"items"')) {
+      return {
+        refused: false,
+        items: [{
+          stem: 'Which of these does the passage state?',
+          options: [pageFor(objective).slice(0, 60), 'None of the above'],
+          answerIndex: 0,
+          rationale: pageFor(objective),
+        }],
+      };
+    }
+    if (system.includes('"cards"')) {
+      return { refused: false, cards: [{ front: 'What does the passage state?', back: pageFor(objective) }] };
+    }
+    // Scenario, discussion and summary are course-level and not what this is about.
+    return { refused: true, reason: 'not needed for this fixture' };
+  };
+}
+
+test('a refused section costs its own objective, not the two that were grounded', async () => {
+  const coursewright = await upstream('coursewright');
+
+  // Before: the generator hands back three sections, one of them refused, and
+  // the draft boundary fails the whole thing over it -- so nothing is saved and
+  // two grounded, cited sections are gone. This is the failure, reproduced.
+  const ask = magtfAsk();
+  const raw = await coursewright.buildCourse(
+    {
+      title: 'MAGTF intelligence',
+      diagrams: false,
+      objectives: MAGTF_OBJECTIVES.map((objective, index) => ({
+        objective,
+        title: objective,
+        passage: MAGTF_PAGES[index].text,
+        cite: MAGTF_DOCUMENTS[index].source,
+      })),
+    },
+    undefined,
+    { ask },
+  );
+  assert.equal(raw.sections.length, 3);
+  assert.equal(raw.sections[2].refused, true);
+  const before = validateCourseDraft(raw, { sources: [MAGTF_SOURCE] });
+  assert.equal(before.valid, false);
+  assert.ok(before.issues.some((issue) => /section 2 .* is refused/.test(issue)));
+
+  // After: the refusal costs its own objective and nothing else.
+  const course = await draftCourse(
+    { title: 'MAGTF intelligence', objectives: MAGTF_OBJECTIVES, documents: MAGTF_DOCUMENTS, diagrams: false },
+    { load: upstream, ask },
+  );
+  assert.equal(course.sections.length, 2);
+  assert.equal(course.sections.some((section) => section.refused), false);
+  assert.deepEqual(course.sections.map((section) => section.title), MAGTF_OBJECTIVES.slice(0, 2));
+  // The saved draft claims only what it teaches.
+  assert.deepEqual(course.objectives, MAGTF_OBJECTIVES.slice(0, 2));
+  // And names what it does not, with the reason the generator gave.
+  assert.deepEqual(course.skippedObjectives, [{ objective: MAGTF_OBJECTIVES[2], reason: CI_REFUSAL }]);
+
+  // The gate that discarded it now passes, so the record is created.
+  assert.deepEqual(validateCourseDraft(course, { sources: [MAGTF_SOURCE] }), { valid: true, issues: [] });
+});
+
+test('a refused section cannot be materialised, because it is not in the draft', async () => {
+  const course = await draftCourse(
+    { title: 'MAGTF intelligence', objectives: MAGTF_OBJECTIVES, documents: MAGTF_DOCUMENTS, diagrams: false },
+    { load: upstream, ask: magtfAsk() },
+  );
+  const { sections } = projectCourseRows('rec_magtf', course, { sourceId: 'mcwp-2-10' });
+  assert.deepEqual(sections.map((section) => section.title), MAGTF_OBJECTIVES.slice(0, 2));
+  const stems = sections.flatMap((section) => section.items.map((item) => item.stem));
+  assert.equal(stems.some((stem) => /counterintelligence/i.test(stem)), false);
+  // A refused section carries no lesson and no questions, so materialising one
+  // would write an empty Section row an instructor cannot review or reject.
+  assert.ok(sections.every((section) => section.items.length > 0));
+});
+
+test('every section refusing is still a hard failure, and says what was not covered', async () => {
+  await assert.rejects(
+    () => draftCourse(
+      { title: 'MAGTF intelligence', objectives: MAGTF_OBJECTIVES, documents: MAGTF_DOCUMENTS, diagrams: false },
+      { load: upstream, ask: magtfAsk({ refuseAll: true }) },
+    ),
+    (error) =>
+      error.code === 'COURSE_GENERATION_EMPTY' &&
+      error.status === 422 &&
+      MAGTF_OBJECTIVES.every((objective) => error.message.includes(objective)) &&
+      error.message.includes(CI_REFUSAL),
+  );
+});
+
+test('dropping a refusal is not a licence to drop a validation failure', async () => {
+  // The guard. Only refused/error sections are dropped; everything the draft
+  // boundary exists to catch stays fatal, or this fix would be a way for
+  // ungrounded content to reach a learner.
+  const good = () => ({
+    title: MAGTF_OBJECTIVES[0],
+    cite: `${MAGTF_SOURCE.id} p.3`,
+    lesson: MAGTF_PAGES[0].text,
+    pre: [{ stem: 'Which functions?', options: [MAGTF_PAGES[0].text, 'None'], answer: 0, rationale: MAGTF_PAGES[0].text }],
+    post: [{ stem: 'Name the functions.', options: [MAGTF_PAGES[0].text, 'None'], answer: 0, rationale: MAGTF_PAGES[0].text }],
+  });
+  const fatal = [
+    ['an ungrounded lesson', { ...good(), lesson: 'The orbital engine requires a ceramic seal before launch.' }],
+    ['an unresolvable citation', { ...good(), cite: 'some-other-publication p.1' }],
+    ['a missing citation', { ...good(), cite: '' }],
+    ['a malformed question', { ...good(), pre: [{ stem: 'Which functions?', options: [], answer: 0 }] }],
+    ['a refused section reaching the boundary', { title: MAGTF_OBJECTIVES[2], cite: `${MAGTF_SOURCE.id} p.7`, refused: true, reason: CI_REFUSAL }],
+  ];
+  for (const [label, section] of fatal) {
+    const result = validateCourseDraft(
+      { title: 'MAGTF intelligence', sections: [good(), section] },
+      { sources: [MAGTF_SOURCE] },
+    );
+    assert.equal(result.valid, false, `${label} must still stop the draft`);
+    assert.ok(result.issues.some((issue) => issue.startsWith('section 1')), label);
+  }
+});
+
+test('the stream says which objective a refusal cost, and why', async () => {
+  const events = [];
+  await draftCourse(
+    { title: 'MAGTF intelligence', objectives: MAGTF_OBJECTIVES, documents: MAGTF_DOCUMENTS, diagrams: false },
+    { load: upstream, ask: magtfAsk(), emit: (event) => events.push(event) },
+  );
+  // The reason exists only inside the generation callback, so it has to leave
+  // on the stream: the modal cannot recover it from the saved record alone.
+  const dropped = events.filter((event) => event.step === 'dropped');
+  assert.deepEqual(dropped, [{
+    phase: 'coursewright',
+    step: 'dropped',
+    section: MAGTF_OBJECTIVES[2],
+    reason: CI_REFUSAL,
+  }]);
+  // A retrieval skip now carries a reason too, so the screen can list both.
+  const skipped = events.find((event) => event.step === 'skipped');
+  assert.equal(skipped, undefined);
 });
 
 test('Rubricon validation and traceability run after injected generation', async () => {

@@ -54,6 +54,16 @@ export function generationView(events) {
     }
     return byTitle.get(title);
   };
+  /* A section the server dropped is not a section of this course. Take it out
+     of the list being drawn and name it under "not covered" instead, with the
+     others the sources never reached: two stages of the same outcome, reported
+     once so the count above the list keeps matching the list. */
+  const dropSection = (title) => {
+    const section = byTitle.get(title);
+    if (!section) return;
+    byTitle.delete(title);
+    view.sections = view.sections.filter((entry) => entry !== section);
+  };
   for (const event of Array.isArray(events) ? events : []) {
     if (event.phase === 'sources') {
       view.documents = event.documents || 0;
@@ -75,7 +85,10 @@ export function generationView(events) {
       view.passages = event.passages || 0;
     } else if (event.phase === 'coursewright') {
       if (event.step === 'skipped') {
-        view.skipped.push(event.section);
+        view.skipped.push({ objective: event.section, reason: event.reason || '' });
+      } else if (event.step === 'dropped') {
+        dropSection(event.section);
+        view.skipped.push({ objective: event.section, reason: event.reason || '' });
       } else if (event.step === 'grounded') {
         sectionFor(event.section).passages = event.passages || 0;
       } else if (event.step === 'section') {
@@ -205,9 +218,23 @@ export function GenerationProgress({ events }) {
       )}
 
       {view.skipped.length > 0 && (
-        <p className="p-src" style={{ marginTop: '0.75rem' }}>
-          Not covered by the selected sources, so not written: {view.skipped.join('; ')}
-        </p>
+        <div className="p-src" style={{ marginTop: '0.75rem' }}>
+          <p style={{ margin: 0 }}>
+            Not covered by the selected sources, so not written. The rest of the course was
+            saved:
+          </p>
+          <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
+            {view.skipped.map((entry) => (
+              <li key={entry.objective}>
+                {entry.objective}
+                {/* The reason is the actionable half: it separates "pick a
+                    source that covers this" from "the source covers it, the
+                    generator would not teach it from that page". */}
+                {entry.reason ? <> &mdash; {entry.reason}</> : null}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {Object.keys(view.apply).length > 0 && (
