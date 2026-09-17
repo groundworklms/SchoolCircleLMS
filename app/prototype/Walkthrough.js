@@ -90,19 +90,33 @@ export function pickDemoCourse(courses) {
  * out of the reading path either way -- and the caller is told, so it can shrink
  * the card to a compact strip that covers as little as possible.
  */
-const CARD_EST_HEIGHT = 200;
+const CARD_EST_HEIGHT = 300;
 
-function placeCard(rect, viewport) {
-  const centerLeft = Math.max(VIEWPORT_MARGIN, (viewport.width - CARD_WIDTH) / 2);
-  if (!rect) {
-    return { left: centerLeft, top: Math.round(viewport.height * 0.32), placement: 'center' };
-  }
+/* A target that fills most of the viewport is not a spotlight -- it is the whole
+   screen, so outlining it points at nothing. When the anchor is a screen-level
+   element (our shells put data-tour on <main>) the honest thing is to show the
+   card and NOT draw a misleading outline; a small element like the Ask button
+   still gets a real spotlight. */
+function isWholeScreen(rect, viewport) {
+  if (!rect) return false;
+  return rect.width >= viewport.width * 0.6 && rect.height >= viewport.height * 0.5;
+}
 
+/* `cardHeight` is the card's measured height (see the layout effect); the whole
+   card is kept on-screen so the footer with Next is never clipped. */
+function placeCard(rect, viewport, cardHeight = CARD_EST_HEIGHT) {
+  const height = Math.min(cardHeight || CARD_EST_HEIGHT, viewport.height - VIEWPORT_MARGIN * 2);
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
   const maxLeft = viewport.width - CARD_WIDTH - VIEWPORT_MARGIN;
-  const maxTop = viewport.height - CARD_EST_HEIGHT - VIEWPORT_MARGIN;
+  const maxTop = Math.max(VIEWPORT_MARGIN, viewport.height - height - VIEWPORT_MARGIN);
+  const centerLeft = Math.max(VIEWPORT_MARGIN, (viewport.width - CARD_WIDTH) / 2);
 
-  // Clear space beyond each edge of the spotlight.
+  if (!rect || isWholeScreen(rect, viewport)) {
+    // No specific element to point at: dock the card to the bottom-right, out of
+    // the reading path, fully on-screen, and draw no spotlight.
+    return { left: maxLeft, top: maxTop, placement: rect ? 'corner' : 'center', spotlight: false };
+  }
+
   const gap = {
     right: viewport.width - rect.right,
     left: rect.left,
@@ -110,29 +124,25 @@ function placeCard(rect, viewport) {
     top: rect.top,
   };
   const needSide = CARD_WIDTH + CARD_GAP + VIEWPORT_MARGIN;
-  const needStack = CARD_EST_HEIGHT + CARD_GAP + VIEWPORT_MARGIN;
+  const needStack = height + CARD_GAP + VIEWPORT_MARGIN;
 
-  // Prefer a side dock (keeps the card beside the focus, reading left-to-right),
-  // then below, then above. First candidate that clears the spotlight wins.
+  // Prefer a side dock (beside the focus), then below, then above. First
+  // candidate that clears the spotlight wins; the card is always fully on-screen.
   if (gap.right >= needSide) {
-    const top = clamp(rect.top, VIEWPORT_MARGIN, maxTop);
-    return { left: clamp(rect.right + CARD_GAP, VIEWPORT_MARGIN, maxLeft), top, placement: 'right' };
+    return { left: clamp(rect.right + CARD_GAP, VIEWPORT_MARGIN, maxLeft), top: clamp(rect.top, VIEWPORT_MARGIN, maxTop), placement: 'right', spotlight: true };
   }
   if (gap.left >= needSide) {
-    const top = clamp(rect.top, VIEWPORT_MARGIN, maxTop);
-    return { left: clamp(rect.left - CARD_GAP - CARD_WIDTH, VIEWPORT_MARGIN, maxLeft), top, placement: 'left' };
+    return { left: clamp(rect.left - CARD_GAP - CARD_WIDTH, VIEWPORT_MARGIN, maxLeft), top: clamp(rect.top, VIEWPORT_MARGIN, maxTop), placement: 'left', spotlight: true };
   }
   const preferredLeft = clamp(rect.left + rect.width / 2 - CARD_WIDTH / 2, VIEWPORT_MARGIN, maxLeft);
   if (gap.bottom >= needStack) {
-    return { left: preferredLeft, top: clamp(rect.bottom + CARD_GAP, VIEWPORT_MARGIN, maxTop), placement: 'bottom' };
+    return { left: preferredLeft, top: clamp(rect.bottom + CARD_GAP, VIEWPORT_MARGIN, maxTop), placement: 'bottom', spotlight: true };
   }
   if (gap.top >= needStack) {
-    return { left: preferredLeft, top: clamp(rect.top - CARD_GAP - CARD_EST_HEIGHT, VIEWPORT_MARGIN, maxTop), placement: 'top' };
+    return { left: preferredLeft, top: clamp(rect.top - CARD_GAP - height, VIEWPORT_MARGIN, maxTop), placement: 'top', spotlight: true };
   }
-
-  // The spotlight leaves no clear gap (it fills the viewport). Dock to the
-  // bottom-right corner as a compact strip; 'corner' tells the card to shrink.
-  return { left: maxLeft, top: maxTop, placement: 'corner' };
+  // A real element but no clear gap: corner the card, keep the spotlight on it.
+  return { left: maxLeft, top: maxTop, placement: 'corner', spotlight: true };
 }
 
 export default function WalkthroughProvider({ nav, enabled = true, children }) {
@@ -151,6 +161,10 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
   const [drag, setDrag] = useState(null); // {x, y} px offset, or null
   const [minimized, setMinimized] = useState(false);
   const dragRef = useRef(null);
+  // The card's own measured height, so placement can keep the whole card
+  // on-screen (the footer with Next was clipping when the estimate was too low).
+  const cardRef = useRef(null);
+  const [cardHeight, setCardHeight] = useState(CARD_EST_HEIGHT);
 
   const step = STEPS[state.index] || null;
   const scriptTotal = useMemo(() => budgetSeconds(), []);
@@ -212,6 +226,17 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
     window.addEventListener('pointerup', up);
   }, []);
   useEffect(() => { dragRef.current = drag; }, [drag]);
+
+  // Measure the card so placement keeps the whole of it -- footer and Next
+  // included -- on screen. Runs after each step's content renders, since the
+  // body length (and so the height) changes per step.
+  useEffect(() => {
+    if (!state.running || minimized) return;
+    const el = cardRef.current;
+    if (!el) return;
+    const h = el.offsetHeight;
+    if (h && Math.abs(h - cardHeight) > 4) setCardHeight(h);
+  }, [state.running, state.index, minimized, cardHeight, rect, viewport.height]);
 
   const persist = useCallback((next) => {
     writeSaved({ index: next.index, startedAt: next.startedAt, dismissed: next.dismissed });
@@ -348,7 +373,7 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
   const drift = elapsed - scheduled;
   const overBudget = elapsed > BUDGET_SECONDS;
   const pace = overBudget ? 'over' : drift > 20 ? 'behind' : drift < -20 ? 'ahead' : 'onpace';
-  const card = placeCard(rect, viewport);
+  const card = placeCard(rect, viewport, cardHeight);
   const waitingForCourse = needsCourse(step) && !demoCourse;
   const left = card.left + (drag?.x || 0);
   const top = card.top + (drag?.y || 0);
@@ -356,7 +381,7 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
 
   return (
     <div className="sc-tour" role="dialog" aria-modal="false" aria-label={`Guided tour, step ${state.index + 1} of ${STEPS.length}`}>
-      {rect && !minimized && (
+      {rect && !minimized && card.spotlight && (
         <div
           className="sc-tour-spot"
           style={{
@@ -382,6 +407,7 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
         </button>
       ) : (
         <section
+          ref={cardRef}
           className={`sc-tour-card is-${card.placement}${drag ? ' is-dragged' : ''}`}
           style={{ top, left, width: CARD_WIDTH }}
         >
