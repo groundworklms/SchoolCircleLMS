@@ -1,0 +1,9 @@
+<!-- The header lockup (.scl-brand .scl-mark in landing.css): a Marine-scarlet
+     rounded square with a white S. Drawn as a stroked path rather than <text> so
+     the tab icon does not depend on a font being available to the renderer. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <rect width="100" height="100" rx="31" fill="#b3122e"/>
+  <path
+    d="M66 38C66 31 59 27 50 27C41 27 34 31 34 38C34 45 42 47 50 50C58 53 66 55 66 62C66 69 59 73 50 73C41 73 34 69 34 62"
+    fill="none" stroke="#ffffff" stroke-width="15" stroke-linecap="round"/>
+</svg>

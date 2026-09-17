@@ -148,7 +148,12 @@ export default function StudentCalendar({ onOpen }) {
           </div>
           <div className="s-cal-legend">
             {Object.entries(KINDS).map(([k, v]) => (
-              <button key={k} className={`s-cal-key ${v.cls}${hidden.has(k) ? ' off' : ''}`} onClick={() => toggleKind(k)}>
+              <button
+                key={k}
+                className={`s-cal-key ${v.cls}${hidden.has(k) ? ' off' : ''}`}
+                onClick={() => toggleKind(k)}
+                aria-pressed={!hidden.has(k)}
+              >
                 <span className="s-cal-swatch" />
                 {v.label}
               </button>

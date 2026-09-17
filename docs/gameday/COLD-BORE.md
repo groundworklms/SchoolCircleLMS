@@ -11,7 +11,7 @@
 The cold-bore shot is the first round from a clean barrel — the one that has to count. **We've fired it: the anchor is built and proven on real doctrine.** This is the plan to win not one use case but a **cluster of five** — with a single grounded platform. SchoolCircle on the surface, Anchor grounding it offline on a Jetson Orin, engineered so each use case is the **same spine wearing a different face**.
 
 - ◆ **Anchor use case:** #1 Rubric Generator — built
-- ◆ **Cluster:** 5 of 17 use cases, one platform
+- ◆ **Cluster:** 5 of 17 use cases aimed at — **3 backed end-to-end, 2 partly** (see THE FIVE) — one platform
 - ◆ **Team:** 5, led by SSgt White
 - ◆ **Live showcase:** schoolcircle.tannerwhite.net
 
@@ -21,12 +21,15 @@ The cold-bore shot is the first round from a clean barrel — the one that has t
 
 Day 1 hasn't started and the hardest piece is already done. This is where we open from:
 
+Re-measured 17 Sep 2026. Nothing here is carried forward on memory.
+
 | Metric | Meaning |
 | --- | --- |
-| **5 / 5** | use cases built (#9 on a stand-in until ELOs land) · offline verified |
-| **146** | real NAVMC 3500.44E tasks parsed & BARS-ready |
-| **345** | grounded corpus chunks (TC 3-22.9 + MCWP 5-10) |
-| **Orin** | grounding engine live & fully offline (5 services) |
+| **3 + 2** | of our five targets backed end-to-end, two more partly — the honest breakdown is in [RANGE-CARD § USE CASES](./RANGE-CARD.md) |
+| **4,731** | grounded passages on the Orin, across **14** Distribution A publications (`GET /api/corpus`) |
+| **564** | tests in this repo — 559 pass, 5 skipped, **0 failures** (47 test files, one pass) |
+| **5 / 5** | out-of-doctrine questions correctly refused, 1.5–1.9s each (`POST /api/ask`) |
+| **Orin** | answering offline — `/api/health`, `/api/corpus`, `/api/ask`, `/api/verify`, `/api/ground` all served |
 
 ---
 
@@ -49,13 +52,16 @@ Approve / edit / revise / reject. Nothing AI-made ships unratified.
 
 Each is the spine, bound to a different input and output. Rivals = teams already registered on that use case; thin competition + deep fit is how we pick our shots.
 
+Status re-graded 17 Sep against what a judge can exercise in the app today. Three are
+end-to-end; two are honestly partial, and saying so first is worth more than the fifth tick.
+
 | Use case | Category | Rivals | Delivered by the spine | Status |
 | --- | --- | --- | --- | --- |
-| **#1 Rubric Generator** | Perf Assessment | 1 | T&R standard → **BARS** anchors, traceable, flag-ambiguous | Built |
-| **#13 Instructional Design** | Content Gen | 2 | objectives → lessons · tests · discussion prompts · scenario · instructor summary | Built |
-| **#16 MCPP Modernization** | Content Gen | 1 | MCWP 5-10 → lessons + planning scenario + AI coaching | Built |
-| **#12 AI Tutor** | Personalized | 3 | corpus → cited answer, or honest refusal | Built |
-| **#9 PME Mastery Eval** | Perf Assessment | 0 | ELOs → rubric *(reuses #1)* + discuss-to-mastery → LMS | Built · ELO-swap |
+| **#1 Rubric Generator** | Perf Assessment | 1 | T&R standard → **BARS** anchors, traceable, flag-ambiguous | **Built** — Dist A sources only |
+| **#13 Instructional Design** | Content Gen | 2 | objectives → lessons · tests · discussion prompts · scenario · instructor summary | **Built** |
+| **#12 AI Tutor** | Personalized | 3 | corpus → cited answer, or honest refusal | **Built** — measured 17 Sep |
+| **#16 MCPP Modernization** | Content Gen | 1 | MCWP 5-10 → lessons + planning scenario + AI coaching | **Partly** — corpus and generation are real; the planning experience is the mastery path re-pointed |
+| **#9 PME Mastery Eval** | Perf Assessment | 0 | ELOs → rubric *(reuses #1)* + discuss-to-mastery → LMS | **Partly** — 8670 ELOs not in hand, Moodle/MCeLE embedding not built |
 
 **Beyond the five:** #17 Red Cell (Wargaming) is built as a standalone repo — [Understudy](https://github.com/groundworklms/understudy) — and **set aside**. And two more of the chief instructor's asks now have repos of their own: [Cadence](https://github.com/groundworklms/cadence) (adaptive study plan, three COAs) and [Hotwash](https://github.com/groundworklms/hotwash) (automated course AAR) — the study-plan and after-action gaps from the schoolhouse brief, filled.
 
@@ -164,28 +170,32 @@ Momentum going into Day 1 — everything here is done, tested, and committed loc
 
 ### ◧ Built & proven
 
-- [x] **#1 Rubric Generator — complete.** Studio (146 real tasks) → grounded BARS → SME review (edit/approve/reject each anchor) → JSON export. Live at `/prototype`.
-- [x] **#12 AI Tutor — complete.** Ask the doctrine → cited answer or honest refusal, wired live to Anchor on the Orin (HHEM-verified, score shown), app-FTS fallback. The out-of-doctrine refusal fires for real. Live at `/prototype`.
+- [x] **#1 Rubric Generator — complete.** Studio: any T&R task/standard text in → grounded BARS anchors → SME review (edit/approve/reject each anchor) → JSON export. Live at `/prototype`. **Demonstrated on Distribution A sources only** — NAVMC 3500.44E is CUI / Dist C, is not in the corpus, and no count out of it appears in a releasable brief. An instructor's own 44E stays on their own instance.
+- [x] **#12 AI Tutor — complete.** Ask the doctrine → cited answer or honest refusal, wired live to Anchor on the Orin (HHEM-verified, score shown). The out-of-doctrine refusal fires for real — 5 of 5 out-of-corpus questions refused on 17 Sep. Live at `/prototype`. **There is no fallback answerer:** with Anchor unreachable the tutor fails and records the turn `FAILED` rather than answering from something weaker.
 - [x] **#13 + #16 — complete.** Pipeline now generates a grounded scenario-with-coaching, higher-order discussion prompts, and an instructor summary. A full **MCPP course** (MCWP 5-10) generated alongside marksmanship — MEU planning scenario, SFAD-C coaching, Bloom's-tier prompts. Course switcher live on `/prototype`.
 - [x] **#9 Mastery agent — built (stand-in).** Grounded discuss-to-mastery at `/prototype`: derives a rubric from the objective, probes, scores each answer, coaches the gap, advances, records a score for the LMS. Proven weak→developing, strong→mastered. Swaps to real 8670 ELOs on MCeLE access.
 - [x] **Offline VERIFIED.** Broke the cloud key: tutor still answered via Anchor, refusal still fired, courses still rendered, generation failed gracefully. Zero external assets. Runbook: `ops/OFFLINE.md`.
 - [x] **Roles & auth — built.** Instructor vs. learner behind one swappable seam (`lib/auth.js`) → LTI 1.3 / SSO / CAC. Tabs filter by role; Studio/Rubrics/Insight guarded server-side. Verified by URL.
 - [x] **Gap-fills built — Cadence & Hotwash.** The chief instructor's two open asks now have real, tested repos: **Cadence** (syllabus+calendar → 3-COA study plan + .ics, 17 tests) and **Hotwash** (course critiques → ranked AAR across iterations, 16 tests). **Public & green** — `github.com/groundworklms/cadence · /hotwash`.
-- [x] **Run-of-show REHEARSED.** All beats pass live end-to-end: generate · cited answer + refusal (Anchor/HHEM) · rubric · mastery · SCORM export. Demo-day gotcha caught: the Anchor tunnel isn't persistent — run `ops/tunnel.sh` at start (fallback to FTS is graceful if it drops).
+- [x] **Run-of-show REHEARSED.** All beats pass live end-to-end: generate · cited answer + refusal (Anchor/HHEM) · rubric · mastery · SCORM export. Demo-day gotcha caught: the Anchor tunnel isn't persistent — run `ops/tunnel.sh` at start, and check **Settings → Doctrine engine** shows green, which is now a live probe of the endpoint rather than a reading of the config.
 - [x] **Public showcase refreshed.** schoolcircle.tannerwhite.net — platform landing, real grounded output, and the linked arsenal; the full interactive instructor + student system at `/prototype` (with a live Ask-tutor widget and a QA issue-reporter).
 - [x] **BARS proven on real doctrine.** Anchors traceable to source performance-steps; vague standards correctly flag for SME definition rather than inventing criteria.
-- [x] **Corpus staged.** 44E parsed → 146 tasks; MCWP 5-10 (current) ingested = 163 chunks; TC 3-22.9 retained. App FTS = 345 chunks.
+- [x] **Corpus staged.** 14 publications on the Orin, 4,731 passages, all Distribution A — verified from `GET /api/corpus` on 17 Sep, listed in [RANGE-CARD § NUMBERS](./RANGE-CARD.md). The per-publication counts this line used to carry (163 / 345 chunks) described an app-side chunk table the schema no longer has; the app now holds approved sources as `LearningRecord`s and grounds through Anchor.
 - [x] **Pipeline hardened + golden course banked.** Per-request timeout (a hung model call can't stall a run); a full 36-item course saved as the guaranteed demo artifact.
 
 ### ◈ Corpus board
 
+Counts are from `GET /api/corpus`, 17 Sep 2026.
+
 | Document | For | Status |
 | --- | --- | --- |
-| NAVMC 3500.44E | #1 | 146 tasks |
-| MCWP 5-10 (MCPP) | #16 | 163 chunks |
-| TC 3-22.9 | #13 · #12 | on Orin + app |
-| MCDP 1 / 5 / … | #12 · #16 | on Orin |
-| EWSDEP 8670 ELOs | #9 | gated · MCeLE |
+| TC 3-22.9 (Rifle and Carbine) | #13 · #12 · #1 | **627 passages** on the Orin · also the banked golden course |
+| MCWP 5-10 (MCPP) | #16 | **501 passages** on the Orin |
+| MCWP 3-11.3 (Scouting & Patrolling) | #1 · #12 | **668 passages** on the Orin |
+| MCDP 1 · 1-0 · 1-1 · 1-2 · 1-3 · 2 · 3 · 5 · 6 · 7 | #12 · #16 | **2,892 passages** on the Orin |
+| TCCC | #12 | **43 passages** on the Orin |
+| NAVMC 3500.44E | #1 | **CUI / Dist C — deliberately NOT ingested, not in any repo, and not counted anywhere in this kit.** The rubric path works on an instructor's own copy, on their own instance. |
+| EWSDEP 8670 ELOs | #9 | not in hand · gated behind MCeLE |
 
 ---
 
@@ -234,14 +244,17 @@ ssh -i ~/.ssh/id_ed25519 vanguard@192.168.55.1
 
 Told straight against the six official categories — now with a standalone, tested repo behind most of them. A team that knows exactly where it stands earns the room's trust.
 
+Re-graded 17 Sep against what a judge can click on, not what has a repo. "Built" here means a
+route a judge can exercise end-to-end in the app.
+
 | Category | Our position by 18 Sep | What backs it |
 | --- | --- | --- |
-| **Content Generation** | Built | #13 + #16 via **Coursewright** (course/scenario/discussion) — tested & green |
-| **Performance Assessment** | Built | #1 **Rubricon** + #9 **Whetstone** + analytics via **Sextant** + course AAR via **Hotwash** — four repos |
-| **Personalized Learning** | Built | #12 AI Tutor via **Sourcerer** + Anchor (cite-or-refuse, offline); adaptive study plan via **Cadence**; learner profiles via **Waypoint** |
-| **Operational Support** | Adjacent | the grounded Q&A surface (**Sourcerer**); #15 territory |
-| **Simulation** | Partial | the MCPP planning scenario + coaching (**Coursewright**) |
-| **Wargaming** | Repo built | #17 via **Understudy** — doctrine-bound agent + fidelity benchmark, set aside |
+| **Content Generation** | **Built — 2 of 2** | #13 end-to-end via **Coursewright**; #16 partly — MCWP 5-10 is on the board and the generator runs against it, but the MCPP planning experience is the mastery path re-pointed, not purpose-built |
+| **Performance Assessment** | **1 of 5 end-to-end, 2 partly** | #1 **Rubricon** is complete. #9 **Whetstone** runs but the 8670 ELOs and the Moodle embedding are not in hand. #6 and #14 are **not** claimed: **Sextant** reads attempts, not forums, assignments or chat transcripts |
+| **Personalized Learning** | **Built — #12** | AI Tutor via **Sourcerer** + Anchor (cite-or-refuse, offline, measured). #7 low-resource language is out of scope. **Cadence** and **Waypoint** are real and wired, but they are not a use case on the portal |
+| **Operational Support** | **Not covered — 0 of 5** | Say this first. The grounded Q&A surface is adjacent to #15; nothing here answers #2, #4, #5 or #8 |
+| **Simulation** | Partial | the MCPP planning scenario + coaching (**Coursewright**) — no use case on the portal sits in this category |
+| **Wargaming** | **Repo, not a use case — 0 of 3** | #17 via **Understudy** is a real doctrine-bound agent with a fidelity benchmark, and it is **set aside**. A repo we can show, not a use case we solved |
 
 ---
 
@@ -251,7 +264,7 @@ One platform, visibly doing five jobs. Rehearse until it runs cold.
 
 1. **The problem.** *(0:45)* AI content is fast but hallucinates — unacceptable for doctrine. Meet the platform: SchoolCircle + Anchor on a Jetson.
 2. **Generate a grounded course.** *(1:00 · #13)* Instructor loads a POI + doctrine → a complete cited course builds (or reveal the golden course).
-3. **Trust it.** *(1:00 · #12 · trust)* Click a citation → the exact passage. Show the HHEM score. Ask an out-of-doctrine question → it refuses. *Mic drop.*
+3. **Trust it.** *(1:00 · #12 · trust)* Click a citation → the exact passage. Ask an out-of-doctrine question → it refuses. Then open **item review** for the HHEM number — that is where the on-device entailment check writes a **measured** support score per generated item, and where an unscored item reads *not verified* instead of showing a figure. *Mic drop.*
 4. **Rubric from a raw standard.** *(1:00 · #1)* Paste a T&R standard → BARS anchors, traceable. Then a vague one → flagged for the SME, not guessed.
 5. **Prove it teaches.** *(0:45 · #9)* Learner discusses to mastery / takes pre→post; the instructor's class view lights up.
 6. **Where it runs.** *(0:30)* Pull the network — still working, offline on the edge. Then: exports to SCORM, drops into MarineNet.

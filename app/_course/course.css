@@ -20,16 +20,26 @@
   color: var(--p-dim, var(--text-dim, #9aa7b8));
   margin: 0 0 1.5rem;
 }
+/* The provenance line. It carries a publication name, which can be a long
+   filename with no spaces in it, so it wraps rather than running out of
+   whatever column it is in. */
 .course-citation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   margin: -0.8rem 0 1.35rem;
   color: var(--p-faint, #86868b);
   font-size: 0.78rem;
 }
-.course-citation span {
-  margin-right: 0.35rem;
+.course-citation > span:first-child {
   color: var(--p-dim, var(--text-dim, #9aa7b8));
   font-weight: 650;
 }
+.course-citation-name { min-width: 0; overflow-wrap: anywhere; }
+/* The negative top margin tucks this under a title or summary. In the
+   approved-course reader the heading belongs to the reader, so there is
+   nothing above it to tuck under. */
+.course-lesson > .course-citation:first-child { margin-top: 0; }
 
 .course-objectives {
   margin: 0 0 1.5rem;
@@ -192,7 +202,12 @@
 }
 .course-option:hover:not(:disabled), .course-option:focus-visible { border-color: var(--p-accent, var(--accent, #6ea8fe)); }
 .course-option.is-selected { background: var(--p-surface-2, var(--bg-card-2, #1c2330)); border-color: var(--p-accent, var(--accent, #6ea8fe)); }
-.course-option:disabled { cursor: wait; opacity: 0.72; }
+/* `disabled` here means two different things: a save in flight, or a question
+   that is not answerable at all. Only the first is worth a wait cursor -- a
+   permanently inert control that says "wait" reads as a page still loading,
+   which is exactly how the missing-onAnswer defect disguised itself. */
+.course-option:disabled { cursor: default; opacity: 0.72; }
+.course-option[aria-busy='true']:disabled { cursor: wait; }
 .course-option-marker {
   flex: 0 0 1rem;
   width: 1rem;
@@ -240,18 +255,25 @@
   font-size: 0.82rem;
   font-weight: 600;
 }
+/* Same edge as the shared .p-input: a black inset ring disappears on a dark
+   card, so the border token carries the theme-correct value instead. */
 .course-revision-form textarea {
   width: 100%;
   min-height: 4rem;
+  box-sizing: border-box;
   resize: vertical;
   padding: 0.6rem 0.7rem;
   color: var(--p-text, #1d1d1f);
   background: var(--p-surface, #fff);
-  border: none;
+  border: 1px solid var(--p-border-strong, rgba(0, 0, 0, 0.18));
   border-radius: 9px;
-  box-shadow: inset 0 0 0 0.7px rgba(0, 0, 0, 0.16);
   font: inherit;
   line-height: 1.45;
+}
+.course-revision-form textarea:focus {
+  outline: none;
+  border-color: var(--p-accent, #b3122e);
+  box-shadow: 0 0 0 3px var(--p-accent-tint, rgba(179, 18, 46, 0.10));
 }
 .course-preview-banner {
   display: flex;
@@ -318,6 +340,12 @@
   font-size: 0.78rem;
 }
 .course-question-review-head code { color: var(--p-faint, #86868b); }
+/* The answer key is the thing this panel exists to have ratified, so it reads
+   as content rather than as another muted label. */
+.course-question-review-key p { margin: 0.4rem 0 0; font-size: 0.86rem; }
+.course-question-review-key p > span { color: var(--p-dim, #6e6e73); font-size: 0.78rem; }
+.course-question-review-key p.is-rationale { color: var(--p-dim, #6e6e73); font-size: 0.82rem; }
+.course-question-review-key p.is-unkeyed { color: var(--p-warning, #b0731a); }
 .course-revision-history ol { margin: 0; padding-left: 1.25rem; }
 .course-revision-history li {
   padding: 0.55rem 0 0.55rem 0.2rem;

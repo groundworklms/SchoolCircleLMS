@@ -25,7 +25,14 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-.shell { min-height: 100vh; display: flex; flex-direction: column; }
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  /* The planning board is intentionally dark; keep native controls aligned
+     with its surface instead of inheriting the user's light form palette. */
+  color-scheme: dark;
+}
 
 /* ---------- Header ---------- */
 .topbar {
@@ -83,7 +90,7 @@ html, body {
 }
 .dot.stale { background: #f87171; }
 
-.hint { font-size: 0.75em; color: #5c6b7f; white-space: nowrap; }
+.hint { font-size: 0.75em; color: var(--text-dim); white-space: nowrap; }
 .hint kbd {
   background: var(--bg-card-2);
   border: 1px solid var(--border);
@@ -193,34 +200,11 @@ html, body {
 
 .empty { color: var(--text-dim); padding: 3rem; text-align: center; }
 
-/* AuthGuard chrome: rendered on every gated route, so it lives here, not in landing.css. */
-.scl-authpill {
-  position: fixed;
-  top: 12px;
-  right: 14px;
-  z-index: 70;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.82);
-  backdrop-filter: saturate(160%) blur(12px);
-  -webkit-backdrop-filter: saturate(160%) blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  border-radius: 999px;
-  padding: 5px 6px 5px 12px;
-  font-size: 12px;
-  color: #1d1d1f;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
-}
-.scl-authpill button {
-  border: none;
-  background: #b3122e;
-  color: #fff;
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
 
-.scl-fullcenter { min-height: 100vh; display: grid; place-items: center; color: #6b6b70; font: 15px system-ui; }
+.scl-fullcenter {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: var(--text-dim);
+  font: 15px system-ui;
+}

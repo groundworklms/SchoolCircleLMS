@@ -1,0 +1,49 @@
+/*
+ * The student-view marker.
+ *
+ * "View as student" hands an instructor the learner shell with their own
+ * account still signed in. Without a marker the two views are indistinguishable
+ * chrome, and the one question the control exists to answer -- "is this what a
+ * learner gets?" -- has no visible answer on screen.
+ *
+ * Deliberately a fixed bar rather than a header row: the student shell owns its
+ * own layout, and a marker that pushes the learner chrome down would make the
+ * preview a slightly different page from the one being previewed.
+ *
+ * It borrows .p-truth's treatment -- accent rule, accent tint, body text -- so
+ * it reads as one of the product's statements of fact rather than a new idiom,
+ * and inherits that pairing's contrast in both themes.
+ */
+.p-studentview {
+  position: fixed;
+  left: 50%;
+  bottom: 1.1rem;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+  /* A set width rather than a maximum: left to shrink-wrap, the flex row
+     collapsed to a narrow column of text on a phone. */
+  width: min(44rem, calc(100vw - 2rem));
+  padding: 0.6rem 0.9rem;
+  border-radius: 12px;
+  border-left: 3px solid var(--p-accent);
+  /* .p-truth's tint, but backed by the surface it normally sits on. The tint
+     is translucent by design; floating free over a learner screen it would let
+     the page read through the bar. */
+  background: linear-gradient(var(--p-accent-tint), var(--p-accent-tint)) var(--p-surface);
+  color: var(--p-text);
+  box-shadow: var(--p-shadow-lift);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+/* The bar floats, so the scroll column has to end above it or the last line of
+   a learner screen sits underneath. Only while the bar is actually there. */
+.p-root:has(> .p-studentview) .s-main { padding-bottom: 8rem; }
+
+.p-studentview-text { flex: 1 1 18rem; min-width: 0; }
+.p-studentview-text b { display: block; font-weight: 650; }
+.p-studentview .p-btn { flex: none; }

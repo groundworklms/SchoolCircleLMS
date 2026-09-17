@@ -4,20 +4,36 @@
   --p-surface-2: #ececef;
   --p-border: rgba(0, 0, 0, 0.08);
   --p-border-soft: rgba(0, 0, 0, 0.06);
+  --p-border-strong: rgba(0, 0, 0, 0.18);
   --p-text: #1d1d1f;
   --p-dim: #6e6e73;
   --p-faint: #86868b;
   --p-rail: rgba(255, 255, 255, 0.72);
   --p-ink: #1d1d1f;
+  --p-control: rgba(0, 0, 0, 0.05);
+  --p-control-hover: rgba(0, 0, 0, 0.08);
+  --p-control-selected: #ffffff;
   --p-accent: #b3122e;
   --p-accent-bright: #e0334f;
   --p-accent-tint: rgba(179, 18, 46, 0.10);
+  --p-accent-border: #f0c3cb;
   --p-signal: #b3122e;
   --p-seq-600: #8a95a3;
   --p-good: #1e7a3c;
+  --p-good-tint: #e8f4ec;
+  --p-good-border: #a5d2b2;
   --p-warning: #b0731a;
+  --p-warning-tint: #fff3d6;
+  --p-warning-border: #ecd39a;
+  --p-warning-text: #6b4a0e;
   --p-critical: #c2410c;
   --p-critical-tint: #fff5f0;
+  --p-critical-border: #f0b898;
+  /* Destructive/withheld. It was only ever a literal fallback inside
+     var(--p-bad, #d70015) in three stylesheets, so the dark theme kept a red
+     mixed for white and landed at 2.5:1 on a dark card. Defining it makes the
+     light value exactly what it already was and gives dark one that reads. */
+  --p-bad: #d70015;
   --p-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
   --p-shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.10), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
   --p-radius: 18px;
@@ -49,15 +65,27 @@ html[data-theme="dark"] .p-root {
   --p-surface-2: #3a3a3c;
   --p-border: rgba(255, 255, 255, 0.10);
   --p-border-soft: rgba(255, 255, 255, 0.07);
+  --p-border-strong: rgba(255, 255, 255, 0.18);
   --p-text: #f5f5f7;
   --p-dim: #a1a1a6;
   --p-faint: #8e8e93;
   --p-rail: rgba(28, 28, 30, 0.72);
+  --p-control: rgba(255, 255, 255, 0.10);
+  --p-control-hover: rgba(255, 255, 255, 0.16);
+  --p-control-selected: #3a3a3c;
   --p-accent-tint: rgba(224, 51, 79, 0.16);
+  --p-accent-border: rgba(224, 51, 79, 0.55);
   --p-good: #3ac262;
+  --p-good-tint: rgba(58, 194, 98, 0.12);
+  --p-good-border: rgba(58, 194, 98, 0.55);
   --p-warning: #e0983a;
+  --p-warning-tint: rgba(224, 152, 58, 0.14);
+  --p-warning-border: rgba(224, 152, 58, 0.55);
+  --p-warning-text: #e0983a;
   --p-critical: #ff7a45;
   --p-critical-tint: rgba(255, 122, 69, 0.12);
+  --p-critical-border: rgba(255, 122, 69, 0.55);
+  --p-bad: #ff7a45;
   --p-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
   --p-shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
 }
@@ -68,15 +96,27 @@ html[data-theme="dark"] .p-root {
     --p-surface-2: #3a3a3c;
     --p-border: rgba(255, 255, 255, 0.10);
     --p-border-soft: rgba(255, 255, 255, 0.07);
+    --p-border-strong: rgba(255, 255, 255, 0.18);
     --p-text: #f5f5f7;
     --p-dim: #a1a1a6;
     --p-faint: #8e8e93;
     --p-rail: rgba(28, 28, 30, 0.72);
+    --p-control: rgba(255, 255, 255, 0.10);
+    --p-control-hover: rgba(255, 255, 255, 0.16);
+    --p-control-selected: #3a3a3c;
     --p-accent-tint: rgba(224, 51, 79, 0.16);
+    --p-accent-border: rgba(224, 51, 79, 0.55);
     --p-good: #3ac262;
+    --p-good-tint: rgba(58, 194, 98, 0.12);
+    --p-good-border: rgba(58, 194, 98, 0.55);
     --p-warning: #e0983a;
+    --p-warning-tint: rgba(224, 152, 58, 0.14);
+    --p-warning-border: rgba(224, 152, 58, 0.55);
+    --p-warning-text: #e0983a;
     --p-critical: #ff7a45;
     --p-critical-tint: rgba(255, 122, 69, 0.12);
+    --p-critical-border: rgba(255, 122, 69, 0.55);
+    --p-bad: #ff7a45;
     --p-shadow: 0 2px 12px rgba(0, 0, 0, 0.35), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
     --p-shadow-lift: 0 10px 28px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.06);
   }
@@ -121,11 +161,11 @@ html[data-theme="dark"] .p-root {
   color: var(--p-text); font: inherit; font-size: 0.95em;
   padding: 0.55rem 0.75rem; cursor: pointer;
 }
-.p-nav button:hover { background: rgba(0,0,0,0.05); }
+.p-nav button:hover { background: var(--p-control-hover); }
 .p-nav button.on { background: var(--p-accent-tint); color: var(--p-accent); font-weight: 600; }
 .p-navnum {
   font-size: 0.75em; color: var(--p-faint);
-  border: 0.5px solid rgba(0,0,0,0.18); border-radius: 6px;
+  border: 0.5px solid var(--p-border-strong); border-radius: 6px;
   width: 1.35em; height: 1.35em; display: grid; place-items: center; flex: none;
 }
 .p-nav button.on .p-navnum { color: var(--p-accent); border-color: var(--p-accent); }
@@ -155,13 +195,20 @@ html[data-theme="dark"] .p-root {
 }
 .p-btn:hover { filter: brightness(1.12); }
 .p-btn:disabled { opacity: 0.45; cursor: default; filter: none; }
-.p-btn.ghost { background: rgba(0,0,0,0.05); border: none; color: var(--p-text); font-weight: 500; }
-.p-btn.ghost:hover { background: rgba(0,0,0,0.08); filter: none; }
+.p-not-found {
+  margin: auto;
+  padding: 2rem;
+  max-width: 40rem;
+  text-align: center;
+}
+.p-not-found .p-btn { margin: 0.5rem; }
+.p-btn.ghost { background: var(--p-control); border: none; color: var(--p-text); font-weight: 500; }
+.p-btn.ghost:hover { background: var(--p-control-hover); filter: none; }
 .p-btnrow { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 
 /* ---------- drop zone ---------- */
 .p-drop {
-  border: 1.5px dashed rgba(0,0,0,0.14); border-radius: var(--p-radius);
+  border: 1.5px dashed var(--p-border-strong); border-radius: var(--p-radius);
   padding: 1.6rem 1rem; text-align: center; color: var(--p-dim);
   background: var(--p-surface-2); transition: border-color 0.15s, background 0.15s;
 }
@@ -199,7 +246,7 @@ html[data-theme="dark"] .p-root {
 .p-out li::marker { color: var(--p-accent); }
 .p-cite {
   display: inline-block; font-size: 0.8em; color: var(--p-dim);
-  background: rgba(0,0,0,0.05); border: none; border-radius: 5px;
+  background: var(--p-control); border: none; border-radius: 5px;
   padding: 0.02em 0.35em; margin-left: 0.3em; white-space: nowrap;
 }
 .p-tag {
@@ -222,7 +269,7 @@ html[data-theme="dark"] .p-root {
 .p-chart { display: flex; flex-direction: column; gap: 0.5rem; }
 .p-row { display: grid; grid-template-columns: 11.5rem 1fr 6.5rem; align-items: center; gap: 0.7rem; }
 .p-rowlab { font-size: 0.84em; color: var(--p-dim); text-align: right; }
-.p-track { position: relative; height: 0.9rem; background: rgba(0,0,0,0.05); border-radius: 980px; overflow: hidden; }
+.p-track { position: relative; height: 0.9rem; background: var(--p-control); border-radius: 980px; overflow: hidden; }
 .p-bar { height: 100%; border-radius: 980px; transition: width 0.7s cubic-bezier(.2,.8,.2,1); }
 .p-rowval { font-size: 0.84em; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 0.4rem; }
 .p-band { font-size: 0.72em; letter-spacing: 0.03em; }
@@ -254,7 +301,7 @@ html[data-theme="dark"] .p-root {
 .p-answers { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(20rem,100%), 1fr)); gap: 0.6rem; }
 .p-ans {
   display: flex; align-items: center; gap: 0.85rem; text-align: left;
-  background: var(--p-surface); border: none; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12);
+  background: var(--p-surface); border: none; box-shadow: 0 0 0 0.5px var(--p-border-strong);
   border-radius: 14px; padding: 0.85rem 1rem; color: var(--p-text);
   font: inherit; font-size: 0.95em; cursor: pointer;
 }
@@ -262,12 +309,12 @@ html[data-theme="dark"] .p-root {
 .p-ans:disabled { cursor: default; }
 .p-anskey {
   flex: none; width: 1.75rem; height: 1.75rem; border-radius: 8px;
-  background: rgba(0,0,0,0.05); border: none;
+  background: var(--p-control); border: none;
   display: grid; place-items: center; font-size: 0.8em; font-weight: 700; color: var(--p-dim);
 }
-.p-ans.correct { box-shadow: 0 0 0 1.5px var(--p-good); background: rgba(30,122,60,0.08); color: var(--p-good); }
+.p-ans.correct { box-shadow: 0 0 0 1.5px var(--p-good); background: var(--p-good-tint); color: var(--p-good); }
 .p-ans.correct .p-anskey { background: var(--p-good); color: #fff; }
-.p-ans.wrong { box-shadow: 0 0 0 1.5px var(--p-critical); background: rgba(194,65,12,0.08); }
+.p-ans.wrong { box-shadow: 0 0 0 1.5px var(--p-critical); background: var(--p-critical-tint); }
 .p-ans.wrong .p-anskey { background: var(--p-critical); color: #fff; }
 .p-ansmark { margin-left: auto; font-size: 0.75em; letter-spacing: 0.04em; white-space: nowrap; }
 
@@ -293,7 +340,7 @@ html[data-theme="dark"] .p-root {
 /* ---------- study plan ---------- */
 .p-coa { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(15rem,100%), 1fr)); gap: 0.6rem; }
 .p-coacard {
-  border: none; box-shadow: 0 0 0 0.5px rgba(0,0,0,0.12); border-radius: 14px; padding: 0.9rem 1rem;
+  border: none; box-shadow: 0 0 0 0.5px var(--p-border-strong); border-radius: 14px; padding: 0.9rem 1rem;
   background: var(--p-surface); cursor: pointer; text-align: left; color: inherit; font: inherit;
 }
 .p-coacard.on { box-shadow: 0 0 0 1.5px var(--p-accent); background: var(--p-accent-tint); }
@@ -331,7 +378,7 @@ html[data-theme="dark"] .p-root {
 /* ---------- role switcher ---------- */
 .p-seg {
   display: flex; gap: 2px; padding: 2px;
-  background: rgba(0,0,0,0.05); border: none; border-radius: 999px;
+  background: var(--p-control); border: none; border-radius: 999px;
 }
 .p-seg button {
   background: none; border: none; border-radius: 999px;
@@ -346,9 +393,9 @@ html[data-theme="dark"] .p-root {
   display: inline-flex; align-items: center; gap: 0.55rem;
   padding: 0.35rem 0.8rem; margin-bottom: 1.1rem;
   border-radius: 980px; font-size: 0.82em;
-  background: rgba(0,0,0,0.05); border: none; color: var(--p-dim);
+  background: var(--p-control); border: none; color: var(--p-dim);
 }
-.p-roleband.inst { background: rgba(0,0,0,0.05); color: var(--p-dim); }
+.p-roleband.inst { background: var(--p-control); color: var(--p-dim); }
 
 /* ---------- live control ---------- */
 .p-respbar { display: flex; flex-direction: column; gap: 0.45rem; }
@@ -369,12 +416,12 @@ html[data-theme="dark"] .p-root {
 @keyframes p-blink { 50% { opacity: 0.25; } }
 
 /* ---------- study materials ---------- */
-.p-diff { display: inline-flex; gap: 0; padding: 2px; background: rgba(0,0,0,0.05); border-radius: 9px; }
+.p-diff { display: inline-flex; gap: 0; padding: 2px; background: var(--p-control); border-radius: 9px; }
 .p-diff button {
   background: none; border: none; border-radius: 7px;
   color: var(--p-dim); font: inherit; font-size: 0.82em; font-weight: 500; padding: 0.3rem 0.8rem; cursor: pointer;
 }
-.p-diff button.on { color: var(--p-text); background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; }
+.p-diff button.on { color: var(--p-text); background: var(--p-control-selected); box-shadow: 0 1px 3px rgba(0,0,0,0.12); font-weight: 600; }
 .p-guide { font-size: 0.88em; }
 .p-guide h4 { margin: 0.9em 0 0.25em; font-size: 0.95em; }
 .p-guide h4:first-child { margin-top: 0; }
@@ -412,11 +459,11 @@ html[data-theme="dark"] .p-root {
   color: var(--p-faint); font-size: 0.85em; white-space: nowrap;
 }
 .p-attach {
-  background: var(--p-accent-tint); border: 1px solid #f0c3cb; color: var(--p-accent);
+  background: var(--p-accent-tint); border: 1px solid var(--p-accent-border); color: var(--p-accent);
   border-radius: 4px; padding: 0 0.3em; font-size: 0.9em;
 }
 .p-examtag {
-  background: #fff3d6; border: 1px solid #ecd39a; color: #8a5a00;
+  background: var(--p-warning-tint); border: 1px solid var(--p-warning-border); color: var(--p-warning-text);
   border-radius: 4px; padding: 0 0.3em; font-size: 0.85em; letter-spacing: 0.04em;
 }
 
@@ -439,10 +486,10 @@ html[data-theme="dark"] .p-root {
   padding: 0.1em 0.5em; text-transform: none;
   background: var(--p-surface-2); border: 0.5px solid var(--p-border); color: var(--p-faint);
 }
-.p-live.on { background: #e8f4ec; border-color: #a5d2b2; color: var(--p-good); }
+.p-live.on { background: var(--p-good-tint); border-color: var(--p-good-border); color: var(--p-good); }
 .p-err {
   margin-top: 0.7rem; padding: 0.5rem 0.7rem; border-radius: 8px; font-size: 0.85em;
-  background: var(--p-critical-tint); border: 1px solid #f0b898; color: #8a2f0c;
+  background: var(--p-critical-tint); border: 1px solid var(--p-critical-border); color: var(--p-critical);
 }
 .p-note {
   margin-top: 0.8rem; padding: 0.7rem 0.9rem; border-radius: 12px; font-size: 0.84em;
@@ -464,10 +511,258 @@ html[data-theme="dark"] .p-root {
   display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
   padding: 0.5rem 0.8rem; border-radius: 8px; margin-bottom: 0.9rem; font-size: 0.85em;
 }
-.p-check.ok  { background: #e8f4ec; border: 1px solid #a5d2b2; color: #1e5a30; }
-.p-check.bad { background: #fff3d6; border: 1px solid #ecd39a; color: #6b4a0e; }
+.p-check.ok  { background: var(--p-good-tint); border: 1px solid var(--p-good-border); color: var(--p-good); }
+.p-check.bad { background: var(--p-warning-tint); border: 1px solid var(--p-warning-border); color: var(--p-warning-text); }
 .p-genmeta {
   display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;
   font-size: 0.78em; color: var(--p-faint); margin-bottom: 0.6rem;
   padding-bottom: 0.5rem; border-bottom: 0.5px solid var(--p-border);
+}
+
+/* ---------- modal chrome ----------
+   One shape for every dialog in the instructor flow. The head and the foot are
+   flex:none siblings of a scrolling body, so the actions are never below the
+   fold on a short viewport -- the previous dialogs scrolled as one block and
+   pushed their own Save button out of sight at 1440x675. */
+.p-modalback {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.5);
+}
+.p-modal {
+  display: flex; flex-direction: column;
+  width: 100%; max-height: 100%;
+  padding: 0; margin-bottom: 0; overflow: hidden;
+}
+.p-modal-sm { max-width: 34rem; }
+.p-modal-lg { max-width: 48rem; }
+.p-modalhead {
+  flex: none; padding: 1.15rem 1.5rem 0.95rem;
+  border-bottom: 0.5px solid var(--p-border);
+}
+.p-modalhead h3 {
+  margin: 0; font-size: 1.15em; font-weight: 650;
+  letter-spacing: -0.015em; color: var(--p-text); text-transform: none;
+}
+.p-modalhead p { margin: 0.3rem 0 0; font-size: 0.86em; color: var(--p-dim); max-width: 60ch; }
+.p-modalbody {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 1rem;
+  padding: 1.1rem 1.5rem 1.3rem;
+}
+.p-modalfoot {
+  flex: none; display: flex; align-items: center; gap: 0.5rem; justify-content: flex-end;
+  padding: 0.85rem 1.5rem;
+  border-top: 0.5px solid var(--p-border);
+  background: var(--p-surface);
+}
+.p-modalfoot .p-footnote { margin: 0 auto 0 0; font-size: 0.82em; color: var(--p-faint); }
+
+/* ---------- labelled fields ----------
+   A placeholder disappears the moment it is used, which leaves a typed field
+   with no name -- a hole for anyone reviewing what they entered and for anyone
+   on a screen reader. Every field gets a visible label; the placeholder, where
+   it survives, only shows the shape of an example. */
+.p-field { display: grid; gap: 0.3rem; }
+.p-field > span { font-size: 0.82em; font-weight: 600; color: var(--p-dim); }
+.p-field > small { font-size: 0.8em; color: var(--p-faint); }
+.p-fieldset { display: grid; gap: 0.75rem; }
+/* Two short fields side by side. Vertical space in a dialog is the budget
+   that decides whether its actions are on screen at 1440x675. */
+.p-fieldrow { grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: 0.75rem 1rem; }
+.p-input {
+  width: 100%; box-sizing: border-box;
+  font: inherit; font-size: 0.92em; line-height: 1.45;
+  color: var(--p-text); background: var(--p-surface);
+  border: 1px solid var(--p-border-strong); border-radius: 10px;
+  padding: 0.5rem 0.7rem;
+}
+.p-input::placeholder { color: var(--p-faint); }
+.p-input:focus { outline: none; border-color: var(--p-accent); box-shadow: 0 0 0 3px var(--p-accent-tint); }
+.p-input:disabled { opacity: 0.55; }
+/* The shared widget input also appears on these screens. Its edge is a
+   literal black ring, which a dark card swallows, so inside the app it
+   takes the themed border token instead. */
+.p-root .scw-ti { box-shadow: 0 0 0 0.5px var(--p-border-strong); }
+.p-root .scw-ti:focus { box-shadow: 0 0 0 1.5px var(--p-accent); }
+textarea.p-input { resize: vertical; min-height: 4.5rem; }
+
+/* ---------- parallel choices ----------
+   Two ways of doing the same thing get the same box. The PDF option used to be
+   a card and the text option loose copy underneath it, which read as a feature
+   and a footnote rather than as two doors. */
+.p-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(17rem, 100%), 1fr)); gap: 0.75rem; }
+.p-choice {
+  display: flex; flex-direction: column; gap: 0.55rem;
+  padding: 0.9rem 1rem; border-radius: 14px;
+  background: var(--p-bg); box-shadow: 0 0 0 0.5px var(--p-border-strong);
+}
+.p-choice h4 { margin: 0; font-size: 0.95em; font-weight: 650; color: var(--p-text); }
+.p-choice > p { margin: 0; font-size: 0.82em; color: var(--p-dim); }
+/* Direct child only: the file picker inside a choice is also a .p-btn and must
+   not be pushed to the bottom of the card by the action's margin. */
+.p-choice > .p-btn { align-self: flex-start; margin-top: auto; }
+
+/* A file input is the one native control with no styling worth keeping. The
+   real input stays in the DOM and keeps its label and keyboard behaviour; the
+   visible affordance is the button around it. */
+.p-filepick { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.p-filepick input[type="file"] {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; border: 0; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+.p-filebtn { position: relative; }
+.p-filebtn:focus-within { box-shadow: 0 0 0 3px var(--p-accent-tint); }
+.p-filename { font-size: 0.84em; color: var(--p-dim); min-width: 0; overflow-wrap: anywhere; }
+
+/* The name of a source document, wherever it is named. A file-backed source
+   is recorded under its filename, which is one long unbroken token; in the
+   20rem course-home sidebar that ran out of the card and pushed a horizontal
+   scrollbar onto the page behind it. It wraps instead. */
+.p-srcname { margin: 0 0 0.6rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+
+/* A third button weight. Approve is affirmative and a human is accountable for
+   it, so it keeps the accent; Revise is neutral; Withhold is deliberate but
+   must not compete with the approval it is the alternative to. */
+.p-btn.quiet {
+  background: none; color: var(--p-dim); font-weight: 500;
+  box-shadow: inset 0 0 0 0.5px var(--p-border-strong);
+}
+.p-btn.quiet:hover { background: var(--p-control); color: var(--p-text); filter: none; }
+
+/* ---------- honest copy ----------
+   The lines that tell an instructor what this product does NOT promise. They
+   were set in the same dim grey as every incidental note; they are the most
+   load-bearing sentences on the screen and are now set to be read. */
+.p-truth {
+  display: flex; gap: 0.6rem; align-items: baseline;
+  max-width: 78ch;
+  margin: 0.7rem 0 0; padding: 0.6rem 0.85rem;
+  border-radius: 10px; border-left: 3px solid var(--p-accent);
+  background: var(--p-accent-tint); color: var(--p-text);
+  font-size: 0.87em; line-height: 1.5;
+}
+.p-truth::before { content: "!"; flex: none; font-weight: 700; color: var(--p-accent); }
+.p-checklist { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.4rem; }
+.p-checklist li {
+  display: flex; gap: 0.55rem; align-items: baseline;
+  max-width: 78ch;
+  font-size: 0.88em; color: var(--p-dim); line-height: 1.45;
+}
+/* A line of body copy in a full-bleed panel runs to whatever the window is. */
+.p-measure { max-width: 78ch; }
+.p-checklist li::before { content: "\2713"; flex: none; color: var(--p-faint); font-size: 0.9em; }
+.p-sectionlab {
+  margin: 1.1rem 0 0.2rem; font-size: 0.78em; font-weight: 650;
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--p-faint);
+}
+.p-sectionlab:first-child { margin-top: 0; }
+
+/* A disclosure that reads as a control. A bare <summary> renders as body text
+   with an OS triangle stuck to it, which is the same "text link where a button
+   belongs" problem the buttons elsewhere on these screens had. */
+.p-disclose > summary {
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.15rem 0; cursor: pointer; list-style: none;
+  font-size: 0.95em; font-weight: 600; color: var(--p-text);
+}
+.p-disclose > summary::-webkit-details-marker { display: none; }
+.p-disclose > summary::before { content: "\25B8"; flex: none; color: var(--p-faint); font-size: 0.9em; }
+.p-disclose[open] > summary::before { content: "\25BE"; }
+.p-disclose[open] > summary { margin-bottom: 0.8rem; }
+.p-disclose > summary:hover { color: var(--p-accent); }
+
+/* The acknowledgement a human signs the approval with. It used to be a bare
+   checkbox on a flex row, indistinguishable from a filter toggle. */
+.p-ack {
+  display: flex; gap: 0.7rem; align-items: flex-start;
+  margin: 1rem 0; padding: 0.7rem 0.9rem;
+  border-radius: 12px; background: var(--p-bg);
+  box-shadow: 0 0 0 0.5px var(--p-border-strong);
+  font-size: 0.92em; cursor: pointer;
+}
+.p-ack input[type="checkbox"] { flex: none; margin: 0.2rem 0 0; }
+.p-ack:has(input:disabled) { cursor: default; opacity: 0.6; }
+
+/* ---------- document reader ----------
+   Inspecting a cited passage is the act this product is built around, so it
+   gets the screen. It used to expand inside a 280px library card: a 220-page
+   coursebook read in a narrow column, with a horizontal scrollbar on body text
+   and a card several times taller than its neighbours. */
+.p-reader {
+  position: fixed; inset: 0; z-index: 120;
+  display: flex; flex-direction: column;
+  background: var(--p-bg); color: var(--p-text);
+}
+.p-readerhead {
+  flex: none; display: flex; align-items: center; gap: 1rem;
+  padding: 0.8rem 1.5rem;
+  border-bottom: 0.5px solid var(--p-border);
+  background: var(--p-rail);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+.p-readertitle { min-width: 0; flex: 1; }
+.p-readertitle h2 {
+  margin: 0; font-size: 1.05em; font-weight: 650; letter-spacing: -0.015em;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.p-readertitle p { margin: 0.1rem 0 0; font-size: 0.8em; color: var(--p-dim); }
+.p-readerscroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; padding: 1.8rem 1.5rem 4rem; }
+/* The sheet is sized to the measure rather than to the window: ~38rem of page
+   holds a 70-character line at this type size, which is what a document is set
+   at and what the old 280px card could not give. */
+.p-readerdoc { width: min(100%, 38rem); margin: 0 auto; }
+.p-readercited {
+  margin: 0 0 1.2rem; padding: 0.6rem 0.9rem; border-radius: 10px;
+  background: var(--p-good-tint); border: 1px solid var(--p-good-border);
+  color: var(--p-good); font-size: 0.85em;
+}
+.p-page {
+  padding: 2.1rem 2.4rem; margin: 0 0 1.3rem;
+  background: var(--p-surface); border-radius: 14px; box-shadow: var(--p-shadow);
+}
+.p-page.is-cited { box-shadow: 0 0 0 2px var(--p-good), var(--p-shadow-lift); }
+.p-pagenum {
+  display: block; margin: 0 0 1.1rem; padding-bottom: 0.6rem;
+  border-bottom: 0.5px solid var(--p-border);
+  font-size: 0.72em; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--p-faint); font-weight: 600;
+}
+/* pre-wrap keeps the line breaks the extractor recorded; `anywhere` is what
+   guarantees no horizontal scrollbar, whatever unbroken run of characters a
+   scanned page turns out to hold. The ch measure keeps the line length
+   readable however wide the window is. */
+.p-pagetext {
+  max-width: 68ch; margin: 0 0 1rem;
+  font-size: 0.95em; line-height: 1.7;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.p-pagetext:last-child { margin-bottom: 0; }
+.p-readerempty { color: var(--p-dim); }
+
+/* ---------- live generation ----------
+   While a course is being written the stream is the content, not a footnote
+   under a form nobody is editing any more. */
+.p-progress {
+  border-radius: 14px; padding: 0.9rem 1.1rem;
+  background: var(--p-bg); box-shadow: 0 0 0 0.5px var(--p-border-strong);
+}
+.p-setup > summary {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 0.2rem; cursor: pointer; list-style: none;
+  font-size: 0.88em; font-weight: 600; color: var(--p-dim);
+}
+.p-setup > summary::-webkit-details-marker { display: none; }
+.p-setup > summary::before { content: "\25B8"; color: var(--p-faint); }
+.p-setup[open] > summary::before { content: "\25BE"; }
+.p-setup[open] { display: grid; gap: 0.75rem; }
+
+@media (max-width: 48rem) {
+  .p-modalback { padding: 0; align-items: stretch; }
+  .p-modal { max-width: none; border-radius: 0; max-height: 100%; }
+  .p-readerhead { padding: 0.7rem 1rem; }
+  .p-readerscroll { padding: 1rem 0.9rem 3rem; }
+  .p-page { padding: 1.4rem 1.2rem; }
 }
