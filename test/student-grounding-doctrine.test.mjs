@@ -103,10 +103,22 @@ test('a runtime setting overrides the environment, matching doctrineProvider pre
   );
 });
 
-test('with nothing configured the tutor still refuses rather than calling anything', async () => {
+test('with no Orin configured the tutor falls back to the model over the passages, never hard-failing', async () => {
+  // Previously an unconfigured Anchor address hard-failed the whole tutor with a
+  // 503. On the hosted deployment the Orin is unreachable by construction, so
+  // that killed the grounded tutor -- the product's biggest differentiator -- on
+  // the live site. Now the tutor composes a grounded fallback over the supplied
+  // course passages with the configured model. It still NEVER contacts Anchor
+  // (there is no address), and it still refuses when nothing supports the answer:
+  // runTutor injects an empty model reply, so the cite-or-refuse stages honestly
+  // decline rather than fabricating a citation.
   const seen = [];
   const result = await runTutor(recordingFetch(seen));
 
   assert.equal(seen.length, 0, 'nothing should be contacted when no endpoint is configured');
-  assert.ok(result?.error, 'an unconfigured endpoint must surface an explicit error');
+  assert.ok(!result?.error, 'an unconfigured Orin must degrade to the fallback, not throw');
+  assert.equal(result.refused, true, 'an empty model reply cannot ground, so the fallback refuses');
+  assert.equal(result.stages.anchor.status, 'unavailable', 'Anchor is honestly marked unavailable');
+  assert.equal(result.stages.fallback, 'model-grounded', 'the record shows the model-grounded path answered');
+  assert.deepEqual(result.citations, [], 'no citation is invented for an ungrounded refusal');
 });

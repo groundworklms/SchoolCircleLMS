@@ -162,21 +162,34 @@ test('enforces question, history, and Anchor-body limits before making IO', asyn
 test('passes bounded abort signals to Anchor and each of three model stages', async () => {
   await withDoctrine(async () => {
     let anchorSignal;
-    await assert.rejects(
-      groundedStudentAnswer(
-        { question: 'What happens?', passages },
-        {
-          timeoutMs: 1,
-          fetch: async (_url, request) => {
-            anchorSignal = request.signal;
-            return new Promise((_, reject) => request.signal.addEventListener('abort', () => reject(new Error('aborted'))));
-          },
-          chat: async () => assert.fail('chat must not run after Anchor timeout'),
+    // A bounded Anchor request that never resolves is a stalled/unreachable
+    // Orin: the request's own timeout aborts it. Because Anchor is only the
+    // candidate filter, that is an availability failure, so the tutor composes a
+    // grounded fallback over the supplied passages rather than hard-failing.
+    const fellBack = await groundedStudentAnswer(
+      { question: 'What happens before launch?', passages },
+      {
+        timeoutMs: 1,
+        fetch: async (_url, request) => {
+          anchorSignal = request.signal;
+          return new Promise((_, reject) => request.signal.addEventListener('abort', () => reject(new Error('aborted'))));
         },
-      ),
-      (error) => error?.code === 'STUDENT_GROUNDING_SERVICE_ERROR' && error.stage === 'anchor',
+        chat: async (system) => {
+          if (system.includes('strict fact-checker')) {
+            return { claims: [{ claim: 'Safety check precedes launch.', supported: true }], unsupported: [] };
+          }
+          if (system.includes('strict doctrine examiner')) return { verdict: 'in-doctrine', conforms: true };
+          return { refused: false, answer: 'Learners complete the safety check before launch. [1]', used: [1] };
+        },
+      },
     );
+    // The bounded signal still reached Anchor and fired (Anchor was tried first);
+    // only then did the fallback take over and deliver a grounded answer.
     assert.equal(anchorSignal.aborted, true);
+    assert.equal(fellBack.refused, false);
+    assert.equal(fellBack.stages.anchor.status, 'unavailable');
+    assert.equal(fellBack.stages.fallback, 'model-grounded');
+    assert.deepEqual(fellBack.citations, [{ n: 1, ...passages[0] }]);
 
     const modelSignals = [];
     const result = await groundedStudentAnswer(
@@ -227,7 +240,7 @@ test('treats Anchor abstention as a normal refusal and rejects forged provenance
   });
 });
 
-test('rejects malformed Anchor contracts, missing Anchor configuration, and passage scope overflow', async () => {
+test('rejects malformed Anchor contracts and passage scope overflow as hard errors, never as a fallback', async () => {
   await withDoctrine(async () => {
     await assert.rejects(
       groundedStudentAnswer(
@@ -257,19 +270,23 @@ test('rejects malformed Anchor contracts, missing Anchor configuration, and pass
     );
   });
 
+  // Missing Anchor configuration is an AVAILABILITY condition, not a malformed
+  // response: Anchor must not be contacted (there is no address), and the tutor
+  // degrades to the grounded fallback instead of throwing. This is the opposite
+  // of the two forged/off-contract cases above -- a REACHABLE Anchor returning a
+  // bad payload is a hard error; an ABSENT Anchor is a fallback trigger. The
+  // fallback is grounded-only: an empty model reply still refuses.
   const previous = process.env.DOCTRINE_BASE_URL;
   delete process.env.DOCTRINE_BASE_URL;
   try {
-    await assert.rejects(
-      groundedStudentAnswer(
-        { question: 'What happens?', passages },
-        { fetch: async () => assert.fail('Anchor must not be called without configuration'), chat: async () => ({}) },
-      ),
-      (error) =>
-        error?.code === 'STUDENT_GROUNDING_SERVICE_ERROR' &&
-        error.stage === 'anchor' &&
-        error.message === 'The grounded student-answer service is unavailable.',
+    const fellBack = await groundedStudentAnswer(
+      { question: 'What happens?', passages },
+      { fetch: async () => assert.fail('Anchor must not be called without configuration'), chat: async () => ({}) },
     );
+    assert.equal(fellBack.refused, true, 'an empty model reply cannot ground, so the fallback refuses');
+    assert.equal(fellBack.stages.anchor.status, 'unavailable');
+    assert.equal(fellBack.stages.fallback, 'model-grounded');
+    assert.deepEqual(fellBack.citations, []);
   } finally {
     if (previous !== undefined) process.env.DOCTRINE_BASE_URL = previous;
   }
