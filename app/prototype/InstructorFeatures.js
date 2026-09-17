@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApiQuery, useApiMutation } from '../_learning/useLearning';
 import { RowActions } from './RowActions';
 
@@ -18,6 +18,68 @@ function errText(e, fallback) {
 
 function Err({ msg }) {
   return msg ? <p className="s-shell-error" role="alert">{msg}</p> : null;
+}
+
+/* Wheel deltas arrive in pixels, lines or pages depending on the device and
+   browser; normalise to pixels before handing them to an ancestor scroller. */
+function wheelPixels(event, element) {
+  if (event.deltaMode === 1) return event.deltaY * 16;
+  if (event.deltaMode === 2) return event.deltaY * element.clientHeight;
+  return event.deltaY;
+}
+
+function scrollingAncestor(element) {
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    const overflowY = window.getComputedStyle(node).overflowY;
+    if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+  }
+  return null;
+}
+
+/**
+ * The wheel handler that lets a gesture over a scrollable field fall through
+ * to the page.
+ *
+ * The prototype shell is a fixed-height column whose <main> is the only
+ * scroller, so nothing chains to the document. A browser latches a wheel
+ * gesture to the first scrollable element under the pointer, and a textarea
+ * holding more lines than it shows is one -- so a pointer resting over a
+ * filled form field swallowed the gesture and the Review panel below the
+ * rubric form could not be reached at all.
+ *
+ * It takes over only once the field has no scroll left in the wheel's
+ * direction, so the field's own scrolling and its resize handle are unchanged.
+ * `findScroller` is the injection seam the contract test drives it through.
+ */
+function wheelFallthrough(element, findScroller = scrollingAncestor) {
+  return (event) => {
+    // Ctrl+wheel is browser zoom, not scrolling.
+    if (event.ctrlKey || event.deltaY === 0) return;
+    const exhausted = event.deltaY < 0
+      ? element.scrollTop <= 0
+      : element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
+    if (!exhausted) return;
+    const scroller = findScroller(element);
+    if (!scroller) return;
+    event.preventDefault();
+    scroller.scrollTop += wheelPixels(event, element);
+  };
+}
+
+/* Attached by hand rather than through onWheel: React registers wheel
+   listeners passively, where preventDefault() is ignored. */
+function useWheelFallthrough() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
+    const onWheel = wheelFallthrough(element);
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
+  }, []);
+  return ref;
 }
 
 /*
@@ -555,6 +617,136 @@ function SavedRubrics() {
   );
 }
 
+const RUBRIC_TIERS = [
+  ['unsatisfactory', 'Unsatisfactory'],
+  ['satisfactory', 'Satisfactory'],
+  ['proficient', 'Proficient'],
+];
+
+function RubricTask({ task }) {
+  if (!task || (!task.code && !task.title)) return null;
+  return (
+    <div style={{ marginBottom: '0.9rem' }}>
+      <div className="s-card-title">{task.title || task.code}</div>
+      {task.title && task.code && <div className="s-card-school">{task.code}</div>}
+    </div>
+  );
+}
+
+function RubricNotes({ notes }) {
+  const list = Array.isArray(notes) ? notes.filter((n) => typeof n === 'string' && n.trim()) : [];
+  if (!list.length) return null;
+  return (
+    <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.25rem' }}>
+      {list.map((note, i) => <li key={i} className="p-findbody">{note}</li>)}
+    </ul>
+  );
+}
+
+/**
+ * A standard Rubricon refused to anchor.
+ *
+ * This is the product's headline behaviour, not an error: rather than invent
+ * criteria for a standard too vague to measure, Rubricon returns the refusal
+ * and what a human would have to define. The instructor has to be able to read
+ * both and hand them to a subject-matter expert, so they are prose under
+ * labels rather than the payload they arrive in.
+ */
+function FlaggedRubric({ rubric }) {
+  return (
+    <div className="p-find warn" role="status" data-testid="rubric-flagged">
+      <div className="p-findhead">
+        <span style={{ color: 'var(--p-warning)', fontSize: '0.8em' }}>●</span>
+        Flagged for a subject-matter expert — no rubric was written
+      </div>
+      <p className="p-findbody">
+        {rubric.reason || 'This standard could not be anchored to observable performance.'}
+      </p>
+      {rubric.needsSME && (
+        <>
+          <div className="p-findhead" style={{ marginTop: '0.9rem' }}>What an SME must define</div>
+          <p className="p-findbody">{rubric.needsSME}</p>
+        </>
+      )}
+      <RubricNotes notes={rubric.notes} />
+      <p className="p-src">
+        Nothing above was invented. Generate again once the standard says how performance is judged.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The BARS rubric itself. Each dimension carries the verbatim source phrase
+ * that verifyTraceability checked its anchors against, so the grounding claim
+ * in the Traceability tile can be read against the evidence beside it.
+ */
+function RubricDimensions({ dimensions }) {
+  return (
+    <div className="p-tablewrap" data-testid="rubric-dimensions">
+      <table className="p-table">
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            {RUBRIC_TIERS.map(([tier, label]) => <th key={tier}>{label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {dimensions.map((dimension, i) => (
+            <tr key={dimension.name || i}>
+              <td>
+                {dimension.name || `Dimension ${i + 1}`}
+                {dimension.source && <div className="p-src">“{dimension.source}”</div>}
+              </td>
+              {RUBRIC_TIERS.map(([tier]) => (
+                <td key={tier}>{dimension.anchors?.[tier] || <span className="p-src">Not supplied</span>}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * Rubricon returns one of exactly two shapes -- a rubric with `dimensions`, or
+ * a refusal with `flagged`/`reason`/`needsSME`. This screen used to look for
+ * `criteria`/`elements`, which neither shape has and no server path produces,
+ * so *every* generated rubric fell through to a JSON dump and the instructor
+ * read the payload instead of the rubric.
+ *
+ * The third branch is for a shape matching neither contract. The shape gate in
+ * generateRubric should make that unreachable, so it stays collapsed and says
+ * what it is rather than presenting the payload as the result.
+ */
+function RubricResult({ rubric }) {
+  if (!rubric || typeof rubric !== 'object') return null;
+  const dimensions = Array.isArray(rubric.dimensions) ? rubric.dimensions : null;
+  return (
+    <>
+      <RubricTask task={rubric.task} />
+      {rubric.flagged ? <FlaggedRubric rubric={rubric} /> : null}
+      {!rubric.flagged && dimensions?.length ? (
+        <>
+          <RubricDimensions dimensions={dimensions} />
+          <RubricNotes notes={rubric.notes} />
+        </>
+      ) : null}
+      {!rubric.flagged && !dimensions?.length ? (
+        <details>
+          <summary className="p-src">
+            This rubric is in a shape this screen does not recognise. Open the raw record.
+          </summary>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.85em', background: 'var(--p-surface-2)', padding: '1rem', overflowX: 'auto' }}>
+            {JSON.stringify(rubric, null, 2)}
+          </pre>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
 export function RubricsView() {
   const {
     data: sources,
@@ -590,6 +782,9 @@ export function RubricsView() {
   const suggestTasks = useApiMutation('/rubrics/task-suggestions', 'POST');
   const approveRubric = useApiMutation(`/rubrics/${generatedRubricId}/approve`, 'POST');
   const { data: rubricData, refetch } = useApiQuery(`/rubrics/${generatedRubricId}`, { enabled: !!generatedRubricId });
+  // Performance steps are the one field long enough to scroll, and a scrolling
+  // field here swallows the page's wheel gesture; see useWheelFallthrough.
+  const stepsRef = useWheelFallthrough();
 
   const applySuggestion = (task) => {
     if (!task) return;
@@ -672,7 +867,6 @@ export function RubricsView() {
   };
 
   const rubric = rubricData?.rubric;
-  const criteria = rubric?.criteria || rubric?.elements || null;
 
   return (
     <>
@@ -750,7 +944,7 @@ export function RubricsView() {
           <input className="scw-ti" placeholder="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} disabled={sourcesUnavailable} />
           <input className="scw-ti" placeholder="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} disabled={sourcesUnavailable} />
           <input className="scw-ti" placeholder="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
-          <textarea className="scw-ti" placeholder="Performance steps (one per line)" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
+          <textarea ref={stepsRef} className="scw-ti" placeholder="Performance steps (one per line)" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
           <Err msg={err} />
           <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || suggesting || sourcesUnavailable || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
             {generateRubric.loading ? 'Generating…' : 'Generate rubric'}
@@ -778,7 +972,13 @@ export function RubricsView() {
                   <div className="p-tile">
                     <div className="p-tilelab">Traceability</div>
                     <div className="p-tileval" style={{ fontSize: '1.2em', color: rubricData.traceability.grounded ? 'var(--p-good)' : 'var(--p-critical)' }}>{rubricData.traceability.grounded ? 'Grounded' : 'Ungrounded'}</div>
-                    {typeof rubricData.traceability.coverage === 'number' && <div className="p-tilenote">{Math.round(rubricData.traceability.coverage * 100)}% coverage</div>}
+                    {/* verifyTraceability is handed no dimensions for a flagged
+                        standard, so its 100% is the empty case, not a checked
+                        one. Claiming full coverage beside "no rubric was
+                        written" reads as a contradiction. */}
+                    {rubric?.flagged
+                      ? <div className="p-tilenote">Nothing to trace yet</div>
+                      : typeof rubricData.traceability.coverage === 'number' && <div className="p-tilenote">{Math.round(rubricData.traceability.coverage * 100)}% coverage</div>}
                   </div>
                 )}
               </div>
@@ -787,38 +987,25 @@ export function RubricsView() {
                   Ungrounded elements: {rubricData.traceability.ungrounded.map((u) => (typeof u === 'string' ? u : u.source || u.element || JSON.stringify(u))).join(', ')}
                 </p>
               )}
-              {rubric?.flagged && (
-                <p className="s-shell-error" role="alert">Flagged: {rubric.flagReason || 'review before approving'}</p>
-              )}
-              {Array.isArray(criteria) ? (
-                <div className="p-tablewrap">
-                  <table className="p-table">
-                    <thead>
-                      <tr><th>Criterion</th><th>Developing</th><th>Competent</th><th>Mastered</th></tr>
-                    </thead>
-                    <tbody>
-                      {criteria.map((c, i) => (
-                        <tr key={i}>
-                          <td>{c.elo || c.criterion || c.name || c.title || `Criterion ${i + 1}`}</td>
-                          <td>{c.indicators?.developing || c.developing || ''}</td>
-                          <td>{c.indicators?.competent || c.competent || ''}</td>
-                          <td>{c.indicators?.mastered || c.mastered || ''}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.85em', background: 'var(--p-surface-2)', padding: '1rem', overflowX: 'auto' }}>
-                  {JSON.stringify(rubric || rubricData, null, 2)}
-                </pre>
-              )}
+              <RubricResult rubric={rubric} />
               <Err msg={err} />
               {approved && <p className="p-src" style={{ color: 'var(--p-good)' }}>Rubric approved.</p>}
               {rubricData.status === 'PENDING' && (
-                <button className="p-btn" onClick={handleApprove} disabled={approveRubric.loading} style={{ marginTop: '1rem' }}>
-                  {approveRubric.loading ? 'Approving…' : 'Approve rubric'}
-                </button>
+                <>
+                  {/* Approval stays the instructor's to press. The consequence
+                      is stated because the server refuses a flagged rubric, so
+                      pressing it without warning reads as a broken button
+                      rather than the policy it is. */}
+                  {rubric?.flagged && (
+                    <p className="p-src" style={{ margin: '1rem 0 0', color: 'var(--p-warning)' }}>
+                      A flagged rubric cannot be approved until the standard says how performance is
+                      judged — the server will refuse this and explain why.
+                    </p>
+                  )}
+                  <button className="p-btn" onClick={handleApprove} disabled={approveRubric.loading} style={{ marginTop: '1rem' }}>
+                    {approveRubric.loading ? 'Approving…' : 'Approve rubric'}
+                  </button>
+                </>
               )}
             </>
           ) : (
