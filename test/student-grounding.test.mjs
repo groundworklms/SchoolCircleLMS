@@ -504,6 +504,170 @@ test('a bounded hosted attempt aborts into a fresh local attempt budget', async 
   assert.deepEqual(paths, ['local', 'local', 'local']);
 });
 
+test('states the citation protocol to the answer stage only', async () => {
+  const systems = {};
+  await withDoctrine(async () => {
+    const result = await groundedStudentAnswer(
+      { question: 'What happens before launch?', passages },
+      {
+        fetch: anchor({ abstained: false, passages, contract: 'schoolcircle-grounding-v1' }),
+        chat: async (system) => {
+          if (system.includes('strict fact-checker')) {
+            systems.verify = system;
+            return { claims: [{ claim: 'Safety check precedes launch.', supported: true }], unsupported: [] };
+          }
+          if (system.includes('strict doctrine examiner')) {
+            systems.judge = system;
+            return { verdict: 'in-doctrine', conforms: true };
+          }
+          systems.answer = system;
+          return { refused: false, answer: 'Learners complete the safety check before launch. [1]', used: [1] };
+        },
+      },
+    );
+    assert.equal(result.refused, false);
+  });
+  // Sourcerer's own instruction is still sent verbatim; the protocol is added to
+  // it, so the pinned package keeps parsing what it asked for.
+  assert.match(systems.answer, /Answer ONLY from the provided passages\./);
+  assert.match(systems.answer, /never grouped as \[1, 2\]/);
+  assert.match(systems.answer, /List in used exactly the distinct numbers you marked/);
+  // The verifier and the examiner answer different questions and must not be
+  // told to emit an answer/used pair at all.
+  assert.doesNotMatch(systems.verify, /List in used exactly/);
+  assert.doesNotMatch(systems.judge, /List in used exactly/);
+});
+
+// The delivered contract is SET equality between the answer's inline markers
+// and the candidate's `used` list. Every real multi-sentence answer this path
+// produced cited at least one passage more than once, so counting markers
+// refused correctly cited work; matching the sets refuses exactly as much
+// evidence-wise and nothing more.
+test('accepts a passage cited in several sentences without inflating the citation list', async () => {
+  const answer = [
+    'Learners complete the safety check before launch. [1]',
+    'That safety check is completed before launch. [1]',
+    'The systems check follows launch. [2]',
+  ].join(' ');
+  const judged = [];
+  await withDoctrine(async () => {
+    const result = await groundedStudentAnswer(
+      { question: 'What happens before launch?', passages },
+      {
+        fetch: anchor({ abstained: false, passages, contract: 'schoolcircle-grounding-v1' }),
+        chat: async (system) => {
+          if (system.includes('strict fact-checker')) {
+            return { claims: [{ claim: 'Safety check precedes launch.', supported: true }], unsupported: [] };
+          }
+          if (system.includes('strict doctrine examiner')) {
+            judged.push(answer);
+            return { verdict: 'in-doctrine', conforms: true };
+          }
+          return { refused: false, answer, used: [1, 2] };
+        },
+      },
+    );
+    assert.equal(result.refused, false);
+    assert.equal(result.answer, answer);
+    // One citation per distinct cited passage, in `used` order -- a repeated
+    // marker must never add a second copy of the same evidence.
+    assert.deepEqual(result.citations, [passages[0], passages[1]]);
+    assert.equal(result.stages.understudy.status, 'accepted');
+  });
+  assert.deepEqual(judged, [answer]);
+});
+
+test('still refuses every answer whose markers and used set disagree', async () => {
+  const cases = [
+    // A marker naming evidence that was never verified or judged.
+    { answer: 'Learners complete the safety check before launch. [1] The systems check follows launch. [2]', used: [1] },
+    // A cited passage the answer never actually points at.
+    { answer: 'Learners complete the safety check before launch. [1]', used: [1, 2] },
+    // A grouped marker is not the protocol's marker, and its members are not
+    // separately verifiable references.
+    { answer: 'Learners complete the safety check before launch. [1] The systems check follows launch. [1, 2]', used: [1, 2] },
+    // An out-of-range marker beside two valid ones.
+    { answer: 'Learners complete the safety check. [1] The systems check follows launch. [2] Beyond the sources. [3]', used: [1, 2] },
+    // A duplicated `used` entry inflates the evidence handed to Understudy.
+    { answer: 'Learners complete the safety check before launch. [1]', used: [1, 1] },
+  ];
+  await withDoctrine(async () => {
+    for (const { answer, used } of cases) {
+      const result = await groundedStudentAnswer(
+        { question: 'What happens before launch?', passages },
+        {
+          fetch: anchor({ abstained: false, passages, contract: 'schoolcircle-grounding-v1' }),
+          chat: async (system) => {
+            if (system.includes('strict fact-checker')) {
+              return { claims: [{ claim: 'Safety check precedes launch.', supported: true }], unsupported: [] };
+            }
+            if (system.includes('strict doctrine examiner')) {
+              assert.fail('a candidate that failed citation validation must never be judged or delivered');
+            }
+            return { refused: false, answer, used };
+          },
+        },
+      );
+      assert.equal(result.refused, true, `must refuse: ${answer} / ${JSON.stringify(used)}`);
+      assert.equal(result.reason, 'citation_invalid');
+      assert.deepEqual(result.citations, []);
+      assert.notEqual(result.answer, answer);
+    }
+  });
+});
+
+test('never delivers an answer the sources do not support', async () => {
+  const unsupported = 'Learners salute the range officer before launch.';
+  await withDoctrine(async () => {
+    // The model declines: nothing to deliver, and no citation is invented.
+    const declined = await groundedStudentAnswer(
+      { question: 'What happens before launch?', passages },
+      {
+        fetch: anchor({ abstained: false, passages, contract: 'schoolcircle-grounding-v1' }),
+        chat: async () => ({ refused: true, answer: '', used: [] }),
+      },
+    );
+    assert.equal(declined.refused, true);
+    assert.equal(declined.reason, 'unsupported');
+    assert.deepEqual(declined.citations, []);
+
+    // An answer with content but no marker at all is uncited, not cited-loosely.
+    const uncited = await groundedStudentAnswer(
+      { question: 'What happens before launch?', passages },
+      {
+        fetch: anchor({ abstained: false, passages, contract: 'schoolcircle-grounding-v1' }),
+        chat: async (system) => {
+          if (system.includes('strict doctrine examiner')) assert.fail('an uncited answer must never be judged');
+          return { refused: false, answer: unsupported, used: [1] };
+        },
+      },
+    );
+    assert.equal(uncited.refused, true);
+    assert.deepEqual(uncited.citations, []);
+    assert.notEqual(uncited.answer, unsupported);
+
+    // A correctly marked answer whose claim the strict verifier cannot find in
+    // the cited passages is still refused, markers notwithstanding.
+    const unfaithful = await groundedStudentAnswer(
+      { question: 'What happens before launch?', passages },
+      {
+        fetch: anchor({ abstained: false, passages, contract: 'schoolcircle-grounding-v1' }),
+        chat: async (system) => {
+          if (system.includes('strict fact-checker')) {
+            return { claims: [{ claim: unsupported, supported: false }], unsupported: [unsupported] };
+          }
+          if (system.includes('strict doctrine examiner')) assert.fail('an unfaithful answer must never be judged');
+          return { refused: false, answer: `${unsupported} [1] [2]`, used: [1, 2] };
+        },
+      },
+    );
+    assert.equal(unfaithful.refused, true);
+    assert.equal(unfaithful.reason, 'unfaithful');
+    assert.deepEqual(unfaithful.citations, []);
+    assert.notEqual(unfaithful.answer, `${unsupported} [1] [2]`);
+  });
+});
+
 test('rejects markers unsupported by the candidate used set and unavailable Understudy APIs', async () => {
   await withDoctrine(async () => {
     const badCitation = await groundedStudentAnswer(
