@@ -7,6 +7,7 @@ import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures'
 import { CourseReadiness } from './CourseReadiness';
 import { CourseItemReview } from './ItemReview';
 import { GenerationProgress, ThinCoverageNotice } from './GenerationProgress';
+import { CoursePreview } from './LearnerFeatures';
 import { RowActions } from './RowActions';
 import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
 import { collectionFromFilename, isPdfFile, isZipFile, pdfEntriesFromZip, zipEntryForm } from './source-upload';
@@ -1080,6 +1081,8 @@ export function CourseDraft({ course, onChanged }) {
   const { data: sources } = useApiQuery('/sources');
   const revise = useApiMutation(`/courses/${course.id}/revise`, 'POST');
   const approve = useApiMutation(`/courses/${course.id}/approve`, 'POST');
+  const writePages = useApiMutation(`/courses/${course.id}/pages`, 'POST');
+  const [preview, setPreview] = useState(false);
 
   const draft = envelope?.course || course.record?.course || course.record || course;
   const status = envelope?.status || course.status;
@@ -1124,6 +1127,22 @@ export function CourseDraft({ course, onChanged }) {
       await refresh();
     } catch (error) {
       setErr(errText(error, 'The course could not be approved.'));
+    }
+  };
+
+  // Lesson pages are a second grounded pass over each section's passage.
+  // New drafts get them during generation; this writes them for a course
+  // drafted before that pass existed, or fills in sections it refused.
+  const handleWritePages = async () => {
+    setErr(null);
+    setNotice('');
+    try {
+      const result = await writePages.mutate();
+      const written = result?.sections?.filter((s) => s.pages > 0).length || 0;
+      setNotice(`Lesson pages written for ${written} of ${result?.sections?.length || 0} sections.`);
+      await refresh();
+    } catch (error) {
+      setErr(errText(error, 'Lesson pages could not be written.'));
     }
   };
 
@@ -1207,6 +1226,18 @@ export function CourseDraft({ course, onChanged }) {
       {notice && <p className="p-check ok" role="status"><strong>{notice}</strong></p>}
 
       <div className="p-btnrow" style={{ marginBottom: '1.25rem' }}>
+        <button type="button" className={`p-btn${preview ? '' : ' ghost'}`} onClick={() => setPreview((v) => !v)} disabled={showingLoading}>
+          {preview ? 'Back to review' : 'Preview as a learner'}
+        </button>
+        {!showingLoading && sections.some((s) => s?.lesson && !s.refused) && (
+          <button type="button" className="p-btn ghost" onClick={handleWritePages} disabled={writePages.loading || Boolean(pendingRevision) || approve.loading}>
+            {writePages.loading
+              ? 'Writing lesson pages…'
+              : sections.some((s) => Array.isArray(s?.pages) && s.pages.length)
+                ? `Rewrite lesson pages (${sections.filter((s) => Array.isArray(s?.pages) && s.pages.length).length}/${sections.filter((s) => s?.lesson && !s.refused).length} written)`
+                : 'Write lesson pages'}
+          </button>
+        )}
         {status === 'APPROVED' && !hasPendingRevision && (
           <>
             <button type="button" className="p-btn ghost" onClick={() => exportScorm('1.2')}>Export SCORM 1.2</button>
@@ -1220,7 +1251,16 @@ export function CourseDraft({ course, onChanged }) {
         )}
       </div>
 
-      <CourseReadiness
+      {preview && !showingLoading && (
+        <div className="p-panel" style={{ marginBottom: '1.25rem' }}>
+          <p className="p-src" style={{ marginTop: 0 }}>
+            Exactly what a learner sees, on the same player. Your copy carries the answer keys, so checks grade here; a learner&apos;s copy does not, and grades on the server.
+          </p>
+          <CoursePreview key={version} course={{ id: course.id, name: draft?.title || course.name || 'Course draft' }} draft={draft} />
+        </div>
+      )}
+
+      {!preview && <CourseReadiness
         courseId={course.id}
         version={version}
         candidate={draft}
@@ -1229,17 +1269,17 @@ export function CourseDraft({ course, onChanged }) {
         busy={approve.loading || Boolean(pendingRevision)}
         unavailable={showingLoading || Boolean(draftError) || !envelope}
         onApprove={handleApprove}
-      />
+      />}
 
       {/* Approving the course released this snapshot; it did not release the
           items in it. Every materialised item starts PENDING and a learner only
           ever sees APPROVED, so the gate stays open until a human closes it. */}
-      {status === 'APPROVED' && !showingLoading && (
+      {status === 'APPROVED' && !showingLoading && !preview && (
         <CourseItemReview courseId={course.id} onChanged={onChanged} />
       )}
 
       {showingLoading && <p>Loading generated course…</p>}
-      {!showingLoading && (
+      {!showingLoading && !preview && (
         <div className="p-panel">
           <GeneratedCoursePreview
             course={draft || {}}

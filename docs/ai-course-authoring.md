@@ -8,9 +8,19 @@ blank for AI outline extraction. Outline generation is bounded to twelve
 objectives per request; malformed, ungrounded or oversized outlines fail explicitly.
 Coursewright must produce every requested section rather than silently skip one.
 
-Instructor previews and student lessons share the retained manual-course visual
-template: content blocks, typography, question choices and feedback presentation.
-The model supplies structured course content, not executable HTML or styles.
+Instructor previews and student lessons share one player -- the authored-lesson
+player behind the demo courses (`app/prototype/LessonPlayer.js`,
+`app/prototype/lesson-blocks.js`): an overview, then one idea per screen, checks
+that gate Next until answered, diagram callouts that gate until explored, a
+lesson map, and rationale on answer. A generated section becomes that shape
+through `lib/learning/lesson-pages.js`: the grounded page pass's intro and pages,
+the diagram (as hotspots when its labels were explained, else a figure), pre and
+post checks, flashcards, and a provenance page. The model supplies structured
+course content, not executable HTML or styles; diagram primitives are rendered to
+SVG with every string escaped. Pages, diagram and cards ride on the section's
+`LESSON` row and are released or withheld with its prose. "Preview as a learner"
+on the review screen shows the owner's draft on the same player; "Write lesson
+pages" runs the page pass over a course drafted before it existed.
 
 Instructors can request a question or whole-lesson revision. Requests carry the
 reviewed version and stable target IDs. The server validates saved sources and

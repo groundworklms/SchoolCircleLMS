@@ -42,6 +42,20 @@ function optionsOf(item) {
   return Array.isArray(item.options) ? item.options : [];
 }
 
+/* A LESSON row's `options` is not a choice list but the structured teaching
+   content a learner reads the prose through -- pages, diagram, cards (see
+   lib/learning/project-course.js `lessonContent`). The reviewer approving
+   the row is approving that too, so the card says what rides along. */
+function lessonContentOf(item) {
+  if (item?.kind !== 'LESSON' || !item.options || typeof item.options !== 'object' || Array.isArray(item.options)) return null;
+  const content = item.options;
+  const parts = [];
+  if (Array.isArray(content.pages) && content.pages.length) parts.push(`${content.pages.length} lesson page${content.pages.length === 1 ? '' : 's'}`);
+  if (content.diagram) parts.push(`a diagram${Array.isArray(content.labels) && content.labels.length ? ` with ${content.labels.length} explained labels` : ''}`);
+  if (Array.isArray(content.flashcards) && content.flashcards.length) parts.push(`${content.flashcards.length} flashcards`);
+  return parts.length ? { summary: parts.join(', '), pages: Array.isArray(content.pages) ? content.pages : [] } : null;
+}
+
 /* `support` is the HHEM score for the keyed answer. It is absent on items that
    were never verified, and "absent" has to read differently from "scored low". */
 function Evidence({ item }) {
@@ -168,6 +182,20 @@ function ItemCard({ item, busy, onDecide }) {
       )}
 
       {item.rationale && <p className="item-review-rationale">{item.rationale}</p>}
+
+      {lessonContentOf(item) && (
+        <details className="item-review-rationale">
+          <summary>Released with this lesson: {lessonContentOf(item).summary}. Written from the same passage and grounded block by block.</summary>
+          <ol>
+            {lessonContentOf(item).pages.map((page, index) => (
+              <li key={index}>
+                <strong>{page.title}</strong>
+                {' '}· {(page.blocks || []).map((block) => block.type).join(', ')}
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
 
       <Evidence item={item} />
 

@@ -204,6 +204,27 @@ model wrapper as its injectable ask callback. Grounding refusals remain in the
 stored result. The response is `201` with a `PENDING COURSE_DRAFT` record id,
 title, section count, and source ids.
 
+After Coursewright, each usable section gets a second grounded pass -- `pages`
+(default on; `"pages": false` opts out) -- that expands the lesson paragraph
+into a short lesson a learner reads one screen at a time: an `intro`, 3-5
+`pages` of typed blocks (`p`, `h`, `list`, `callout`, `terms`, `example`,
+`accordion`) and a one-sentence explanation per diagram `label`. Every block is
+checked against the same passage union the lesson was grounded in, at the same
+overlap floor, and a block the passage cannot back is dropped rather than
+saved; a section whose pages cannot be grounded keeps its paragraph and records
+`refusals.pages`. The streaming twin reports the pass as `phase: "pages"`, one
+event per section.
+
+### `POST /api/learning/courses/:id/pages` — instructor owner
+
+Runs the same page pass over a saved course -- one drafted before the pass
+existed, or whose sections refused. Each section's citation is resolved back to
+the approved source text it was grounded in. Responds with `expanded` and a
+per-section `{ id, title, pages, reason }`. On an `APPROVED` course the new
+content is also carried onto the release's `LESSON` rows, and an approved row
+goes back to `PENDING`: the words a learner reads the lesson through changed,
+so the instructor ratifies them again. `503` when no model is configured.
+
 ### `GET /api/learning/courses` and `GET /api/learning/courses/:id` —
 authenticated
 
@@ -268,6 +289,16 @@ selection.
   "answers": { "record-id:s1:pre1": { "optionId": "0", "correct": true, "feedback": "…" } }
 }
 ```
+
+`lessons` carries the release's `LESSON` rows: `released` is whether the row is
+`APPROVED`, and only then `text`, `citation` and `content` are present.
+`content` is the structured teaching content that rides on the same row
+(`intro`, `pages`, `labels`, `diagram`, `flashcards` -- see
+`lib/learning/project-course.js` `lessonContent`), so one ratification decision
+governs the prose and the pages a learner reads it through; a withheld row
+withholds all of it. The learner reader (`app/prototype/LearnerFeatures.js`)
+builds its screens from this response alone, through
+`lib/learning/lesson-pages.js`.
 
 The answerable set is the `APPROVED` `QUESTION` half of the selected release's
 materialised items and nothing else, so a `PENDING` or `REJECTED` item is never
