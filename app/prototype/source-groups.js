@@ -22,3 +22,33 @@ export function groupSourcesByCollection(sources) {
     return { name, sources: [...pending, ...approved], pending, approved };
   });
 }
+
+/* Uploaded documents keep their raw filename as a title: underscores for
+   spaces, a stray space before a suffix, an extension already stripped by the
+   uploader. The stored title stays the real, addressable value -- rename and
+   delete act on it -- so this is a DISPLAY-ONLY tidy that lets a shelf of a
+   hundred lesson PDFs read as words instead of paths. It only collapses
+   separators; casing is left alone, because "BE0108" and other codes are not
+   ours to re-case. */
+export function cleanSourceLabel(title) {
+  const text = String(title || '')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text || 'Untitled source';
+}
+
+/* Does a source match a free-text filter? Matched against the cleaned label the
+   instructor actually sees and the citation id they may know it by, both folded
+   to lower case. An empty query matches everything so the caller can filter
+   unconditionally. */
+export function sourceMatchesQuery(source, query) {
+  const needle = String(query || '').trim().toLowerCase();
+  if (!needle) return true;
+  const haystack = [
+    cleanSourceLabel(source?.title),
+    source?.sourceId || '',
+    source?.collection || '',
+  ].join(' ').toLowerCase();
+  return haystack.includes(needle);
+}
