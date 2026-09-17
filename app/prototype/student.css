@@ -100,6 +100,111 @@
   font-size: 0.9em;
 }
 
+/* ---------- instructor course disclosure ---------- */
+/* Keep authoring navigation in the existing rail scroller, but do not reuse
+   the learner tree selectors: the instructor menu has different destinations
+   and intentionally has no red selection panels. */
+.s-instructor-courses-nested {
+  padding-left: 0.5rem;
+}
+.s-instructor-courses-nested[hidden],
+.s-instructor-course-children[hidden] {
+  display: none;
+}
+.s-instructor-courses-button {
+  gap: 0.75rem;
+}
+.s-instructor-courses-chevron {
+  color: var(--p-faint);
+  font-size: 1.2em;
+  line-height: 1;
+}
+.s-instructor-course-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.s-instructor-course-library,
+.s-instructor-course-child {
+  font-size: 0.9em;
+  padding-left: 2.35rem;
+  color: var(--p-dim);
+}
+.s-instructor-course-library[aria-current='page'],
+.s-instructor-course-child.on {
+  color: var(--p-accent);
+  font-weight: 600;
+  background: transparent;
+}
+.s-instructor-course-parent {
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+}
+.s-instructor-course-link {
+  flex: 1;
+  min-width: 0;
+  border-radius: 10px 0 0 10px;
+}
+.s-instructor-course-link.selected,
+.s-instructor-course-link.on,
+.s-instructor-course-toggle.selected,
+.s-instructor-course-child.on,
+.s-instructor-course-library[aria-current='page'] {
+  background: transparent;
+}
+.s-instructor-course-link.selected,
+.s-instructor-course-link.on,
+.s-instructor-course-toggle.selected {
+  color: var(--p-accent);
+  font-weight: 600;
+}
+.s-instructor-course-toggle {
+  width: 2.25rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  border-radius: 0 10px 10px 0;
+  background: transparent;
+  color: var(--p-faint);
+  font: inherit;
+  cursor: pointer;
+}
+.s-instructor-course-toggle:hover,
+.s-instructor-course-toggle:focus-visible {
+  background: rgba(0,0,0,0.05);
+  color: var(--p-text);
+}
+.s-instructor-course-children {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin: 0.1rem 0 0.25rem;
+}
+.s-instructor-course-child .s-course-child-marker,
+.s-instructor-course-library .s-course-child-marker {
+  width: 0.9rem;
+  flex: none;
+  color: var(--p-faint);
+  font-size: 1.35em;
+  line-height: 0.7;
+  text-align: center;
+}
+.s-course-chevron {
+  display: block;
+  font-size: 1.2em;
+  line-height: 1;
+}
+.s-instructor-course-child.on .s-course-child-marker {
+  color: var(--p-accent);
+}
+.s-rail-instructor .s-rail-btn.on,
+.s-rail-instructor .s-rail-btn.selected {
+  background: transparent;
+}
+
 /* At a short viewport, rail content (courses + nav + spacer) can exceed the
    available height; without this, items below the fold are clipped by
    .p-root's overflow:hidden with no way to reach them (#80).
@@ -119,6 +224,8 @@
 .s-rail:not(.s-rail-instructor)::-webkit-scrollbar { width: 6px; }
 .s-rail:not(.s-rail-instructor)::-webkit-scrollbar-track { background: transparent; }
 .s-rail:not(.s-rail-instructor)::-webkit-scrollbar-thumb { background: var(--p-faint); border-radius: 999px; }
+.s-rail:not(.s-rail-instructor) { min-height: 0; }
+.s-rail:not(.s-rail-instructor) > * { flex-shrink: 0; }
 .s-rail-user { display: flex; align-items: center; gap: 0.65rem; padding: 0.3rem 0.6rem 1.1rem; }
 .s-avatar {
   width: 2.2rem; height: 2.2rem; flex: none;
@@ -157,6 +264,48 @@
 .s-rail-sec code { font-size: 0.85em; }
 .s-rail-spacer { flex: 1; }
 .s-rail > .s-rail-btn:nth-last-child(-n+2) { color: var(--p-dim); font-size: 0.9em; }
+
+/* ---------- enrolled course disclosure tree ---------- */
+.s-courses-nested { padding-left: 0.5rem; }
+.s-courses-nested[hidden] { display: none; }
+.s-course-tree { display: flex; flex-direction: column; gap: 0.1rem; }
+.s-course-menu-state { margin: 0.35rem 0.55rem; font-size: 0.76em; color: var(--p-faint); }
+.s-course-menu-error { color: var(--p-critical); }
+.s-course-group { display: flex; flex-direction: column; min-width: 0; }
+.s-course-parent { display: flex; align-items: stretch; min-width: 0; }
+.s-course-link {
+  flex: 1; min-width: 0; border-radius: 10px 0 0 10px;
+}
+.s-course-toggle {
+  width: 2.25rem; flex: none; display: grid; place-items: center;
+  padding: 0; border: none; border-radius: 0 10px 10px 0;
+  background: none; color: var(--p-faint); font: inherit; cursor: pointer;
+}
+.s-course-toggle:hover, .s-course-toggle:focus-visible {
+  background: var(--p-surface-2); color: var(--p-text);
+}
+.s-course-toggle.selected { color: var(--p-accent); }
+.s-rail:not(.s-rail-instructor) .s-rail-btn.on,
+.s-rail:not(.s-rail-instructor) .s-course-link.selected {
+  background: transparent;
+}
+.s-course-chevron { display: block; font-size: 1.2em; line-height: 1; }
+.s-course-children {
+  display: flex; flex-direction: column; gap: 0.1rem;
+  margin: 0.1rem 0 0.25rem;
+}
+.s-course-children[hidden] { display: none; }
+.s-course-child {
+  font-size: 0.9em;
+  padding-left: 2.35rem;
+  color: var(--p-dim);
+}
+.s-course-child.on { color: var(--p-accent); }
+.s-course-child-marker {
+  width: 0.9rem; flex: none; color: var(--p-faint);
+  font-size: 1.35em; line-height: 0.7; text-align: center;
+}
+.s-course-child.on .s-course-child-marker { color: var(--p-accent); }
 
 /* ---------- persistent account profile ---------- */
 .s-profile-editor {
@@ -758,6 +907,39 @@ details[open] > summary.s-label::before { content: '▾'; }
   .s-rail-who, .s-rail-lab, .s-rail-sec, .s-rail-badge { display: none; }
   .s-rail-btn { justify-content: center; padding: 0.6rem 0; }
   .s-rail-btn.sub { display: none; }
+  .s-rail-instructor .s-instructor-course-link { justify-content: center; }
+  .s-rail-instructor .s-instructor-course-toggle { width: 1.65rem; }
+  .s-rail-instructor .s-instructor-course-children {
+    position: relative;
+    padding: 0.15rem 0;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--p-surface) 72%, transparent);
+  }
+  .s-rail-instructor .s-instructor-course-child,
+  .s-rail-instructor .s-instructor-course-library {
+    display: flex;
+    justify-content: center;
+    padding: 0.45rem 0;
+  }
+  .s-rail-instructor .s-instructor-course-child .s-rail-lab,
+  .s-rail-instructor .s-instructor-course-library .s-rail-lab {
+    display: block;
+    position: absolute;
+    left: calc(100% + 0.45rem);
+    z-index: 2;
+    width: max-content;
+    max-width: 14rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 6px;
+    background: var(--p-surface);
+    box-shadow: var(--p-shadow);
+    pointer-events: none;
+    opacity: 0;
+  }
+  .s-rail-instructor .s-instructor-course-child:hover .s-rail-lab,
+  .s-rail-instructor .s-instructor-course-child:focus-visible .s-rail-lab,
+  .s-rail-instructor .s-instructor-course-library:hover .s-rail-lab,
+  .s-rail-instructor .s-instructor-course-library:focus-visible .s-rail-lab { opacity: 1; }
   .s-rail-user { justify-content: center; padding: 0 0 0.8rem; }
   .s-main { padding-left: 1.2rem; padding-right: 1.2rem; }
   .s-hero-tile.wide { grid-column: 1 / -1; }
