@@ -402,8 +402,8 @@ function RosterScreen({
   return (
     <>
       <h2 className="p-h">Class Roster</h2>
-      <p className="p-sub">
-        {course.name} · {course.id}. {demo ? 'Demo roster — changes stay in this browser and are not live.' : 'Persisted roster for this course.'}
+      <p className="p-sub" title={`Course ID: ${course.id}`}>
+        {course.name}. {demo ? 'Demo roster — changes stay in this browser and are not live.' : 'Persisted roster for this course.'}
         {!demo && ` Limit ${ROSTER_MAX_ENROLLMENTS} enrolled records, including dropped records retained for history; imports max ${ROSTER_CSV_MAX_ROWS}.`}
       </p>
       {demo && <div className="s-ro-demo" role="status"><strong>LOCAL DEMO ONLY</strong> Mock-course roster changes and messages are stored in this browser, not sent to a live course.</div>}
