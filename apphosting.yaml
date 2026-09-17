@@ -21,6 +21,16 @@ runConfig:
   # requests rather than as an error.
   memoryMiB: 1024
   cpu: 1
+
+  # There is NO request-timeout setting to put here, and this note exists so the
+  # next person does not spend an afternoon looking for one. runConfig supports
+  # exactly five keys -- cpu, memoryMiB, concurrency, maxInstances, minInstances
+  # -- per the App Hosting docs, the App Hosting REST schema, and the RunConfig
+  # interface in firebase-tools. The Cloud Run request timeout this service
+  # actually runs under is the platform default of 300s, which is what cuts the
+  # course-generation progress stream partway through a long course. See the
+  # long comment in app/api/learning/courses/draft/stream/route.js for what that
+  # does and does not cost, and for the one (untested) operator lever.
 env:
   # --- Grounding: point the cloud app's server-side /api/doctrine at the Orin's
   # Anchor engine, exposed over a tunnel.

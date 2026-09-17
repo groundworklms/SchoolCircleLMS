@@ -418,6 +418,7 @@ export default function StudentInbox({ onOpen, onArea }) {
             {selected.kind === 'announcement' && (
               <div className="s-reply">
                 <textarea
+                  aria-label={`Reply to ${selected.from}`}
                   placeholder={`Reply to ${selected.from}…`}
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}

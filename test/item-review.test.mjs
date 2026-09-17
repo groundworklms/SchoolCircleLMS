@@ -62,11 +62,27 @@ test('a revision edits the authored fields and ratifies in the same action', () 
     { stem: '  Where does the post sit in the aperture?  ', answer: 0 },
     QUESTION,
   );
+  // `support: null` is not a written score, it is the withdrawal of one. The
+  // HHEM measurement on record was taken against the wording this revision has
+  // just replaced, so keeping it would print a confidence number beside text no
+  // entailment check has ever seen -- the same lie as an invented number,
+  // reached by inertia. The item reads "not verified" until something re-measures it.
   assert.deepEqual(data, {
     stem: 'Where does the post sit in the aperture?',
     answer: 0,
+    support: null,
     status: 'APPROVED',
   });
+});
+
+test('approving or rejecting an item never touches the evidence on record', () => {
+  // Only a change to the item's TEXT invalidates a measurement of that text.
+  // Ratifying it unchanged leaves the score that was actually measured for it.
+  for (const decision of ['APPROVE', 'REJECT']) {
+    const data = itemDecisionData(decision, {}, QUESTION);
+    assert.ok(!('support' in data), decision + ' must not write support');
+    assert.ok(!('citation' in data), decision + ' must not write citation');
+  }
 });
 
 // The whole point of the guardrail: evidence is measured, not authored. A

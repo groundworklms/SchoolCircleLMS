@@ -6,7 +6,7 @@ import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { CourseReadiness } from './CourseReadiness';
 import { CourseItemReview } from './ItemReview';
-import { GenerationProgress } from './GenerationProgress';
+import { GenerationProgress, ThinCoverageNotice } from './GenerationProgress';
 import { RowActions } from './RowActions';
 import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
 import { collectionFromFilename, isPdfFile, isZipFile, pdfEntriesFromZip, zipEntryForm } from './source-upload';
@@ -16,12 +16,6 @@ import './source-library.css';
    not tied to one course on screen: source documents (Quarry) and the course
    drafts they feed (Coursewright). Every approval here is a human click; the
    server never self-approves, and a learner never sees anything PENDING. */
-
-const MODAL_BACKDROP = {
-  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-  background: 'rgba(0,0,0,0.5)', zIndex: 100,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-};
 
 function errText(e, fallback) {
   return e?.error || e?.message || fallback;
@@ -176,7 +170,11 @@ function SourceCard({ source, onApproved }) {
   );
 }
 
-function IngestSourceModal({ onIngested }) {
+/* `variant` is the weight of the trigger, not of the dialog. On the Sources
+   screen adding a source IS the page's action and the trigger is the primary;
+   inside Create course it sits next to Generate course, and two accent buttons
+   in one dialog is the same defect this pass removed from inside it. */
+function IngestSourceModal({ onIngested, variant = 'primary' }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -268,85 +266,151 @@ function IngestSourceModal({ onIngested }) {
     setBatch({ running: false, done: entries.length, total: entries.length, failed });
   };
 
-  if (!open) return <button className="p-btn" onClick={() => setOpen(true)}>Add source</button>;
+  if (!open) {
+    return (
+      <button className={variant === 'ghost' ? 'p-btn ghost' : 'p-btn'} onClick={() => setOpen(true)}>
+        Add source
+      </button>
+    );
+  }
 
+
+  /* A PDF and pasted text are two doors into the same library, so they get the
+     same box and each carries its own action. The dialog itself therefore has
+     no primary button to compete with them: the footer holds only Cancel. The
+     previous layout put "Upload PDF" inside a nested panel and "Save text
+     source" in the footer, two accent buttons of equal weight with no way to
+     tell which one was the dialog's action. */
   return (
-    <div style={MODAL_BACKDROP}>
-      <div className="p-panel" role="dialog" aria-modal="true" aria-label="Add source" style={{ width: '440px', maxWidth: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
-        <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Add source</h3>
-        <p className="p-src">Saved to your reusable source library. Review and explicitly approve it before generating a course.</p>
-        <input
-          className="scw-ti"
-          placeholder="Source title (optional for PDF)"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          disabled={zipSelected}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-        />
-        <input
-          className="scw-ti"
-          aria-label="Source identifier"
-          placeholder="Source identifier (optional)"
-          value={sourceId}
-          onChange={(e) => setSourceId(e.target.value)}
-          disabled={zipSelected}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-        />
-        <input
-          className="scw-ti"
-          aria-label="Collection"
-          placeholder={zipSelected ? `Collection (defaults to "${collectionFromFilename(file.name)}")` : 'Collection, e.g. Lesson plans (optional)'}
-          value={collection}
-          onChange={(e) => setCollection(e.target.value)}
-          maxLength={80}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem' }}
-        />
-        <div style={{ padding: '0.75rem', background: 'var(--p-surface-2)', borderRadius: '8px', marginBottom: '0.75rem' }}>
-          <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Upload a PDF, or a zip of PDFs</strong>
-          <p className="p-src" style={{ margin: '0 0 0.5rem' }}>
-            Pages are preserved so instructors and learners can inspect a cited passage. A zip becomes one document per PDF, grouped under its collection.
-          </p>
-          <input
-            type="file"
-            accept="application/pdf,.pdf,application/zip,application/x-zip-compressed,.zip"
-            aria-label="PDF or zip source file"
-            onChange={(e) => { setFile(e.target.files?.[0] || null); setBatch(null); setErr(null); }}
-          />
-          {file && <p className="p-src" style={{ margin: '0.5rem 0 0' }}>Selected: {file.name}</p>}
-          {batch && (
-            <div className="source-batch" role="status" aria-live="polite">
-              <p>{batch.running ? `Uploading ${batch.done} of ${batch.total}…` : `Uploaded ${batch.total - batch.failed.length} of ${batch.total}.`}</p>
-              {batch.failed.length > 0 && (
-                <ul>{batch.failed.map((item) => <li key={item.path}><strong>{item.path}</strong> — {item.error}</li>)}</ul>
-              )}
+    <div className="p-modalback">
+      <div className="p-panel p-modal p-modal-lg" role="dialog" aria-modal="true" aria-label="Add source">
+        <div className="p-modalhead">
+          <h3>Add source</h3>
+          <p>Saved to your reusable source library. Review and explicitly approve it before generating a course.</p>
+        </div>
+
+        <div className="p-modalbody">
+          <div className="p-fieldset p-fieldrow">
+            <label className="p-field">
+              <span>Source title</span>
+              <input
+                className="p-input"
+                placeholder="Scouting and Patrolling"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <small>Optional for a PDF — the uploaded document supplies its own.</small>
+            </label>
+            <label className="p-field">
+              <span>Source identifier</span>
+              <input
+                className="p-input"
+                aria-label="Source identifier"
+                placeholder="MCWP 2-10"
+                value={sourceId}
+                onChange={(e) => setSourceId(e.target.value)}
+              />
+              <small>Optional. The publication name citations are printed under.</small>
+            </label>
+          </div>
+
+          <div>
+            <p className="p-sectionlab">Add the material</p>
+            <div className="p-choices">
+              <section className="p-choice">
+                <h4>Upload a PDF, or a zip of PDFs</h4>
+                <p>
+                  Pages are preserved so instructors and learners can inspect a cited passage. A zip
+                  becomes one document per PDF, grouped under its collection.
+                </p>
+                <div className="p-filepick">
+                  <label className="p-btn ghost p-filebtn">
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf,application/zip,application/x-zip-compressed,.zip"
+                      aria-label="PDF or zip source file"
+                      onChange={(e) => { setFile(e.target.files?.[0] || null); setBatch(null); setErr(null); }}
+                    />
+                    {file ? 'Choose a different file' : 'Choose a PDF or zip'}
+                  </label>
+                  <span className="p-filename">{file ? file.name : 'No file chosen'}</span>
+                </div>
+                <label className="p-field">
+                  <span>Collection</span>
+                  <input
+                    className="p-input"
+                    aria-label="Collection"
+                    placeholder={zipSelected ? `Defaults to "${collectionFromFilename(file.name)}"` : 'e.g. Lesson plans'}
+                    value={collection}
+                    onChange={(e) => setCollection(e.target.value)}
+                    maxLength={80}
+                  />
+                  <small>Optional. Groups the documents together and prefixes their citation labels.</small>
+                </label>
+                <button
+                  type="button"
+                  className="p-btn"
+                  onClick={zipSelected ? handleZipUpload : handlePdfUpload}
+                  disabled={busy || !file || Boolean(batch?.running)}
+                >
+                  {batch?.running
+                    ? `Uploading ${batch.done}/${batch.total}…`
+                    : pdfUpload.loading
+                      ? 'Uploading…'
+                      : zipSelected ? 'Upload zip' : 'Upload PDF'}
+                </button>
+                {batch && !batch.running && (
+                  <div role="status" style={{ marginTop: '0.5rem' }}>
+                    <p className="p-src" style={{ margin: 0 }}>
+                      {batch.done - batch.failed.length} of {batch.total} added
+                      {batch.failed.length > 0 ? `, ${batch.failed.length} refused` : ''}.
+                    </p>
+                    {batch.failed.length > 0 && (
+                      // Named rather than counted: a refused PDF is one the
+                      // instructor has to go and look at, and the rest landed.
+                      <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.1rem' }}>
+                        {batch.failed.map((entry) => (
+                          <li key={entry.path} style={{ fontSize: '0.86em' }}>{entry.path} — {entry.error}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              <section className="p-choice">
+                <h4>Paste text</h4>
+                <p>For an extract, or a document you already hold as text. A title is required.</p>
+                <label className="p-field">
+                  <span>Source text</span>
+                  <textarea
+                    className="p-input"
+                    aria-label="Source text"
+                    placeholder="Paste source text here…"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={3}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="p-btn"
+                  onClick={handleSubmit}
+                  disabled={busy || !title.trim() || !text.trim()}
+                >
+                  {ingest.loading ? 'Saving…' : 'Save text source'}
+                </button>
+              </section>
             </div>
-          )}
-          <button
-            type="button"
-            className="p-btn"
-            onClick={zipSelected ? handleZipUpload : handlePdfUpload}
-            disabled={busy || !file}
-            style={{ marginTop: '0.75rem' }}
-          >
-            {busy && file ? 'Uploading…' : zipSelected ? 'Upload zip' : 'Upload PDF'}
-          </button>
+          </div>
+
+          {err && <p className="s-shell-error" role="alert">{err}</p>}
         </div>
-        <div style={{ borderTop: '1px solid var(--p-border)', paddingTop: '0.75rem' }}>
-          <p className="p-src" style={{ margin: '0 0 0.5rem' }}>Or add a text source</p>
-        <textarea
-          className="scw-ti"
-          placeholder="Paste source text here…"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={6}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
-        />
-        </div>
-        {err && <p className="s-shell-error" role="alert">{err}</p>}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button className="p-btn ghost" onClick={reset} disabled={busy}>{batch && !batch.running ? 'Close' : 'Cancel'}</button>
-          <button className="p-btn" onClick={handleSubmit} disabled={busy || !title.trim() || !text.trim()}>
-            {ingest.loading ? 'Saving…' : 'Save text source'}
+
+        <div className="p-modalfoot">
+          <span className="p-footnote">A new source is PENDING until you approve it.</span>
+          <button className="p-btn ghost" onClick={reset} disabled={busy}>
+            {batch && !batch.running ? 'Close' : 'Cancel'}
           </button>
         </div>
       </div>
@@ -451,6 +515,8 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   // it, the stream reports every objective and artifact as it lands and the
   // modal shows the course being written.
   const [events, setEvents] = useState(null);
+  // The stream ended without reporting how it ended — see handleSubmit.
+  const [lostStream, setLostStream] = useState(false);
   const draft = useApiStream('/courses/draft/stream');
   const approvedSources = sources.filter((source) => source.status === 'APPROVED');
   const approvedGroups = groupSourcesByCollection(approvedSources).length;
@@ -460,6 +526,11 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
     if (selectedIds.length === 0 || draft.loading) return;
     setErr(null);
     setEvents([]);
+    setLostStream(false);
+    // Whether the stream ever opened. A throw before the first event is a
+    // request that failed; a throw after one is a connection that died under a
+    // generation the server is still running, which is a different fact.
+    let reported = false;
     try {
       // Title and objectives are overrides, not requirements. Left empty they
       // are written from the selected sources; an empty string would read as an
@@ -471,11 +542,27 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           sourceIds: selectedIds,
           diagrams: false,
         },
-        (event) => setEvents((current) => [...(current || []), event]),
+        (event) => {
+          reported = true;
+          setEvents((current) => [...(current || []), event]);
+        },
       );
       // The stream carries its own failure so the partial progress stays on
       // screen next to the reason, rather than collapsing to one error line.
-      if (last?.phase !== 'saved') return;
+      if (last?.phase === 'failed') return;
+      if (last?.phase !== 'saved') {
+        // draftCourseStream ends with 'saved' or 'failed'. Neither arrived, so
+        // the response body ended early — a proxy idle timeout, a dropped
+        // connection, a machine that slept — while the generation it was
+        // reporting on carried on server-side and saved minutes later. Falling
+        // through silently here is the whole defect: the instructor is shown a
+        // stalled list and no outcome, concludes it failed, and generates the
+        // same course a second time. Say what is actually known instead, and
+        // refresh the library now in case it has already landed.
+        setLostStream(true);
+        await onDrafted?.();
+        return;
+      }
       setOpen(false);
       setTitle('');
       setObjective('');
@@ -483,6 +570,15 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
       setEvents(null);
       onDrafted(last.record);
     } catch (e) {
+      // Once the stream had opened, the read that threw is the connection
+      // breaking, not the draft failing. "Failed to draft course" would be the
+      // client asserting an outcome it does not have — and the outcome it
+      // guesses is the one that gets the course generated twice.
+      if (reported) {
+        setLostStream(true);
+        await onDrafted?.();
+        return;
+      }
       setErr(errText(e, 'Failed to draft course'));
     }
   };
@@ -490,6 +586,12 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const closeModal = () => {
     setOpen(false);
     setEvents(null);
+    // A generation this modal lost the stream to may have finished saving while
+    // the notice was on screen, so leave the library showing what is there now.
+    if (lostStream) {
+      setLostStream(false);
+      onDrafted?.();
+    }
   };
 
   const sourceUnavailable = sourcesLoading || Boolean(sourcesError);
@@ -504,130 +606,168 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
     );
   }
 
-  return (
-    <div style={MODAL_BACKDROP}>
-      <div className="p-panel" role="dialog" aria-modal="true" aria-label="Create course" style={{ width: '640px', maxWidth: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
-        <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Create course</h3>
-        <p className="p-src">1. Sources → 2. Generate → 3. Review → 4. Approve and publish</p>
-        <p>Add a PDF or paste text, review and approve it below, then select it for this course. Existing approved sources can be reused.</p>
-        <IngestSourceModal onIngested={onRetrySources} />
-        {sources.filter((source) => source.status === 'PENDING').map((source) => (
-          <details key={source.id} style={{ margin: '0.75rem 0' }}>
-            <summary>{source.title} · Review and approve source</summary>
-            <SourceCard source={source} onApproved={onRetrySources} />
-          </details>
+  /* Once the stream is running, the work is the content. The setup folds into
+     a disclosure so live progress sits at the top of the body rather than
+     below a form nobody is editing any more — at 1440x675 it was under the
+     fold. A <details> rather than another piece of state: the instructor can
+     still open it to check what they asked for, and nothing here has to
+     remember that they did. */
+  const generating = draft.loading || Array.isArray(events);
+
+  /* The form, lifted out so it can be shown two ways: plainly while the
+     instructor is filling it in, and folded into a disclosure once the
+     stream starts, when the work is what they came to watch. */
+  const setup = (
+    <>
+    <div>
+      <p className="p-sectionlab">Sources</p>
+      <div className="p-btnrow">
+        <IngestSourceModal onIngested={onRetrySources} variant="ghost" />
+      </div>
+      {sources.filter((source) => source.status === 'PENDING').map((source) => (
+        <details className="p-disclose" key={source.id} style={{ margin: '0.75rem 0' }}>
+          <summary>{source.title} · Review and approve source</summary>
+          <SourceCard source={source} onApproved={onRetrySources} />
+        </details>
+      ))}
+      <fieldset
+        disabled={sourceUnavailable}
+        style={{
+          border: '1px solid var(--p-border-strong)',
+          borderRadius: '12px',
+          padding: '0.65rem 0.8rem',
+          margin: '0.75rem 0 0',
+        }}
+      >
+        <legend style={{ padding: '0 0.35rem', fontSize: '0.82em', fontWeight: 600, color: 'var(--p-dim)' }}>
+          Approved sources
+        </legend>
+        {approvedSources.map((s) => (
+          <label key={s.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.35rem 0', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              value={s.id}
+              checked={selectedIds.includes(s.id)}
+              onChange={(e) => setSourceIds((current) => e.target.checked
+                ? [...current, s.id]
+                : current.filter((id) => id !== s.id))}
+            />
+            <span>
+              <strong>{s.title}</strong>
+              <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages · {s.id}</small>
+            </span>
+          </label>
         ))}
-        <h4>Generate from selected sources</h4>
-        <p className="p-src">
-          The title and objectives are written from the sources you select. Fill either in only to
-          override what the model would choose.
-        </p>
-        <input
-          className="scw-ti"
-          placeholder="Course title (optional — written from the sources)"
-          aria-label="Course title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-        />
-        <textarea
-          className="scw-ti"
-          aria-label="Course objectives"
-          placeholder="Objectives, one per line (optional — written from the sources)"
-          value={objective}
-          onChange={(e) => setObjective(e.target.value)}
-          rows={4}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-        />
-        <fieldset
-          disabled={sourceUnavailable}
-          style={{
-            border: '1px solid var(--p-border)',
-            borderRadius: '10px',
-            padding: '0.65rem 0.8rem',
-            margin: '0 0 1rem',
-          }}
-        >
-          <legend style={{ padding: '0 0.3rem', fontSize: '0.84em', color: 'var(--p-dim)' }}>
-            Approved sources
-          </legend>
-          {groupSourcesByCollection(approvedSources).map((group) => {
-            const groupIds = group.sources.map((source) => source.id);
-            const allSelected = groupIds.every((id) => selectedIds.includes(id));
-            return (
-              <div key={group.name} className="source-pick-group">
-                {approvedGroups > 1 && (
-                  <div className="source-pick-heading">
-                    <strong>{group.name}</strong>
-                    <button
-                      type="button"
-                      className="p-btn ghost"
-                      onClick={() => setSourceIds((current) => allSelected
-                        ? current.filter((id) => !groupIds.includes(id))
-                        : [...current, ...groupIds.filter((id) => !current.includes(id))])}
-                    >
-                      {allSelected ? 'Clear' : `Select all ${groupIds.length}`}
-                    </button>
-                  </div>
-                )}
-                {group.sources.map((s) => (
-                  <label key={s.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.25rem 0', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      value={s.id}
-                      checked={selectedIds.includes(s.id)}
-                      onChange={(e) => setSourceIds((current) => e.target.checked
-                        ? [...current, s.id]
-                        : current.filter((id) => id !== s.id))}
-                    />
-                    <span>
-                      <strong>{s.title}</strong>
-                      <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages</small>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            );
-          })}
-          {approvedSources.length > 0 && (
-            <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--p-faint)' }}>
-              {selectedIds.length} source{selectedIds.length === 1 ? '' : 's'} selected
-            </small>
+        {approvedSources.length > 0 && (
+          <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--p-faint)' }}>
+            {selectedIds.length} source{selectedIds.length === 1 ? '' : 's'} selected
+          </small>
+        )}
+      </fieldset>
+      {sourcesError && (
+        <div className="s-shell-error" role="alert" style={{ marginTop: '0.75rem' }}>
+          <p style={{ margin: '0 0 0.5rem' }}>{errText(sourcesError, 'Could not load approved sources.')}</p>
+          <button type="button" className="p-btn ghost" onClick={onRetrySources}>Retry loading sources</button>
+        </div>
+      )}
+      {sourcesLoading && <p role="status" style={{ marginTop: '0.75rem' }}>Loading sources…</p>}
+      {!sourcesLoading && !sourcesError && approvedSources.length === 0 && (
+        <p className="p-src" style={{ margin: '0.75rem 0 0' }}>No approved sources yet. Add a source above, then open its review and approve it.</p>
+      )}
+    </div>
+
+    <div>
+      <p className="p-sectionlab">Generate from selected sources</p>
+      <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
+        The title and objectives are written from the sources you select. Fill either in only to
+        override what the model would choose.
+      </p>
+      <div className="p-fieldset">
+        <label className="p-field">
+          <span>Course title</span>
+          <input
+            className="p-input"
+            aria-label="Course title"
+            placeholder="Written from the sources"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <label className="p-field">
+          <span>Objectives</span>
+          <textarea
+            className="p-input"
+            aria-label="Course objectives"
+            placeholder="One per line"
+            value={objective}
+            onChange={(e) => setObjective(e.target.value)}
+            rows={4}
+          />
+          <small>Typed objectives are grounded exactly as written and skip outline generation.</small>
+        </label>
+      </div>
+    </div>
+    </>
+  );
+
+  return (
+    <div className="p-modalback">
+      <div className="p-panel p-modal p-modal-lg" role="dialog" aria-modal="true" aria-label="Create course">
+        <div className="p-modalhead">
+          <h3>Create course</h3>
+          <p>Add a PDF or paste text, review and approve it, then select it for this course. Existing approved sources can be reused.</p>
+        </div>
+
+        <div className="p-modalbody">
+          {generating ? (
+            <details className="p-setup">
+              <summary>Sources and generation settings</summary>
+              {setup}
+            </details>
+          ) : setup}
+
+          {err && <p className="s-shell-error" role="alert">{err}</p>}
+          {Array.isArray(events) && (
+            <section className="p-progress" aria-label="Course generation progress" aria-live="polite">
+              <GenerationProgress events={events} interrupted={lostStream} />
+            </section>
           )}
-        </fieldset>
-        {sourcesError && (
-          <div className="s-shell-error" role="alert">
-            <p style={{ margin: '0 0 0.5rem' }}>{errText(sourcesError, 'Could not load approved sources.')}</p>
-            <button type="button" className="p-btn ghost" onClick={onRetrySources}>Retry loading sources</button>
+        </div>
+
+        {/* When the stream was lost, the notice above says in words that
+            generating again is what produces two copies of the course. The
+            buttons have to say the same thing, because on a modal footer the
+            buttons are what gets read: the crimson primary WAS "Try again",
+            which is the one action the paragraph beside it asks the instructor
+            not to take, and an affordance beats a sentence every time.
+
+            Keyed on the same condition the notice is, `events` included, so
+            the footer can never contradict a paragraph that is not there.
+
+            So the roles swap. Waiting is the correct action, so waiting gets
+            the primary; regenerating stays reachable, at ghost weight, named
+            for what it actually does rather than as a neutral retry. This is
+            the only state where the two differ -- a generation that failed
+            outright has nothing to duplicate, and "Try again" is right there. */}
+        {lostStream && Array.isArray(events) ? (
+          <div className="p-modalfoot">
+            <button className="p-btn ghost" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
+              Generate a second copy anyway
+            </button>
+            <button className="p-btn" onClick={closeModal} disabled={draft.loading}>
+              Close and check the course list
+            </button>
+          </div>
+        ) : (
+          <div className="p-modalfoot">
+            <button className="p-btn ghost" onClick={closeModal} disabled={draft.loading}>
+              {Array.isArray(events) && !draft.loading ? 'Close' : 'Cancel'}
+            </button>
+            <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
+              {draft.loading ? 'Generating…' : Array.isArray(events) ? 'Try again' : 'Generate course'}
+            </button>
           </div>
         )}
-        {sourcesLoading && <p role="status">Loading sources…</p>}
-        {!sourcesLoading && !sourcesError && approvedSources.length === 0 && (
-          <p className="p-src" style={{ marginBottom: '1rem' }}>No approved sources yet. Add a source above, then open its review and approve it.</p>
-        )}
-        {err && <p className="s-shell-error" role="alert">{err}</p>}
-        {Array.isArray(events) && (
-          <section
-            aria-label="Course generation progress"
-            aria-live="polite"
-            style={{
-              border: '1px solid var(--p-border)',
-              borderRadius: '10px',
-              padding: '0.75rem 0.9rem',
-              margin: '1rem 0',
-            }}
-          >
-            <GenerationProgress events={events} />
-          </section>
-        )}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button className="p-btn ghost" onClick={closeModal} disabled={draft.loading}>
-            {Array.isArray(events) && !draft.loading ? 'Close' : 'Cancel'}
-          </button>
-          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
-            {draft.loading ? 'Generating…' : Array.isArray(events) ? 'Try again' : 'Generate course'}
-          </button>
-        </div>
       </div>
     </div>
   );
@@ -840,12 +980,44 @@ function RevisionForm({
   );
 }
 
+/* Which choice is keyed correct, by position and by text.
+   `correctOptionId` is resolved in questionBlock above, from whichever of the
+   payload shapes this draft uses; an id that matches no option means the key
+   did not survive, and that has to be said rather than shown as "no key". */
+function keyedAnswer(question) {
+  const options = Array.isArray(question?.options) ? question.options : [];
+  const index = options.findIndex((option) => option?.id === question?.correctOptionId);
+  if (index < 0) return null;
+  return { position: index + 1, text: options[index]?.text || '' };
+}
+
 function QuestionRevisionControl({ question, version, onSubmit, busy }) {
+  const keyed = keyedAnswer(question);
   return (
     <div className="course-question-review">
       <div className="course-question-review-head">
         <span>Question review · {question.phase}</span>
         <code>{question.questionId}</code>
+      </div>
+      {/* The answer key, written out.
+
+          The preview above renders the choices as buttons a learner picks from:
+          nothing marks the key, and clicking one grades that click rather than
+          revealing the key. An instructor was therefore being asked to ratify
+          an answer key by guessing at it, under a banner promising the keys are
+          theirs to see. The rationale goes with it — it is the evidence for the
+          key, and it is otherwise only reachable by picking the right choice. */}
+      <div className="course-question-review-key">
+        {keyed ? (
+          <p>
+            <span>Keyed answer</span> {keyed.position}. {keyed.text}
+          </p>
+        ) : (
+          <p className="is-unkeyed">
+            No keyed answer on this question — it cannot be scored until a revision supplies one.
+          </p>
+        )}
+        {question.explanation ? <p className="is-rationale">{question.explanation}</p> : null}
       </div>
       <RevisionForm
         scope="question"
@@ -909,6 +1081,8 @@ export function CourseDraft({ course, onChanged }) {
   const [err, setErr] = useState(null);
   const [notice, setNotice] = useState('');
   const [pendingRevision, setPendingRevision] = useState(null);
+  // The SCORM version a refused export offered to package as a ratified subset.
+  const [partialExport, setPartialExport] = useState(null);
   const { data: envelope, loading, error: draftError, refetch } = useApiQuery(`/courses/${course.id}`);
   const { data: sources } = useApiQuery('/sources');
   const revise = useApiMutation(`/courses/${course.id}/revise`, 'POST');
@@ -960,14 +1134,31 @@ export function CourseDraft({ course, onChanged }) {
     }
   };
 
-  const exportScorm = (release) =>
-    downloadAuthenticated(
-      `/api/learning/export?courseId=${course.id}&version=${release}`,
-      `${course.id}-scorm-${release}.zip`,
-    ).catch((error) => setErr(error.message));
+  /* The export refuses a course that is still part-way through item review,
+     and names what is unratified. An instructor who genuinely wants the
+     ratified subset -- to pilot it in the receiving LMS while review continues
+     -- says so on a second, deliberate click; the package they get is labelled
+     a partial release inside its own manifest. The offer only appears after the
+     server has refused, so the safe export stays the one button. */
+  const exportScorm = (release, { partial = false } = {}) => {
+    setErr(null);
+    setPartialExport(null);
+    return downloadAuthenticated(
+      `/api/learning/export?courseId=${course.id}&version=${release}${partial ? '&partial=true' : ''}`,
+      `${course.id}-scorm-${release}${partial ? '-partial' : ''}.zip`,
+    ).catch((error) => {
+      setErr(error.message);
+      if (!partial && /awaiting instructor review/.test(error.message || '')) setPartialExport(release);
+    });
+  };
 
   const sourceCount = draft?.sourceIds?.length || course.sourceIds?.length || 0;
   const sections = draft?.sections || [];
+  const notCovered = (Array.isArray(draft?.skippedObjectives) ? draft.skippedObjectives : [])
+    .map((entry) => (typeof entry === 'string'
+      ? { objective: entry, reason: '' }
+      : { objective: String(entry?.objective || ''), reason: String(entry?.reason || '') }))
+    .filter((entry) => entry.objective);
   const approvedSources = Array.isArray(sources) ? sources.filter((source) => source.status === 'APPROVED') : [];
   const showingLoading = loading || (!envelope && !draftError);
   // A pendingRevision key only ever matches the one form it names, so blocking
@@ -992,6 +1183,32 @@ export function CourseDraft({ course, onChanged }) {
         </span>
       </div>
 
+      {/* What this draft does NOT teach, carried on the record itself. The
+          generation modal said it once while the instructor watched; this is
+          the same fact days later, when they are deciding whether to approve a
+          course that covers three of the four objectives they asked for. Older
+          drafts stored bare objective strings, so both shapes render.
+
+          The heading names the course, not the sources: an entry here may be a
+          topic the sources cover perfectly well and the outline scoped out, and
+          its reason says so. */}
+      {notCovered.length > 0 && (
+        <div className="p-panel" style={{ marginBottom: '1rem' }}>
+          {/* A gap in what the course teaches is a fact the approver needs at
+              full size, not at footnote size in the faint grey. */}
+          <p className="p-sectionlab">Not covered by this course</p>
+          <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', fontSize: '0.9em', lineHeight: 1.5 }}>
+            {notCovered.map((entry) => (
+              <li key={entry.objective} style={{ marginBottom: '0.25rem' }}>
+                {entry.objective}
+                {entry.reason ? <span style={{ color: 'var(--p-dim)' }}> &mdash; {entry.reason}</span> : null}
+              </li>
+            ))}
+          </ul>
+          {draft?.thinCoverage === true && <ThinCoverageNotice />}
+        </div>
+      )}
+
       {err && <p className="s-shell-error" role="alert">{err}</p>}
       {draftError && <div className="s-shell-error" role="alert"><p>{errText(draftError, 'Could not load course draft.')}</p><button type="button" className="p-btn ghost" onClick={refetch}>Reload course</button></div>}
       {notice && <p className="p-check ok" role="status"><strong>{notice}</strong></p>}
@@ -1001,6 +1218,11 @@ export function CourseDraft({ course, onChanged }) {
           <>
             <button type="button" className="p-btn ghost" onClick={() => exportScorm('1.2')}>Export SCORM 1.2</button>
             <button type="button" className="p-btn ghost" onClick={() => exportScorm('2004')}>Export SCORM 2004</button>
+            {partialExport && (
+              <button type="button" className="p-btn ghost" onClick={() => exportScorm(partialExport, { partial: true })}>
+                Export the ratified subset as a partial release
+              </button>
+            )}
           </>
         )}
       </div>
@@ -1058,9 +1280,9 @@ export function CourseDraft({ course, onChanged }) {
       {status === 'PENDING' && sections.length === 0 && (
         <p className="p-src">Still generating. Refresh when the course is ready.</p>
       )}
-      <details className="p-panel">
+      <details className="p-panel p-disclose">
         <summary>Optional learning tools · syllabus and mastery plan</summary>
-        <p className="p-src">These tools do not block course publication. Rubrics and fidelity evaluation are available under Advanced tools.</p>
+        <p className="p-src">These tools do not block course publication. Objective rubrics and Fidelity check are in the rail, under Quality checks.</p>
         {status === 'PENDING' && <InstructorSyllabus courseId={course.id} />}
         <InstructorMasteryPlan
           courseId={course.id}

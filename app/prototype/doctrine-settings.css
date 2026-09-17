@@ -54,7 +54,7 @@
   font-size: 0.78rem;
 }
 
-/* --- connected / not connected, readable at a glance --- */
+/* --- the live verdict, readable at a glance --- */
 
 .doctrine-status {
   display: flex;
@@ -75,8 +75,28 @@
   border-radius: 50%;
 }
 
+/* Green is only ever `state: healthy` -- the engine answered, every model is
+   loaded, and it is holding a corpus. Amber is answering-but-degraded, red is
+   not answering, and the neutral grey stays for unconfigured and for a check
+   still in flight. Colour alone never carries it: the headline says the same
+   thing in words for anyone who cannot see the dot. */
 .doctrine-status.ok .doctrine-status-dot {
   background: #34c759;
+}
+
+.doctrine-status.warn .doctrine-status-dot {
+  background: #ff9f0a;
+}
+
+.doctrine-status.bad .doctrine-status-dot {
+  background: #ff3b30;
+}
+
+.doctrine-status-body {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+  justify-items: start;
 }
 
 .doctrine-status-line {
@@ -85,6 +105,21 @@
   font-size: 0.92rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* What to actually do about it. Kept as a list because a degraded engine
+   usually has more than one thing wrong with it. */
+.doctrine-problems {
+  margin: 0.2rem 0 0;
+  padding-left: 1.05rem;
+  color: var(--p-text, #1d1d1f);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.doctrine-problems li {
+  margin: 0.1rem 0;
 }
 
 /* --- the sweep results --- */

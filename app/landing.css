@@ -142,6 +142,9 @@
 }
 
 .scl-what {
+  /* The hero's secondary CTA jumps here, so leave the heading clear of the
+     viewport edge on landing. */
+  scroll-margin-top: 24px;
   background: var(--p-surface);
   border-radius: 22px;
   padding: 34px;

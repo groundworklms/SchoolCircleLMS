@@ -28,6 +28,25 @@ const I = {
       <path d="M3 12l3-7h12l3 7v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" /><path d="M3 12h5l2 3h4l2-3h5" />
     </svg>
   ),
+  // A source document: the page and its folded corner.
+  sources: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" /><path d="M14 3v5h5" />
+      <path d="M9 13h6M9 17h6" />
+    </svg>
+  ),
+  // A rubric: criteria, each one judged.
+  rubrics: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 6 1.7 1.7L7.8 4.6M3 12l1.7 1.7L7.8 10.6M3 18l1.7 1.7L7.8 16.6" />
+      <path d="M11 6h10M11 12h10M11 18h10" />
+    </svg>
+  ),
+  settings: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 7h11M18 7h3M3 17h3M10 17h11" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" />
+    </svg>
+  ),
   swap: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 7h13l-3-3M20 17H7l3 3" />

@@ -11,6 +11,11 @@
  *      grounding the environment can already serve.
  *   4. The unconfigured message is unchanged, because /api/doctrine maps it to
  *      NO_DOCTRINE_SERVICE -> 503 and the panel renders it verbatim.
+ *   5. THE STATUS LIGHT NEVER REPORTS HEALTHY WITHOUT HAVING OBSERVED IT.
+ *      The panel once showed green for two days against a dead endpoint,
+ *      because green meant "a URL is set". Every health assertion below exists
+ *      to stop that returning: a failed probe is `unreachable`, a partly
+ *      working engine is `degraded`, and `healthy` requires the whole set.
  *
  * The database is a small in-memory fake, as in model-settings.test.mjs: the
  * store only needs findUnique, create and updateMany.
@@ -285,4 +290,230 @@ test('a 200 carrying HTML is a miss, not a working engine', async () => {
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+/* ---------------------------- the status light ---------------------------- */
+
+/**
+ * A stand-in Anchor. Defaults are the board as it actually answers today --
+ * `{ok, api, models:{generator,embeddings,reranker}, uptime_s}` on
+ * /api/health, a document list on /api/corpus, and 405 on the three POST-only
+ * routes -- so each test below overrides exactly the one thing it is about.
+ */
+function fakeAnchor({ health, corpus, status = {}, missing = [] } = {}) {
+  return async (url) => {
+    const path = new URL(String(url)).pathname;
+    if (missing.includes(path)) return new Response('{"detail":"Not Found"}', { status: 404 });
+    if (Number.isInteger(status[path])) return new Response('{}', { status: status[path] });
+    if (path === '/api/health') {
+      return Response.json(health ?? {
+        ok: true,
+        api: true,
+        models: { generator: true, embeddings: true, reranker: true },
+        uptime_s: 29236.2,
+      });
+    }
+    if (path === '/api/corpus') {
+      return Response.json(corpus ?? {
+        documents: [{ pub_id: 'TC 3-22.9', chunks: 627 }, { pub_id: 'MCDP 1', chunks: 241 }],
+        total_chunks: 868,
+      });
+    }
+    // POST-only: a GET is 405, which is how presence is detected.
+    return new Response('{"detail":"Method Not Allowed"}', { status: 405 });
+  };
+}
+
+async function withFetch(impl, run) {
+  const original = globalThis.fetch;
+  globalThis.fetch = impl;
+  try {
+    return await run();
+  } finally {
+    globalThis.fetch = original;
+  }
+}
+
+/** The address in force, probed. */
+async function healthOf(options) {
+  return detect.checkDoctrineHealth(doctrine.doctrineProvider(), { timeoutMs: 200, ...options });
+}
+
+test('an unconfigured engine is its own state, and probes nothing', async () => {
+  await primeDoctrineSettings();
+  await withFetch(
+    () => { throw new Error('an unconfigured panel must not reach the network'); },
+    async () => {
+      const health = await healthOf();
+      assert.equal(health.state, 'unconfigured');
+      assert.equal(health.baseUrl, null);
+      assert.match(health.detail, /^No doctrine service configured/);
+    },
+  );
+});
+
+test('a dead endpoint is unreachable and NEVER healthy', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  await withFetch(async () => { throw new Error('ECONNREFUSED'); }, async () => {
+    const health = await healthOf();
+    // The regression this panel exists for: two days of green over a corpse.
+    // Assert the absence explicitly, not merely the presence of red.
+    assert.notEqual(health.state, 'healthy');
+    assert.equal(health.state, 'unreachable');
+    assert.equal(health.headline, 'Not answering');
+    assert.equal(health.baseUrl, 'http://192.168.55.1:8000');
+    assert.match(health.problems.join(' '), /ECONNREFUSED/);
+  });
+});
+
+test('a hung endpoint times out as unreachable rather than hanging the panel', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  await withFetch(
+    (url, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => {
+        reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+      });
+    }),
+    async () => {
+      const health = await healthOf({ timeoutMs: 40 });
+      assert.equal(health.state, 'unreachable');
+      assert.match(health.problems.join(' '), /No response within 40ms/);
+    },
+  );
+});
+
+test('a captive portal answering 200 with HTML is unreachable, not connected', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  await withFetch(async () => new Response('<html>sign in</html>', { status: 200 }), async () => {
+    const health = await healthOf();
+    assert.equal(health.state, 'unreachable');
+    assert.match(health.problems.join(' '), /non-JSON/);
+  });
+});
+
+test('healthy means answered, every model loaded, a corpus, and the routes present', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  await withFetch(fakeAnchor(), async () => {
+    const health = await healthOf();
+    assert.equal(health.state, 'healthy');
+    assert.equal(health.headline, 'Answering');
+    assert.deepEqual(health.problems, []);
+    assert.equal(health.source, 'env');
+    // Enough to tell a loaded board from a freshly reflashed one.
+    assert.equal(health.corpus.totalChunks, 868);
+    assert.equal(health.corpus.publications.length, 2);
+    assert.equal(health.uptimeS, 29236.2);
+    // The two recent routes the tutor and the support scores depend on.
+    assert.deepEqual(health.endpoints, { ask: true, verify: true, ground: true });
+  });
+});
+
+test('a model that is not loaded is degraded, and the model is named', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  await withFetch(
+    fakeAnchor({
+      health: { ok: true, api: true, models: { generator: true, embeddings: true, reranker: false } },
+    }),
+    async () => {
+      const health = await healthOf();
+      assert.equal(health.state, 'degraded');
+      assert.match(health.problems.join(' '), /reranker model is not loaded/);
+    },
+  );
+});
+
+test('an engine that answers but says it is not ok is degraded, not healthy', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  await withFetch(fakeAnchor({ health: { ok: false, api: false, models: {} } }), async () => {
+    const health = await healthOf();
+    assert.equal(health.state, 'degraded');
+    assert.match(health.problems.join(' '), /did not report itself healthy/);
+    assert.match(health.problems.join(' '), /API layer is down/);
+  });
+});
+
+test('an empty corpus is degraded -- answering is not the same as loaded', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  await withFetch(fakeAnchor({ corpus: { documents: [], total_chunks: 0 } }), async () => {
+    const health = await healthOf();
+    assert.equal(health.state, 'degraded');
+    assert.match(health.problems.join(' '), /corpus is empty/);
+  });
+});
+
+test('an unreadable corpus is degraded, never a demotion to unreachable', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  await withFetch(fakeAnchor({ status: { '/api/corpus': 500 } }), async () => {
+    const health = await healthOf();
+    assert.equal(health.state, 'degraded');
+    assert.match(health.problems.join(' '), /corpus could not be read/);
+  });
+});
+
+test('an Anchor without /api/verify or /api/ground is degraded and says which', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  await withFetch(fakeAnchor({ missing: ['/api/verify', '/api/ground'] }), async () => {
+    const health = await healthOf();
+    assert.equal(health.state, 'degraded');
+    assert.deepEqual(health.endpoints, { ask: true, verify: false, ground: false });
+    assert.match(health.problems.join(' '), /\/api\/verify is missing/);
+    assert.match(health.problems.join(' '), /measured support scores/);
+    assert.match(health.problems.join(' '), /\/api\/ground is missing/);
+  });
+});
+
+test('the address probed is the one in force, not the one in the environment', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://env-anchor:8000';
+  await saveDoctrineSettings({ baseUrl: 'http://192.168.55.1:8000', updatedBy: 'instructor-1' });
+  const asked = [];
+  await withFetch(
+    async (url, init) => { asked.push(String(url)); return fakeAnchor()(url, init); },
+    async () => {
+      const health = await healthOf();
+      assert.equal(health.baseUrl, 'http://192.168.55.1:8000');
+      assert.equal(health.source, 'setting');
+      assert.equal(asked.some((url) => url.includes('env-anchor')), false);
+    },
+  );
+});
+
+test('every shape of probe failure is a value, never a throw, and never green', async () => {
+  process.env.DOCTRINE_BASE_URL = 'http://192.168.55.1:8000';
+  await primeDoctrineSettings();
+  for (const impl of [
+    async () => { throw new Error('ECONNREFUSED'); },
+    async () => { throw Object.assign(new Error('nope'), { name: 'TypeError' }); },
+    async () => new Response('not json', { status: 200 }),
+    async () => new Response('{}', { status: 503 }),
+  ]) {
+    // eslint-disable-next-line no-await-in-loop
+    await withFetch(impl, async () => {
+      const health = await healthOf();
+      assert.equal(health.state, 'unreachable');
+    });
+  }
+});
+
+test('the classifier cannot be talked into green by a probe that failed', () => {
+  // Belt and braces on the classifier itself: an unreachable probe carrying an
+  // otherwise flattering payload is still unreachable.
+  const verdict = detect.summariseDoctrineHealth({
+    baseUrl: 'http://192.168.55.1:8000',
+    reachable: false,
+    error: 'ECONNREFUSED',
+    health: { ok: true, api: true, models: { generator: true } },
+    corpus: { publications: [{ pubId: 'MCDP 1', chunks: 241 }], totalChunks: 241 },
+    endpoints: { ask: true, verify: true, ground: true },
+  });
+  assert.equal(verdict.state, 'unreachable');
+  assert.equal(detect.summariseDoctrineHealth(null).state, 'unconfigured');
 });

@@ -278,24 +278,22 @@
 
 /* ---------- content column ---------- */
 .s-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.s-crumbs {
-  display: flex; align-items: center; gap: 0.35rem; flex-wrap: wrap;
-  padding: 0.9rem 2.6rem 0; font-size: 0.82em; color: var(--p-faint);
-}
-.s-crumbs button {
-  background: none; border: none; padding: 0; font: inherit; font-size: inherit;
-  color: var(--p-faint); cursor: pointer;
-}
-.s-crumbs button:hover { color: var(--p-accent); }
-.s-crumb-sep { color: var(--p-faint); margin: 0 0.35rem; opacity: 0.6; }
-.s-crumb-cur { color: var(--p-dim); }
-.s-crumb-spacer { flex: 1; }
-.s-lastlogin { color: var(--p-faint); }
-.s-main { flex: 1; overflow-y: auto; padding: 0.6rem 2.6rem 3.5rem; }
+.s-main { flex: 1; overflow-y: auto; padding: 1.5rem 2.6rem 3.5rem; }
 .s-container { max-width: var(--s-max); margin: 0 auto; }
 
-/* main + agenda side by side, inside the container */
+/* The rail names the course and marks the section at every width the rail is
+   readable at, so this stays out of the way until the rail collapses to icons
+   (900px) and takes both with it. Only then is it the way back up. */
+.s-railcontext { display: none; }
+
+/* main + agenda side by side, inside the container.
+   Both tracks are given min-width: 0 explicitly. A grid item defaults to
+   min-width: auto, so one unbreakable token -- a filename, a record id -- in
+   the fixed agenda column widened that track past its 20rem and put a
+   horizontal scrollbar on .s-main. Nothing but a table or a code block may
+   scroll sideways. */
 .s-two { display: grid; grid-template-columns: minmax(0, 1fr) var(--s-agenda-w); gap: 1.75rem; align-items: start; }
+.s-two > * { min-width: 0; }
 
 .s-pagehead { margin-bottom: 1.5rem; }
 .s-pagehead h1 { margin: 0 0 0.3rem; font-size: 2.25em; letter-spacing: -0.024em; font-weight: 700; line-height: 1.1; }
@@ -325,6 +323,7 @@ details[open] > summary.s-label::before { content: '▾'; }
 
 /* Approved-course reader (LearnerFeatures.js): section list + one section. */
 .s-reader { display: grid; grid-template-columns: 15rem minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.s-reader > * { min-width: 0; }
 .s-reader-toc { position: sticky; top: 0.5rem; }
 .s-reader-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.2rem; }
 .s-reader-row { display: flex; align-items: center; gap: 0.6rem; width: 100%; text-align: left; padding: 0.5rem 0.6rem; border-radius: 10px; border: 0; background: transparent; color: var(--p-text); cursor: pointer; font: inherit; }
@@ -332,10 +331,13 @@ details[open] > summary.s-label::before { content: '▾'; }
 .s-reader-row.on { background: var(--p-surface); box-shadow: var(--p-shadow); font-weight: 600; }
 .s-reader-id { display: inline-flex; align-items: center; justify-content: center; min-width: 1.5em; height: 1.5em; border-radius: 999px; background: var(--p-surface-2); color: var(--p-dim); font-size: 0.78em; font-weight: 600; }
 .s-reader-row.on .s-reader-id { background: var(--p-accent); color: #fff; }
-.s-reader-title { font-size: 0.95em; }
+.s-reader-title { font-size: 0.95em; min-width: 0; overflow-wrap: anywhere; }
 .s-reader-body { min-width: 0; }
-.s-reader-head { margin-bottom: 1rem; }
-.s-reader-head h2 { margin: 0.2rem 0 0; font-size: 1.6em; letter-spacing: -0.02em; }
+/* One heading per section. The section title was set here AND again as the
+   lesson title inside the shared presentation, so each section announced
+   itself twice: a small line, then a large one saying the same words. */
+.s-reader-head { margin-bottom: 0.7rem; }
+.s-reader-head h1 { margin: 0.2rem 0 0; font-size: 1.9em; letter-spacing: -0.024em; line-height: 1.15; }
 .s-reader-kicker { font-size: 0.8em; color: var(--p-faint); font-weight: 600; }
 .s-reader-p { font-size: 1.02em; line-height: 1.65; margin: 0 0 1.25rem; }
 .s-reader-nav { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.4rem; }
@@ -343,6 +345,18 @@ details[open] > summary.s-label::before { content: '▾'; }
 
 /* Whetstone session */
 .s-mastery-q { font-size: 1.1em; line-height: 1.5; margin: 0 0 1rem; font-weight: 500; }
+/* The answer box and its Submit. The box named itself only in a placeholder,
+   which is gone the moment a learner starts typing into the one field the
+   whole screen exists for; it has a label now, so the button sits under the
+   field rather than beside it. */
+.s-mastery-answer { display: flex; flex-direction: column; gap: 0.6rem; align-items: flex-start; }
+.s-mastery-answer .p-field { width: 100%; }
+/* The saved-session picker sits in a button row; a labelled field is taller
+   than a button, so the row aligns on its baseline edge. */
+.s-mastery-pick { max-width: 22rem; }
+/* Cadence setup: one short field and the action it feeds. */
+.s-plan-setup { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+.s-plan-setup .p-field { max-width: 9rem; }
 
 /* Waypoint survey: twelve Likert rows */
 .s-waypoint { display: flex; flex-direction: column; gap: 0.9rem; }
@@ -735,12 +749,17 @@ details[open] > summary.s-label::before { content: '▾'; }
 }
 @media (max-width: 900px) {
   .s-root { --s-rail-w: 4.4rem; }
+  /* The rail loses the course name and the whole section list here, so the
+     content column takes over saying where you are and how to get back out. */
+  .s-railcontext { display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.1rem; }
+  .s-railcontext .s-crumbs-inline { margin-bottom: 0; }
+  .s-railcontext-cur { font-size: 0.88em; color: var(--p-dim); }
   .s-rail { padding: 1rem 0.5rem; }
   .s-rail-who, .s-rail-lab, .s-rail-sec, .s-rail-badge { display: none; }
   .s-rail-btn { justify-content: center; padding: 0.6rem 0; }
   .s-rail-btn.sub { display: none; }
   .s-rail-user { justify-content: center; padding: 0 0 0.8rem; }
-  .s-main, .s-crumbs { padding-left: 1.2rem; padding-right: 1.2rem; }
+  .s-main { padding-left: 1.2rem; padding-right: 1.2rem; }
   .s-hero-tile.wide { grid-column: 1 / -1; }
   .s-cal-day { min-height: 4.5rem; }
   .s-cal-chip { font-size: 0; padding: 0; height: 5px; background: var(--k); }
@@ -1185,11 +1204,13 @@ details[open] > summary.s-label::before { content: '▾'; }
 .s-gkp-item { padding: 0.6rem 0.55rem; border-radius: 10px; }
 .s-gkp-item.open { background: var(--p-surface-2); }
 .s-gkp-stem { margin: 0 0 0.45rem; color: var(--p-text); line-height: 1.5; }
+/* The pill used to read out a source record id, so it was set in mono like the
+   key it was. It names a publication now, which is prose. */
 .s-gkp-cite {
   display: inline-flex; align-items: center; gap: 0.4rem; max-width: 100%;
   border: 1px solid var(--p-border); background: var(--p-surface);
   border-radius: 999px; padding: 0.28rem 0.7rem;
-  font-family: var(--p-mono); font-size: 0.76rem; color: var(--p-dim); cursor: pointer;
+  font: inherit; font-size: 0.78rem; color: var(--p-dim); cursor: pointer;
   transition: border-color 0.12s, color 0.12s;
 }
 .s-gkp-cite:hover { border-color: var(--p-accent); color: var(--p-accent); }
@@ -1199,7 +1220,10 @@ details[open] > summary.s-label::before { content: '▾'; }
 .s-gkp-passage { margin-top: 0.55rem; padding: 0.6rem 0.75rem; border-left: 2px solid var(--p-accent); background: var(--p-surface); border-radius: 0 8px 8px 0; }
 .s-gkp-loc { display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem; font-size: 0.82rem; color: var(--p-dim); font-family: var(--p-mono); }
 .s-gkp-loc b { color: var(--p-faint); font-weight: 600; margin-right: 0.35em; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 0.04em; }
-.s-gkp-note { margin-top: 0.5rem; font-size: 0.78rem; color: var(--p-faint); font-style: italic; }
+/* The line that admits the passage text is not here yet. It was set faint and
+   italic -- the two things that make a sentence read as a disclaimer to skip
+   past. The words are unchanged; it is simply legible now. */
+.s-gkp-note { margin-top: 0.5rem; font-size: 0.82rem; color: var(--p-dim); }
 
 /* --- Settings tabs: one destination, three sections --- */
 

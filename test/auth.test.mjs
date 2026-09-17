@@ -5,6 +5,7 @@ import {
   authReadiness,
   getBearerToken,
   hasRole,
+  learnerScopedIdentity,
   requireAnyRole,
   requireIdentity,
   resolveFirebaseUser,
@@ -148,6 +149,35 @@ test('BOTH is authorized for both learner and instructor capabilities', () => {
   assert.equal(hasRole('LEARNER', 'INSTRUCTOR'), false);
   assert.equal(hasRole('INSTRUCTOR', 'LEARNER'), false);
   assert.equal(hasRole('BOTH', 'ADMIN'), false);
+});
+
+test('the learner view only ever drops the instructor capability', () => {
+  // "View as student" has to be answered the way a learner is answered, or the
+  // one control that checks "nothing unreviewed reaches a student" lies about
+  // it. This is how that is done, so it matters that it subtracts and nothing
+  // else: the id is untouched, so the caller's own learner evidence still
+  // resolves to them, and a learner passed through it is unchanged.
+  const instructor = { id: 'u1', name: 'SSgt Okafor', role: 'INSTRUCTOR' };
+  const scoped = learnerScopedIdentity(instructor);
+  assert.equal(scoped.role, 'LEARNER');
+  assert.equal(scoped.id, 'u1');
+  assert.equal(scoped.name, 'SSgt Okafor');
+  assert.equal(hasRole(scoped.role, 'INSTRUCTOR'), false);
+  assert.equal(hasRole(scoped.role, 'LEARNER'), true);
+
+  // BOTH is a capability union, so it loses the instructor half and keeps the
+  // learner half rather than being left alone.
+  assert.equal(learnerScopedIdentity({ id: 'u2', role: 'BOTH' }).role, 'LEARNER');
+
+  // Nothing to take away, nothing taken.
+  const learner = { id: 'u3', role: 'LEARNER' };
+  assert.deepEqual(learnerScopedIdentity(learner), learner);
+  assert.equal(learnerScopedIdentity(null), null);
+
+  // It cannot be an escalation path: no input produces an instructor.
+  for (const role of ['LEARNER', 'INSTRUCTOR', 'BOTH', 'ADMIN', '', undefined]) {
+    assert.equal(hasRole(learnerScopedIdentity({ id: 'x', role })?.role, 'INSTRUCTOR'), false);
+  }
 });
 
 test('learningRoute maps thrown errors to the shared status table', async () => {

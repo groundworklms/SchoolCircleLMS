@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import './prototype.css';
+import './instructor-preview.css';
 import { canAccessLocation, canAccessRole, useNav } from './nav';
 import { usePrefs } from './prefs';
 import StudentShell from './StudentShell';
@@ -76,40 +77,59 @@ export default function Prototype() {
     return <PrototypeNotFound />;
   }
 
+  const toInstructor = () => nav.go({
+    role: 'instructor',
+    area: 'library',
+    courseId: null,
+    view: 'courses',
+    lessonId: null,
+    page: null,
+    threadId: null,
+  });
+  const toStudent = () => nav.go({
+    role: 'student',
+    area: 'dashboard',
+    courseId: null,
+    view: null,
+    lessonId: null,
+    page: null,
+    threadId: null,
+  });
+
+  // An account that can teach, looking at the learner shell. The two views are
+  // otherwise identical chrome, so say which one this is -- and say what the
+  // difference actually is, because "your draft is missing" is alarming until
+  // you know it is the point. The claim is kept to what the server enforces
+  // (lib/learner-view.js); it does not promise that everything else on screen
+  // is a learner's.
+  const inStudentView = nav.role === 'student' && ready && Boolean(profile) && canTeach;
+
   return (
     <div className="p-root">
       {nav.role === 'student' ? (
         <StudentShell
           nav={nav}
-          onSwitchRole={canTeach
-            ? () => nav.go({
-              role: 'instructor',
-              area: 'library',
-              courseId: null,
-              view: 'courses',
-              lessonId: null,
-              page: null,
-              threadId: null,
-            })
-            : null}
+          onSwitchRole={canTeach ? toInstructor : null}
           role={profile?.role}
         />
       ) : (
         <InstructorShell
           nav={nav}
           role={profile?.role}
-          onSwitchRole={canLearn
-            ? () => nav.go({
-              role: 'student',
-              area: 'dashboard',
-              courseId: null,
-              view: null,
-              lessonId: null,
-              page: null,
-              threadId: null,
-            })
-            : null}
+          onSwitchRole={canLearn ? toStudent : null}
         />
+      )}
+      {inStudentView && (
+        <div className="p-studentview" role="status">
+          <span className="p-studentview-text">
+            <b>Student view</b>
+            Course visibility here is learner-scoped: a draft you own but have not published is
+            hidden, exactly as it is for a learner. Your instructor account is still signed in.
+          </span>
+          <button type="button" className="p-btn quiet" onClick={toInstructor}>
+            Back to instructor view
+          </button>
+        </div>
       )}
     </div>
   );
