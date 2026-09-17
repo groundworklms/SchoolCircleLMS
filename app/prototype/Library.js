@@ -540,7 +540,6 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           ...(title.trim() ? { title: title.trim() } : {}),
           objectives: objective.split('\n').map((line) => line.trim()).filter(Boolean),
           sourceIds: selectedIds,
-          diagrams: false,
         },
         (event) => {
           reported = true;

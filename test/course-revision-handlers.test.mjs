@@ -85,6 +85,12 @@ function courseDocument() {
       title: 'Safety check',
       cite: 'source-record p.1',
       lesson: 'The operator confirms the safety check before operation.',
+      // Approval refuses a section with no lesson page: without one a learner
+      // is shown an intro and the questions, but never the lesson body.
+      pages: [{
+        title: 'Safety check',
+        blocks: [{ type: 'p', text: 'The operator confirms the safety check before operation.' }],
+      }],
       pre: [{
         id: 'question-before',
         stem: 'When is the safety check required before operation?',
@@ -753,4 +759,32 @@ test('expandCoursePagesRecord writes grounded pages onto the saved course, owner
   // The mocked model reports not ready: the owner gets 503, not "0 expanded".
   assert.equal(await status(expandCoursePagesRecord(OWNER, { params: { id: course.id } })), 503);
   assert.equal((await dbMock.getLearningRecord(course.id)).version, 1);
+});
+
+/* The builder offered "Approve and publish" beside its own status line reading
+   "Rewrite lesson pages (10/11 written)", and nothing refused it. Items are
+   generated per section whether or not that section's page was written, so a
+   course could be published with a section a learner opens to find the
+   questions but not the lesson they are asked about. */
+test('a section with no lesson page blocks approval, and is named', async () => {
+  resetStore();
+  const course = seedRevisionFixture();
+  // The fixture is already released, so a revision is what there is to approve.
+  const [section] = records.get(course.id).payload.sections;
+  const title = section.title;
+  delete section.pages;
+
+  const revised = await reviseCourse(OWNER, {
+    params: { id: course.id },
+    body: revisionRequest(course.version),
+  });
+
+  await assert.rejects(
+    approveCourse(OWNER, { params: { id: course.id }, body: { version: revised.json.version } }),
+    (error) =>
+      error.code === 'COURSE_PAGES_UNWRITTEN'
+      && errorStatus(error) === 422
+      && error.message.includes(title)
+      && error.validation.unwritten === 1,
+  );
 });
