@@ -879,6 +879,33 @@ test('shared generated course presentation keeps manual question typography and 
   assert.doesNotMatch(markup, /correctOptionId/);
 });
 
+test('the shared presentation names a citation to its publication, never to a record id', () => {
+  // The builder resolves a section's "<record id> p.N" locator to a publication
+  // before it reaches the shared presentation (Library.js `resolveLessonCitation`
+  // off `course.sourcePublications`, the same map the learner reader names one
+  // from). By the time CourseLesson has it, the citation carries the publication
+  // as `pubId`; provenanceOf prints that and keeps the exact locator one hover
+  // away, so the line reads as a citation and never as the key behind it.
+  const { default: CourseLesson } = loadComponent('app/_course/CoursePresentation.js');
+  const markup = renderToStaticMarkup(React.createElement(CourseLesson, {
+    preview: true,
+    content: {
+      id: 'lesson-1',
+      title: 'Movement fundamentals',
+      citation: {
+        citation: 'cmu4xdph30016s6014fn9n9y8 p.135',
+        pubId: 'AY27 8670 Prerequisite Coursebook Instructor-Led Moodle',
+        page: '135',
+      },
+      blocks: [{ id: 'lesson-1-text', type: 'text', body: 'Read the approved movement guidance.' }],
+    },
+  }));
+  assert.match(markup, /Grounded in/);
+  assert.match(markup, /AY27 8670 Prerequisite Coursebook Instructor-Led Moodle p\.135/);
+  // The raw record id survives only on the hover title, never as the citation.
+  assert.doesNotMatch(markup, />[^<]*cmu4xdph30016s6014fn9n9y8[^<]*p\.135[^<]*</);
+});
+
 test('AI course draft previews every generated section with targeted revision controls', () => {
   const { CourseDraft } = loadComponent('app/prototype/Library.js', {
     queryData: {
@@ -889,10 +916,18 @@ test('AI course draft previews every generated section with targeted revision co
         hasPendingRevision: false,
         course: {
           title: 'Field movement',
-          sourceIds: ['source-1'],
+          sourceIds: ['cmu4xdph30016s6014fn9n9y8'],
+          // getCourse resolves the id -> publication label server-side and hands
+          // it back on the course (lib/learning/core.js coursePublicationLabels).
+          sourcePublications: {
+            cmu4xdph30016s6014fn9n9y8: 'AY27_8670_Prerequisite_Coursebook_Instructor-Led_Moodle.pdf',
+          },
           sections: [{
             id: 'section-1',
             title: 'Movement fundamentals',
+            // The section grounds in that source: a "<record id> p.N" locator,
+            // the same shape the learner reader is handed and must never print.
+            cite: 'cmu4xdph30016s6014fn9n9y8 p.135',
             lesson: 'Use the approved movement principles.',
             pre: [{
               id: 'question-pre-1',
@@ -927,6 +962,12 @@ test('AI course draft previews every generated section with targeted revision co
   // approve action, so both strings have to be present.
   assert.match(markup, /Review and publish/);
   assert.match(markup, /Approve and publish/);
+  // The builder's "Grounded in" line names the publication a section cites,
+  // resolved off course.sourcePublications exactly as the learner reader does,
+  // and never prints the record-id key the locator is built on.
+  assert.match(markup, /Grounded in/);
+  assert.match(markup, /AY27 8670 Prerequisite Coursebook Instructor-Led Moodle p\.135/);
+  assert.doesNotMatch(markup, />[^<]*cmu4xdph30016s6014fn9n9y8[^<]*p\.135[^<]*</);
 });
 
 test('rubric generation distinguishes source failures from a successful empty source list', () => {

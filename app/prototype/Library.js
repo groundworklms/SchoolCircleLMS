@@ -3,6 +3,7 @@
 import { useReducer, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation, useApiStream } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
+import { pageOf, publicationName, withoutPage } from '../_course/provenance';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { CourseReadiness } from './CourseReadiness';
 import { CourseItemReview } from './ItemReview';
@@ -917,7 +918,42 @@ function lessonFromSection(section, sectionNumber) {
   };
 }
 
+/* Name a lesson's citation the same way the learner reader does.
+   A section `cite` is "<source record id> p.N" (lib/learning/core.js
+   `sourcePassages`) -- the record id is the authenticated page-opening key,
+   never a citation a person reads. `course.sourcePublications` is the
+   id -> publication label map getCourse already resolved server-side
+   (`coursePublicationLabels`); it is the very map the learner reader names a
+   citation from (LearnerFeatures `publicationFor`). Resolve the id to that
+   publication and hand provenanceOf a `pubId`, so the builder prints
+   "AY27 8670 ... Moodle p.135" exactly as the reader does instead of the raw
+   key. An already-structured citation is left alone; a bare record id that
+   will not resolve is withheld, because a key on screen is worse than no
+   citation at all. */
+function resolveLessonCitation(raw, sourcePublications) {
+  if (raw && typeof raw === 'object') return raw;
+  const locator = typeof raw === 'string' ? raw.trim() : '';
+  if (!locator) return '';
+  const key = withoutPage(locator);
+  const label = sourcePublications && typeof sourcePublications === 'object' ? sourcePublications[key] : '';
+  const name = typeof label === 'string' ? publicationName(label) : '';
+  if (name) return { citation: locator, pubId: name, page: pageOf(locator) };
+  // A cuid names nothing to a reader; withhold it rather than print the key.
+  if (/^c[a-z0-9]{20,}$/i.test(key)) return '';
+  return locator;
+}
+
 function courseLessons(course) {
+  const sourcePublications = course?.sourcePublications;
+  // The citation resolves off the id -> publication map, and the raw locator
+  // rides in on `citation` (or a legacy `cite`); fold both into the resolved
+  // `citation` so CoursePresentation's `citation || cite` cannot fall back to
+  // the key it was meant to replace.
+  const named = (lesson) => ({
+    ...lesson,
+    citation: resolveLessonCitation(lesson?.citation ?? lesson?.cite, sourcePublications),
+    cite: undefined,
+  });
   const explicitLessons = Array.isArray(course?.lessons) ? course.lessons : null;
   if (explicitLessons) {
     return explicitLessons.map((lesson, lessonNumber) => {
@@ -937,11 +973,11 @@ function courseLessons(course) {
           phase: block.phase === 'post' ? 'post' : 'pre',
           questionId: block.id,
         }));
-      return { ...lesson, id: lessonId, sectionId, blocks, questionRefs };
+      return named({ ...lesson, id: lessonId, sectionId, blocks, questionRefs });
     });
   }
   const sections = Array.isArray(course?.sections) ? course.sections : [];
-  return sections.map(lessonFromSection);
+  return sections.map((section, index) => named(lessonFromSection(section, index)));
 }
 
 function revisionHistoryKey(entry, version) {
