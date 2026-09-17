@@ -1952,6 +1952,27 @@ test('a lost stream offers waiting as the primary action and regenerating as the
   assert.equal(refreshes.length, 1);
 });
 
+test('a missed check never names a key the result does not carry', () => {
+  // A live course grades on the server and returns answer: null on a miss --
+  // the key never leaves the server. 65 + null rendered as "A" every time.
+  const { CheckItem } = loadComponent('app/prototype/lesson-blocks.js');
+  const item = { q: 'Which?', answers: [{ text: 'One' }, { text: 'Two' }, { text: 'Three' }] };
+  const render = (result) => renderToStaticMarkup(React.createElement(CheckItem, { item, result, onPick: () => {} }));
+
+  const serverMiss = render({ picked: 2, correct: false, answer: null, rationale: '' });
+  assert.doesNotMatch(serverMiss, /keyed answer is/);
+  assert.match(serverMiss, /That is not the keyed answer/);
+  assert.doesNotMatch(serverMiss, /p-ans correct/, 'no option is painted as the key either');
+
+  // A result that does carry the key still names it, and answer 0 is "A".
+  const localMiss = render({ picked: 2, correct: false, answer: 0, rationale: '' });
+  assert.match(localMiss, /The keyed answer is A./);
+  assert.match(localMiss, /p-ans correct/);
+
+  // The rationale, when there is one, wins over either line.
+  assert.match(render({ picked: 2, correct: false, answer: null, rationale: 'Because.' }), /Because./);
+});
+
 test('a generation whose stream ended without an outcome says so instead of nothing', () => {
   // draftCourseStream ends with 'saved' or 'failed'. When the response body
   // ends before either -- a proxy idle timeout on a long course -- the server

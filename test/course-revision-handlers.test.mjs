@@ -729,6 +729,20 @@ async function status(promise) {
   }
 }
 
+test('expandCoursePagesRecord refuses while a revision is pending review', async () => {
+  // Writing pages bumps the course version; approveCourse then rejects the
+  // pending revision as stale with no way back, and a fresh revision bases on
+  // the revision's course, which never got the pages. 409 before any model call.
+  resetStore();
+  const course = seedRevisionFixture();
+  const revised = await reviseCourse(OWNER, { params: { id: course.id }, body: revisionRequest(course.version) });
+  assert.equal(revised.json.hasPendingRevision, true);
+  const callsBefore = modelCalls.length;
+  assert.equal(await status(expandCoursePagesRecord(OWNER, { params: { id: course.id } })), 409);
+  assert.equal(modelCalls.length, callsBefore, 'no model call is made for a course that cannot take the pages');
+  assert.equal((await dbMock.getLearningRecord(course.id)).version, revised.json.version, 'the version is untouched');
+});
+
 test('expandCoursePagesRecord writes grounded pages onto the saved course, owner only', async () => {
   resetStore();
   sourceRecord();
