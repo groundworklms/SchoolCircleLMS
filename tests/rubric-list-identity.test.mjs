@@ -49,6 +49,10 @@ function seed(id, payload, { status = 'PENDING', ownerId = 'instructor-1', creat
 mock.module('../lib/db.js', {
   namedExports: {
     db: { learningRecord: { findMany: async () => [] } },
+    // core.js imports this; a mocked module has to offer every export its
+    // target imports or the whole file fails to link and the suite reports
+    // one error with no assertion behind it.
+    async approvePendingDeliveryCourseItems() { return null; },
     async createLearningRecord() { throw new Error('not used'); },
     async getLearningRecord(id) { return records.get(id) || null; },
     async getLearningRecordsByIds(ids) {
