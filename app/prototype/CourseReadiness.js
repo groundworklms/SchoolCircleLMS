@@ -57,9 +57,12 @@ export function CourseReadiness({ courseId, version, candidate, pending, publish
 
       <div className="p-note">
         <b>Optional QA and learning tools:</b>
+        {/* Naming the controls rather than the fact that they exist: "available
+            under secondary controls" told an instructor nothing they could act
+            on, and a tool nobody can find is a tool nobody runs. */}
         <span>
-          Fidelity evaluation, rubrics, syllabus and mastery plans are available under secondary
-          controls. None is a course publishing requirement.
+          Fidelity check and Objective rubrics are in the rail, under Quality checks. Syllabus and
+          mastery plan are at the foot of this page. None is a course publishing requirement.
         </span>
       </div>
     </section>

@@ -197,3 +197,87 @@ test('service-backed courses retain the roster rail entry and roster deep link',
     assert.doesNotMatch(markup, /Course tool unavailable|Course not found/);
   }
 });
+
+test('the course sub-rail groups its tools by what they are for', () => {
+  const course = {
+    id: 'real-course',
+    name: 'Generated course',
+    status: 'APPROVED',
+    record: { id: 'real-course', type: 'COURSE_DRAFT', status: 'APPROVED' },
+  };
+  const { default: InstructorShell } = loadInstructorShell({ courses: [course] });
+  const markup = renderToStaticMarkup(React.createElement(InstructorShell, {
+    nav: { area: 'course', courseId: course.id, view: 'builder' },
+  }));
+
+  // "Advanced tools" described how hard the four were, not what any of them was
+  // for, and buried a pre-publish check next to an after-action review.
+  assert.doesNotMatch(markup, /Advanced tools/);
+  assert.match(markup, />Quality checks</);
+  assert.match(markup, />How the class did</);
+
+  // Every tool still has a rail entry; none was lost to the regrouping.
+  for (const label of [
+    'Review &amp; publish',
+    'Roster',
+    'Course settings',
+    'Fidelity check',
+    'Objective rubrics',
+    'Class mastery',
+    'Course AAR',
+  ]) {
+    assert.match(markup, new RegExp(`>${label}</button>`), `missing rail entry ${label}`);
+  }
+
+  // The group headings sit above the tools they name.
+  assert.ok(
+    markup.indexOf('Quality checks') < markup.indexOf('Fidelity check'),
+    'Quality checks must precede the checks it groups',
+  );
+  assert.ok(
+    markup.indexOf('How the class did') < markup.indexOf('Class mastery'),
+    'the results heading must precede the results',
+  );
+});
+
+test('a legacy manual course prints no empty group headings', () => {
+  const course = { id: 'legacy-1', name: 'Manual course', manual: true, record: { id: 'legacy-1' } };
+  const { default: InstructorShell } = loadInstructorShell({ courses: [course] });
+  const markup = renderToStaticMarkup(React.createElement(InstructorShell, {
+    nav: { area: 'course', courseId: course.id, view: 'roster' },
+  }));
+  assert.match(markup, />Roster</);
+  assert.doesNotMatch(markup, /Quality checks|How the class did/);
+});
+
+test('a course row cannot trap its own actions menu under the next card', () => {
+  // The row answered hover with a transform, which made it a stacking context:
+  // the menu, and the taller confirm step after it, were painted with the row
+  // and under the card below. Only the last row in a list escaped, so a
+  // ten-course library had nine undeletable courses.
+  const css = fs.readFileSync(path.join(workspace, 'app/prototype/row-actions.css'), 'utf8');
+  const managedHover = css.match(/\.s-courserow\.s-courserow-managed:hover \{[^}]+\}/);
+  assert.ok(managedHover, 'a managed row must override the lifting hover');
+  assert.match(managedHover[0], /transform:\s*none/);
+  // The affordance is kept, just with a property that costs no stacking context.
+  assert.match(managedHover[0], /box-shadow:/);
+  // Both classes are named so the override outranks .s-courserow:hover.
+  assert.match(css, /\.s-courserow\.s-courserow-managed:has\(\.row-actions-menu\)/);
+});
+
+test('the readiness panel keeps its admissions and names the tools it points at', () => {
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/CourseReadiness.js'), 'utf8');
+  // The sentences that say what this panel does NOT promise. Word for word.
+  assert.ok(
+    source.includes('These checks run again when you approve. This panel does not certify that they have passed.'),
+    'the panel must keep admitting that it certifies nothing',
+  );
+  assert.ok(
+    source.includes('None is a course publishing requirement.'),
+    'the optional tools must keep saying they are optional',
+  );
+  // The pointer has to name controls an instructor can click. Pointing at
+  // "secondary controls" is how four real features ended up undiscoverable.
+  assert.match(source, /under Quality checks/);
+  assert.match(source, /at the foot of this page/);
+});

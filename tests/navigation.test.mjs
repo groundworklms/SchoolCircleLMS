@@ -186,3 +186,33 @@ test('settings tabs are addressable, canonical, and validated', () => {
   assert.equal(settingsHref('student', 'app'), '/prototype/settings/app');
   assert.equal(settingsHref('student'), '/prototype/settings');
 });
+
+test('a learner surface is decided by the address, not by the caller', async () => {
+  const { isLearnerSurface } = await import('../lib/learner-view.js');
+  // Every student address asks the server for what a learner may see, so an
+  // instructor previewing one cannot be shown their own unpublished drafts.
+  for (const path of [
+    '/prototype',
+    '/prototype/courses',
+    '/prototype/calendar',
+    '/prototype/settings',
+    '/prototype/course/M092721/lessons',
+    '/prototype/published/course-1',
+  ]) {
+    assert.equal(isLearnerSurface(path), true, path);
+  }
+  // Authoring is never narrowed: an instructor keeps full access to their own
+  // drafts on every instructor address.
+  for (const path of [
+    '/prototype/instructor',
+    '/prototype/instructor/courses',
+    '/prototype/instructor/sources',
+    '/prototype/instructor/course-1/builder',
+  ]) {
+    assert.equal(isLearnerSurface(path), false, path);
+  }
+  // Anything outside the grammar is left alone rather than guessed at.
+  for (const path of ['/login', '/', '/prototype/not-found', '/prototype/nonsense', null]) {
+    assert.equal(isLearnerSurface(path), false, String(path));
+  }
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import './student.css';
 
 import { I, RailButton, UserMenu } from './shell';
@@ -43,21 +43,41 @@ const INSTRUCTOR = { name: 'SSgt Okafor', initials: 'SO', role: 'Instructor' };
 // have in common with.
 const LIBRARY = [
   { id: 'courses', label: 'Courses', icon: I.courses },
-  { id: 'sources', label: 'Sources', icon: I.dashboard },
-  { id: 'rubrics', label: 'Rubrics', icon: I.dashboard },
-  { id: 'settings', label: 'Settings', icon: I.dashboard },
+  { id: 'sources', label: 'Sources', icon: I.sources },
+  { id: 'rubrics', label: 'Rubrics', icon: I.rubrics },
+  // Three of these four carried the same generic icon, which is the same as
+  // carrying none: an icon that does not distinguish its item is decoration
+  // with a click target under it.
+  { id: 'settings', label: 'Settings', icon: I.settings },
+];
+
+/* The course sub-rail, grouped the way the work actually splits.
+ *
+ * These four were one bucket called "Advanced tools", which is not a category:
+ * it says how hard they are rather than what they are for, and a heading that
+ * describes nothing is a heading nobody opens. It also put a pre-publish check
+ * and an after-action review side by side as though they belonged to the same
+ * moment. They do not -- two of them help decide whether to publish, and two
+ * only have anything to say once a class has been through the course.
+ *
+ * Ungrouped items are the spine of the job and stay at the top, in the order
+ * they are reached: review the draft, then the class on it, then its settings. */
+const COURSE_GROUPS = [
+  { id: null, label: null },
+  { id: 'quality', label: 'Quality checks' },
+  { id: 'results', label: 'How the class did' },
 ];
 
 const REAL_VIEWS = [
   { id: 'builder', label: 'Review & publish' },
-  { id: 'roster', label: 'Roster', secondary: true },
-  { id: 'fidelity', label: 'Fidelity check', advanced: true },
+  { id: 'roster', label: 'Roster' },
+  { id: 'settings', label: 'Course settings' },
+  { id: 'fidelity', label: 'Fidelity check', group: 'quality' },
   // How each objective of THIS course is judged. The library's Rubrics screen
   // is still the whole collection; this is one course's own coverage.
-  { id: 'rubrics', label: 'Objective rubrics', advanced: true },
-  { id: 'mastery', label: 'Class Mastery', advanced: true },
-  { id: 'aar', label: 'Course AAR', advanced: true },
-  { id: 'settings', label: 'Course settings' },
+  { id: 'rubrics', label: 'Objective rubrics', group: 'quality' },
+  { id: 'mastery', label: 'Class mastery', group: 'results' },
+  { id: 'aar', label: 'Course AAR', group: 'results' },
 ];
 
 export function courseListWithSelectedFallback(courses, selectedCourse) {
@@ -243,6 +263,12 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
         account={profile}
         authenticated={authenticated}
         tab={nav.tab}
+        // Legacy manual courses are left out: they expose a roster and nothing
+        // else, so there are no course settings to send anyone to.
+        courses={learning.courses.filter((entry) => !entry.manual)}
+        onOpenCourseSettings={(id) => nav.go({
+          role: 'instructor', area: 'course', courseId: id, view: 'settings',
+        })}
         onTab={(t) => nav.go({
           role: 'instructor', area: 'library', courseId: null, view: 'settings', tab: t,
         })}
@@ -373,20 +399,22 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
               <span className="s-rail-sec-name">{course.name}</span>
               {!isReal && <code>{course.id}</code>}
             </div>
-            {/* Everything an instructor reaches for while teaching the course.
-                `secondary` still orders the list -- it just no longer earns a
-                heading of its own over a single Roster button. */}
-            {VIEWS.filter((v) => !v.advanced).map((v) => (
-              <RailButton key={v.id} sub on={view === v.id} label={v.label} onClick={() => go({ view: v.id })} />
-            ))}
-            {VIEWS.some((v) => v.advanced) && (
-              <>
-                <div className="s-rail-sec">Advanced tools</div>
-                {VIEWS.filter((v) => v.advanced).map((v) => (
-                  <RailButton key={v.id} sub on={view === v.id} label={v.label} onClick={() => go({ view: v.id })} />
-                ))}
-              </>
-            )}
+            {/* Everything an instructor reaches for while teaching the course,
+                under a heading that says what the group is for. A group with
+                nothing in it -- a legacy manual course has only Roster --
+                prints no heading. */}
+            {COURSE_GROUPS.map(({ id, label }) => {
+              const group = VIEWS.filter((v) => (v.group || null) === id);
+              if (group.length === 0) return null;
+              return (
+                <Fragment key={id || 'course'}>
+                  {label && <div className="s-rail-sec">{label}</div>}
+                  {group.map((v) => (
+                    <RailButton key={v.id} sub on={view === v.id} label={v.label} onClick={() => go({ view: v.id })} />
+                  ))}
+                </Fragment>
+              );
+            })}
           </>
         )}
 
