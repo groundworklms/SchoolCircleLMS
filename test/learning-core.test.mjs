@@ -33,6 +33,10 @@ import {
   sourceDocuments,
   tutor,
 } from '../lib/learning/core.js';
+// The real Rubricon validators, so a rubric fixture carries the evidence the
+// generator would actually have stored beside it rather than a hand-written
+// approximation of it.
+import { validateRubric, verifyTraceability } from 'rubricon';
 import { matchesApprovedMasteryPlan } from '../lib/db.js';
 import { projectCourseRows } from '../lib/learning/project-course.js';
 
@@ -3243,34 +3247,47 @@ const GUN_SOURCE = [
 const CLEARING_OBJECTIVE = 'Clear and handle the weapon safely';
 const FEEDING_OBJECTIVE = 'Feed the weapon without inducing a stoppage';
 
+function clearingRubric() {
+  return {
+    flagged: false,
+    dimensions: [
+      {
+        name: 'Confirms the weapon is clear before handling',
+        source: 'confirms the weapon is clear before handling it',
+        anchors: {
+          unsatisfactory: 'Handles the weapon before it is confirmed clear.',
+          satisfactory: 'Confirms the weapon is clear before handling it.',
+          proficient: 'Confirms the weapon is clear and announces it before handling it.',
+        },
+      },
+      {
+        name: 'Announces a misfire before opening the feed tray cover',
+        source: 'announces a misfire and waits five seconds',
+        anchors: {
+          unsatisfactory: 'Opens the feed tray cover without announcing the misfire.',
+          satisfactory: 'Announces a misfire and waits five seconds before opening the feed tray cover.',
+          proficient: 'Announces a misfire, waits five seconds, then opens the feed tray cover.',
+        },
+      },
+    ],
+  };
+}
+
+/* A stored RUBRIC record, with the evidence generateRubric actually keeps
+ * beside it. The validation and traceability blocks are produced by Rubricon's
+ * own validators rather than hand-written, so a fixture can never assert
+ * against a shape the real generator does not store -- and so the flagged
+ * fixture below carries Rubricon's real answer for a flagged rubric, vacuous
+ * coverage and all. */
 function approvedGunRubric(overrides = {}) {
+  const rubric = overrides.rubric || clearingRubric();
   return {
     id: 'rubric-clearing',
     status: 'APPROVED',
     objective: CLEARING_OBJECTIVE,
-    rubric: {
-      flagged: false,
-      dimensions: [
-        {
-          name: 'Confirms the weapon is clear before handling',
-          source: 'confirms the weapon is clear before handling it',
-          anchors: {
-            unsatisfactory: 'Handles the weapon before it is confirmed clear.',
-            satisfactory: 'Confirms the weapon is clear before handling it.',
-            proficient: 'Confirms the weapon is clear and announces it before handling it.',
-          },
-        },
-        {
-          name: 'Announces a misfire before opening the feed tray cover',
-          source: 'announces a misfire and waits five seconds',
-          anchors: {
-            unsatisfactory: 'Opens the feed tray cover without announcing the misfire.',
-            satisfactory: 'Announces a misfire and waits five seconds before opening the feed tray cover.',
-            proficient: 'Announces a misfire, waits five seconds, then opens the feed tray cover.',
-          },
-        },
-      ],
-    },
+    rubric,
+    validation: validateRubric(rubric),
+    traceability: verifyTraceability(rubric, GUN_SOURCE),
     ...overrides,
   };
 }
@@ -3372,6 +3389,99 @@ test('a flagged or unapproved rubric can never become mastery criteria', async (
         { load: upstream, deriveRubric: async () => ({ criteria: [FEEDING_CRITERION] }) },
       ),
     (error) => error.code === 'MASTERY_PLAN_RUBRIC_NOT_APPROVED',
+  );
+});
+
+test('an APPROVED status is not evidence; the mapper re-asserts what approveRubric checked', () => {
+  // LearningRecord.status is written by the generic record updater, so a RUBRIC
+  // can be set APPROVED without approveRubric ever agreeing. Each of these
+  // would have been refused at that gate and must be refused again here: the
+  // status column says APPROVED in every one of them.
+  assert.throws(
+    () => masteryCriteriaFromRubric(approvedGunRubric({
+      validation: { valid: false, issues: ['dimension 1 (…) has indistinct tiers'] },
+    })),
+    /did not pass structural validation/,
+  );
+  assert.throws(
+    () => masteryCriteriaFromRubric(approvedGunRubric({ validation: undefined })),
+    /did not pass structural validation/,
+  );
+  assert.throws(
+    () => masteryCriteriaFromRubric(approvedGunRubric({
+      traceability: { grounded: false, coverage: 0.5, dimensions: [], ungrounded: [] },
+    })),
+    /no verified traceability/,
+  );
+  assert.throws(
+    () => masteryCriteriaFromRubric(approvedGunRubric({
+      traceability: {
+        ...verifyTraceability(clearingRubric(), GUN_SOURCE),
+        ungrounded: [{ name: 'Announces a misfire before opening the feed tray cover' }],
+      },
+    })),
+    /no verified traceability/,
+  );
+  // Structurally bad, not flagged, anchors still overlapping the source: the
+  // case that would otherwise have mapped on the strength of the status alone.
+  assert.equal(validateRubric(clearingRubric()).valid, true);
+  assert.equal(
+    approvedGunRubric({
+      validation: { valid: false, issues: ['no dimensions'] },
+    }).status,
+    'APPROVED',
+  );
+});
+
+test('a grounded verdict over nothing checked cannot ground a dimension', () => {
+  // The vacuous-truth defect, stated: validateRubric returns valid:true for a
+  // flagged rubric and verifyTraceability, handed its zero dimensions, returns
+  // grounded:true with 100% coverage. Both verdicts are true about an empty
+  // set and describe no dimension at all -- the same shape that put a "100%
+  // coverage" badge on a flagged rubric.
+  const flagged = { flagged: true, reason: 'Too subjective to anchor.' };
+  assert.equal(validateRubric(flagged).valid, true);
+  const vacuous = verifyTraceability(flagged, GUN_SOURCE);
+  assert.deepEqual(
+    [vacuous.grounded, vacuous.coverage, vacuous.ungrounded, vacuous.dimensions],
+    [true, 1, [], []],
+  );
+  // So the mapper does not read the verdict. It reads the per-dimension record
+  // and requires the dimension it is about to map to be in it, marked grounded.
+  // Carrying that empty verdict beside real dimensions proves nothing.
+  assert.throws(
+    () => masteryCriteriaFromRubric(approvedGunRubric({ traceability: vacuous })),
+    /per-dimension traceability record/,
+  );
+  const partial = verifyTraceability(clearingRubric(), GUN_SOURCE);
+  assert.throws(
+    () => masteryCriteriaFromRubric(approvedGunRubric({
+      traceability: { ...partial, dimensions: [{ ...partial.dimensions[0], grounded: false }] },
+    })),
+    /per-dimension traceability record/,
+  );
+  assert.throws(
+    () => masteryCriteriaFromRubric(approvedGunRubric({
+      traceability: {
+        ...partial,
+        dimensions: partial.dimensions.map((row, index) => (
+          index === 1 ? { ...row, grounded: false } : row
+        )),
+      },
+    })),
+    /no confirmed traceability for dimension "Announces a misfire/,
+  );
+  // A dimension renamed after its traceability was written is no longer the
+  // dimension that was checked, and the record cannot vouch for it.
+  const renamed = clearingRubric();
+  renamed.dimensions[0].name = 'Clears the weapon';
+  assert.throws(
+    () => masteryCriteriaFromRubric(approvedGunRubric({
+      rubric: renamed,
+      validation: validateRubric(renamed),
+      traceability: partial,
+    })),
+    /no confirmed traceability for dimension "Clears the weapon"/,
   );
 });
 

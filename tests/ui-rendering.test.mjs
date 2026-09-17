@@ -1259,6 +1259,100 @@ test('shared mastery plan shows pending object indicators with an approval actio
   assert.match(markup, /Checks all hazards/);
   assert.match(markup, /Approve plan/);
   assert.doesNotMatch(markup, /Generate plan/);
+  // A criterion with no provenance is one no rubric ratified -- every plan
+  // written before provenance existed is that -- and it must say so rather
+  // than render as an unlabelled criterion an instructor reads as approved.
+  assert.match(markup, /data-provenance="DERIVED"/);
+  assert.match(markup, /Written by the model\. Not taken from a rubric you approved\./);
+});
+
+/* Provenance is the point of the rubric-to-plan connection: a human's approval
+ * is being honoured downstream, and it buys nothing if the screen that asks for
+ * the next approval cannot say whose words these are. */
+function masteryPlanMarkup(criteria, status = 'PENDING') {
+  const { InstructorMasteryPlan } = loadComponent('app/prototype/InstructorFeatures.js');
+  return renderToStaticMarkup(React.createElement(InstructorMasteryPlan, {
+    courseId: 'course-1',
+    course: {
+      sourceIds: ['source-1'],
+      masteryPlan: { status, sourceId: 'source-1', revision: 'revision-3', criteria },
+    },
+  }));
+}
+
+const RATIFIED_CRITERION = {
+  elo: 'Confirms the weapon is clear before handling',
+  indicators: {
+    developing: 'Handles the weapon before it is confirmed clear',
+    competent: 'Confirms the weapon is clear before handling it',
+    mastered: 'Confirms the weapon is clear and announces it',
+  },
+  provenance: {
+    origin: 'RATIFIED',
+    rubricId: 'rubric-clearing',
+    objective: 'Clear and handle the weapon safely',
+    dimension: 'Confirms the weapon is clear before handling',
+    sourcePhrase: 'confirms the weapon is clear before handling it',
+  },
+};
+
+const DERIVED_CRITERION = {
+  elo: 'Keeps the belt flat while feeding',
+  indicators: {
+    developing: 'Feeds with a twisted belt',
+    competent: 'Keeps the belt flat',
+    mastered: 'Keeps the belt flat and free of twists',
+  },
+  provenance: { origin: 'DERIVED' },
+};
+
+test('a ratified criterion names the approval it came from, and the trail back to it', () => {
+  const markup = masteryPlanMarkup([RATIFIED_CRITERION, { ...RATIFIED_CRITERION, elo: 'Announces a misfire' }]);
+  assert.match(markup, /data-provenance="RATIFIED"/);
+  // Traceable without a second lookup: the rubric record, the objective it
+  // judges, the dimension, and the phrase traceability matched in the standard.
+  assert.match(markup, /Taken from the rubric you approved \(rubric-clearing\)/);
+  assert.match(markup, /Clear and handle the weapon safely/);
+  assert.match(markup, /dimension .Confirms the weapon is clear before handling./);
+  assert.match(markup, /Traced to the standard at .confirms the weapon is clear before handling it./);
+  assert.match(markup, /Approved rubrics used: rubric-clearing/);
+  // Fully ratified, and allowed to say so plainly.
+  assert.match(markup, /data-provenance="RATIFIED"[\s\S]*All 2 criteria came from rubrics you approved\./);
+  assert.match(markup, /the model wrote none of them/);
+  assert.doesNotMatch(markup, /Written by the model/);
+});
+
+test('a mixed plan leads with what is not ratified and never reads as fully approved', () => {
+  const markup = masteryPlanMarkup([RATIFIED_CRITERION, DERIVED_CRITERION]);
+  assert.match(markup, /data-testid="mastery-plan-provenance" data-provenance="MIXED"/);
+  assert.match(
+    markup,
+    /Of the 2 criteria here, 1 was written by the model and did not come from an approved rubric\. The other 1 came from a rubric you approved\./,
+  );
+  // The consequence of the button below it, said before it is pressed.
+  assert.match(markup, /Approving this plan makes all 2 the grading contract for this course\./);
+  // The claim a MIXED plan must never make.
+  assert.doesNotMatch(markup, /All 2 criteria came from rubrics you approved/);
+  assert.match(markup, /data-provenance="RATIFIED"/);
+  assert.match(markup, /data-provenance="DERIVED"/);
+  assert.match(markup, /Written by the model\. Not taken from a rubric you approved\./);
+});
+
+test('a wholly derived plan says so, and claims no approved rubric it does not have', () => {
+  const markup = masteryPlanMarkup([DERIVED_CRITERION, { ...DERIVED_CRITERION, elo: 'Clears a stoppage' }]);
+  assert.match(markup, /data-provenance="DERIVED"/);
+  assert.match(markup, /No criterion here came from an approved rubric\. The model wrote all 2 from the approved source\./);
+  assert.doesNotMatch(markup, /Approved rubrics used/);
+  assert.doesNotMatch(markup, /Taken from the rubric you approved/);
+});
+
+test('an approved plan states its provenance without offering an approval it already has', () => {
+  const markup = masteryPlanMarkup([RATIFIED_CRITERION, DERIVED_CRITERION], 'APPROVED');
+  // The summary survives approval -- it is what the locked contract is made of.
+  assert.match(markup, /Of the 2 criteria here, 1 was written by the model/);
+  // But the sentence about what approving would do is gone; it already did.
+  assert.doesNotMatch(markup, /Approving this plan makes/);
+  assert.match(markup, /approved and locked/);
 });
 
 test('cohort mastery distinguishes total learners from competency contributors', () => {

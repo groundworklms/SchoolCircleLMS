@@ -192,6 +192,7 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
             {plan.sourceId && <span className="p-src"> · Source {plan.sourceId}</span>}
             {plan.revision && <span className="p-src"> · Revision {plan.revision}</span>}
           </p>
+          <MasteryPlanProvenance criteria={plan.criteria} status={plan.status} />
           <MasteryPlanCriteria criteria={plan.criteria} />
           {plan.status === 'PENDING' ? (
             <button
@@ -214,6 +215,90 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
   );
 }
 
+/*
+ * Where one criterion came from, using the server's own rule: a criterion is
+ * ratified only if it says so.  Everything else is model-written, which is not
+ * a guess -- every plan written before provenance existed was derived in full,
+ * so an absent block is a fact about that plan and not a missing field.  This
+ * mirrors criterionOrigin in lib/arsenal-core.js, which is the authority.
+ */
+function criterionIsRatified(criterion) {
+  return criterion?.provenance?.origin === 'RATIFIED';
+}
+
+/*
+ * The plan's account of itself, counted from the criteria on screen rather
+ * than read off planResponse.provenance.
+ *
+ * The server sends a summary and computes it the same way, but a summary that
+ * travelled separately from the criteria it describes is a claim this screen
+ * cannot check.  Counting the rendered list instead means the sentence above
+ * the criteria can never disagree with the criteria below it -- which is the
+ * only thing that makes MIXED worth printing.
+ */
+function planOrigin(criteria) {
+  const list = Array.isArray(criteria) ? criteria : [];
+  const ratified = list.filter(criterionIsRatified);
+  const origin = list.length === 0 || ratified.length === 0
+    ? 'DERIVED'
+    : ratified.length === list.length
+      ? 'RATIFIED'
+      : 'MIXED';
+  return {
+    origin,
+    total: list.length,
+    ratified: ratified.length,
+    derived: list.length - ratified.length,
+    rubricIds: [...new Set(ratified.map((c) => c.provenance?.rubricId).filter(Boolean))],
+  };
+}
+
+/*
+ * An honoured approval that nobody can see buys nothing, so the plan says in
+ * one sentence whose words these are before an instructor signs for them.
+ *
+ * The copy is not softened in either direction.  A ratified plan is allowed to
+ * say so plainly; a MIXED one leads with the count that is NOT ratified in the
+ * same sentence, because the whole point of the distinction is that a part-
+ * ratified plan must never read as a fully approved one.  Model-written is
+ * stated as the ordinary fact it is -- the model wrote it, a human did not
+ * approve it as a rubric -- with no warning colour and no euphemism.
+ */
+function MasteryPlanProvenance({ criteria, status }) {
+  const { origin, total, ratified, derived, rubricIds } = planOrigin(criteria);
+  if (total === 0) return null;
+
+  // A plan carries at least two criteria, but a count that reads "1 criteria
+  // were written" undermines the sentence it is the point of.
+  const count = (n) => `${n} ${n === 1 ? 'criterion' : 'criteria'}`;
+  const was = (n) => (n === 1 ? 'was' : 'were');
+  const rubricWord = ratified === 1 ? 'a rubric you approved' : 'rubrics you approved';
+
+  const sentence = origin === 'RATIFIED'
+    ? `All ${count(total)} came from ${rubricWord}. The words a learner is graded against are `
+      + 'the words you signed; the model wrote none of them.'
+    : origin === 'MIXED'
+      ? `Of the ${count(total)} here, ${derived} ${was(derived)} written by the model and did not `
+        + `come from an approved rubric. The other ${ratified} came from ${rubricWord}.`
+      : `No criterion here came from an approved rubric. The model wrote ${
+        total === 1 ? 'it' : `all ${total}`} from the approved source.`;
+  const consequence = status === 'PENDING'
+    ? ` Approving this plan makes ${
+      total === 1 ? 'it' : `all ${total}`} the grading contract for this course.`
+    : '';
+
+  return (
+    <div data-testid="mastery-plan-provenance" data-provenance={origin}>
+      <p className="p-truth">{`${sentence}${consequence}`}</p>
+      {rubricIds.length > 0 && (
+        <p className="p-src" style={{ margin: '0.35rem 0 0' }}>
+          Approved rubrics used: {rubricIds.join(', ')}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function MasteryPlanCriteria({ criteria }) {
   if (!Array.isArray(criteria) || criteria.length === 0) {
     return <p className="p-src">No criteria were returned for review.</p>;
@@ -230,8 +315,13 @@ function MasteryPlanCriteria({ criteria }) {
       <strong style={{ fontSize: '0.85em' }}>Reviewed criteria</strong>
       <ul style={{ paddingLeft: '1.25rem', margin: '0.35rem 0 0' }}>
         {criteria.map((criterion, index) => (
-          <li key={`${criterion.elo || 'criterion'}-${index}`} style={{ marginBottom: '0.35rem', fontSize: '0.85em' }}>
+          <li
+            key={`${criterion.elo || 'criterion'}-${index}`}
+            data-provenance={criterionIsRatified(criterion) ? 'RATIFIED' : 'DERIVED'}
+            style={{ marginBottom: '0.35rem', fontSize: '0.85em' }}
+          >
             <strong>{criterion.elo || criterion.competency || `Criterion ${index + 1}`}</strong>
+            <CriterionOrigin criterion={criterion} />
             {criterion.indicators && typeof criterion.indicators === 'object' && !Array.isArray(criterion.indicators) ? (
               <ul style={{ paddingLeft: '1.25rem', marginTop: '0.2rem' }}>
                 {indicatorLevels.map(([level, label]) => (
@@ -247,6 +337,34 @@ function MasteryPlanCriteria({ criteria }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/*
+ * One criterion's origin, and for a ratified one the trail back to the
+ * decision: the rubric record, the objective it judges, the dimension it came
+ * from, and the phrase Rubricon's traceability check matched in the standard.
+ * That is enough to reopen the rubric and see the same words, which is what
+ * makes "you approved this" a checkable claim rather than a badge.
+ */
+function CriterionOrigin({ criterion }) {
+  if (!criterionIsRatified(criterion)) {
+    return (
+      <div className="p-src" style={{ marginTop: '0.15rem' }}>
+        Written by the model. Not taken from a rubric you approved.
+      </div>
+    );
+  }
+  const { rubricId, objective, dimension, sourcePhrase } = criterion.provenance;
+  return (
+    <div className="p-src" style={{ marginTop: '0.15rem' }}>
+      <div>
+        Taken from the rubric you approved{rubricId ? ` (${rubricId})` : ''}
+        {objective ? ` for “${objective}”` : ''}
+        {dimension ? `, dimension “${dimension}”` : ''}.
+      </div>
+      {sourcePhrase && <div>Traced to the standard at “{sourcePhrase}”.</div>}
     </div>
   );
 }

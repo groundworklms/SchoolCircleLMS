@@ -26,6 +26,10 @@ import {
 } from '../lib/learning/core.js';
 import { createEvidenceHandlers } from '../lib/learning/evidence.js';
 import { errorStatus } from '../lib/learning/http.js';
+// A stored RUBRIC record keeps whatever Rubricon's validators said about it,
+// and the mastery mapper reads that evidence rather than the status column, so
+// the fixtures below produce it with the real validators.
+import { validateRubric, verifyTraceability } from 'rubricon';
 
 // Opt in explicitly: CI sets a placeholder DATABASE_URL for prisma generate only.
 const databaseReady = process.env.RUN_DB_TESTS === '1' && Boolean(process.env.DATABASE_URL);
@@ -881,6 +885,19 @@ function clearingDimensions() {
   ];
 }
 
+/* What generateRubric stores beside a rubric: Rubricon's own verdicts, kept so
+ * a later reader can re-ask the questions approveRubric asked instead of
+ * trusting a status column any write path can set. Produced here rather than
+ * hand-written, so a flagged rubric carries Rubricon's real answer for one --
+ * valid, grounded and 100% covered, all of it true about zero dimensions. */
+function rubricEvidence(rubric, sourceTextForRubric = RUBRIC_SOURCE_TEXT) {
+  return {
+    rubric,
+    validation: validateRubric(rubric),
+    traceability: verifyTraceability(rubric, sourceTextForRubric),
+  };
+}
+
 test(
   'an approved rubric becomes the course mastery plan, and nothing else does',
   { skip: !databaseReady },
@@ -949,13 +966,13 @@ test(
         sourceId: source.id,
         courseId: ratifiedCourse.id,
         objective: clearing,
-        rubric: { flagged: false, dimensions: clearingDimensions() },
-        validation: { valid: true, issues: [] },
-        traceability: { grounded: true, coverage: 1, ungrounded: [] },
+        ...rubricEvidence({ flagged: false, dimensions: clearingDimensions() }),
       },
     });
-    // Approved, for the right objective -- but written from a document this
-    // plan is not grounded against. Its wording is not this source's wording.
+    // Approved, for the right objective -- but recorded against a document this
+    // plan is not grounded against. Its evidence is deliberately left as clean
+    // as the rubric above's, so the ONLY thing that can exclude it is the
+    // source filter.
     const foreignRubric = await createLearningRecord({
       ownerId: instructor.id,
       type: 'RUBRIC',
@@ -964,9 +981,7 @@ test(
         sourceId: otherSource.id,
         courseId: ratifiedCourse.id,
         objective: clearing,
-        rubric: { flagged: false, dimensions: clearingDimensions() },
-        validation: { valid: true, issues: [] },
-        traceability: { grounded: true, coverage: 1, ungrounded: [] },
+        ...rubricEvidence({ flagged: false, dimensions: clearingDimensions() }),
       },
     });
     // Rubricon refused to anchor this standard. approveRubric will not approve
@@ -979,9 +994,7 @@ test(
         sourceId: source.id,
         courseId: flaggedCourse.id,
         objective: feeding,
-        rubric: { flagged: true, reason: 'Too subjective to anchor.', needsSME: 'Define a stoppage.' },
-        validation: { valid: true, issues: [] },
-        traceability: { grounded: true, coverage: 1, ungrounded: [] },
+        ...rubricEvidence({ flagged: true, reason: 'Too subjective to anchor.', needsSME: 'Define a stoppage.' }),
       },
     });
     records.push(approvedRubric, foreignRubric, flaggedRubric);
@@ -1002,6 +1015,31 @@ test(
         ),
         503,
       );
+
+      // The same defect one step subtler: a rubric that is not flagged, whose
+      // anchors still overlap the source, but that never passed structural
+      // validation -- so approveRubric would have refused it. The status column
+      // says APPROVED; the stored evidence says otherwise, and the mapper reads
+      // the evidence. Every objective on this course is covered, so no model
+      // call is available to hide behind: a 201 here would mean the plan was
+      // built from a rubric no human could have approved.
+      const soundPayload = (await getLearningRecord(approvedRubric.id)).payload;
+      await updateLearningRecord(approvedRubric.id, {
+        payload: {
+          ...soundPayload,
+          validation: { valid: false, flagged: false, issues: ['dimension 2 (…) has indistinct tiers'] },
+        },
+      });
+      assert.equal(
+        await status(
+          generateMasteryPlan(instructor, {
+            params: { id: ratifiedCourse.id },
+            body: { sourceId: source.id },
+          }),
+        ),
+        422,
+      );
+      await updateLearningRecord(approvedRubric.id, { payload: soundPayload });
 
       // The ratified course generates without a model call at all.
       const generated = await generateMasteryPlan(instructor, {
