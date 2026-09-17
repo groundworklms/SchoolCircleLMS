@@ -3,6 +3,7 @@ import test from 'node:test';
 import { spawnSync } from 'node:child_process';
 
 import {
+  composeLesson,
   draftCourse,
   deriveMasteryPlan,
   generateRubric,
@@ -15,6 +16,7 @@ import {
   validateCourseDraft,
   draftRubricTask,
   looksLikeFrontMatter,
+  looksLikeObjectiveList,
   matchTopK,
   sourcePassageIndex,
   validateCourseOutline,
@@ -32,6 +34,33 @@ import { matchesApprovedMasteryPlan } from '../lib/db.js';
 import { projectCourseRows } from '../lib/learning/project-course.js';
 
 const upstream = (name) => import(name);
+
+/* ---------- the lesson contract, as a fixture ----------
+ *
+ * arsenal-core no longer asks the generator for Coursewright's one paragraph.
+ * It asks for a lesson in GROUNDED ELEMENTS and composes them (composeLesson),
+ * so a fixture that teaches from a page returns that page as elements -- each
+ * in the page's own wording, so each clears the grounding floor on its own,
+ * which is exactly the burden production carries. */
+const LESSON_SYSTEM = /writing ONE lesson/;
+
+function lessonElements(text, passage = 1) {
+  const body = String(text).trim();
+  const plain = body.replace(/\s*\.$/, '');
+  return {
+    refused: false,
+    elements: [
+      { kind: 'concept', passage, text: body },
+      { kind: 'why', passage, text: `This matters because ${plain}.` },
+      { kind: 'summary', passage, text: `In summary, ${plain}.` },
+    ],
+  };
+}
+
+/** What composeLesson makes of lessonElements(text). */
+function composedLesson(text, passage = 1) {
+  return lessonElements(text, passage).elements.map((element) => element.text).join('\n\n');
+}
 
 const groundedSource = {
   id: 'source-record-1',
@@ -297,8 +326,8 @@ test('empty objectives derive a grounded outline before Coursewright builds ever
     if (system.includes('instructional designer')) {
       return { objectives: ['Safety check', 'Operator confirms check'] };
     }
-    if (system.includes('micro-lesson')) {
-      return { lesson: 'A safety check is required before operation.' };
+    if (LESSON_SYSTEM.test(system)) {
+      return lessonElements('A safety check is required before operation.');
     }
     if (system.includes('"items"') && system.includes('answerIndex')) {
       return {
@@ -407,8 +436,8 @@ function twoPageAsk(objectives) {
     if (system.includes('instructional designer')) {
       return { title: 'Rifle maintenance', objectives };
     }
-    if (system.includes('micro-lesson')) {
-      return { refused: false, lesson: 'Clear the rifle and confirm the chamber is empty before disassembly begins.' };
+    if (LESSON_SYSTEM.test(system)) {
+      return lessonElements('Clear the rifle and confirm the chamber is empty before disassembly begins.');
     }
     if (system.includes('"items"')) {
       return { refused: false, items: [{
@@ -503,15 +532,17 @@ function magtfAsk({ refuseAll = false } = {}) {
   return async (model, system, prompt) => {
     const objective = (/Objective:\s*(.*)/.exec(prompt)?.[1] || '').trim();
     const refuses = refuseAll || objective.includes('counterintelligence');
-    if (system.includes('micro-lesson')) {
+    if (LESSON_SYSTEM.test(system)) {
       return refuses
         ? { refused: true, reason: CI_REFUSAL }
-        : { refused: false, lesson: pageFor(objective) };
+        : lessonElements(pageFor(objective));
     }
     if (system.includes('"items"')) {
       return {
         refused: false,
         items: [{
+          // Deliberately the same stem for every section: this fixture is the
+          // guard that de-duplication never empties a single-question phase.
           stem: 'Which of these does the passage state?',
           options: [pageFor(objective).slice(0, 60), 'None of the above'],
           answerIndex: 0,
@@ -652,7 +683,7 @@ test('the stream says which objective a refusal cost, and why', async () => {
 /* A publication rather than a handout. The three pages the outline teaches
    from, plus eight more chapters of everything else it carries -- roughly
    thirty thousand characters, which is the shape that made the outline
-   unsatisfiable: no twenty single-point objectives of 200 characters cover it.
+   unsatisfiable: no twelve lesson-sized objectives of 240 characters cover it.
    The filler wording is deliberately unlike the three taught pages so it cannot
    win retrieval away from them. */
 const EXTRA_CHAPTERS = [
@@ -1209,8 +1240,8 @@ function coursewrightAsk(outlineHandler) {
   const ask = async (model, system, prompt) => {
     calls.push({ model, system, prompt });
     if (system.includes('instructional designer')) return outlineHandler(calls.length, prompt);
-    if (system.includes('micro-lesson')) {
-      return { lesson: 'A safety check is required before operation.' };
+    if (LESSON_SYSTEM.test(system)) {
+      return lessonElements('A safety check is required before operation.');
     }
     if (system.includes('"items"') && system.includes('answerIndex')) {
       return {
@@ -1271,29 +1302,35 @@ test('the outline prompt states the objective limits the validator enforces', ()
     { title: 'Stated limits', objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
     { load: upstream, ask },
   ).then(() => {
-    assert.match(calls[0].system, /200 characters/);
-    assert.match(calls[0].system, /at most 20 objectives/);
+    assert.match(calls[0].system, /240 characters/);
+    assert.match(calls[0].system, /at most 12 objectives/);
   });
 });
 
-test('the outline prompt demands one teaching point per objective', () => {
-  // Eight of twelve MCDP 2 sections were refused as "the passage supports X,
-  // but does not cover Y and Z". No validator can catch a compound objective --
-  // five teaching points fit inside the character cap -- so the prompt has to,
-  // and the cap alone is not the instruction.
+test('the outline prompt asks for one LESSON per objective, not one atom', () => {
+  // Eight of twelve MCDP 2 sections were once refused as "the passage supports
+  // X, but does not cover Y and Z", and the fix was one teaching point per
+  // objective. Top-K retrieval removed the premise -- a section is grounded in
+  // up to four passages now -- and holding the rule produced the opposite
+  // failure: four consecutive near-identical "Demand-Pull ..." sections. The
+  // prompt asks for a lesson-sized unit and states the anti-restatement rule
+  // the validator now enforces.
   const { ask, calls } = coursewrightAsk(() => ({ objectives: ['Safety check'] }));
   return draftCourse(
-    { title: 'One point each', objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
+    { title: 'One lesson each', objectives: [], documents: [SAFETY_DOCUMENT], diagrams: false },
     { load: upstream, ask },
   ).then(() => {
-    assert.match(calls[0].system, /exactly ONE point/);
-    assert.match(calls[0].system, /SEVERAL narrow objectives/);
+    assert.match(calls[0].system, /ONE LESSON/);
+    assert.match(calls[0].system, /AT MOST THREE closely related points/);
+    assert.match(calls[0].system, /Near-identical objectives are rejected/);
+    // The rule it replaces is gone, not merely contradicted.
+    assert.doesNotMatch(calls[0].system, /exactly ONE point/);
   });
 });
 
 test('an outline the validator rejects is repaired once with the reasons, not failed outright', async () => {
   const tooLong = 'The learner will be able to describe, in complete detail and with reference to every applicable authority, the full sequence of the standard safety check that is required before operation, including the confirmation the operator performs before starting, so that operation never begins without it having been carried out first.';
-  assert.ok(tooLong.length > 200, 'fixture must exceed the objective limit');
+  assert.ok(tooLong.length > 240, 'fixture must exceed the objective limit');
 
   const { ask, calls } = coursewrightAsk((call) =>
     call === 1 ? { objectives: [tooLong] } : { objectives: ['Safety check'] });
@@ -1307,7 +1344,7 @@ test('an outline the validator rejects is repaired once with the reasons, not fa
   const repair = calls[1];
   assert.equal(repair.model, 'coursewright-outline');
   assert.match(repair.prompt, /A previous attempt was rejected/);
-  assert.match(repair.prompt, /exceeds 200 characters/);
+  assert.match(repair.prompt, /exceeds 240 characters/);
 });
 
 /* ---------- front matter is not grounding ---------- */
@@ -1437,8 +1474,8 @@ test('a document that is all front matter is used unfiltered rather than left wi
     if (system.includes('instructional designer')) {
       return { title: 'Operations safety', objectives: ['The safety check before operation'] };
     }
-    if (system.includes('micro-lesson')) {
-      return { refused: false, lesson: 'Chapter 1 covers the safety check before operation.' };
+    if (LESSON_SYSTEM.test(system)) {
+      return lessonElements('Chapter 1 covers the safety check before operation.');
     }
     if (system.includes('"items"')) {
       return { refused: false, items: [{
@@ -1497,7 +1534,9 @@ function stepsAsk() {
   const calls = [];
   const ask = async (model, system, prompt) => {
     calls.push({ model, system, prompt });
-    if (system.includes('micro-lesson')) return { lesson: STEPS_LESSON };
+    // Grounded in the SECOND passage of the union, which is the whole point of
+    // this fixture: element attribution has to follow retrieval order.
+    if (LESSON_SYSTEM.test(system)) return lessonElements(STEPS_LESSON, 2);
     if (system.includes('"items"') && system.includes('answerIndex')) {
       return {
         items: [
@@ -1558,7 +1597,7 @@ test('one passage covers part of an objective; the section is grounded in all of
   assert.equal(course.sections.length, 1);
   const [section] = course.sections;
   assert.equal(section.refused, undefined, section.reason);
-  assert.equal(section.lesson, STEPS_LESSON);
+  assert.equal(section.lesson, composedLesson(STEPS_LESSON, 2));
   // `cite` stays a single string naming the primary -- project-course.js writes
   // it to every materialised Item's citation column.
   assert.equal(typeof section.cite, 'string');
@@ -1577,8 +1616,8 @@ test('the section prompt carries the union, in score order', async () => {
     },
     { load: upstream, ask },
   );
-  const lesson = calls.find((call) => call.system.includes('micro-lesson'));
-  assert.ok(lesson.prompt.includes(`${STEPS_COUNTED.text}\n\n${STEPS_NAMED.text}`));
+  const lesson = calls.find((call) => LESSON_SYSTEM.test(call.system));
+  assert.ok(lesson.prompt.includes(`[1] ${STEPS_COUNTED.text}\n\n[2] ${STEPS_NAMED.text}`));
   // The passage that cleared no floor is not smuggled in alongside them.
   assert.equal(lesson.prompt.includes('Logistics convoys'), false);
 });
@@ -2001,7 +2040,7 @@ const PAGE_LESSON = 'Clear the rifle and confirm the chamber is empty before any
 
 function pageAsk(lesson = PAGE_LESSON) {
   return async (model, system) => {
-    if (system.includes('micro-lesson')) return { refused: false, lesson };
+    if (LESSON_SYSTEM.test(system)) return lessonElements(lesson);
     if (system.includes('"items"')) {
       return { refused: false, items: [{
         stem: 'What is the most common cause of a failure to extract?',
@@ -2097,4 +2136,548 @@ test('a throwing progress listener never aborts a generation that is going fine'
     { load: upstream, ask: pageAsk(), emit: () => { throw new Error('listener exploded'); } },
   );
   assert.equal(course.sections.length, 1);
+});
+
+/* ==========================================================================
+   A section grounded in four passages should read like it was written from
+   four passages
+   ========================================================================== */
+
+/* Four pages of a coursebook that between them teach one lesson: what the
+   hazard is, why it matters, the precaution, and the error that defeats it.
+   This is the budget matchTopK already retrieves and the old contract threw
+   away -- four passages, twelve thousand characters of allowance, compressed
+   into one paragraph of four to seven sentences. */
+const ESD_PAGES = [
+  {
+    page: 41,
+    text: 'Electrostatic discharge is the sudden transfer of static charge between two objects at different electrical potentials. An electrostatic discharge of as little as thirty volts can damage a sensitive semiconductor device.',
+  },
+  {
+    page: 42,
+    text: 'Electrostatic discharge damage is latent: a damaged sensitive device passes its test and fails later in service. Latent electrostatic discharge damage to a device is the most expensive kind.',
+  },
+  {
+    page: 43,
+    text: 'Electrostatic discharge precautions begin with grounding. The technician wears a wrist strap bonded to the same ground as the workbench, so the technician, the bench and the sensitive device sit at one electrical potential and no discharge can occur.',
+  },
+  {
+    page: 44,
+    text: 'The common electrostatic discharge error is trusting an unbonded wrist strap. Grounding that is never checked does not prevent damage, so a wrist strap is tested before every shift; a broken ground path leaves a sensitive device open to electrostatic discharge damage.',
+  },
+];
+const ESD_RECORD = 'esd-record';
+const ESD_DOCUMENTS = ESD_PAGES.map((page) => ({
+  source: `${ESD_RECORD} p.${page.page}`,
+  text: page.text,
+}));
+const ESD_SOURCE = {
+  id: ESD_RECORD,
+  status: 'APPROVED',
+  payload: { title: 'Basic Electronics Coursebook', sourceId: 'coursebook', pages: ESD_PAGES },
+};
+const ESD_OBJECTIVE =
+  'Explain electrostatic discharge damage to a sensitive device and the grounding precautions that prevent it';
+
+/* The lesson contract, answered honestly: one element per retrieved passage, in
+   that passage's own words, plus the two the passages support between them. The
+   fixture reads the numbered passages back out of the prompt, so it cannot
+   cheat about which passage an element came from. */
+function esdAsk({ elements } = {}) {
+  const calls = [];
+  const ask = async (model, system, prompt) => {
+    calls.push({ model, system, prompt });
+    if (system.includes('instructional designer')) {
+      return { title: 'Electrostatic discharge', objectives: [ESD_OBJECTIVE] };
+    }
+    if (LESSON_SYSTEM.test(system)) {
+      const numbered = [...prompt.matchAll(/\[(\d+)\] ([^\n]+)/g)].map((match) => ({
+        passage: Number(match[1]),
+        text: match[2],
+      }));
+      if (elements) return { refused: false, elements: elements(numbered) };
+      const kinds = ['concept', 'why', 'detail', 'error'];
+      return {
+        refused: false,
+        elements: [
+          ...numbered.map((entry, index) => ({
+            kind: kinds[index] || 'detail',
+            passage: entry.passage,
+            text: entry.text,
+          })),
+          {
+            kind: 'example',
+            passage: 3,
+            text: 'In practice the technician bonds the wrist strap to the same ground as the workbench before touching a sensitive device.',
+          },
+          {
+            kind: 'summary',
+            passage: 1,
+            text: 'In summary, electrostatic discharge is the sudden transfer of static charge, and it can damage a sensitive semiconductor device.',
+          },
+        ],
+      };
+    }
+    if (system.includes('"items"')) {
+      return {
+        refused: false,
+        items: [
+          {
+            stem: 'What damage does an electrostatic discharge of thirty volts do to a sensitive semiconductor device?',
+            options: ['Latent damage', 'None at all'],
+            answerIndex: 0,
+            rationale: 'An electrostatic discharge of as little as thirty volts can damage a sensitive semiconductor device, and the damage is latent.',
+          },
+        ],
+      };
+    }
+    if (system.includes('"cards"')) {
+      return {
+        refused: false,
+        cards: [{ front: 'What is electrostatic discharge?', back: 'The sudden transfer of static charge between two objects at different electrical potentials.' }],
+      };
+    }
+    return { refused: true, reason: 'not needed for this fixture' };
+  };
+  return { ask, calls };
+}
+
+test('retrieval offers four passages and the lesson is written from all four', async () => {
+  // The complaint this change answers: "questions don't make a whole course or
+  // lessons". A section was one paragraph, two pre-questions, two
+  // post-questions and three flashcards -- while retrieval had already paid for
+  // four passages and up to twelve thousand characters of them.
+  const events = [];
+  const { ask, calls } = esdAsk();
+  const course = await draftCourse(
+    { objectives: [], documents: ESD_DOCUMENTS, diagrams: false },
+    { load: upstream, ask, emit: (event) => events.push(event) },
+  );
+
+  const [section] = course.sections;
+  assert.equal(section.refused, undefined, section.reason);
+  assert.equal(section.cites.length, 4, 'the fixture must exercise a four-passage union');
+
+  // Six ordered paragraphs, not one, and in the contract's order.
+  const paragraphs = section.lesson.split('\n\n');
+  assert.equal(paragraphs.length, 6);
+  // Ordered by the contract's kinds, not by the order retrieval ranked the
+  // passages in: the lesson reads concept, why, detail, example, error, close.
+  assert.match(paragraphs[3], /^In practice/);
+  assert.match(paragraphs[5], /^In summary/);
+
+  // Every retrieved passage is actually taught from -- the point of the budget.
+  for (const page of ESD_PAGES) {
+    assert.ok(
+      section.lesson.includes(page.text),
+      `page ${page.page} was retrieved and paid for but never taught from`,
+    );
+  }
+  // And the depth is reported, so the generation view can show it.
+  const depth = events.find((event) => event.step === 'depth');
+  assert.equal(depth.elements, 6);
+  assert.equal(depth.passages, 4);
+  assert.equal(depth.passagesUsed, 4);
+  assert.equal(depth.narrowed, undefined);
+  assert.deepEqual(depth.kinds, ['concept', 'why', 'detail', 'example', 'error', 'summary']);
+
+  // The deepened lesson still crosses the approval boundary, which is the
+  // thing that would cost an instructor their whole draft if it did not: the
+  // validator is fatal and it grades a lesson against what its citation
+  // resolves to.
+  assert.deepEqual(validateCourseDraft(course, { sources: [ESD_SOURCE] }), {
+    valid: true,
+    issues: [],
+  });
+
+  // The lesson prompt carried every passage, numbered, in retrieval order.
+  const lesson = calls.find((call) => LESSON_SYSTEM.test(call.system));
+  for (let index = 0; index < 4; index += 1) {
+    assert.ok(lesson.prompt.includes(`[${index + 1}] `));
+  }
+});
+
+test('the pinned generator still routes its lesson through the deep contract', async () => {
+  // The cost of adapting a package from outside it: the adapter recognises
+  // Coursewright's own lesson prompt by its wording, and a pin that renamed it
+  // would fall through to the unmodified call and silently return to one
+  // paragraph. This drives the REAL pinned buildCourse and fails loudly if that
+  // ever happens.
+  const { ask, calls } = esdAsk();
+  await draftCourse(
+    { objectives: [], documents: ESD_DOCUMENTS, diagrams: false },
+    { load: upstream, ask },
+  );
+  assert.ok(
+    calls.some((call) => LESSON_SYSTEM.test(call.system)),
+    'the deep lesson contract never reached the model -- has the coursewright pin changed its prompt?',
+  );
+  assert.ok(
+    calls.every((call) => !call.system.includes('micro-lesson')),
+    'Coursewright asked for its own micro-lesson, so the adapter did not intercept',
+  );
+});
+
+test('a passage that can only support a paragraph refuses, and does not pad', async () => {
+  // Richer must never mean invented. A source that cannot carry a lesson of the
+  // depth asked for takes the refusal path it always took -- reported against
+  // the objective it cost, with the reason, exactly like every other refusal.
+  const { ask } = esdAsk({
+    elements: (numbered) => [
+      { kind: 'concept', passage: numbered[0].passage, text: numbered[0].text },
+    ],
+  });
+  await assert.rejects(
+    () => draftCourse(
+      { objectives: [ESD_OBJECTIVE], documents: ESD_DOCUMENTS, diagrams: false },
+      { load: upstream, ask },
+    ),
+    (error) =>
+      error.code === 'COURSE_GENERATION_EMPTY' &&
+      /a paragraph and not a lesson/.test(error.message),
+  );
+});
+
+test('an element the passages do not support is dropped, not composed', () => {
+  // How richer output could smuggle in ungrounded content, and the answer.
+  // Coursewright grades the finished paragraph against the whole union, so a
+  // lesson three quarters drawn from the passages can carry one fabricated
+  // sentence and still clear the floor -- dilution. Every element is graded on
+  // its own instead.
+  const passages = ESD_PAGES.map((page) => page.text);
+  const composed = composeLesson(
+    [
+      { kind: 'concept', passage: 1, text: passages[0] },
+      { kind: 'detail', passage: 3, text: passages[2] },
+      {
+        kind: 'error',
+        passage: 4,
+        text: 'MIL-STD-1686 requires a resistance of one megohm in every wrist strap cord.',
+      },
+      { kind: 'summary', passage: 2, text: passages[1] },
+    ],
+    passages,
+  );
+  assert.equal(composed.dropped, 1);
+  assert.equal(composed.elements, 3);
+  assert.equal(composed.lesson.includes('MIL-STD-1686'), false);
+
+  // ...and when the fabrication is all there is, there is no lesson at all.
+  const invented = composeLesson(
+    [
+      { kind: 'concept', passage: 1, text: 'MIL-STD-1686 requires a resistance of one megohm.' },
+      { kind: 'why', passage: 1, text: 'The orbital engine requires a ceramic seal.' },
+      { kind: 'summary', passage: 1, text: 'Ceramic seals are inspected every six launches.' },
+    ],
+    passages,
+  );
+  assert.equal(invented.lesson, undefined);
+  assert.match(invented.reason, /0 grounded lesson element/);
+});
+
+test('an element attributed to the wrong passage is re-attributed, never trusted', () => {
+  // The model's own index is a hint, not evidence. Text that names passage one
+  // but was written from passage three is still grounded -- it is just cited to
+  // the passage that actually holds it.
+  const passages = ESD_PAGES.map((page) => page.text);
+  const composed = composeLesson(
+    [
+      { kind: 'concept', passage: 1, text: passages[0] },
+      { kind: 'detail', passage: 1, text: passages[2] },
+      { kind: 'summary', passage: 99, text: passages[3] },
+    ],
+    passages,
+  );
+  assert.equal(composed.dropped, 0);
+  assert.deepEqual(composed.used, [0, 2, 3]);
+});
+
+/* ==========================================================================
+   the same question twice in one course
+   ========================================================================== */
+
+test('a question the course has already asked is not asked again', async () => {
+  // A live course contained the same question stem twice. The generator writes
+  // each section in isolation and cannot know, so the seam that sees every call
+  // tells it what has been asked and drops a repeat that arrives anyway.
+  const events = [];
+  let call = 0;
+  const shared = 'What is electrostatic discharge?';
+  const ask = async (model, system, prompt) => {
+    if (system.includes('instructional designer')) {
+      return {
+        title: 'Electrostatic discharge',
+        objectives: [
+          'Explain electrostatic discharge damage to a sensitive semiconductor device',
+          'Explain the grounding precautions that prevent electrostatic discharge damage',
+        ],
+      };
+    }
+    if (LESSON_SYSTEM.test(system)) {
+      const numbered = [...prompt.matchAll(/\[(\d+)\] ([^\n]+)/g)];
+      return lessonElements(numbered[0][2], Number(numbered[0][1]));
+    }
+    if (system.includes('"items"')) {
+      call += 1;
+      return {
+        refused: false,
+        items: [
+          {
+            stem: `Question ${call}: what damage does an electrostatic discharge do to a sensitive device?`,
+            options: ['Latent damage', 'None'],
+            answerIndex: 0,
+            rationale: 'An electrostatic discharge can damage a sensitive semiconductor device and the damage is latent.',
+          },
+          {
+            stem: shared,
+            options: ['The sudden transfer of static charge', 'A grounding strap'],
+            answerIndex: 0,
+            rationale: 'Electrostatic discharge is the sudden transfer of static charge between two objects at different electrical potentials.',
+          },
+        ],
+      };
+    }
+    if (system.includes('"cards"')) {
+      return { refused: false, cards: [{ front: 'Electrostatic discharge?', back: 'The sudden transfer of static charge.' }] };
+    }
+    return { refused: true, reason: 'not needed for this fixture' };
+  };
+  const course = await draftCourse(
+    { objectives: [], documents: ESD_DOCUMENTS, diagrams: false },
+    { load: upstream, ask, emit: (event) => events.push(event) },
+  );
+
+  const stems = course.sections.flatMap((section) => [...section.pre, ...section.post]).map((q) => q.stem);
+  assert.equal(stems.filter((stem) => stem === shared).length, 1, stems.join(' | '));
+  assert.ok(events.some((event) => event.step === 'duplicate-question'));
+  // And no phase was emptied to achieve it.
+  for (const section of course.sections) {
+    assert.ok(section.pre.length > 0 && section.post.length > 0);
+  }
+});
+
+test('de-duplication never empties a phase that has only one question', async () => {
+  // The guard on the rule above. Coursewright treats an empty items list as a
+  // refusal and validateCourseDraft treats an empty phase as fatal, so dropping
+  // the last question to save a repeat would cost the whole draft. This fixture
+  // returns the SAME single stem for every phase of every section.
+  const course = await draftCourse(
+    {
+      title: 'MAGTF intelligence',
+      objectives: MAGTF_OBJECTIVES.slice(0, 2),
+      documents: MAGTF_DOCUMENTS,
+      diagrams: false,
+    },
+    { load: upstream, ask: magtfAsk() },
+  );
+  assert.equal(course.sections.length, 2);
+  for (const section of course.sections) {
+    assert.equal(section.pre.length, 1);
+    assert.equal(section.post.length, 1);
+  }
+});
+
+/* ==========================================================================
+   one lesson per objective, and never the same objective twice
+   ========================================================================== */
+
+test('an outline that restates a neighbouring objective is rejected', () => {
+  // A live course shipped four consecutive near-identical "Demand-Pull ..."
+  // sections. Exact duplicates were already rejected; near-identical ones were
+  // not, and they retrieve the same passages and repeat each other's questions.
+  const documents = [{
+    text: 'Demand-pull distribution in the MAGTF moves supplies forward only on a validated request from the supported unit.',
+  }];
+  const restated = validateCourseOutline(
+    {
+      objectives: [
+        'Explain demand-pull distribution in the MAGTF',
+        'Describe demand pull distribution for the MAGTF',
+      ],
+    },
+    { documents },
+  );
+  assert.equal(restated.valid, false);
+  assert.ok(restated.issues.some((issue) => /restates outline.objectives\[0\]/.test(issue)));
+
+  // A definition and the thing that validates it share a subject and are not
+  // the same objective, so the rule must leave them alone.
+  const distinct = validateCourseOutline(
+    {
+      objectives: [
+        'Explain demand-pull distribution in the MAGTF',
+        'Identify who validates a supported unit request before supplies move forward',
+      ],
+    },
+    { documents },
+  );
+  assert.deepEqual(distinct.issues, []);
+});
+
+test('a restatement is repaired with the rest of the outline, not failed outright', async () => {
+  // The restatement rule joins the bounded repair pass every other outline rule
+  // already uses: the model never sees the validator, so it is told which rule
+  // it broke and asked once more.
+  let attempt = 0;
+  const { ask, calls } = esdAsk();
+  const repairing = async (model, system, prompt) => {
+    calls.push({ model, system, prompt });
+    if (system.includes('instructional designer')) {
+      attempt += 1;
+      return attempt === 1
+        ? {
+            title: 'Electrostatic discharge',
+            objectives: [ESD_OBJECTIVE, ESD_OBJECTIVE.replace('Explain', 'Describe')],
+          }
+        : { title: 'Electrostatic discharge', objectives: [ESD_OBJECTIVE] };
+    }
+    return ask(model, system, prompt);
+  };
+  const course = await draftCourse(
+    { objectives: [], documents: ESD_DOCUMENTS, diagrams: false },
+    { load: upstream, ask: repairing },
+  );
+  assert.deepEqual(course.objectives, [ESD_OBJECTIVE]);
+  const repair = calls.find((call) => /A previous attempt was rejected/.test(call.prompt || ''));
+  assert.match(repair.prompt, /restates outline.objectives\[0\]/);
+});
+
+/* ==========================================================================
+   a POI is a specification, not content
+   ========================================================================== */
+
+/* A lesson card from a real-shaped program of instruction: the terminal
+   objective, its enabling objectives, their codes, the hours, the references --
+   and not one sentence that teaches any of it. */
+const POI_PAGE = [
+  'LESSON ID: ELEC.01.02 TITLE: Electrostatic Discharge PHASE: 1',
+  'HOURS: 2.0',
+  'TYPE: Task Oriented',
+  'TERMINAL LEARNING OBJECTIVE',
+  '2871-ELEC-1001. Without the aid of references, identify electrostatic discharge damage to a sensitive device.',
+  'ENABLING LEARNING OBJECTIVES',
+  '2871-ELEC-1001a. Without the aid of references, identify the grounding precautions that prevent electrostatic discharge.',
+  '2871-ELEC-1001b. Without the aid of references, identify soldering iron tip temperature tolerances.',
+  'REFERENCES: Basic Electronics Coursebook',
+].join('\n');
+const POI_DOCUMENT = { source: 'poi-record p.7', text: POI_PAGE };
+
+test('a program of instruction is recognised by shape, and a coursebook is not', () => {
+  assert.equal(looksLikeObjectiveList(POI_PAGE), true);
+
+  // The 220-page coursebook opens chapters with an objectives panel. Declining
+  // that page as grounding is right; declining the publication is not, and a
+  // per-source verdict would have done exactly that.
+  const panel = [
+    'Learning Objectives',
+    'At the end of this chapter you will be able to identify electrostatic discharge damage.',
+    '',
+    ESD_PAGES[0].text,
+    ESD_PAGES[1].text,
+  ].join('\n');
+  assert.equal(looksLikeObjectiveList(panel), false);
+  for (const page of ESD_PAGES) assert.equal(looksLikeObjectiveList(page.text), false);
+  assert.equal(looksLikeObjectiveList(DOCTRINE_PROSE), false);
+  assert.equal(looksLikeObjectiveList(''), false);
+});
+
+test('objectives come from the POI and grounding comes from the corpus', async () => {
+  // The live failure, and the fix. "Basic Electronics Course 7.0.0 POI Combined
+  // Report" refused with "The passage LISTS ESD learning objectives and
+  // references but does not DESCRIBE ESD characteristics". The POI won
+  // retrieval because it states the objective in the objective's own words, and
+  // then had nothing to teach from.
+  const events = [];
+  const { ask, calls } = esdAsk();
+  const course = await draftCourse(
+    { objectives: [], documents: [POI_DOCUMENT, ...ESD_DOCUMENTS], diagrams: false },
+    { load: upstream, ask, emit: (event) => events.push(event) },
+  );
+
+  // The outline is shown both, labelled, and told which is which.
+  const outline = calls.find((call) => call.model === 'coursewright-outline');
+  assert.match(outline.system, /LEARNING TARGETS come from a program of instruction/);
+  assert.match(outline.prompt, /LEARNING TARGETS/);
+  assert.match(outline.prompt, /CONTENT PASSAGES/);
+  assert.ok(outline.prompt.indexOf(POI_PAGE) < outline.prompt.indexOf('CONTENT PASSAGES'));
+  assert.ok(outline.prompt.indexOf(ESD_PAGES[0].text) > outline.prompt.indexOf('CONTENT PASSAGES'));
+
+  // No lesson is grounded in the POI, however well it scores.
+  const [section] = course.sections;
+  assert.equal(section.refused, undefined, section.reason);
+  assert.equal(section.cite.startsWith('poi-record'), false);
+  assert.equal(section.cites.some((cite) => cite.startsWith('poi-record')), false);
+  const lesson = calls.find((call) => LESSON_SYSTEM.test(call.system));
+  assert.equal(lesson.prompt.includes('TERMINAL LEARNING OBJECTIVE'), false);
+
+  // And the roles are reported, so the generation view can say what it has.
+  const sources = events.find((event) => event.phase === 'sources');
+  assert.equal(sources.objectivePassages, 1);
+  assert.equal(sources.contentPassages, 4);
+});
+
+test('a target the corpus does not cover is named as exactly that', async () => {
+  // The most valuable sentence this product can say: your program of
+  // instruction asks for this and your sources do not teach it. Never an
+  // invented lesson, and never a refusal the instructor cannot act on.
+  const uncovered = 'Identify soldering iron tip temperature tolerances';
+  const { ask } = esdAsk();
+  const course = await draftCourse(
+    { objectives: [], documents: [POI_DOCUMENT, ...ESD_DOCUMENTS], diagrams: false },
+    {
+      load: upstream,
+      ask: async (model, system, prompt) => {
+        if (system.includes('instructional designer')) {
+          return { title: 'Electrostatic discharge', objectives: [ESD_OBJECTIVE, uncovered] };
+        }
+        return ask(model, system, prompt);
+      },
+    },
+  );
+  assert.deepEqual(course.objectives, [ESD_OBJECTIVE]);
+  assert.deepEqual(course.skippedObjectives, [
+    {
+      objective: uncovered,
+      reason: 'the program of instruction asks for this and no content source covers it',
+    },
+  ]);
+});
+
+test('a POI on its own is refused once, up front, not once per section', async () => {
+  // Today this produced one confusing refusal per section after one model call
+  // per section. There is nothing to teach from and nothing a model can add, so
+  // it is said before any of them.
+  await assert.rejects(
+    () => draftCourse(
+      { objectives: [], documents: [POI_DOCUMENT], diagrams: false },
+      { load: upstream, ask: async () => { throw new Error('the model must never be called'); } },
+    ),
+    (error) =>
+      error.code === 'COURSE_CONTENT_SOURCE_REQUIRED' &&
+      error.status === 422 &&
+      /state learning objectives but do not teach them/.test(error.message),
+  );
+});
+
+test('a stated role beats the heuristic in both directions', async () => {
+  // Inference is the default, not the only answer. Nothing in the app sets a
+  // role yet; when the source library grows one, this is the seam it uses.
+  const { ask, calls } = esdAsk();
+  await draftCourse(
+    {
+      objectives: [],
+      documents: [
+        // A POI page the instructor insists is content...
+        { ...POI_DOCUMENT, role: 'content' },
+        // ...and a page of real content they have marked as targets.
+        { ...ESD_DOCUMENTS[0], role: 'objectives' },
+        ...ESD_DOCUMENTS.slice(1),
+      ],
+      diagrams: false,
+    },
+    { load: upstream, ask },
+  );
+  const outline = calls.find((call) => call.model === 'coursewright-outline');
+  assert.ok(outline.prompt.indexOf(ESD_PAGES[0].text) < outline.prompt.indexOf('CONTENT PASSAGES'));
+  assert.ok(outline.prompt.indexOf(POI_PAGE) > outline.prompt.indexOf('CONTENT PASSAGES'));
 });
