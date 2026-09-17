@@ -16,6 +16,7 @@ import {
   draftRubricTask,
   looksLikeFrontMatter,
   matchTopK,
+  sourcePassageIndex,
   validateCourseOutline,
   validateMasteryPlan,
 } from '../lib/arsenal-core.js';
@@ -1405,6 +1406,38 @@ test('every label in the list has to resolve, and cite has to head it', () => {
     { sources: [TWO_PAGE_SOURCE] },
   );
   assert.ok(mismatched.issues.includes('section 0 cite is not the primary of its cites list'));
+});
+
+/* ---------------- the label -> passage text seam ---------------- */
+
+// Materialisation has to know which passage an individual item came from, and
+// a section carries only citation LABELS. `sourcePassageIndex` is the seam:
+// the same projection of the same persisted sources that validateCourseDraft
+// resolves a citation against, exported so the materialiser resolves a label
+// to exactly the text the validator graded the section on -- rather than a
+// second copy of the doctrine carried through the draft payload.
+test('the passage index resolves a citation label to the text the validator uses', () => {
+  const index = sourcePassageIndex([TWO_PAGE_SOURCE]);
+  assert.equal(index.length, 2);
+
+  const textFor = (label) =>
+    index.filter((passage) => passage.labels.includes(label)).map((passage) => passage.text);
+  // A page label addresses that page and only that page.
+  assert.deepEqual(textFor('record-2 p.4'), [STEPS_COUNTED.text]);
+  assert.deepEqual(textFor('record-2 p.5'), [STEPS_NAMED.text]);
+  // The bare source labels address the whole publication, as they do in the
+  // validator; a label naming nothing persisted addresses nothing.
+  assert.equal(textFor('record-2').length, 2);
+  assert.equal(textFor('ipb-1').length, 2);
+  assert.deepEqual(textFor('record-2 p.99'), []);
+});
+
+test('the passage index refuses to carry an unapproved source', () => {
+  // Nothing unapproved may ground a course, so nothing unapproved may be
+  // resolved to and cited either.
+  assert.deepEqual(sourcePassageIndex([{ ...TWO_PAGE_SOURCE, status: 'PENDING' }]), []);
+  assert.deepEqual(sourcePassageIndex([]), []);
+  assert.deepEqual(sourcePassageIndex(undefined), []);
 });
 
 test('a section with no cites list validates exactly as it always did', () => {
