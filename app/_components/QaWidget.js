@@ -42,8 +42,27 @@ function loadIdentity() {
   }
 }
 
+/* The QA intake is an internal testing tool, not a product surface: it files
+ * GitHub issues on our own repo and has no place in a demo or in front of a
+ * judge. It is off by default and opts in only when a tester asks for it with
+ * ?qa=1 (sticky for the tab via sessionStorage) -- so we keep the tool without
+ * shipping a stray "report a bug" button on the live app. */
+function qaEnabled() {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (new URLSearchParams(window.location.search).get('qa') === '1') {
+      window.sessionStorage.setItem('schoolcircle.qa', '1');
+    }
+    return window.sessionStorage.getItem('schoolcircle.qa') === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function QaWidget() {
   const pathname = usePathname();
+  const [enabled, setEnabled] = useState(false);
+  useEffect(() => { setEnabled(qaEnabled()); }, []);
   const [open, setOpen] = useState(false);
   const [type, setType] = useState('bug');
   const [text, setText] = useState('');
@@ -152,6 +171,10 @@ export default function QaWidget() {
       setBusy(false);
     }
   }
+
+  // Every hook above runs unconditionally; only the render is gated, so the
+  // hook order is stable whether or not QA mode is on.
+  if (!enabled) return null;
 
   return (
     <>

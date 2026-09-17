@@ -85,22 +85,12 @@ export const STEPS = [
     act: 'author',
     location: { role: 'instructor', area: 'course', courseId: COURSE_TOKEN, view: 'builder' },
     target: '[data-tour="course-builder"]',
-    title: 'The course, section by section',
+    title: 'Every page traces to a passage, and a human ratifies it',
     body:
-      'Objectives, lessons and checks for understanding, each tied to the '
-      + 'section it belongs to. The instructor edits anything before it ships.',
-    seconds: 40,
-  },
-  {
-    id: 'fidelity',
-    act: 'author',
-    location: { role: 'instructor', area: 'course', courseId: COURSE_TOKEN, view: 'fidelity' },
-    target: '[data-tour="course-fidelity"]',
-    title: 'Every generated page is traceable, and ratified by a human',
-    body:
-      'This is the part that matters for doctrine: a page shows the passage it '
-      + 'was built from, and an instructor ratifies it. Nothing reaches a Marine unreviewed.',
-    seconds: 30,
+      'Objectives, lessons and checks — each one shows the exact passage it was '
+      + 'built from and waits for the instructor to mark it complete. Nothing '
+      + 'reaches a Marine unreviewed. This is the part that matters for doctrine.',
+    seconds: 55,
   },
 
   /* ----------------------------- Act 2: learning --------------------------- */
