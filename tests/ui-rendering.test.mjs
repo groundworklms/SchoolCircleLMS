@@ -53,6 +53,7 @@ function loadComponent(relativePath, {
   stateValues = [],
   mutationStates = {},
   expose = [],
+  effects = null,
 } = {}) {
   const filename = path.join(workspace, relativePath);
   const transformed = transformSync(fs.readFileSync(filename, 'utf8'), {
@@ -75,7 +76,7 @@ function loadComponent(relativePath, {
     useRef(initialValue) {
       return { current: initialValue ?? null };
     },
-    useEffect() {},
+    useEffect(effect) { effects?.push(effect); },
   };
   const useLearning = {
     useApiQuery(requestPath) {
@@ -152,7 +153,7 @@ function loadComponent(relativePath, {
       // the same sandbox so their API hooks are shimmed too.
       if (request.startsWith('./')) {
         const sibling = path.join(path.dirname(relativePath), `${request}.js`);
-        return loadComponent(sibling, { queryData, queryStates });
+        return loadComponent(sibling, { queryData, queryStates, mutationStates });
       }
       return require(request);
     },
@@ -180,6 +181,51 @@ function collectReactElements(node, elements = []) {
   }
   return elements;
 }
+
+test('source library groups documents without technical IDs or repeated approval badges', () => {
+  const { SourcesView } = loadComponent('app/prototype/Library.js', {
+    queryData: { '/sources': [
+      { id: 'private-record-id-approved', title: 'Approved field manual', status: 'APPROVED', pages: 4, hasPdf: true, canRemove: true },
+      { id: 'private-record-id-pending', title: 'New reference', status: 'PENDING', pages: 2, hasPdf: false, canRemove: true },
+    ] },
+  });
+  const markup = renderToStaticMarkup(React.createElement(SourcesView));
+  assert.match(markup, /Approved documents/);
+  assert.match(markup, /Needs approval/);
+  assert.match(markup, /Approved field manual/);
+  assert.match(markup, /New reference/);
+  assert.doesNotMatch(markup, /private-record-id|>APPROVED</);
+  // Rename/remove is the shared RowActions menu (#113/#119), not a second
+  // per-card affordance, so the row exposes its trigger rather than a
+  // free-standing Remove button.
+  assert.match(markup, /row-actions-trigger/);
+  assert.match(markup, />Preview</);
+  assert.match(markup, />Approve</);
+});
+
+test('closing a source preview ignores stale PDF metadata without fetching or crashing', () => {
+  const effects = [];
+  const { SourcePreviewDialog } = loadComponent('app/prototype/SourceLibraryPreview.js', {
+    effects,
+    queryData: { '/sources/__none__': { id: 'previous-source', title: 'Previous source', hasPdf: true } },
+  });
+  const markup = renderToStaticMarkup(React.createElement(SourcePreviewDialog, {
+    source: null, onClose: () => {}, onRefresh: () => {},
+  }));
+  assert.equal(markup, '');
+  assert.ok(effects.length > 0);
+  assert.doesNotThrow(() => effects.forEach((effect) => effect()));
+});
+
+test('shared source cards do not offer removal to non-owners', () => {
+  const { SourceLibraryCard } = loadComponent('app/prototype/SourceLibraryPreview.js');
+  const markup = renderToStaticMarkup(React.createElement(SourceLibraryCard, {
+    source: { id: 'shared-source', title: 'Shared manual', status: 'APPROVED', canRemove: false },
+    onPreview: () => {}, onRefresh: () => {},
+  }));
+  assert.match(markup, />Preview</);
+  assert.doesNotMatch(markup, /row-actions-trigger|>Approve</);
+});
 
 test('learner progress renders a non-empty mastery record', () => {
   // Sextant's real shapes: masteryRollup rows and classGaps rows.
@@ -1574,8 +1620,11 @@ test('library rows carry a three-dots menu, and legacy courses cannot be renamed
 test('a source card exposes rename and remove', () => {
   const { SourcesView } = loadComponent('app/prototype/Library.js', {
     queryData: {
-      '/sources': [{ id: 'src-1', title: 'MCRP 3-01A', status: 'APPROVED' }],
-      '/sources/src-1': { id: 'src-1', title: 'MCRP 3-01A', pages: [], chunks: [] },
+      // canRemove is what /sources reports for a source this instructor owns.
+      // An approved source owned by someone else comes back with canRemove
+      // false and gets no menu, because every write behind it is owner-only.
+      '/sources': [{ id: 'src-1', title: 'MCRP 3-01A', status: 'APPROVED', canRemove: true }],
+      '/sources/src-1': { id: 'src-1', title: 'MCRP 3-01A', pages: [], chunks: [], canRemove: true },
     },
   });
   const markup = renderToStaticMarkup(React.createElement(SourcesView));
