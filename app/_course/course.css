@@ -202,7 +202,12 @@
 }
 .course-option:hover:not(:disabled), .course-option:focus-visible { border-color: var(--p-accent, var(--accent, #6ea8fe)); }
 .course-option.is-selected { background: var(--p-surface-2, var(--bg-card-2, #1c2330)); border-color: var(--p-accent, var(--accent, #6ea8fe)); }
-.course-option:disabled { cursor: wait; opacity: 0.72; }
+/* `disabled` here means two different things: a save in flight, or a question
+   that is not answerable at all. Only the first is worth a wait cursor -- a
+   permanently inert control that says "wait" reads as a page still loading,
+   which is exactly how the missing-onAnswer defect disguised itself. */
+.course-option:disabled { cursor: default; opacity: 0.72; }
+.course-option[aria-busy='true']:disabled { cursor: wait; }
 .course-option-marker {
   flex: 0 0 1rem;
   width: 1rem;
