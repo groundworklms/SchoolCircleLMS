@@ -359,7 +359,12 @@ function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = nu
         <div className="p-tile">
           <div className="p-tilelab">Grounding</div>
           <div className="p-tileval" style={{ color: 'var(--p-good)', fontSize: '1.05em' }}>Cited</div>
-          <div className="p-tilenote">{authored} of {withStatus.length} in full pages</div>
+          {/* Two different measures, so they are said as two clauses rather
+              than stacking the positive word straight over a small number:
+              every lesson IS cited (grounding), and separately, `authored` of
+              them have been expanded from the snippet to full pages (depth).
+              "0 of 4 in full pages" under a lone "Cited" read as "0 of 4 cited". */}
+          <div className="p-tilenote">every lesson traces to the source · {authored} of {withStatus.length} in full pages</div>
         </div>
       </div>
 
