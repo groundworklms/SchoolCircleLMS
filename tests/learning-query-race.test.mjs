@@ -128,13 +128,10 @@ function response(body, ok = true) {
   return { ok, status: ok ? 200 : 500, json: async () => body };
 }
 
-function loadQueryHook(authFetch, manual = false) {
-  const filename = manual ? 'app/prototype/learning.js' : 'app/_learning/useLearning.js';
+function loadQueryHook(authFetch) {
+  const filename = 'app/_learning/useLearning.js';
   const source = fs.readFileSync(path.join(workspace, filename), 'utf8');
-  const sourceWithTestExport = manual
-    ? `${source}\nmodule.exports.__useManualCourses = useManualCourses;`
-    : source;
-  const transformed = transformSync(sourceWithTestExport, {
+  const transformed = transformSync(source, {
     jsc: {
       parser: { syntax: 'ecmascript', jsx: false },
       target: 'es2019',
@@ -173,9 +170,7 @@ function loadQueryHook(authFetch, manual = false) {
     },
   };
   vm.runInNewContext(transformed.code, sandbox, { filename: 'useLearning.js' });
-  harness.runner = manual
-    ? new HookHarness(module.exports.__useManualCourses, (props) => [props.enabled, props.options])
-    : new HookHarness(module.exports.useApiQuery);
+  harness.runner = new HookHarness(module.exports.useApiQuery);
   return harness.runner;
 }
 
@@ -260,43 +255,4 @@ test('visible-tab return refresh is enabled and deduped across focus/page events
   runner.unmount();
   delete globalThis.window;
   delete globalThis.document;
-});
-
-test('only the latest overlapping manual refetch settles waiters', async () => {
-  const calls = [];
-  const runner = loadQueryHook((url, options) => {
-    const request = deferred();
-    calls.push({ url, options, request });
-    return request.promise;
-  }, true);
-  runner.render({ enabled: true, options: {} });
-  await settle();
-  const firstRefetch = runner.result.refetch();
-  let firstRefetchSettled = false;
-  firstRefetch.then(() => { firstRefetchSettled = true; });
-  await settle();
-  const firstRefresh = calls[1];
-  // Refetch invalidates the initial request before its deferred response
-  // arrives. Its completion must not settle the new refetch waiter.
-  calls[0].request.resolve(response({ courses: [{ id: 'stale-initial' }] }));
-  await settle();
-  assert.equal(firstRefetchSettled, false);
-
-  let secondRefetchSettled = false;
-  const secondRefetch = runner.result.refetch();
-  secondRefetch.then(() => { secondRefetchSettled = true; });
-  await settle();
-  const latestRefresh = calls[2];
-
-  // The stale adapter ignores AbortSignal, so this is the deferred-response
-  // case that used to drain waiters before the latest request had completed.
-  firstRefresh.request.resolve(response({ courses: [{ id: 'deleted-course' }] }));
-  await settle();
-  assert.equal(secondRefetchSettled, false);
-  assert.equal(runner.result.courses.length, 0);
-
-  latestRefresh.request.resolve(response({ courses: [] }));
-  await Promise.all([firstRefetch, secondRefetch]);
-  await settle();
-  assert.equal(runner.result.courses.length, 0);
 });

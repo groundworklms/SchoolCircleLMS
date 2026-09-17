@@ -109,8 +109,10 @@ JSON body:
 }
 ```
 
-`pages` is optional for text input. Quarry chunks the page text and records
-`text`, `pages`, `chunks`, `outline`, `sections`, and parsed `tasks` in a
+`pages` is optional for text input, and so is `collection` — a grouping label
+such as `"Lesson plans"` (one line, at most 80 characters; anything else is
+stored as no collection). Quarry chunks the page text and records `text`,
+`pages`, `chunks`, `outline`, `sections`, and parsed `tasks` in a
 `PENDING SOURCE` record. The response is `201`:
 
 ```json
@@ -119,6 +121,7 @@ JSON body:
   "status": "PENDING",
   "title": "Training standard",
   "sourceId": "manual-01",
+  "collection": null,
   "pages": 1,
   "chunks": 1,
   "tasks": 0
@@ -127,11 +130,19 @@ JSON body:
 
 ### `POST /api/learning/sources/pdf` — instructor
 
-Multipart body with `file` and optional `title`/`sourceId`. This uses Quarry's
-existing PDF extraction seam, preserves printed page text, and persists the
-same `PENDING SOURCE` shape. Uploads must be `application/pdf`, begin with the
-`%PDF-` signature, and be no larger than 50 MiB. The legacy `POST /api/ingest`
-parse-only response uses the same upload guard.
+Multipart body with `file` and optional `title`/`sourceId`/`collection`. This
+uses Quarry's existing PDF extraction seam, preserves printed page text, and
+persists the same `PENDING SOURCE` shape. Uploads must be `application/pdf`,
+begin with the `%PDF-` signature, and be no larger than 50 MiB. The legacy
+`POST /api/ingest` parse-only response uses the same upload guard.
+
+When `collection` is set and `sourceId` is not, the citation label defaults to
+`<collection>/<filename>` rather than the bare filename, so a `lesson-01.pdf`
+in "Lesson plans" and another in "Student material" stay distinguishable.
+
+There is no zip endpoint. The instructor library unpacks a zip in the browser
+and posts each PDF here with the zip's name as its `collection`, so every
+document passes the same guards and a bad one fails alone.
 
 ### `GET /api/learning/sources` — authenticated
 
@@ -151,6 +162,29 @@ cannot open pending material.
 
 Transitions a source to `APPROVED`. Approval is a human action; no generation
 route transitions its own output to approved.
+
+### `POST /api/learning/sources/approve` — instructor
+
+Batch form of the above, for "approve all pending" on a collection:
+
+```json
+{ "ids": ["source-record-id", "..."] }
+```
+
+Each id passes through exactly the single-source gate (owner only, must have
+addressable page text, version CAS). The batch is not atomic: the response is
+`200` with what happened per id, so one scanned PDF with no text is reported
+rather than holding up the documents beside it.
+
+```json
+{
+  "approved": [{ "id": "source-record-id", "status": "APPROVED" }],
+  "failed": [{ "id": "other-id", "code": "SOURCE_NOT_APPROVABLE", "error": "..." }]
+}
+```
+
+A source the caller does not own reports `NOT_FOUND`. At most 200 ids per
+request; an empty or malformed `ids` is `400`.
 
 ## Cited course drafting
 
