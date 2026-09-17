@@ -669,9 +669,7 @@ function FlaggedRubric({ rubric }) {
         </>
       )}
       <RubricNotes notes={rubric.notes} />
-      <p className="p-src">
-        Nothing above was invented. Generate again once the standard says how performance is judged.
-      </p>
+      <p className="p-src">Nothing above was invented.</p>
     </div>
   );
 }
@@ -785,6 +783,11 @@ export function RubricsView() {
   // Performance steps are the one field long enough to scroll, and a scrolling
   // field here swallows the page's wheel gesture; see useWheelFallthrough.
   const stepsRef = useWheelFallthrough();
+  // A flagged standard is rewritten in the Standard field of this same form,
+  // so the refusal below can put the caret in it instead of describing where
+  // to go. focus() is all that is needed -- browsers scroll a focused field
+  // into view themselves.
+  const standardRef = useRef(null);
 
   const applySuggestion = (task) => {
     if (!task) return;
@@ -943,7 +946,7 @@ export function RubricsView() {
           )}
           <input className="scw-ti" placeholder="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} disabled={sourcesUnavailable} />
           <input className="scw-ti" placeholder="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} disabled={sourcesUnavailable} />
-          <input className="scw-ti" placeholder="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
+          <input ref={standardRef} className="scw-ti" placeholder="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
           <textarea ref={stepsRef} className="scw-ti" placeholder="Performance steps (one per line)" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
           <Err msg={err} />
           <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || suggesting || sourcesUnavailable || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
@@ -990,23 +993,33 @@ export function RubricsView() {
               <RubricResult rubric={rubric} />
               <Err msg={err} />
               {approved && <p className="p-src" style={{ color: 'var(--p-good)' }}>Rubric approved.</p>}
-              {rubricData.status === 'PENDING' && (
-                <>
-                  {/* Approval stays the instructor's to press. The consequence
-                      is stated because the server refuses a flagged rubric, so
-                      pressing it without warning reads as a broken button
-                      rather than the policy it is. */}
-                  {rubric?.flagged && (
-                    <p className="p-src" style={{ margin: '1rem 0 0', color: 'var(--p-warning)' }}>
-                      A flagged rubric cannot be approved until the standard says how performance is
-                      judged — the server will refuse this and explain why.
-                    </p>
-                  )}
-                  <button className="p-btn" onClick={handleApprove} disabled={approveRubric.loading} style={{ marginTop: '1rem' }}>
-                    {approveRubric.loading ? 'Approving…' : 'Approve rubric'}
+              {/* A flagged payload carries no dimensions, so there is no
+                  artifact to approve and approveRubric refuses it outright. An
+                  Approve button here could only ever fail, and a disabled one
+                  would imply something unlocks it, so the flagged branch offers
+                  the action that does exist instead: the form above, with the
+                  standard rewritten to the SME wording. */}
+              {rubricData.status === 'PENDING' && (rubric?.flagged ? (
+                <div style={{ marginTop: '1rem' }}>
+                  <p className="p-src" style={{ margin: 0 }}>
+                    There is nothing to approve yet — no criteria were written, which is the
+                    intended outcome. The next step is a human one: rewrite the standard so it says
+                    how performance is judged, then generate again.
+                  </p>
+                  <button
+                    type="button"
+                    className="p-btn ghost"
+                    onClick={() => standardRef.current?.focus()}
+                    style={{ marginTop: '0.75rem' }}
+                  >
+                    Rewrite the standard
                   </button>
-                </>
-              )}
+                </div>
+              ) : (
+                <button className="p-btn" onClick={handleApprove} disabled={approveRubric.loading} style={{ marginTop: '1rem' }}>
+                  {approveRubric.loading ? 'Approving…' : 'Approve rubric'}
+                </button>
+              ))}
             </>
           ) : (
             <p>Loading rubric…</p>

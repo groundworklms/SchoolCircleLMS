@@ -627,10 +627,14 @@ test('a flagged rubric reads as the SME referral it is, never as its payload', (
   // The payload's own key names are the tell that a JSON dump leaked through.
   assert.doesNotMatch(markup, /needsSME|flagged&quot;|<pre/);
 
-  // Approval stays the instructor's, and the refusal it will meet is stated.
-  assert.match(markup, /<button[^>]*>Approve rubric<\/button>/);
-  assert.doesNotMatch(markup, /disabled[^>]*>Approve rubric/);
-  assert.match(markup, /the server will refuse this/);
+  // approveRubric refuses `flagged` server-side and the payload has no
+  // dimensions, so the button is gone entirely rather than disabled: a
+  // disabled Approve implies something here could unlock it.
+  assert.doesNotMatch(markup, /Approve rubric/);
+  // What replaces it has to be an action that exists — the Standard field of
+  // the form on this same page.
+  assert.match(markup, /rewrite the standard so it says/);
+  assert.match(markup, /<button[^>]*>Rewrite the standard<\/button>/);
   // verifyTraceability saw no dimensions, so its 100% is the empty case.
   assert.match(markup, /Nothing to trace yet/);
   assert.doesNotMatch(markup, /100% coverage/);
@@ -663,8 +667,12 @@ test('a generated BARS rubric renders its dimensions and three anchors', () => {
   assert.match(markup, /Two of the six phases carry no measurable wording/);
   assert.doesNotMatch(markup, /<pre|anchors&quot;/);
   // Nothing about a rubric that was written should read as flagged.
-  assert.doesNotMatch(markup, /Flagged for a subject-matter expert|the server will refuse this/);
+  assert.doesNotMatch(markup, /Flagged for a subject-matter expert|Rewrite the standard/);
   assert.match(markup, /100% coverage/);
+  // A rubric with dimensions is approvable, so Approve must survive here —
+  // removing it from the flagged path must not remove it from both.
+  assert.match(markup, /<button[^>]*>Approve rubric<\/button>/);
+  assert.doesNotMatch(markup, /disabled[^>]*>Approve rubric/);
 });
 
 test('a filled form field hands the wheel back to the page once its own scroll is spent', () => {
