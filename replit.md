@@ -13,6 +13,16 @@ structure and limit Replit compatibility changes to workspace configuration.
 Make changes on a feature branch and submit a pull request into `main`.
 Do not commit/push directly to `main`, merge, or publish without explicit approval.
 
+## Student dashboard greeting
+
+Keep the student dashboard's top heading as a browser-local, time-based greeting:
+Good morning (05:00–11:59), Good afternoon (12:00–16:59), or Good evening
+(17:00–04:59). It must update in long-lived tabs and after returning from sleep.
+This is a standing product requirement, not temporary preview copy. Do not
+replace it with "Dashboard" during merges or redesigns without an explicit
+product request. Keep the sidebar's Dashboard label and instructor UI unchanged.
+The focused-dashboard tests in `npm test` protect this contract.
+
 ## Self-service profile roles
 
 Users may select Student, Instructor, or Both during onboarding and in Settings.
