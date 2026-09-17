@@ -2391,3 +2391,54 @@ test('a lost stream says the generation is still running, and stops asking the i
   const running = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
   assert.doesNotMatch(running, /reporting|watching for the course/);
 });
+
+test('a chip appears when there is something to say about it', () => {
+  const { GenerationProgress } = loadComponent('app/prototype/GenerationProgress.js');
+  const writing = [
+    { phase: 'sources', documents: 1, characters: 9000 },
+    { phase: 'outline', status: 'done', objectives: ['Apply the principles of joint operations'] },
+    { phase: 'sections', total: 1, passages: 1 },
+    { phase: 'coursewright', step: 'section', section: 'Mass: concentrating effects' },
+    { phase: 'coursewright', kind: 'lesson', ok: true, section: 'Mass: concentrating effects' },
+    { phase: 'coursewright', kind: 'pre-test', ok: true, section: 'Mass: concentrating effects' },
+  ];
+
+  // Mid-generation the page pass has not run, so there is nothing to report
+  // about pages and no chip claiming otherwise. Same for a diagram that was
+  // never asked for.
+  const midway = renderToStaticMarkup(React.createElement(GenerationProgress, { events: writing }));
+  assert.match(midway, /Lesson/);
+  assert.match(midway, /Pre-check/);
+  assert.doesNotMatch(midway, /Pages/);
+  assert.doesNotMatch(midway, /Diagram/);
+
+  // Once the pass reports, the chip is there and carries its outcome.
+  const written = renderToStaticMarkup(
+    React.createElement(GenerationProgress, {
+      events: [
+        ...writing,
+        { phase: 'pages', status: 'start', total: 1 },
+        { phase: 'pages', ok: true, kind: 'pages', section: 'Mass: concentrating effects', pages: 4 },
+      ],
+    }),
+  );
+  assert.match(written, /Pages/);
+
+  // And a refusal is reported as a refusal rather than as silence.
+  const refused = renderToStaticMarkup(
+    React.createElement(GenerationProgress, {
+      events: [
+        ...writing,
+        { phase: 'pages', status: 'start', total: 1 },
+        {
+          phase: 'pages',
+          ok: false,
+          kind: 'pages',
+          section: 'Mass: concentrating effects',
+          reason: 'pages not grounded in the passage',
+        },
+      ],
+    }),
+  );
+  assert.match(refused, /Pages - skipped/);
+});
