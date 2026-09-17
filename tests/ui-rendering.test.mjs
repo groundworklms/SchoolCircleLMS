@@ -1649,6 +1649,8 @@ test('library rows carry generated-course actions without legacy rows or endpoin
   // The control the instructor was missing entirely.
   assert.match(markup, /row-actions-trigger/, 'no three-dots trigger rendered');
   assert.match(markup, /Actions for course/);
+  assert.match(markup, /s-courserow-open/, 'course opening control remains available');
+  assert.doesNotMatch(markup, /s-quick-arrow|→/, 'course rows do not need a navigation arrow');
 
   assert.match(markup, /Generated course/);
   assert.match(source, /endpoint=\{`\/api\/learning\/courses\/\$\{c\.id\}`\}/);
