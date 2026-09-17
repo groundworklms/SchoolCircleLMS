@@ -307,7 +307,8 @@ returns the plan. The client repeats the call until `status` moves on:
   carries `built: { id, title, ok, reason }`.
 
 `POST /api/learning/plans/:id/retry` `{ "lessonId": "B.03" }` queues a failed or
-ungrounded lesson again. The finished draft is reviewed, approved and ratified
+ungrounded lesson again. `DELETE /api/learning/plans/:id` removes the plan
+only; a draft it built keeps its own lifecycle under `/courses/:id`. The finished draft is reviewed, approved and ratified
 like any other; `POST /api/learning/courses/:id/items/approve-all` approves
 every item still PENDING on the release in one deliberate action (withheld
 items are untouched).

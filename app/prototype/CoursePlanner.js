@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
 import { useApiQuery } from '../_learning/useLearning';
 import { groupSourcesByCollection } from './source-groups';
+import { RowActions } from './RowActions';
 
 /* Whole-course planning: survey the sources in batches, outline annexes and
    lessons, map sources to each lesson by retrieval, then build one lesson at a
@@ -150,7 +151,7 @@ export function PlanCourseModal({ sources, onCreated }) {
 
 /* ---------- list ---------- */
 
-export function PlansList({ plans, onOpen }) {
+export function PlansList({ plans, onOpen, onChanged }) {
   if (!plans?.length) return null;
   return (
     <div className="s-courselist" style={{ marginBottom: '1.25rem' }}>
@@ -166,6 +167,14 @@ export function PlansList({ plans, onOpen }) {
             </div>
             <span className="s-quick-arrow">→</span>
           </button>
+          <RowActions
+            label="plan"
+            title={p.title || 'Untitled plan'}
+            endpoint={`/api/learning/plans/${p.id}`}
+            canRename={false}
+            onChanged={onChanged}
+            removeNote={p.courseId ? 'The course draft this plan built stays; remove it from its own row.' : 'Nothing has been built from this plan.'}
+          />
         </div>
       ))}
     </div>
