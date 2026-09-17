@@ -4,22 +4,17 @@ import { useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation, useApiStream } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
-import { SourceViewer } from './SourceViewer';
 import { CourseReadiness } from './CourseReadiness';
 import { CourseItemReview } from './ItemReview';
 import { GenerationProgress, ThinCoverageNotice } from './GenerationProgress';
 import { RowActions } from './RowActions';
+import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
+import './source-library.css';
 
 /* The instructor library — the parts of the persisted learning loop that are
    not tied to one course on screen: source documents (Quarry) and the course
    drafts they feed (Coursewright). Every approval here is a human click; the
    server never self-approves, and a learner never sees anything PENDING. */
-
-function StatusTag({ status }) {
-  return (
-    <strong style={{ color: status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }}>{status}</strong>
-  );
-}
 
 function errText(e, fallback) {
   return e?.error || e?.message || fallback;
@@ -29,69 +24,62 @@ function errText(e, fallback) {
 
 export function SourcesView() {
   const { data: sources, loading, error, refetch } = useApiQuery('/sources');
+  const [previewSource, setPreviewSource] = useState(null);
+  const approved = Array.isArray(sources) ? sources.filter((source) => source.status === 'APPROVED') : [];
+  const pending = Array.isArray(sources) ? sources.filter((source) => source.status !== 'APPROVED') : [];
+  const pendingState = loading || (sources == null && !error);
 
   return (
     <>
-      <div className="s-pagehead s-pagehead-row">
+      <div className="s-pagehead s-pagehead-row source-library-head">
         <div>
           <h1>Source documents</h1>
         </div>
         <IngestSourceModal onIngested={refetch} />
       </div>
 
-      {loading && <p>Loading sources…</p>}
-      {error && <p className="s-shell-error" role="alert">{errText(error, 'Could not load sources.')}</p>}
-      {!loading && !error && (!sources || sources.length === 0) && <p>No sources yet. Add one to start a course.</p>}
-      {sources?.length > 0 && (
-        <div className="p-grid2">
-          {sources.map((src) => (
-            <SourceCard key={src.id} source={src} onApproved={refetch} />
-          ))}
+      {pendingState && <SourceShelfSkeleton />}
+      {error && <div className="s-shell-error source-library-error" role="alert"><p>{errText(error, 'Could not load sources.')}</p><button className="p-btn ghost" onClick={refetch}>Try again</button></div>}
+      {!pendingState && !error && (
+        <div className="source-library">
+          <SourceShelf title="Approved documents" count={approved.length} empty="No approved documents.">
+            {approved.map((src) => <SourceLibraryCard key={src.id} source={src} onPreview={setPreviewSource} onRefresh={refetch} />)}
+          </SourceShelf>
+          <SourceShelf title="Needs approval" count={pending.length} empty="Nothing is waiting for your review.">
+            {pending.map((src) => <SourceLibraryCard key={src.id} source={src} onPreview={setPreviewSource} onRefresh={refetch} />)}
+          </SourceShelf>
         </div>
       )}
+      <SourcePreviewDialog source={previewSource} onClose={() => setPreviewSource(null)} onRefresh={refetch} />
     </>
   );
 }
 
-function SourceCard({ source, onApproved }) {
-  const [err, setErr] = useState(null);
-  const approve = useApiMutation(`/sources/${source.id}/approve`, 'POST');
-
-  const handleApprove = async () => {
-    setErr(null);
-    try {
-      await approve.mutate();
-      onApproved();
-    } catch (e) {
-      setErr(errText(e, 'Failed to approve source'));
-    }
-  };
-
+function SourceShelf({ title, count, empty, children }) {
   return (
-    <div className="p-panel">
-      <div className="p-panel-head">
-        <h3>{source.title}</h3>
-        <RowActions
-          label="source"
-          title={source.title}
-          endpoint={`/api/learning/sources/${source.id}`}
-          onChanged={onApproved}
-          removeNote="A source that any course still cites cannot be removed."
-        />
-      </div>
-      <p className="p-src" style={{ marginBottom: '1rem' }}>
-        <code>{source.id}</code> · <StatusTag status={source.status} />
-      </p>
+    <section className="source-shelf" aria-label={title}>
+      <div className="source-shelf-heading"><h2>{title}</h2><span>{count} {count === 1 ? 'document' : 'documents'}</span></div>
+      {count === 0 ? <div className="source-shelf-empty">{empty}</div> : <div className="source-card-list">{children}</div>}
+    </section>
+  );
+}
 
-      <SourceViewer sourceId={source.id} compact />
+function SourceShelfSkeleton() {
+  return <div className="source-library" aria-label="Loading source library"><section className="source-shelf"><div className="source-skeleton title" /><div className="source-skeleton card" /><div className="source-skeleton card" /></section><section className="source-shelf"><div className="source-skeleton title" /><div className="source-skeleton card" /></section></div>;
+}
 
-      {err && <p className="s-shell-error" role="alert">{err}</p>}
-      {source.status === 'PENDING' && (
-        <button className="p-btn" onClick={handleApprove} disabled={approve.loading}>
-          {approve.loading ? 'Approving…' : 'Approve source'}
-        </button>
-      )}
-    </div>
+function SourceCard({ source, onApproved }) {
+  const [previewSource, setPreviewSource] = useState(null);
+  return (
+    <>
+      <SourceLibraryCard
+        source={source}
+        onPreview={setPreviewSource}
+        onRefresh={onApproved}
+        approveLabel="Approve source"
+      />
+      <SourcePreviewDialog source={previewSource} onClose={() => setPreviewSource(null)} onRefresh={onApproved} />
+    </>
   );
 }
 

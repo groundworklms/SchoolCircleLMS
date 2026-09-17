@@ -1,6 +1,6 @@
 // /api/learning/sources/pdf -- Instructor PDF upload -> Quarry page-preserving source. The legacy /api/ingest parse seam is unchanged.
-import { learningRoute } from '../../../../../lib/learning/http';
-import { createSourceFromPdf } from '../../../../../lib/learning/core';
+import { learningRoute } from '../../../../../lib/learning/http.js';
+import { createSourceFromPdf } from '../../../../../lib/learning/core.js';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
