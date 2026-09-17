@@ -2271,7 +2271,11 @@ test('generation reports each phase and artifact as it lands', async () => {
   const pages = events.filter((e) => e.phase === 'pages');
   assert.deepEqual(pages[0], { phase: 'pages', status: 'start', total: 1 });
   assert.equal(pages.find((e) => e.kind === 'pages')?.ok, true);
-  assert.deepEqual(events.at(-1), { phase: 'pages', status: 'done' });
+  // The pages phase closes with done. Asserted against that phase rather than
+  // against the last event in the stream: draftCourseStream already emits
+  // `saved` after this, and the course-title check reports after every section
+  // exists, so "last event overall" was never the contract.
+  assert.deepEqual(pages.at(-1), { phase: 'pages', status: 'done' });
 });
 
 test('generation expands each grounded section into lesson pages, dropping blocks the passage cannot back', async () => {
