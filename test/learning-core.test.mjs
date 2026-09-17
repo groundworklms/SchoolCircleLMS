@@ -2574,6 +2574,215 @@ test('de-duplication never empties a phase that has only one question', async ()
 });
 
 /* ==========================================================================
+   a parallel form with something to be parallel to
+   ========================================================================== */
+
+/* Coursewright asks for the pre-test and the post-test with two independent
+   calls over byte-identical input -- same passage union, same cite, same
+   objective -- and never shows the second what the first produced, so "a
+   PARALLEL FORM vs a pre-test" is an instruction with no pre-test in it. These
+   two sets are what a model writes when it IS told. Every stem and rationale
+   reuses a coursebook sentence, because Coursewright grounds the phase's
+   combined claims against the passages before it accepts them. */
+const PRE_ITEMS = [
+  {
+    stem: 'What is an electrostatic discharge?',
+    options: [
+      'The sudden transfer of static charge between two objects at different electrical potentials',
+      'A bonded wrist strap tested before every shift',
+    ],
+    answerIndex: 0,
+    rationale:
+      'Electrostatic discharge is the sudden transfer of static charge between two objects at different electrical potentials.',
+  },
+  {
+    stem: 'How small a discharge can damage a sensitive semiconductor device?',
+    options: ['As little as thirty volts', 'No less than three hundred volts'],
+    answerIndex: 0,
+    rationale:
+      'An electrostatic discharge of as little as thirty volts can damage a sensitive semiconductor device.',
+  },
+];
+const POST_ITEMS = [
+  {
+    stem: 'Why is latent electrostatic discharge damage the most expensive kind?',
+    options: [
+      'A damaged sensitive device passes its test and fails later in service',
+      'A damaged sensitive device is caught on the bench and replaced',
+    ],
+    answerIndex: 0,
+    rationale:
+      'Electrostatic discharge damage is latent: a damaged sensitive device passes its test and fails later in service.',
+  },
+  {
+    stem: 'Why is a wrist strap tested before every shift?',
+    options: [
+      'Grounding that is never checked does not prevent damage',
+      'The strap wears out after one shift of use',
+    ],
+    answerIndex: 0,
+    rationale:
+      'The common electrostatic discharge error is trusting an unbonded wrist strap. Grounding that is never checked does not prevent damage, so a wrist strap is tested before every shift.',
+  },
+];
+
+/* One ESD course from one explicit objective, with the question calls under the
+   test's control and everything else answered honestly. `questions` is handed
+   the question prompt and returns the items for it, which is how a fixture
+   models a model that can or cannot see the pre-test. */
+function parallelFormAsk(questions) {
+  const prompts = [];
+  const ask = async (model, system, prompt) => {
+    if (LESSON_SYSTEM.test(system)) {
+      const numbered = [...prompt.matchAll(/\[(\d+)\] ([^\n]+)/g)];
+      return lessonElements(numbered[0][2], Number(numbered[0][1]));
+    }
+    if (system.includes('"items"')) {
+      prompts.push(prompt);
+      return { refused: false, items: questions(prompt) };
+    }
+    if (system.includes('"cards"')) {
+      return {
+        refused: false,
+        cards: [{
+          front: 'What is an electrostatic discharge?',
+          back: 'The sudden transfer of static charge between two objects at different electrical potentials.',
+        }],
+      };
+    }
+    return { refused: true, reason: 'not needed for this fixture' };
+  };
+  return { ask, prompts };
+}
+
+const SHOWN_THE_PRE_TEST = 'The pre-test for THIS objective';
+
+test('the post-check is shown the pre-check it is supposed to be a parallel form of', async () => {
+  const events = [];
+  const { ask, prompts } = parallelFormAsk((prompt) =>
+    (prompt.includes(SHOWN_THE_PRE_TEST) ? POST_ITEMS : PRE_ITEMS));
+  const course = await draftCourse(
+    { title: 'Electrostatic discharge', objectives: [ESD_OBJECTIVE], documents: ESD_DOCUMENTS, diagrams: false },
+    { load: upstream, ask, emit: (event) => events.push(event) },
+  );
+
+  assert.equal(prompts.length, 2, 'one pre call and one post call');
+  assert.ok(!prompts[0].includes(SHOWN_THE_PRE_TEST), 'the pre call has no pre-test to be shown');
+  // The whole item, options included: the live duplicate repeated the stem AND
+  // its four options, which a list of bare stems does not rule out.
+  for (const item of PRE_ITEMS) {
+    assert.ok(prompts[1].includes(item.stem), `post call must carry "${item.stem}"`);
+    for (const option of item.options) {
+      assert.ok(prompts[1].includes(option), `post call must carry the option "${option}"`);
+    }
+  }
+
+  const [section] = course.sections;
+  assert.deepEqual(section.pre.map((q) => q.stem), PRE_ITEMS.map((q) => q.stem));
+  assert.deepEqual(section.post.map((q) => q.stem), POST_ITEMS.map((q) => q.stem));
+  for (const question of section.post) {
+    assert.ok(
+      !section.pre.some((earlier) => earlier.stem === question.stem),
+      'a post-check is never a verbatim repeat of its own pre-check',
+    );
+  }
+});
+
+test('a post-check that repeats its pre-check anyway is asked again, with the repeats named', async () => {
+  // The prompt is the primary defence; this is what happens when the model
+  // ignores it. One more call, naming exactly what was rejected -- the same
+  // shape the outline repair uses.
+  const events = [];
+  const { ask, prompts } = parallelFormAsk((prompt) =>
+    (prompt.includes('A previous attempt was rejected') ? POST_ITEMS : PRE_ITEMS));
+  const course = await draftCourse(
+    { title: 'Electrostatic discharge', objectives: [ESD_OBJECTIVE], documents: ESD_DOCUMENTS, diagrams: false },
+    { load: upstream, ask, emit: (event) => events.push(event) },
+  );
+
+  assert.equal(prompts.length, 3, 'pre, a post that repeated it, and one retry');
+  const retried = events.find((event) => event.step === 'duplicate-question' && event.retried);
+  assert.ok(retried, 'the repeat is reported, not silently swapped');
+  assert.deepEqual(retried.stems, PRE_ITEMS.map((q) => q.stem));
+  assert.equal(retried.phase, 'post');
+
+  const [section] = course.sections;
+  assert.deepEqual(section.post.map((q) => q.stem), POST_ITEMS.map((q) => q.stem));
+  assert.ok(section.pre.length > 0 && section.post.length > 0, 'neither phase was emptied');
+});
+
+test('a model that repeats whatever it is told still leaves both phases with questions', async () => {
+  // The floor. Coursewright reads an empty items list as a refusal and
+  // validateCourseDraft treats an empty phase as fatal, so the last resort is
+  // to keep the repeat and REPORT it -- losing the section costs more than a
+  // duplicate does, and the report is what puts it in front of the reviewer.
+  const events = [];
+  const { ask, prompts } = parallelFormAsk(() => PRE_ITEMS);
+  const course = await draftCourse(
+    { title: 'Electrostatic discharge', objectives: [ESD_OBJECTIVE], documents: ESD_DOCUMENTS, diagrams: false },
+    { load: upstream, ask, emit: (event) => events.push(event) },
+  );
+
+  assert.equal(prompts.length, 3, 'the retry was spent before giving up');
+  const [section] = course.sections;
+  assert.equal(section.pre.length, 2);
+  assert.equal(section.post.length, 2, 'a phase is never emptied to avoid a repeat');
+  assert.ok(
+    events.some((event) => event.step === 'duplicate-question' && event.kept),
+    'a repeat that survives both prompts is reported rather than hidden',
+  );
+});
+
+/* ==========================================================================
+   a citation is a locator, and a locator is not prose
+   ========================================================================== */
+
+/* The same coursebook, recorded under a real source record id. A citation is
+   stored as "<record id> p.<n>" on purpose (lib/learning/core.js
+   `sourcePassages`), and Coursewright puts that label in front of the model on
+   every section call as "Citation: ...". */
+const LOCATOR_RECORD = 'cmu4xdph30016s6014fn9n9y8';
+const LOCATOR_DOCUMENTS = ESD_PAGES.map((page) => ({
+  source: `${LOCATOR_RECORD} p.${page.page}`,
+  text: page.text,
+}));
+
+test('a generated question never carries the source record id into its prose', async () => {
+  // Live: "...without a supported connection to this capability. Source:
+  // cmu4xdph30016s6014fn9n9y8 p.135." The rationale is persisted on the Item,
+  // shown to a learner when they answer a check and carried into the SCORM
+  // export, so no presentation fix reaches it.
+  const attributed = (items) => items.map((item) => ({
+    ...item,
+    stem: `${item.stem} (see ${LOCATOR_RECORD} p.41)`,
+    rationale: `${item.rationale} Source: ${LOCATOR_RECORD} p.41.`,
+  }));
+  const { ask, prompts } = parallelFormAsk((prompt) =>
+    attributed(prompt.includes(SHOWN_THE_PRE_TEST) ? POST_ITEMS : PRE_ITEMS));
+  const course = await draftCourse(
+    { title: 'Electrostatic discharge', objectives: [ESD_OBJECTIVE], documents: LOCATOR_DOCUMENTS, diagrams: false },
+    { load: upstream, ask },
+  );
+
+  for (const prompt of prompts) {
+    assert.match(prompt, /Never write a citation, source name, record id/);
+  }
+  const questions = course.sections.flatMap((section) => [...section.pre, ...section.post]);
+  assert.equal(questions.length, 4);
+  for (const question of questions) {
+    assert.doesNotMatch(question.stem, new RegExp(LOCATOR_RECORD));
+    assert.doesNotMatch(question.rationale, new RegExp(LOCATOR_RECORD));
+    assert.doesNotMatch(question.rationale, /Source:/);
+    // Only the locator goes. The reasoning is the thing the learner is shown.
+    assert.ok(question.rationale.trim().length > 20, question.rationale);
+    assert.ok(question.stem.trim().length > 10, question.stem);
+  }
+  // And the citation itself is untouched: it is still the locator, on the
+  // section, where every surface resolves it to a publication name.
+  assert.match(course.sections[0].cite, new RegExp(`^${LOCATOR_RECORD} p\\.`));
+});
+
+/* ==========================================================================
    one lesson per objective, and never the same objective twice
    ========================================================================== */
 
