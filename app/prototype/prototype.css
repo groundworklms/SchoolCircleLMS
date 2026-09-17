@@ -617,6 +617,12 @@ textarea.p-input { resize: vertical; min-height: 4.5rem; }
 .p-filebtn:focus-within { box-shadow: 0 0 0 3px var(--p-accent-tint); }
 .p-filename { font-size: 0.84em; color: var(--p-dim); min-width: 0; overflow-wrap: anywhere; }
 
+/* The name of a source document, wherever it is named. A file-backed source
+   is recorded under its filename, which is one long unbroken token; in the
+   20rem course-home sidebar that ran out of the card and pushed a horizontal
+   scrollbar onto the page behind it. It wraps instead. */
+.p-srcname { margin: 0 0 0.6rem; font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+
 /* A third button weight. Approve is affirmative and a human is accountable for
    it, so it keeps the accent; Revise is neutral; Withhold is deliberate but
    must not compete with the approval it is the alternative to. */

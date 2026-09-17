@@ -24,6 +24,29 @@ test('shared instructor shell omits breadcrumbs while retaining course status an
   assert.match(source, /isManual && course\.school/);
 });
 
+test('the student shell drops the breadcrumb but keeps a way up where the rail collapses', () => {
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/StudentShell.js'), 'utf8');
+  // The rail already carries the course and marks the section, so the row that
+  // repeated both is gone -- along with the invented "Last login" it carried.
+  assert.doesNotMatch(source, /s-crumbs"|s-crumb-sep|s-crumb-cur|s-lastlogin|Last login/);
+  // It is not redundant below 900px: student.css hides the course name and
+  // every sub button there, so a course keeps a named way back up.
+  assert.match(source, /s-railcontext/);
+  const css = fs.readFileSync(path.join(workspace, 'app/prototype/student.css'), 'utf8');
+  assert.match(css, /\.s-railcontext \{ display: none; \}/);
+  assert.match(css, /@media \(max-width: 900px\) \{[\s\S]*?\.s-railcontext \{ display: flex;/);
+});
+
+test('a fixed side column cannot be widened into a horizontal scrollbar', () => {
+  const css = fs.readFileSync(path.join(workspace, 'app/prototype/student.css'), 'utf8');
+  // A grid item defaults to min-width: auto, so one unbreakable filename in the
+  // 20rem agenda column used to widen the track and scroll the page sideways.
+  assert.match(css, /\.s-two > \* \{ min-width: 0; \}/);
+  assert.match(css, /\.s-reader > \* \{ min-width: 0; \}/);
+  const core = fs.readFileSync(path.join(workspace, 'app/prototype/prototype.css'), 'utf8');
+  assert.match(core, /\.p-srcname \{[^}]*overflow-wrap: anywhere/);
+});
+
 function loadComponent(relativePath, {
   queryData = {},
   queryStates = {},
@@ -168,29 +191,46 @@ test('learner progress renders a non-empty mastery record', () => {
   assert.match(markup, /75% missed/);
 });
 
-test('learning course reader reuses shared lesson blocks without exposing answer keys', () => {
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: {
-      '/courses/course-1': {
-        status: 'APPROVED',
-        version: 1,
-        course: {
-          sections: [{
-            id: 'section-1',
-            title: 'Movement fundamentals',
-            cite: 'source-1 p. 4',
-            lesson: 'Read the approved movement guidance.',
-            pre: [{
-              id: 'question-1',
-              stem: 'Which principle applies?',
-              options: ['Use cover', 'Ignore terrain'],
-              answer: 0,
-              rationale: 'The answer key must stay server-side.',
-            }],
+/* The learner's reader. A section's `cite` is "<source record id> p.N", and the
+   record id is a cuid: the authenticated page-opening key, never a citation a
+   person reads. These fixtures use the real shapes -- the course envelope's
+   sourceIds and the light approved-source list that names the publication. */
+function learnerReaderFixture(overrides = {}) {
+  return {
+    '/courses/course-1': {
+      status: 'APPROVED',
+      version: 1,
+      course: {
+        sourceIds: ['cmu4xdph30016s6014fn9n9y8'],
+        sections: [{
+          id: 'section-1',
+          title: 'Movement fundamentals',
+          cite: 'cmu4xdph30016s6014fn9n9y8 p.135',
+          lesson: 'Read the approved movement guidance.',
+          pre: [{
+            id: 'question-1',
+            stem: 'Which principle applies?',
+            options: ['Use cover', 'Ignore terrain'],
+            answer: 0,
+            rationale: 'The answer key must stay server-side.',
           }],
-        },
+        }],
       },
     },
+    '/sources': [{
+      id: 'cmu4xdph30016s6014fn9n9y8',
+      status: 'APPROVED',
+      title: 'AY27_8670_Prerequisite_Coursebook_Instructor-Led_Moodle.pdf',
+      sourceId: null,
+      pages: 220,
+    }],
+    ...overrides,
+  };
+}
+
+test('learning course reader reuses shared lesson blocks without exposing answer keys', () => {
+  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: learnerReaderFixture(),
   });
   const markup = renderToStaticMarkup(React.createElement(CourseReader, {
     course: { id: 'course-1' },
@@ -199,8 +239,39 @@ test('learning course reader reuses shared lesson blocks without exposing answer
   assert.match(markup, /Read the approved movement guidance/);
   assert.match(markup, /Which principle applies/);
   assert.match(markup, /course-option/);
-  assert.match(markup, /source-1 p\. 4/);
   assert.doesNotMatch(markup, /answer key must stay server-side/);
+});
+
+test('a learner is cited to a publication and a page, never to a record id', () => {
+  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: learnerReaderFixture(),
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
+    course: { id: 'course-1' },
+  }));
+  // The publication, named the way the Sources screen names it: the upload's
+  // extension off and its underscores back to spaces.
+  assert.match(markup, /Grounded in/);
+  assert.match(markup, /AY27 8670 Prerequisite Coursebook Instructor-Led Moodle p\.135/);
+  // The stored locator is unchanged and still reachable -- on the title, which
+  // is the only place the record id may appear.
+  assert.match(markup, /title="cmu4xdph30016s6014fn9n9y8 p\.135"/);
+  assert.doesNotMatch(markup, />[^<]*cmu4xdph30016s6014fn9n9y8/);
+  // One heading per section. The title used to be printed by the reader head
+  // and again as the lesson title inside the shared presentation.
+  assert.equal(markup.match(/Movement fundamentals/g).length, 2); // TOC row + heading
+  assert.doesNotMatch(markup, /course-lesson-title/);
+});
+
+test('a section with no nameable publication says nothing rather than showing the key', () => {
+  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: learnerReaderFixture({ '/sources': [] }),
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
+    course: { id: 'course-1' },
+  }));
+  assert.doesNotMatch(markup, /course-citation/);
+  assert.doesNotMatch(markup, /cmu4xdph30016s6014fn9n9y8/);
 });
 
 test('source viewer renders chunk content from non-empty source data', () => {

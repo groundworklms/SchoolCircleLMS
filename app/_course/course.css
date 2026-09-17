@@ -20,16 +20,26 @@
   color: var(--p-dim, var(--text-dim, #9aa7b8));
   margin: 0 0 1.5rem;
 }
+/* The provenance line. It carries a publication name, which can be a long
+   filename with no spaces in it, so it wraps rather than running out of
+   whatever column it is in. */
 .course-citation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
   margin: -0.8rem 0 1.35rem;
   color: var(--p-faint, #86868b);
   font-size: 0.78rem;
 }
-.course-citation span {
-  margin-right: 0.35rem;
+.course-citation > span:first-child {
   color: var(--p-dim, var(--text-dim, #9aa7b8));
   font-weight: 650;
 }
+.course-citation-name { min-width: 0; overflow-wrap: anywhere; }
+/* The negative top margin tucks this under a title or summary. In the
+   approved-course reader the heading belongs to the reader, so there is
+   nothing above it to tuck under. */
+.course-lesson > .course-citation:first-child { margin-top: 0; }
 
 .course-objectives {
   margin: 0 0 1.5rem;
