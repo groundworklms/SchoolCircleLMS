@@ -1,63 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../_auth/AuthProvider';
 import { authenticatedFetch } from '../../lib/auth-fetch';
 import { useApiQuery } from '../_learning/useLearning';
-import { unlockedLessonIds } from './Lessons';
-import { usePrefs } from './prefs';
 import { SourceViewer } from './SourceViewer';
 import { pageOf, provenanceOf } from '../_course/provenance';
 
 /* The one chat. It answers only within a persisted course's server-selected,
    approved source set. The API derives both source selection and prior history
    from authenticated records; clients never supply either as evidence. */
-
-const SUGGEST = {
-  M092721: [
-    'How do I calculate SWR from forward and reflected power?',
-    'What is the difference between a cause and a symptom in fault isolation?',
-    'Why does bonding matter at RF?',
-  ],
-  M09CVS1: [
-    'What are the steps for net entry?',
-    'What is a proword?',
-    'What does PMCS cover on the AN/PRC-117G?',
-  ],
-};
-
-// A student has to have reached a lesson before the tutor will answer from it —
-// study aid for reinforcement, not a shortcut around the lesson (#63). There is
-// no real link between the doctrine corpus and a mock course's lesson content,
-// so this is a best-effort keyword match on lesson titles, for the mock course
-// on screen; real courses and the bare doctrine mode have nothing to gate.
-const STOPWORDS = new Set([
-  'about', 'above', 'after', 'again', 'before', 'their', 'there', 'these', 'those',
-  'which', 'while', 'would', 'could', 'should', 'where', 'when', 'what', 'with', 'from', 'into',
-]);
-function keywordsOf(title) {
-  return title.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 4 && !STOPWORDS.has(w));
-}
-
-function useLockedLessons(course) {
-  const prefs = usePrefs();
-  const mock = course && !course.record && Array.isArray(course.topics) ? course : null;
-  return useMemo(() => {
-    if (!mock) return [];
-    const { ids, flat } = unlockedLessonIds(mock, prefs.progress);
-    const unlockedKeywords = new Set(flat.filter((l) => ids.has(l.id)).flatMap((l) => keywordsOf(l.title)));
-    return flat
-      .filter((l) => !ids.has(l.id))
-      .map((lesson) => ({ lesson, keywords: keywordsOf(lesson.title).filter((k) => !unlockedKeywords.has(k)) }))
-      .filter((x) => x.keywords.length > 0);
-  }, [mock, prefs.progress]);
-}
-
-function findLockedLesson(lockedLessons, question) {
-  const q = ` ${question.toLowerCase().replace(/[^a-z0-9\s]/g, ' ')} `;
-  const hit = lockedLessons.find(({ keywords }) => keywords.some((k) => q.includes(` ${k} `)));
-  return hit?.lesson || null;
-}
 
 /* Anchor returns { n, citation, pub_id, page_printed }; Sourcerer returns
    { label, source, page }. One shape for the renderer.
@@ -162,7 +114,6 @@ function SignedInCourseChat({ course, view }) {
   const bodyRef = useRef(null);
   const inputRef = useRef(null);
   const requestRef = useRef(null);
-  const lockedLessons = useLockedLessons(course);
 
   // Tutor mode needs the course's approved source ids (learner envelopes keep
   // sourceIds; only answer keys are stripped).
@@ -198,18 +149,6 @@ function SignedInCourseChat({ course, view }) {
     setMsgs((m) => [...m, { role: 'user', text: question }]);
     setProviderError(null);
 
-    const locked = findLockedLesson(lockedLessons, question);
-    if (locked) {
-      setMsgs((m) => [...m, {
-        role: 'assistant',
-        abstained: true,
-        locked: true,
-        answer: `That's covered in a lesson you haven't reached yet — ${locked.title} (${locked.id}). Work through it first, then I can help you review it.`,
-        citations: [],
-      }]);
-      return;
-    }
-
     setBusy(true);
     let out;
     try {
@@ -236,7 +175,6 @@ function SignedInCourseChat({ course, view }) {
     setBusy(false);
   };
 
-  const suggestions = tutorMode ? SUGGEST[course.id] || [] : [];
   const title = course ? 'Ask about this course' : 'Grounded course chat';
   const subtitle = tutorMode ? course.name : 'Select a persisted course to ask the tutor';
   const placeholder = tutorMode
@@ -288,13 +226,6 @@ function SignedInCourseChat({ course, view }) {
               </div>
             </div>
 
-            {msgs.length === 0 && suggestions.length > 0 && (
-              <div className="s-chat-suggest">
-                {suggestions.map((s) => (
-                  <button key={s} onClick={() => ask(s)}>{s}</button>
-                ))}
-              </div>
-            )}
 
             {msgs.map((m, i) =>
               m.role === 'user' ? (
@@ -304,8 +235,7 @@ function SignedInCourseChat({ course, view }) {
               ) : (
                 <div className={`s-chat-msg assistant${m.abstained ? ' abstain' : ''}`} key={i}>
                   <div className="s-chat-bubble">
-                    {m.locked && <div className="s-chat-abstain">Not yet unlocked</div>}
-                    {m.abstained && !m.error && !m.locked && <div className="s-chat-abstain">Not in the course sources{m.reason ? ` · ${String(m.reason).replace(/_/g, ' ')}` : ''}</div>}
+                    {m.abstained && !m.error && <div className="s-chat-abstain">Not in the course sources{m.reason ? ` · ${String(m.reason).replace(/_/g, ' ')}` : ''}</div>}
                     {m.error && <div className="s-chat-abstain">Service error</div>}
                     {m.answer}
                   </div>

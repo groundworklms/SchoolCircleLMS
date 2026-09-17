@@ -6,8 +6,7 @@
  * approved sources — `courseForTutor` in lib/learning/core.js resolves the
  * COURSE_DRAFT record, requires a non-empty `sourceIds`, and requires every one
  * of those sources to be an APPROVED SOURCE record with addressable passages.
- * The demo courses in app/prototype/data.js are screen fixtures with no record
- * behind them, so they cannot satisfy that and must not be made to. This script
+ * Screen fixtures without records cannot satisfy that and must not be made to. This script
  * does not touch the gate; it creates a course that legitimately passes it.
  *
  * WHAT IT DOES NOT DO. It does not pre-approve anything a human should approve.
