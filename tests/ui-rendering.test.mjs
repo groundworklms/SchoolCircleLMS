@@ -87,8 +87,10 @@ function loadComponent(relativePath, {
   });
   const module = { exports: {} };
   let stateIndex = 0;
+  let idIndex = 0;
   const reactForModule = {
     ...React,
+    useId() { return `test-panel-${idIndex++}`; },
     useState(initialValue) {
       return stateIndex < stateValues.length
         ? stateValues[stateIndex++]
@@ -203,6 +205,38 @@ function collectReactElements(node, elements = []) {
   return elements;
 }
 
+test('source categories toggle independently and retain counts and approval actions', () => {
+  for (const expanded of [true, false]) {
+    let nextExpanded = expanded;
+    const { SourceShelf } = loadComponent('app/prototype/Library.js', {
+      expose: ['SourceShelf'],
+      stateValues: [[expanded, (update) => { nextExpanded = update(expanded); }]],
+    });
+    const elements = collectReactElements(SourceShelf({
+      title: 'Lesson plans',
+      count: 2,
+      pendingCount: 1,
+      actions: React.createElement('button', { type: 'button' }, 'Approve all pending'),
+      children: React.createElement('div', null, 'Document content'),
+    }));
+    const toggle = elements.find((node) => node.props.className === 'source-shelf-toggle');
+    assert.equal(toggle.props['aria-expanded'], expanded);
+    const panel = elements.find((node) => node.props.id === toggle.props['aria-controls']);
+    assert.equal(panel.props.hidden, !expanded);
+    assert.ok(elements.some((node) => node.type === 'span' && node.props.children === '2 documents · 1 needs approval'));
+    assert.ok(elements.some((node) => node.type === 'button' && node.props.children === 'Approve all pending'));
+    toggle.props.onClick();
+    assert.equal(nextExpanded, !expanded);
+  }
+  const { SourceShelf } = loadComponent('app/prototype/Library.js', { expose: ['SourceShelf'] });
+  const first = collectReactElements(SourceShelf({ title: 'One', count: 1 }));
+  const second = collectReactElements(SourceShelf({ title: 'Two', count: 1 }));
+  const getToggle = (elements) => elements.find((node) => node.props.className === 'source-shelf-toggle');
+  assert.equal(getToggle(first).props['aria-expanded'], true);
+  assert.equal(getToggle(second).props['aria-expanded'], true);
+  assert.notEqual(getToggle(first).props['aria-controls'], getToggle(second).props['aria-controls']);
+});
+
 test('source library groups documents by collection without technical IDs or repeated approval badges', () => {
   const { SourcesView } = loadComponent('app/prototype/Library.js', {
     queryData: { '/sources': [
@@ -216,8 +250,8 @@ test('source library groups documents by collection without technical IDs or rep
   // Named collections come first, the ungrouped shelf last, and each shelf
   // states how many still need a decision.
   assert.match(markup, /aria-label="Lesson plans"[\s\S]*aria-label="Other documents"/);
-  assert.match(markup, /Lesson plans<\/h2><span>2 documents · 1 needs approval/);
-  assert.match(markup, /Other documents<\/h2><span>2 documents · 1 needs approval/);
+  assert.match(markup, /Lesson plans<\/button><\/h2><span>2 documents · 1 needs approval/);
+  assert.match(markup, /Other documents<\/button><\/h2><span>2 documents · 1 needs approval/);
   // Approve-all is offered per collection, and only where something is pending.
   assert.equal((markup.match(/Approve all pending \(1\)/g) || []).length, 2);
   assert.match(markup, /Approved field manual/);
