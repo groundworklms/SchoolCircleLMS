@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation, useApiStream } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
@@ -86,16 +86,34 @@ export function SourcesView() {
 }
 
 function SourceShelf({ title, count, pendingCount = 0, empty, actions, children }) {
+  const [expanded, setExpanded] = useState(true);
+  const contentId = useId();
   const caption = pendingCount > 0
     ? `${count} ${count === 1 ? 'document' : 'documents'} · ${pendingCount} ${pendingCount === 1 ? 'needs' : 'need'} approval`
     : `${count} ${count === 1 ? 'document' : 'documents'}`;
   return (
     <section className="source-shelf" aria-label={title}>
       <div className="source-shelf-heading">
-        <div className="source-shelf-title"><h2>{title}</h2><span>{caption}</span></div>
+        <div className="source-shelf-title">
+          <h2>
+            <button
+              type="button"
+              className="source-shelf-toggle"
+              aria-expanded={expanded}
+              aria-controls={contentId}
+              onClick={() => setExpanded((value) => !value)}
+            >
+              <svg className="source-shelf-chevron" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m9 5 7 7-7 7" /></svg>
+              {title}
+            </button>
+          </h2>
+          <span>{caption}</span>
+        </div>
         {actions}
       </div>
-      {count === 0 ? <div className="source-shelf-empty">{empty}</div> : <div className="source-card-list">{children}</div>}
+      <div id={contentId} hidden={!expanded}>
+        {count === 0 ? <div className="source-shelf-empty">{empty}</div> : <div className="source-card-list">{children}</div>}
+      </div>
     </section>
   );
 }
