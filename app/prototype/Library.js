@@ -926,6 +926,8 @@ export function CourseDraft({ course, onChanged }) {
   const [err, setErr] = useState(null);
   const [notice, setNotice] = useState('');
   const [pendingRevision, setPendingRevision] = useState(null);
+  // The SCORM version a refused export offered to package as a ratified subset.
+  const [partialExport, setPartialExport] = useState(null);
   const { data: envelope, loading, error: draftError, refetch } = useApiQuery(`/courses/${course.id}`);
   const { data: sources } = useApiQuery('/sources');
   const revise = useApiMutation(`/courses/${course.id}/revise`, 'POST');
@@ -977,11 +979,23 @@ export function CourseDraft({ course, onChanged }) {
     }
   };
 
-  const exportScorm = (release) =>
-    downloadAuthenticated(
-      `/api/learning/export?courseId=${course.id}&version=${release}`,
-      `${course.id}-scorm-${release}.zip`,
-    ).catch((error) => setErr(error.message));
+  /* The export refuses a course that is still part-way through item review,
+     and names what is unratified. An instructor who genuinely wants the
+     ratified subset -- to pilot it in the receiving LMS while review continues
+     -- says so on a second, deliberate click; the package they get is labelled
+     a partial release inside its own manifest. The offer only appears after the
+     server has refused, so the safe export stays the one button. */
+  const exportScorm = (release, { partial = false } = {}) => {
+    setErr(null);
+    setPartialExport(null);
+    return downloadAuthenticated(
+      `/api/learning/export?courseId=${course.id}&version=${release}${partial ? '&partial=true' : ''}`,
+      `${course.id}-scorm-${release}${partial ? '-partial' : ''}.zip`,
+    ).catch((error) => {
+      setErr(error.message);
+      if (!partial && /awaiting instructor review/.test(error.message || '')) setPartialExport(release);
+    });
+  };
 
   const sourceCount = draft?.sourceIds?.length || course.sourceIds?.length || 0;
   const sections = draft?.sections || [];
@@ -1049,6 +1063,11 @@ export function CourseDraft({ course, onChanged }) {
           <>
             <button type="button" className="p-btn ghost" onClick={() => exportScorm('1.2')}>Export SCORM 1.2</button>
             <button type="button" className="p-btn ghost" onClick={() => exportScorm('2004')}>Export SCORM 2004</button>
+            {partialExport && (
+              <button type="button" className="p-btn ghost" onClick={() => exportScorm(partialExport, { partial: true })}>
+                Export the ratified subset as a partial release
+              </button>
+            )}
           </>
         )}
       </div>

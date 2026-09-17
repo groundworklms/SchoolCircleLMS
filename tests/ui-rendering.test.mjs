@@ -134,6 +134,15 @@ function loadComponent(relativePath, {
         return { authFetch: async () => { throw new Error('Static rendering must not make authenticated requests'); } };
       }
       if (request.endsWith('.css')) return {};
+      // A shared, framework-free helper that lives in lib/ because a server or
+      // export path needs it too -- the provenance line, which the SCORM export
+      // prints from the same module these components do. Loaded for real, not
+      // stubbed: what it returns is what these tests are asserting about.
+      // Resolved against the workspace, since the sandbox's own `require` would
+      // resolve '../../lib/...' relative to this test file instead.
+      if (request.startsWith('../../lib/')) {
+        return require(path.join(workspace, request.replace('../../', '')));
+      }
       if (request.startsWith('../_course/') || request.startsWith('../../_course/')) {
         const requestedPath = request.endsWith('.js') ? request : `${request}.js`;
         const sharedPath = path.join(path.dirname(relativePath), requestedPath);

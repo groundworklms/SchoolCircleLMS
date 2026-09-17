@@ -179,25 +179,54 @@ it returns `status: "insufficient_evidence"` and `profile: null`.
 
 ## SCORM export — Cartridge
 
-### `GET /api/learning/export?courseId=course_123[&version=1.2|2004]` — instructor
+### `GET /api/learning/export?courseId=course_123[&releaseId=…][&version=1.2|2004][&partial=true]` — instructor
 
-Loads the approved course projection using `store.getApprovedCourse` scoped to the instructor owner,
-converts it to Cartridge's plain course shape, builds a package, and **validates the ZIP before sending
-bytes**. This endpoint is instructor-only because Cartridge embeds answer keys in the SCORM
-courseware. The server rejects pending/rejected items (`COURSE_NOT_APPROVED`) and never accepts a
-course object from the browser. Successful responses are `application/zip` attachments with
-`X-SCORM-Version`.
+`store.getApprovedCourse`, scoped to the instructor owner, is the **authorisation and release
+selection** read: it proves the caller owns an `APPROVED` course record and that any `releaseId` pin
+names one of that record's own releases. It is not the content read. The content comes from
+`store.listReleaseSections` — the materialised delivery rows, the same
+`listDeliveryCourseItems` the item-review screen and the learner projection use — so "what has been
+ratified" is decided in exactly one place. The prose half is built by `projectLearnerLessons`
+(lib/learning/delivery.js), the same function that decides which lesson text a ratification decision
+releases.
 
-The store projection may be:
+This matters because `getApprovedCourse` falls back to the approved authoring **draft** payload for a
+release with no typed rows, and that payload carries no item status at all. Packaging it exported
+unratified prose and questions into another LMS. A release with no delivery rows now exports nothing
+(`COURSE_NOT_RATIFIED`), which is the correct answer: nothing in it has been ratified.
 
-* Prisma-like `{ title, sections: [{ items: [{ kind, status: "APPROVED", ... }] }] }`; every item
-  must be explicitly `APPROVED` and lesson/question text must be non-empty; or
-* approved Coursewright `{ title, approved: true, sections: [{ lesson, pre, post, cite }] }`; every
-  section must contain non-empty `lesson`, `pre`, and `post` question content; or
-* a pre-shaped `{ title, approved: true, lessons, quiz }` projection produced by persistence code.
+Ratification rules:
 
-An approved title with a Coursewright refusal or empty lesson/test projection is rejected with
-`COURSE_CONTENT_MISSING`; it is never converted to a blank Cartridge lesson.
+* `PENDING` blocks the export. Without `partial=true` a course with any item still awaiting review is
+  refused `409 COURSE_NOT_RATIFIED`, and the message names the counts by kind.
+* `REJECTED` does not block. A rejected item is a decision an instructor has already made; the course
+  simply does not contain it, and nothing is said about it in the package.
+* `partial=true` is the instructor's explicit choice to package the ratified subset while review
+  continues. Nothing ratified at all is still refused — an empty package under a full course title is
+  the most misleading artifact of the set.
+
+A partial package is **labelled inside itself**: the manifest `<organization><title>` (what a
+receiving LMS lists the course under, and the one string nobody re-opens the package to check) gains
+`— PARTIAL RELEASE`, the download filename follows, and the courseware's overview card states the
+ratified and awaiting counts. The overview also discloses two other reasons a package can be short of
+the course: Cartridge keeps only the first twelve questions, and item kinds the courseware has no
+place for (a practical `SCENARIO`) are not carried.
+
+Citations in a package name the **publication** — `provenanceOf` from lib/provenance.js, the helper
+every screen uses — never the stored locator, which is a source record id. The exact locator travels
+beside the lesson in the package payload as `locator` so an exported package can still be traced back
+to the passage it was ratified against; it is not displayed.
+
+The ZIP is **validated before bytes are sent**. This endpoint is instructor-only because Cartridge
+embeds answer keys in the SCORM courseware, and it never accepts a course object from the browser.
+Successful responses are `application/zip` attachments with `X-SCORM-Version`. `store.recordExport`
+records the version, the validation result, and the ratification census, so a partial package that
+left the system is on the record as one.
+
+`approvedCourseForCartridge` remains in lib/arsenal-evidence.js for the pre-shaped
+`{ title, approved: true, lessons, quiz }` and Coursewright `{ sections: [{ lesson, pre, post, cite }] }`
+projections, and still rejects a refusal-only or empty lesson/test projection with
+`COURSE_CONTENT_MISSING`. It can only judge a whole projection, so it is no longer the route's path.
 
 ## Doctrinal fidelity — Understudy
 
