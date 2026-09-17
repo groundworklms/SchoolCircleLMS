@@ -1716,7 +1716,11 @@ test('a section the server dropped leaves the progress list and joins what is no
   assert.equal(view.failure, null);
 
   const markup = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
-  assert.match(markup, /Not covered by this course/);
+  // The list is folded behind a count now -- twelve rows each ending in the
+  // same clause read as twelve failures rather than as the course declining
+  // to overclaim. The count is the headline; the reasons still group the
+  // rows, because which of the three it is decides what to do about it.
+  assert.match(markup, /topics? in these sources (?:is|are) not in this course/);
   assert.match(markup, /counterintelligence discussion is incomplete/);
   assert.match(markup, /no approved passage covers this objective/);
   // Written, so the instructor is not told a saved course failed.
@@ -1743,7 +1747,11 @@ test('a pending draft still says what it does not cover, after the modal is gone
     },
   });
   const markup = renderToStaticMarkup(React.createElement(CourseDraft, { course: { id: 'course-1' } }));
-  assert.match(markup, /Not covered by this course/);
+  // The list is folded behind a count now -- twelve rows each ending in the
+  // same clause read as twelve failures rather than as the course declining
+  // to overclaim. The count is the headline; the reasons still group the
+  // rows, because which of the three it is decides what to do about it.
+  assert.match(markup, /topics? in these sources (?:is|are) not in this course/);
   assert.match(markup, /counterintelligence supports the MAGTF commander/);
   assert.match(markup, /its counterintelligence discussion is incomplete/);
 });
@@ -1779,12 +1787,16 @@ test('a topic the outline scoped out reads differently from one the sources coul
   assert.equal(view.thinCoverage, true);
 
   const markup = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
-  assert.match(markup, /Not covered by this course/);
+  // The list is folded behind a count now -- twelve rows each ending in the
+  // same clause read as twelve failures rather than as the course declining
+  // to overclaim. The count is the headline; the reasons still group the
+  // rows, because which of the three it is decides what to do about it.
+  assert.match(markup, /topics? in these sources (?:is|are) not in this course/);
   assert.match(markup, /outside this course&#x27;s scope/);
   assert.match(markup, /no approved passage covers this objective/);
   assert.match(markup, /counterintelligence discussion is incomplete/);
   // The heading must not blame the sources for a topic they carry.
-  assert.doesNotMatch(markup, /Not covered by the selected sources/);
+  assert.doesNotMatch(markup, /not in these sources/, 'the sources are not blamed for a topic they carry');
 });
 
 test('the narrow-it prompt names the objectives box, and only when coverage is thin', () => {
@@ -1821,7 +1833,7 @@ test('the narrow-it prompt names the objectives box, and only when coverage is t
     { phase: 'coursewright', step: 'skipped', section: 'Explain collection management', reason: 'no approved passage covers this objective' },
   ];
   const skippedMarkup = renderToStaticMarkup(React.createElement(GenerationProgress, { events: skipped }));
-  assert.match(skippedMarkup, /Not covered by this course/);
+  assert.match(skippedMarkup, /topics? in these sources (?:is|are) not in this course/);
   assert.doesNotMatch(skippedMarkup, /covers part of the selected sources/);
 });
 
@@ -2264,4 +2276,55 @@ test('a healthy engine does not nag about addresses it does not need', () => {
     },
   });
   assert.doesNotMatch(markup, /takes a new hostname/);
+});
+
+test('a long not-covered list folds to a count and groups its reasons', () => {
+  const { GenerationProgress, skippedByReason } = loadComponent('app/prototype/GenerationProgress.js');
+  const scope = "in the sources, but outside this course's scope";
+  const ungrounded = 'no approved passage covers this objective';
+  const notCovered = [
+    { objective: 'Marine Corps learning philosophy', reason: scope },
+    { objective: 'National interests and strategy theory', reason: scope },
+    { objective: 'Space operations and spacepower disciplines', reason: scope },
+    { objective: 'Explain collection management', reason: ungrounded },
+  ];
+
+  // Grouping is what turns a clause repeated on every row into a heading.
+  // Round-tripped like the other tests here: the component is loaded in its
+  // own realm, so its objects are not reference-equal to this file's.
+  const grouped = (value) => JSON.parse(JSON.stringify(skippedByReason(value)));
+  assert.deepEqual(grouped(notCovered), [
+    {
+      reason: scope,
+      objectives: [
+        'Marine Corps learning philosophy',
+        'National interests and strategy theory',
+        'Space operations and spacepower disciplines',
+      ],
+    },
+    { reason: ungrounded, objectives: ['Explain collection management'] },
+  ]);
+  assert.deepEqual(grouped([]), []);
+  assert.deepEqual(grouped(null), []);
+  // A topic reported twice by two stages is one topic.
+  assert.deepEqual(grouped([{ objective: 'A', reason: scope }, { objective: 'A', reason: scope }]), [
+    { reason: scope, objectives: ['A'] },
+  ]);
+
+  const markup = renderToStaticMarkup(
+    React.createElement(GenerationProgress, {
+      events: [
+        { phase: 'sources', documents: 1, characters: 9000 },
+        { phase: 'outline', status: 'done', objectives: ['Apply the principles of joint operations'], notCovered },
+      ],
+    }),
+  );
+  // The count leads, and the detail is behind a disclosure rather than in the
+  // reader's way.
+  assert.match(markup, /4 topics in these sources are not in this course/);
+  assert.match(markup, /<details/);
+  // Each reason appears once, as a heading, not once per row.
+  assert.equal(markup.match(/outside this course&#x27;s scope/g).length, 1);
+  // ...and every topic is still there for whoever opens it.
+  for (const entry of notCovered) assert.ok(markup.includes(entry.objective), entry.objective);
 });

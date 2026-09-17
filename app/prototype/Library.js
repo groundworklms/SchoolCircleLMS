@@ -7,7 +7,7 @@ import { pageOf, publicationName, withoutPage } from '../_course/provenance';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
 import { CourseReadiness } from './CourseReadiness';
 import { CourseItemReview } from './ItemReview';
-import { GenerationProgress, ThinCoverageNotice } from './GenerationProgress';
+import { GenerationProgress, ThinCoverageNotice, skippedByReason } from './GenerationProgress';
 import { CoursePreview } from './LearnerFeatures';
 import { RowActions } from './RowActions';
 import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
@@ -1365,16 +1365,30 @@ export function CourseDraft({ course, onChanged }) {
       {notCovered.length > 0 && (
         <div className="p-panel" style={{ marginBottom: '1rem' }}>
           {/* A gap in what the course teaches is a fact the approver needs at
-              full size, not at footnote size in the faint grey. */}
-          <p className="p-sectionlab">Not covered by this course</p>
-          <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', fontSize: '0.9em', lineHeight: 1.5 }}>
-            {notCovered.map((entry) => (
-              <li key={entry.objective} style={{ marginBottom: '0.25rem' }}>
-                {entry.objective}
-                {entry.reason ? <span style={{ color: 'var(--p-dim)' }}> &mdash; {entry.reason}</span> : null}
-              </li>
+              full size, not at footnote size in the faint grey -- but the
+              COUNT is that fact, and the list is the detail behind it. A
+              source with two dozen topics produced two dozen rows each ending
+              in the same clause, which reads as two dozen failures when it is
+              the course declining to claim coverage it does not have. Folded,
+              grouped by reason, and phrased the same way the generation panel
+              phrases it, because it is the same fact at a later moment. */}
+          <details>
+            <summary className="p-sectionlab" style={{ cursor: 'pointer', listStyle: 'revert' }}>
+              {notCovered.length === 1
+                ? '1 topic in these sources is not in this course'
+                : `${notCovered.length} topics in these sources are not in this course`}
+            </summary>
+            {skippedByReason(notCovered).map((group) => (
+              <div key={group.reason} style={{ marginTop: '0.5rem' }}>
+                <p style={{ margin: 0, fontSize: '0.82em', color: 'var(--p-faint)' }}>{group.reason}</p>
+                <ul style={{ margin: '0.2rem 0 0', paddingLeft: '1.1rem', fontSize: '0.9em', lineHeight: 1.5 }}>
+                  {group.objectives.map((objective) => (
+                    <li key={objective} style={{ marginBottom: '0.25rem' }}>{objective}</li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </details>
           {draft?.thinCoverage === true && <ThinCoverageNotice />}
         </div>
       )}
