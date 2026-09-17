@@ -12,7 +12,7 @@ import { CoursePreview } from './LearnerFeatures';
 import { RowActions } from './RowActions';
 import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
 import { collectionFromFilename, isPdfFile, isZipFile, pdfEntriesFromZip, zipEntryForm } from './source-upload';
-import { groupSourcesByCollection } from './source-groups';
+import { groupSourcesByCollection, sourceMatchesQuery } from './source-groups';
 import { CoursePlanner, PlanCourseModal, PlansList, usePlans } from './CoursePlanner';
 import './source-library.css';
 
@@ -29,11 +29,31 @@ function errText(e, fallback) {
 
 export { groupSourcesByCollection } from './source-groups';
 
+/* A collection larger than this opens collapsed: the Basic Electronics zip is a
+   hundred lesson PDFs and a shelf that renders them all buries every other
+   collection under a single wall of cards. Small collections stay open -- there
+   is nothing to hide behind a disclosure. */
+const SHELF_COLLAPSE_OVER = 12;
+
 export function SourcesView() {
   const { data: sources, loading, error, refetch } = useApiQuery('/sources');
   const [previewSource, setPreviewSource] = useState(null);
+  const [query, setQuery] = useState('');
   const groups = groupSourcesByCollection(sources);
   const pendingState = loading || (sources == null && !error);
+
+  // Filter each collection by the search box, then drop the ones a search
+  // emptied. The counts and pending tallies shown on a shelf are the filtered
+  // view's, so "12 documents" always matches what is under the heading.
+  const needle = query.trim();
+  const visibleGroups = groups
+    .map((group) => {
+      const matched = group.sources.filter((src) => sourceMatchesQuery(src, needle));
+      return { ...group, sources: matched, pending: matched.filter((s) => s.status !== 'APPROVED') };
+    })
+    .filter((group) => group.sources.length > 0);
+  const totalCount = groups.reduce((sum, group) => sum + group.sources.length, 0);
+  const searching = needle.length > 0;
 
   return (
     <>
@@ -44,17 +64,46 @@ export function SourcesView() {
         <IngestSourceModal onIngested={refetch} />
       </div>
 
+      {/* The search box only earns its place once there are enough documents to
+          scroll past; below that the shelves are the whole list. */}
+      {!pendingState && !error && totalCount > SHELF_COLLAPSE_OVER && (
+        <div className="source-search">
+          <input
+            type="search"
+            className="p-input source-search-input"
+            aria-label="Search source documents by title"
+            placeholder={`Search ${totalCount} documents by title…`}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+      )}
+
       {pendingState && <SourceShelfSkeleton />}
       {error && <div className="s-shell-error source-library-error" role="alert"><p>{errText(error, 'Could not load sources.')}</p><button className="p-btn ghost" onClick={refetch}>Try again</button></div>}
       {!pendingState && !error && (
         <div className="source-library">
           {groups.length === 0 && <SourceShelf title="Source documents" count={0} empty="No documents yet. Add a PDF, a zip of PDFs, or pasted text." />}
-          {groups.map((group) => (
+          {groups.length > 0 && visibleGroups.length === 0 && (
+            <p className="source-search-empty" role="status">No documents match “{needle}”.</p>
+          )}
+          {visibleGroups.map((group) => (
             <SourceShelf
               key={group.name}
               title={group.name}
               count={group.sources.length}
               pendingCount={group.pending.length}
+              // Open when small, or whenever a search is narrowing the list --
+              // a match hidden inside a collapsed shelf reads as no match.
+              defaultOpen={group.sources.length <= SHELF_COLLAPSE_OVER}
+              forceOpen={searching}
+              // A whole collection the instructor does not own is preview-only:
+              // the server refuses rename and delete on records that are not
+              // theirs, so say so once on the heading rather than leaving every
+              // card looking like a removal that silently does nothing.
+              note={group.sources.every((s) => !s.canRemove)
+                ? 'Shared with you — preview only. The account that added these manages them.'
+                : null}
               actions={group.pending.length > 0 && (
                 <ApproveAllButton collection={group.name} pending={group.pending} onApproved={refetch} />
               )}
@@ -69,18 +118,30 @@ export function SourcesView() {
   );
 }
 
-function SourceShelf({ title, count, pendingCount = 0, empty, actions, children }) {
+function SourceShelf({ title, count, pendingCount = 0, empty, actions, note = null, children, defaultOpen = true, forceOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  // forceOpen (an active search) wins over the manual state so a filtered shelf
+  // can never hide a hit behind its own disclosure.
+  const isOpen = forceOpen || open;
   const caption = pendingCount > 0
     ? `${count} ${count === 1 ? 'document' : 'documents'} · ${pendingCount} ${pendingCount === 1 ? 'needs' : 'need'} approval`
     : `${count} ${count === 1 ? 'document' : 'documents'}`;
   return (
-    <section className="source-shelf" aria-label={title}>
-      <div className="source-shelf-heading">
-        <div className="source-shelf-title"><h2>{title}</h2><span>{caption}</span></div>
-        {actions}
-      </div>
-      {count === 0 ? <div className="source-shelf-empty">{empty}</div> : <div className="source-card-list">{children}</div>}
-    </section>
+    <details
+      className="source-shelf"
+      aria-label={title}
+      open={isOpen}
+      onToggle={(e) => { if (!forceOpen) setOpen(e.currentTarget.open); }}
+    >
+      <summary className="source-shelf-heading">
+        <span className="source-shelf-title"><h2>{title}</h2><span>{caption}</span></span>
+      </summary>
+      {actions && <div className="source-shelf-actions">{actions}</div>}
+      {note && <p className="source-shelf-note">{note}</p>}
+      {count === 0
+        ? <div className="source-shelf-empty">{empty}</div>
+        : (isOpen ? <div className="source-card-list">{children}</div> : null)}
+    </details>
   );
 }
 
@@ -136,7 +197,16 @@ function ApproveAllButton({ collection, pending, onApproved }) {
 }
 
 function SourceShelfSkeleton() {
-  return <div className="source-library" aria-label="Loading source library"><section className="source-shelf"><div className="source-skeleton title" /><div className="source-skeleton card" /><div className="source-skeleton card" /></section><section className="source-shelf"><div className="source-skeleton title" /><div className="source-skeleton card" /></section></div>;
+  // Named "loading", not left to read as an empty library. The 1.6s /sources
+  // call used to leave the page as a bare header an instructor could easily
+  // take for "you have no sources"; this says which it is.
+  return (
+    <div className="source-library" aria-label="Loading source library">
+      <p className="source-loading-caption" role="status">Loading your sources…</p>
+      <section className="source-shelf"><div className="source-skeleton title" /><div className="source-skeleton card" /><div className="source-skeleton card" /></section>
+      <section className="source-shelf"><div className="source-skeleton title" /><div className="source-skeleton card" /></section>
+    </div>
+  );
 }
 
 function SourceCard({ source, onApproved }) {
@@ -407,12 +477,20 @@ function IngestSourceModal({ onIngested, variant = 'primary' }) {
 /* Every course the account can see: own drafts and approved courses. Opening
    one goes to its builder view in the shell (onOpen). */
 export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
+  // The Courses page shows no source list of its own -- only the two creation
+  // modals read sources, and only once opened. Fetching on page load spent
+  // ~1.5s on a request nothing on screen uses, so defer it until the instructor
+  // reaches for either modal (hover, focus or click of the button row below).
+  // useReducer, never useState, for the same reason openPlanId below is one: the
+  // test harness feeds useState positionally and a slot here would shift every
+  // slot the modals expect.
+  const [sourcesWanted, wantSources] = useReducer(() => true, false);
   const {
     data: sources,
     loading: sourcesLoading,
     error: sourcesError,
     refetch: refetchSources,
-  } = useApiQuery('/sources');
+  } = useApiQuery('/sources', { enabled: sourcesWanted });
   // A whole-course plan opens in place of the library; the shell's course
   // navigation is unchanged, and the plan hands off to onOpen for its draft.
   const plans = usePlans();
@@ -440,7 +518,10 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
         <div>
           <h1>Courses</h1>
         </div>
-        <div className="p-btnrow">
+        {/* Reaching for either creation control -- hovering, tabbing to it, or
+            clicking it -- is what pulls the source list, so the deferred fetch
+            is in flight before the modal it feeds has finished opening. */}
+        <div className="p-btnrow" onPointerEnter={wantSources} onFocusCapture={wantSources} onClickCapture={wantSources}>
           <PlanCourseModal
             sources={Array.isArray(sources) ? sources : []}
             onCreated={(plan) => { plans.refetch(); setOpenPlanId(plan.id); }}
@@ -455,11 +536,17 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
         </div>
       </div>
 
+      {/* The two controls do different jobs and sat unlabelled side by side. */}
+      <p className="p-src s-courses-hint">
+        <strong>Plan a full course</strong> builds a complete, multi-section course from many sources — outline, lessons and per-lesson grounding.
+        {' '}<strong>Create course</strong> generates a single draft from the sources you pick.
+      </p>
+
       <PlansList plans={Array.isArray(plans.data) ? plans.data : []} onOpen={setOpenPlanId} onChanged={plans.refetch} />
 
       {loading && <p>Loading courses…</p>}
       {error && <p className="s-shell-error" role="alert">{errText(error, 'Could not load courses.')}</p>}
-      {sourcesPending && <p>Loading approved sources…</p>}
+      {sourcesWanted && sourcesPending && <p>Loading approved sources…</p>}
       {sourcesError && (
         <div className="s-shell-error" role="alert">
           <p style={{ margin: '0 0 0.5rem' }}>

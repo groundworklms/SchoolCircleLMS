@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
 import { useApiMutation, useApiQuery } from '../_learning/useLearning';
 import { RowActions } from './RowActions';
+import { cleanSourceLabel } from './source-groups';
 
 function message(error, fallback) {
   return error?.error || error?.message || fallback;
@@ -33,7 +34,7 @@ export function SourceLibraryCard({ source, onPreview, onRefresh, approveLabel =
   return (
     <article className="source-library-card">
       <div className="source-card-copy">
-        <h3>{source.title || 'Untitled source'}</h3>
+        <h3>{cleanSourceLabel(source.title)}</h3>
         <p>{source.pages ? `${source.pages} pages` : source.chunks?.length ? `${source.chunks.length} passages` : 'Source document'}</p>
       </div>
       <div className="source-card-actions">
