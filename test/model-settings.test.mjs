@@ -63,6 +63,13 @@ mock.module('../lib/auth.js', {
       return { id: 'instructor-1', role: 'INSTRUCTOR' };
     },
     hasRole: () => true,
+    // Mirrors the real export: drops instructor capability, keeps the id.
+    // The mock list is explicit, so an export lib/auth.js gains must be added
+    // here or every importer in this suite fails to link.
+    learnerScopedIdentity: (identity) =>
+      identity && identity.role === 'INSTRUCTOR'
+        ? { ...identity, role: 'LEARNER', learnerScoped: true }
+        : identity,
     authReadiness: () => ({ ready: true, provider: 'firebase' }),
   },
 });
