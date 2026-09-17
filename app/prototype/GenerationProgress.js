@@ -162,6 +162,22 @@ export function generationView(events) {
   return view;
 }
 
+/* Skipped topics by the reason they were skipped, in first-seen order.
+   Grouping moves the reason out of every row and into one heading, which is
+   what makes a list of twelve readable -- and it turns a repeated clause into
+   the thing it actually is, a category. */
+export function skippedByReason(skipped) {
+  const groups = new Map();
+  for (const entry of Array.isArray(skipped) ? skipped : []) {
+    const objective = String(entry?.objective || '').trim();
+    if (!objective) continue;
+    const reason = String(entry?.reason || '').trim() || 'not covered';
+    if (!groups.has(reason)) groups.set(reason, []);
+    if (!groups.get(reason).includes(objective)) groups.get(reason).push(objective);
+  }
+  return [...groups.entries()].map(([reason, objectives]) => ({ reason, objectives }));
+}
+
 function Chip({ label, state, reason }) {
   const colour = state === undefined
     ? 'var(--p-faint)'
@@ -343,22 +359,51 @@ export function GenerationProgress({ events, interrupted = false }) {
               did not take. Naming the course rather than the sources is the
               only heading true of all three.
 
-              Set at reading size and weight: a gap in what a course teaches is
-              the one thing on this panel an instructor has to act on, and it
-              was in the same faint 0.78em as every incidental note. */}
-          <p style={{ margin: 0, fontSize: '0.9em', fontWeight: 600 }}>Not covered by this course. The rest of it was saved:</p>
-          <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.1rem', fontSize: '0.9em', lineHeight: 1.5, color: 'var(--p-dim)' }}>
-            {view.skipped.map((entry) => (
-              <li key={entry.objective}>
-                {entry.objective}
-                {/* The reason is the actionable half: it separates "pick a
-                    source that covers this" from "the source covers it, the
-                    generator would not teach it from that page" from "the
-                    source covers it, this course was not scoped to it". */}
-                {entry.reason ? <> &mdash; {entry.reason}</> : null}
-              </li>
+              Folded shut. Twelve topics, each ending in the same clause, is a
+              wall of text that reads as twelve failures -- and it is the
+              opposite: the course declining to claim coverage it does not
+              have. The count is the finding and belongs in one line; the list
+              is the detail and belongs behind a disclosure, open for whoever
+              wants to retarget the course and out of the way for everyone
+              else.
+
+              Grouped by reason, because the three are different actions. "The
+              sources do not cover this" means pick another source. "Outside
+              this course's scope" means the sources have it and this run did
+              not take it, which is what the objectives box is for. */}
+          <details>
+            <summary
+              style={{
+                margin: 0,
+                fontSize: '0.9em',
+                fontWeight: 600,
+                cursor: 'pointer',
+                listStyle: 'revert',
+              }}
+            >
+              {view.skipped.length === 1
+                ? '1 topic in these sources is not in this course'
+                : `${view.skipped.length} topics in these sources are not in this course`}
+            </summary>
+            {skippedByReason(view.skipped).map((group) => (
+              <div key={group.reason} style={{ marginTop: '0.5rem' }}>
+                <p style={{ margin: 0, fontSize: '0.82em', color: 'var(--p-faint)' }}>{group.reason}</p>
+                <ul
+                  style={{
+                    margin: '0.2rem 0 0',
+                    paddingLeft: '1.1rem',
+                    fontSize: '0.9em',
+                    lineHeight: 1.5,
+                    color: 'var(--p-dim)',
+                  }}
+                >
+                  {group.objectives.map((objective) => (
+                    <li key={objective}>{objective}</li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </details>
         </div>
       )}
 
