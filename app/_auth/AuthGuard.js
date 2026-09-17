@@ -44,7 +44,7 @@ export default function AuthGuard({ children }) {
       router.replace('/login?denied=1');
     } else if (!user) {
       // Read the browser location only when the redirect runs.  This keeps
-      // pathname + query (including a published release/lesson deep link)
+      // pathname + query (including a generated course lesson deep link)
       // without introducing useSearchParams and its CSR bailout.
       const returnTo = currentPathAndQuery(window.location);
       router.replace(loginHref(returnTo));

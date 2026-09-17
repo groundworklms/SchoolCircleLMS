@@ -205,11 +205,6 @@ export function parse(pathname) {
   if (segments[0] === 'instructor') {
     return parseInstructor(segments) || notFound('instructor');
   }
-  if (segments[0] === 'published') {
-    return segments.length === 2 && segments[1]
-      ? { role: 'student', area: 'published', courseId: segments[1], view: null }
-      : notFound();
-  }
   if (segments[0] === 'course') {
     return parseStudentCourse(segments) || notFound();
   }
@@ -240,12 +235,6 @@ function studentHref(loc) {
     return suffix === null ? NOT_FOUND_HREF : `${BASE}/settings${suffix}`;
   }
   if (STUDENT_AREAS.has(loc.area)) return `${BASE}/${loc.area}`;
-  if (loc.area === 'published') {
-    const id = validCourseId(loc.courseId);
-    return id && (loc.view === null || loc.view === undefined)
-      ? `${BASE}/published/${id}`
-      : NOT_FOUND_HREF;
-  }
   if (loc.area !== 'course') return NOT_FOUND_HREF;
 
   const courseId = validCourseId(loc.courseId);
@@ -323,10 +312,6 @@ export function settingsHref(role, tab = DEFAULT_SETTINGS_TAB, courseId = null) 
 
 export { SETTINGS_TABS, DEFAULT_SETTINGS_TAB };
 
-export function publishedCourseHref(id) {
-  return href({ role: 'student', area: 'published', courseId: id, view: null });
-}
-
 export function canAccessRole(profile, role, ready = true) {
   if (!ready) return true;
   if (role === 'instructor') return INSTRUCTOR_ROLES.has(profile?.role);
@@ -334,21 +319,17 @@ export function canAccessRole(profile, role, ready = true) {
   return false;
 }
 
-export function isInstructorStudentPreview(location) {
-  return location?.role === 'student' && ['published', 'courses'].includes(location.area);
-}
-
 /**
- * Auth gate for a parsed location.  Instructors may read the published
- * student course and the student library for preview only; every other
- * student route still follows the saved role.
+ * Auth gate for a parsed location.  Instructors may read the student library
+ * for preview only; every other student route still follows
+ * the saved role.
  */
 export function canAccessLocation(profile, location, ready = true) {
   if (!ready) return true;
   if (location?.role === 'instructor') return canAccessRole(profile, 'instructor', ready);
   if (location?.role === 'student') {
     return canAccessRole(profile, 'student', ready)
-      || (profile?.role === 'INSTRUCTOR' && isInstructorStudentPreview(location));
+      || (profile?.role === 'INSTRUCTOR' && location.area === 'courses');
   }
   return false;
 }
