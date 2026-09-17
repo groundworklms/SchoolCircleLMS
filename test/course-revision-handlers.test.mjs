@@ -9,6 +9,7 @@ const realArsenal = await import('../lib/arsenal-core.js');
 const records = new Map();
 const typedReleases = new Map();
 const releaseEvidence = new Map();
+const approvalSupport = [];
 const modelCalls = [];
 let nextRecordId = 1;
 let modelGate = null;
@@ -25,6 +26,7 @@ function resetStore() {
   records.clear();
   typedReleases.clear();
   releaseEvidence.clear();
+  approvalSupport.length = 0;
   modelCalls.length = 0;
   nextRecordId = 1;
   modelGate = null;
@@ -184,9 +186,14 @@ async function approveCourseAtomically({
   candidatePayload,
   sourceId,
   sections,
+  support = null,
   revisionId = null,
   revisionHistory = [],
 }) {
+  // The entailment measurement the caller took before opening the transaction.
+  // Captured so a test can assert what a course approval actually measured --
+  // and, with no doctrine service configured here, that it measured nothing.
+  approvalSupport.push(support);
   const current = records.get(courseId);
   if (
     !current ||
@@ -660,4 +667,38 @@ test('approval rejects an exact-version mismatch, then atomically creates a new 
     (await dbMock.getLearningRecord(course.id)).payload.pendingRevisionId,
     undefined,
   );
+});
+
+/* An approval must never fail, stall, or invent a number because the entailment
+ * verifier is unreachable -- it must simply produce unverified items. No
+ * doctrine service is configured here, which is exactly that path: the
+ * measurement step runs, measures nothing, and the release materialises with
+ * every Item.support null. */
+test('approval succeeds with no verifier, and measures nothing rather than defaulting', async () => {
+  resetStore();
+  const savedUrl = process.env.DOCTRINE_BASE_URL;
+  delete process.env.DOCTRINE_BASE_URL;
+  try {
+    const course = seedRevisionFixture();
+    const revised = await reviseCourse(OWNER, {
+      params: { id: course.id },
+      body: revisionRequest(course.version),
+    });
+    const approved = await approveCourse(OWNER, {
+      params: { id: course.id },
+      body: { version: revised.json.version },
+    });
+
+    assert.equal(approved.json.status, 'APPROVED');
+    assert.ok(typedReleases.has(approved.json.deliveryCourseId));
+    assert.equal(approvalSupport.length, 1);
+    const support = approvalSupport[0];
+    assert.ok(support instanceof Map, 'the transaction is handed measurements, keyed by item id');
+    // Empty, not populated with zeroes, floors or estimates. There is no
+    // default value anywhere in this path.
+    assert.equal(support.size, 0);
+  } finally {
+    if (savedUrl === undefined) delete process.env.DOCTRINE_BASE_URL;
+    else process.env.DOCTRINE_BASE_URL = savedUrl;
+  }
 });
