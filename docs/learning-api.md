@@ -293,10 +293,17 @@ returns the plan. The client repeats the call until `status` moves on:
 
 - `survey` reads the next three unsurveyed sources -- each sampled evenly
   within a character budget -- and catalogues them in one model call per batch.
-- `outline` is one model call over the catalogue: annexes and lessons, one
-  objective each (a `poi`-kind source's own lesson list is followed), capped
-  at 12 annexes / 60 lessons; `{ "again": true }` re-outlines before any
-  lesson is built.
+- `outline`: when the sources are named by lesson code -- "BE0603 Cabling
+  Performance Exam LP", "BE0405_DCtoDCConverters_SHO": course prefix, annex,
+  lesson, name, role -- the annexes and lessons come from the codes
+  deterministically (`outlinedFrom: "lesson-codes"`), each lesson's own plan
+  and handout are its suggested sources, exams and critiques are kept in place
+  as `kind: "exam"` / `status: "skipped"` and never generated, and the model
+  is asked only for one objective per lesson in batches of twelve (a lesson it
+  declines gets "Explain <title>." and `objectiveFallback: true`). An uncoded
+  corpus gets one model call over the catalogue instead, capped at 12 annexes
+  / 60 lessons. `{ "again": true }` re-outlines at any later stage; a draft
+  already built is left in Courses and the next build starts a new one.
 - `map` is retrieval, no model: the passages that cover each objective are
   ranked across every selected source and the lesson's `sourceIds` are the
   sources they belong to. A lesson nothing covers is `ungrounded` and not built.
