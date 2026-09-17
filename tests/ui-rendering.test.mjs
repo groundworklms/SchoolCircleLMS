@@ -276,8 +276,10 @@ test('learner progress renders a non-empty mastery record', () => {
 
 /* The learner's reader. A section's `cite` is "<source record id> p.N", and the
    record id is a cuid: the authenticated page-opening key, never a citation a
-   person reads. These fixtures use the real shapes -- the course envelope's
-   sourceIds and the light approved-source list that names the publication.
+   person reads. These fixtures use the real shape -- the course envelope's
+   sourceIds alongside `course.sourcePublications`, the id -> label map getCourse
+   resolves server-side (lib/learning/core.js `coursePublicationLabels`) so the
+   reader never has to ask for anything beyond the course itself to name one.
 
    The checks come from a SECOND response, /courses/:id/attempts, which lists
    only the items an instructor has ratified. The draft below deliberately
@@ -298,6 +300,9 @@ function learnerReaderFixture(overrides = {}) {
       version: 1,
       course: {
         sourceIds: ['cmu4xdph30016s6014fn9n9y8'],
+        sourcePublications: {
+          cmu4xdph30016s6014fn9n9y8: 'AY27_8670_Prerequisite_Coursebook_Instructor-Led_Moodle.pdf',
+        },
         sections: [{
           id: 'section-1',
           title: 'Movement fundamentals',
@@ -330,7 +335,7 @@ function learnerReaderFixture(overrides = {}) {
         text: 'Read the approved movement guidance.',
         // `pubId` null here on purpose: this release was materialised before
         // the publication label was stamped onto a citation, so the reader has
-        // to fall back to the approved-source list to name it. The row that
+        // to fall back to `course.sourcePublications` to name it. The row that
         // DOES carry one is exercised below.
         citation: { citation: 'cmu4xdph30016s6014fn9n9y8 p.135', pubId: null, page: '135' },
       }],
@@ -345,13 +350,6 @@ function learnerReaderFixture(overrides = {}) {
       }],
       answers: {},
     },
-    '/sources': [{
-      id: 'cmu4xdph30016s6014fn9n9y8',
-      status: 'APPROVED',
-      title: 'AY27_8670_Prerequisite_Coursebook_Instructor-Led_Moodle.pdf',
-      sourceId: null,
-      pages: 220,
-    }],
     ...overrides,
   };
 }
@@ -445,7 +443,17 @@ test('a learner is cited to a publication and a page, never to a record id', () 
 });
 
 test('a section with no nameable publication says nothing rather than showing the key', () => {
-  const markup = renderReader({ '/sources': [] }, { page: 1 });
+  // No /sources fetch drives this anymore (see publicationFor /
+  // course.sourcePublications, lib/learning/core.js coursePublicationLabels)
+  // -- clearing the course's own resolved label map is what it takes to
+  // reproduce "the course could not name this source".
+  const base = learnerReaderFixture();
+  const markup = renderReader({
+    '/courses/course-1': {
+      ...base['/courses/course-1'],
+      course: { ...base['/courses/course-1'].course, sourcePublications: {} },
+    },
+  }, { page: 1 });
   assert.doesNotMatch(markup, /Written from and checked against/);
   assert.doesNotMatch(markup, /cmu4xdph30016s6014fn9n9y8/);
 });
