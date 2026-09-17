@@ -1,9 +1,10 @@
 /* Guided demo overlay.
  *
  * Uses the prototype's own tokens throughout, so the tour inherits light and
- * dark rather than carrying a second palette that would drift. The dim is a
- * huge spread box-shadow on the spotlight rather than four masking divs: one
- * element, no seams at the corners, and it follows the target exactly.
+ * dark rather than carrying a second palette that would drift. The dim is one
+ * big spread box-shadow on the spotlight -- one element, no corner seams -- and
+ * the card is a light, draggable panel the presenter can move or minimise so it
+ * is never stuck over the thing being shown.
  */
 
 .sc-tour {
@@ -11,119 +12,176 @@
   inset: 0;
   z-index: 70;
   /* The overlay must not eat clicks -- the presenter still drives the real UI
-     underneath. Only the card takes pointer events. */
+     underneath. Only the card and pill take pointer events. */
   pointer-events: none;
 }
 
-.sc-tour-scrim,
 .sc-tour-spot {
   position: fixed;
   border-radius: 12px;
-  transition: top 160ms ease, left 160ms ease, width 160ms ease, height 160ms ease;
-}
-
-.sc-tour-spot {
   box-shadow:
-    0 0 0 9999px rgba(8, 8, 12, 0.58),
-    0 0 0 2px var(--p-accent-bright),
-    0 0 22px 2px rgba(224, 51, 79, 0.45);
+    0 0 0 9999px rgba(10, 12, 18, 0.42),
+    0 0 0 1.5px var(--p-accent-bright);
+  transition: top 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              left 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              width 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              height 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* No target yet: dim everything evenly instead of highlighting a guess. */
+/* No target yet: a soft, even dim rather than a highlight of a guess. */
 .sc-tour-scrim {
+  position: fixed;
   inset: 0;
-  border-radius: 0;
-  background: rgba(8, 8, 12, 0.5);
+  background: rgba(10, 12, 18, 0.34);
 }
+
+/* ------------------------------- the card -------------------------------- */
 
 .sc-tour-card {
   position: fixed;
   pointer-events: auto;
   box-sizing: border-box;
-  padding: 16px 18px 12px;
-  border-radius: 14px;
+  padding: 0 18px 14px;
+  border-radius: 16px;
   background: var(--p-surface);
   color: var(--p-text);
-  border: 1px solid var(--p-border-strong);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.34);
-  transition: top 180ms ease, left 180ms ease;
+  border: 1px solid var(--p-border);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.28), 0 2px 8px rgba(0, 0, 0, 0.10);
+  transition: top 200ms cubic-bezier(0.4, 0, 0.2, 1), left 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* While the presenter is dragging, drop the position transition so the card
+   tracks the cursor 1:1 instead of easing behind it. */
+.sc-tour-card.is-dragged {
+  transition: none;
 }
 
 .sc-tour-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 10px;
+  padding: 12px 0 10px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--p-border-soft);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.sc-tour-head:active {
+  cursor: grabbing;
 }
 
 .sc-tour-act {
-  font-size: 11px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--p-accent);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--p-dim);
 }
 
-/* The clock is an instrument, so it states drift by colour: green on pace,
-   amber when the presenter is falling behind, red once past the ceiling. */
+.sc-tour-actnum {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--p-accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sc-tour-headright {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* The clock states drift by colour: green on pace, amber when falling behind,
+   red once past the ceiling, quiet grey when comfortably ahead. */
 .sc-tour-clock {
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   font-weight: 600;
-  padding: 2px 7px;
+  padding: 2px 8px;
   border-radius: 999px;
   border: 1px solid transparent;
+  white-space: nowrap;
 }
 
-.sc-tour-clock.is-onpace {
-  color: var(--p-good);
-  background: var(--p-good-tint);
-  border-color: var(--p-good-border);
-}
+.sc-tour-clocktotal { opacity: 0.55; font-weight: 500; }
 
-.sc-tour-clock.is-ahead {
+.sc-tour-clock.is-onpace { color: var(--p-good); background: var(--p-good-tint); border-color: var(--p-good-border); }
+.sc-tour-clock.is-ahead  { color: var(--p-dim); background: var(--p-control); border-color: var(--p-border); }
+.sc-tour-clock.is-behind { color: var(--p-warning-text); background: var(--p-warning-tint); border-color: var(--p-warning-border); }
+.sc-tour-clock.is-over   { color: #fff; background: var(--p-bad); border-color: var(--p-bad); }
+
+.sc-tour-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
   color: var(--p-dim);
-  background: var(--p-control);
-  border-color: var(--p-border);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.sc-tour-clock.is-behind {
-  color: var(--p-warning-text);
-  background: var(--p-warning-tint);
-  border-color: var(--p-warning-border);
-}
-
-.sc-tour-clock.is-over {
-  color: #fff;
-  background: var(--p-bad);
-  border-color: var(--p-bad);
-}
+.sc-tour-icon:hover { background: var(--p-control); color: var(--p-text); }
 
 .sc-tour-title {
-  margin: 0 0 6px;
-  font-size: 16px;
-  line-height: 1.3;
+  margin: 12px 0 6px;
+  font-size: 16.5px;
+  line-height: 1.28;
   font-weight: 650;
+  letter-spacing: -0.01em;
 }
 
 .sc-tour-body {
   margin: 0;
   font-size: 13.5px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--p-dim);
 }
 
 .sc-tour-note {
-  margin: 10px 0 0;
-  padding: 8px 10px;
-  border-radius: 9px;
+  margin: 12px 0 0;
+  padding: 9px 11px;
+  border-radius: 10px;
   font-size: 12.5px;
   line-height: 1.45;
   color: var(--p-warning-text);
   background: var(--p-warning-tint);
   border: 1px solid var(--p-warning-border);
 }
+
+/* Progress dots sit on their own row now, so the footer is just the controls. */
+.sc-tour-progress {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin: 16px 0 0;
+}
+
+.sc-tour-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--p-border-strong);
+  opacity: 0.4;
+  transition: transform 150ms ease, opacity 150ms ease, background 150ms ease;
+}
+
+.sc-tour-pip.is-done { background: var(--p-accent); opacity: 0.5; }
+.sc-tour-pip.is-now { background: var(--p-accent-bright); opacity: 1; transform: scale(1.6); }
 
 .sc-tour-foot {
   display: flex;
@@ -133,84 +191,75 @@
   margin-top: 14px;
 }
 
-.sc-tour-progress {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  max-width: 45%;
-}
-
-.sc-tour-pip {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: var(--p-border-strong);
-  opacity: 0.5;
-}
-
-.sc-tour-pip.is-done {
-  background: var(--p-accent);
-  opacity: 0.55;
-}
-
-.sc-tour-pip.is-now {
-  background: var(--p-accent-bright);
-  opacity: 1;
-  transform: scale(1.5);
-}
-
-.sc-tour-actions {
-  display: flex;
-  gap: 6px;
-}
+.sc-tour-nav { display: inline-flex; gap: 8px; }
 
 .sc-tour-btn {
   font: inherit;
   font-size: 13px;
   font-weight: 560;
-  padding: 6px 13px;
+  padding: 7px 15px;
   border-radius: 999px;
   cursor: pointer;
   color: var(--p-text);
   background: var(--p-control);
   border: 1px solid var(--p-border);
+  transition: background 120ms ease, border-color 120ms ease;
 }
 
-.sc-tour-btn:hover:not(:disabled) {
-  background: var(--p-control-hover);
-}
+.sc-tour-btn:hover:not(:disabled) { background: var(--p-control-hover); }
+.sc-tour-btn:disabled { opacity: 0.35; cursor: default; }
 
-.sc-tour-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
+.sc-tour-btn.quiet { background: transparent; border-color: transparent; color: var(--p-dim); }
+.sc-tour-btn.quiet:hover:not(:disabled) { background: var(--p-control); color: var(--p-text); }
 
-.sc-tour-btn.quiet {
-  background: transparent;
-  border-color: transparent;
-  color: var(--p-dim);
-}
-
-.sc-tour-btn.primary {
-  color: #fff;
-  background: var(--p-accent);
-  border-color: var(--p-accent);
-}
-
-.sc-tour-btn.primary:hover {
-  background: var(--p-accent-bright);
-  border-color: var(--p-accent-bright);
-}
+.sc-tour-btn.primary { color: #fff; background: var(--p-accent); border-color: var(--p-accent); }
+.sc-tour-btn.primary:hover { background: var(--p-accent-bright); border-color: var(--p-accent-bright); }
 
 .sc-tour-hint {
-  margin: 9px 0 0;
+  margin: 10px 0 0;
   font-size: 11px;
   color: var(--p-faint);
+  text-align: center;
 }
+
+/* ------------------------------ the pill --------------------------------- */
+/* Minimised: everything out of the way, one small draggable chip that shows
+   the clock and where the presenter is, and reopens on click. */
+
+.sc-tour-pill {
+  position: fixed;
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--p-text);
+  background: var(--p-surface);
+  border: 1px solid var(--p-border-strong);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+.sc-tour-pilldot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--p-accent-bright);
+}
+
+.sc-tour-pilldot.is-onpace { background: var(--p-good); }
+.sc-tour-pilldot.is-behind { background: var(--p-warning); }
+.sc-tour-pilldot.is-over { background: var(--p-bad); }
+
+.sc-tour-pilltime { font-variant-numeric: tabular-nums; }
+.sc-tour-pilllabel { color: var(--p-dim); font-weight: 500; }
 
 @media (prefers-reduced-motion: reduce) {
   .sc-tour-spot,
-  .sc-tour-card {
-    transition: none;
-  }
+  .sc-tour-card,
+  .sc-tour-pip { transition: none; }
 }
