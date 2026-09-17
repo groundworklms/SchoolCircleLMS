@@ -63,6 +63,7 @@ function CourseList({ courses, loading, error, onOpen }) {
 }
 
 export default function FocusedDashboard({
+  student,
   courses = [],
   loading = false,
   error = null,
@@ -71,7 +72,7 @@ export default function FocusedDashboard({
   return (
     <div className="focused-dashboard-content">
       <header className="f-header">
-        <div className="f-header-title"><StudentGreeting /></div>
+        <div className="f-header-title"><StudentGreeting student={student} /></div>
         <div className="f-header-date">Your courses</div>
       </header>
       <div className="f-main">

@@ -1,7 +1,17 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
-import { studentGreeting, subscribeStudentGreeting } from '../app/prototype/student-greeting.js';
+import { studentGreeting, formatStudentGreeting, subscribeStudentGreeting } from '../app/prototype/student-greeting.js';
+
+test('student greeting uses rank and last name without inventing missing profile data', () => {
+  assert.equal(formatStudentGreeting('Good afternoon', { name: 'Alex Rivera', rank: 'Cpl' }), 'Good afternoon, Cpl Rivera');
+  assert.equal(formatStudentGreeting('Good morning', { name: '  Jane Marie Smith-Jones  ', rank: ' Sgt ' }), 'Good morning, Sgt Smith-Jones');
+  assert.equal(formatStudentGreeting('Good evening', { name: 'Cpl Rivera', rank: 'Cpl' }), 'Good evening, Cpl Rivera');
+  assert.equal(formatStudentGreeting('Good morning', { name: 'Ana de la Cruz', lastName: 'de la Cruz', rank: 'Capt' }), 'Good morning, Capt de la Cruz');
+  assert.equal(formatStudentGreeting('Good afternoon', { name: 'Alex Rivera', rank: null }), 'Good afternoon, Rivera');
+  assert.equal(formatStudentGreeting('Good afternoon', null), 'Good afternoon');
+  assert.equal(formatStudentGreeting('Good afternoon', { name: 'Alex Rivera', rank: 'Sgt' }), 'Good afternoon, Sgt Rivera');
+});
 
 test('student greeting covers every local-time boundary, including midnight', () => {
   for (const [hour, minute, expected] of [
@@ -45,7 +55,9 @@ test('student greeting stays current across days, tab return, and cleanup', (t) 
 
 test('student dashboard keeps its greeting while instructor and navigation labels stay unchanged', () => {
   const read = (file) => readFileSync(new URL(`../app/prototype/${file}`, import.meta.url), 'utf8');
-  assert.match(read('FocusedDashboard.js'), /className="f-header-title">\s*<StudentGreeting\s*\/>/);
+  assert.match(read('FocusedDashboard.js'), /className="f-header-title">\s*<StudentGreeting student=\{student\}\s*\/>/);
+  assert.match(read('StudentShell.js'), /<FocusedDashboard\s+student=\{authenticated \? profile : STUDENT\}/);
+  assert.match(read('StudentGreeting.js'), /formatStudentGreeting\(greeting, student\)/);
   assert.doesNotMatch(read('FocusedDashboard.js'), /className="f-header-title">Dashboard</);
   assert.match(read('StudentShell.js'), /label="Dashboard"/);
   assert.doesNotMatch(read('InstructorShell.js'), /StudentGreeting|student-greeting/);
