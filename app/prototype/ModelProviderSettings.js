@@ -254,8 +254,7 @@ export function ModelProviderSettings() {
   return (
     <div className="model-provider">
       <p className="s-settings-p">
-        Which AI writes your course drafts. Content is only ever generated from sources you have
-        approved — this chooses what does the writing.
+        Which AI writes your course drafts. Content comes only from sources you&apos;ve approved.
       </p>
 
       <div className="s-settings-row">
@@ -366,8 +365,8 @@ export function ModelProviderSettings() {
       {advanced && (settings?.needsPassphraseClaim ? (
         <form className="model-provider-form" onSubmit={claimPassphrase}>
           <p className="model-provider-note">
-            Changing the endpoint or entering an API key needs an operator passphrase, and none is
-            set for this deployment yet. Choosing a model above does not need one.
+            Changing the endpoint or entering an API key needs an operator passphrase; none is set yet.
+            Choosing a model above doesn&apos;t.
           </p>
           <label>
             <span>New operator passphrase</span>
@@ -403,8 +402,7 @@ export function ModelProviderSettings() {
             </button>
           </div>
           <p className="model-provider-note">
-            It cannot be reset from here afterwards — that is a configuration change
-            (MODEL_SETTINGS_KEY) — so keep a copy.
+            It can&apos;t be reset from here afterwards (MODEL_SETTINGS_KEY) — keep a copy.
           </p>
         </form>
       ) : (
@@ -441,8 +439,7 @@ export function ModelProviderSettings() {
           </label>
           {active?.credential === 'environment' && (
             <p className="model-provider-note">
-              Using the API key from this deployment&apos;s configuration, so nothing needs to be
-              entered here.
+              Using this deployment&apos;s configured API key — nothing to enter here.
             </p>
           )}
           {!settings?.secretStorageReady && active?.credential !== 'environment' && (

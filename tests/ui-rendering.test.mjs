@@ -2247,7 +2247,7 @@ test('an unreachable engine reads as routine and names the way back', () => {
   });
   assert.match(markup, /Find the Orin/);
   assert.match(markup, /Enter an address manually/);
-  assert.match(markup, /new hostname every time it restarts/);
+  assert.match(markup, /takes a new hostname/);
   // Calm, not a crash: it is a status line, never an alert.
   assert.doesNotMatch(markup, /role="alert"/);
 });
@@ -2263,5 +2263,5 @@ test('a healthy engine does not nag about addresses it does not need', () => {
       endpoints: { ask: true, verify: true, ground: true },
     },
   });
-  assert.doesNotMatch(markup, /new hostname every time it restarts/);
+  assert.doesNotMatch(markup, /takes a new hostname/);
 });

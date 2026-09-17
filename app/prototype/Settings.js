@@ -119,7 +119,7 @@ function Survey({ result, onDone }) {
           <div className="s-profile-name">{p.name}</div>
           <div className="s-profile-note">{p.note}</div>
           <div className="s-profile-meta">
-            Pace: {result.pace} · taken {result.when} · shared with your instructors as part of the class profile
+            Pace: {result.pace} · taken {result.when} · shared with instructors
           </div>
         </div>
         <div className="p-btnrow" style={{ marginTop: '0.9rem' }}>
@@ -132,8 +132,7 @@ function Survey({ result, onDone }) {
     return (
       <div>
         <p className="s-settings-p">
-          Four questions, about a minute. The result shapes how your study guides and plan are built, and instructors see the
-          class profile (never individual answers) when they plan lessons.
+          Four questions, about a minute. Instructors see the class profile, never individual answers.
         </p>
         <button className="p-btn" onClick={() => setTaking(true)}>Start</button>
       </div>
@@ -245,7 +244,7 @@ export function StudentSettings({ onSignOut, account, authenticated = false, tab
 
       <section className="p-panel">
         <h3>Reminders</h3>
-        <p className="s-settings-p">Study-plan blocks and due dates go to the channels you pick. Instructors cannot see these.</p>
+        <p className="s-settings-p">Reminders go to the channels you pick. Instructors can&apos;t see these.</p>
         <Toggle label="Outlook calendar" note="Plan blocks appear as calendar events" on={r.outlook} onChange={(v) => setPref('reminders.outlook', v)} />
         <Toggle label="Email" note="A morning summary of what is due" on={r.email} onChange={(v) => setPref('reminders.email', v)} />
         <Toggle
@@ -291,7 +290,7 @@ export function StudentSettings({ onSignOut, account, authenticated = false, tab
         <h3>Display</h3>
         <Toggle
           label="Show Calendar in sidebar"
-          note="Hide or show the Calendar link. Your calendar events are not changed. Saved in this browser."
+          note="Doesn't change your calendar events."
           on={prefs.showCalendar !== false}
           onChange={(value) => setPref('showCalendar', value)}
         />
@@ -418,7 +417,7 @@ export function InstructorSettings({
         <h3>What students see</h3>
         <Toggle
           label="Show class standing"
-          note="Each student sees their own rank in the class on Grades and at annex counseling. They never see other students' scores."
+          note="Each student sees only their own rank, never other students' scores."
           on={show}
           onChange={(v) => setPref(`showStanding.${course.id}`, v)}
         />
@@ -428,10 +427,6 @@ export function InstructorSettings({
 
       <section className="p-panel">
         <h3>Annex counseling</h3>
-        <p className="s-settings-p">
-          Counsel every student on grade and standing after each annex. The counseling record on the student&apos;s Grades tab
-          is filled from here.
-        </p>
         <div className="s-settings-row">
           <span>Counseling due</span>
           <span className="s-settings-val">Within 2 training days of the annex exam</span>
@@ -447,8 +442,7 @@ export function InstructorSettings({
           <section className="p-panel">
             <h3>Course settings</h3>
             <p className="s-settings-p">
-              Open a course from the library, then choose Settings to change what its students
-              see. Nothing on this tab applies account-wide.
+              Open a course from the library, then choose Settings. Nothing here applies account-wide.
             </p>
             {/* The tab described the trip and then left you to make it. The
                 courses it is describing are already known here, so it can be

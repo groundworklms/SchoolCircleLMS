@@ -117,9 +117,8 @@ export default function Prototype() {
         <div className="p-studentview" role="status">
           <span className="p-studentview-text">
             <b>Student view.</b>
-            Course visibility here is learner-scoped: a draft you own but have not published is
-            hidden, exactly as it is for a learner. Your instructor account is still signed in — use
-            {' '}“View as instructor” in the rail to switch back.
+            Unpublished drafts are hidden, exactly as a learner sees them. Switch back with
+            {' '}“View as instructor” in the rail.
           </span>
         </div>
       )}

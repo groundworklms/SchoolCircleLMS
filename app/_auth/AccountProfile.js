@@ -35,8 +35,8 @@ function nextMilitarySelection(branch) {
 
 function roleLabel(role) {
   return role === 'INSTRUCTOR' || role === 'BOTH'
-    ? 'Switch between your learner and instructor spaces. Instructor access is granted by your administrator, not from this form.'
-    : 'After a successful save, learner tools are available immediately.';
+    ? 'Switch between your learner and instructor spaces. Instructor access is granted by your administrator.'
+    : 'Learner tools are available as soon as you save.';
 }
 
 /**
@@ -237,8 +237,8 @@ export function AccountProfileForm({ auth = {}, onboarding = false }) {
           <h2>{onboarding ? 'Finish setting up your account' : 'Account profile'}</h2>
           <p>
             {onboarding
-              ? 'Choose the identity details SchoolCircle should use across your learner and instructor spaces.'
-              : 'These details are saved to your account and appear in your learner and instructor spaces.'}
+              ? 'The details SchoolCircle uses across your learner and instructor spaces.'
+              : 'Saved to your account, shown across your spaces.'}
           </p>
         </div>
       </div>
@@ -334,7 +334,6 @@ export function AccountProfileForm({ auth = {}, onboarding = false }) {
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
               </select>
-              <small id="account-profile-pay-grade-help">Choose the grade for your service branch.</small>
             </label>
 
             <label className="s-profile-field" htmlFor="account-profile-rank">
@@ -364,7 +363,7 @@ export function AccountProfileForm({ auth = {}, onboarding = false }) {
                 ))}
               </select>
               <small id="account-profile-rank-help">
-                Rank choices are limited to the selected branch and pay grade.
+                Limited to the selected branch and pay grade.
               </small>
             </label>
             {legacyRank && !rank && (
