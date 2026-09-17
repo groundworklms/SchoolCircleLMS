@@ -141,6 +141,42 @@
   padding-right: 0.45rem;
 }
 
+/* Why a managed row must not lift.
+ *
+ * .s-courserow answers hover with `transform: translateY(-1px)`, and a
+ * transform makes the element a stacking context. Everything inside it is then
+ * painted with the row -- the menu's own z-index cannot escape a box it is
+ * trapped in -- so the menu, and the taller confirm and permanent-delete steps
+ * after it, disappeared under the next card. The pointer is necessarily over
+ * the row the whole time the menu is open, so the transform is always there
+ * when it matters. Only the last row has no card after it, which is why a
+ * three-course library could only ever be emptied from the bottom up, and why
+ * a ten-course one had nine undeletable rows.
+ *
+ * Dropping the transform is the fix rather than out-bidding it: with no
+ * stacking context on the row, the menu is an ordinary positive-z-index
+ * descendant and paints above every following row, in every browser, at every
+ * viewport, whether or not one of those rows is itself hovered. The hover
+ * feedback survives as the same lifted shadow, which costs no stacking context.
+ * Both classes are named so this outranks .s-courserow:hover wherever the two
+ * stylesheets land in the cascade. */
+.s-courserow.s-courserow-managed:hover {
+  transform: none;
+  box-shadow: var(--p-shadow-lift);
+}
+
+/* Belt and braces: while a menu or its error is open the row also outranks its
+   siblings outright, so a future lift, filter or opacity on the row cannot
+   quietly reintroduce the same trap. */
+.s-courserow.s-courserow-managed:has(.row-actions-menu),
+.s-courserow.s-courserow-managed:has(.row-actions-error) {
+  z-index: 30;
+}
+
+/* A narrow window must not push the popover off-screen; it is right-aligned to
+   the trigger, so clamping the width keeps it inside the content column. */
+.row-actions-menu { max-width: calc(100vw - 2rem); }
+
 .s-courserow-managed > .s-courserow-open {
   display: flex;
   flex: 1 1 auto;

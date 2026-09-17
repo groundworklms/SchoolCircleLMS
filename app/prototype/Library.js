@@ -1108,7 +1108,7 @@ export function CourseDraft({ course, onChanged }) {
       )}
       <details className="p-panel p-disclose">
         <summary>Optional learning tools · syllabus and mastery plan</summary>
-        <p className="p-src">These tools do not block course publication. Rubrics and fidelity evaluation are available under Advanced tools.</p>
+        <p className="p-src">These tools do not block course publication. Objective rubrics and Fidelity check are in the rail, under Quality checks.</p>
         {status === 'PENDING' && <InstructorSyllabus courseId={course.id} />}
         <InstructorMasteryPlan
           courseId={course.id}
