@@ -166,3 +166,76 @@ and better at once. Without this, each artifact type added multiplies cost by se
 Tier 1 is correctness and costs hours. Tier 2 is what makes it look like a product. Tier 3 changes
 the architecture and should not start before Tier 1 is done, because it multiplies whatever the
 generator currently gets wrong.
+
+---
+
+# Execution plan
+
+## The constraint that shapes everything
+
+Coursewright is a **pinned external repo** (`github:groundworklms/coursewright#f38d078`). Every
+artifact it makes — lesson prose, pre/post items, flashcards, diagram, scenario — is generated inside
+it. Two routes follow, and they are not equivalent:
+
+- **Route A — change Coursewright.** Cross-repo PR, re-pin the commit here, coordinate with other
+  consumers. Correct for fixing what is wrong *inside* it.
+- **Route B — generate alongside it.** `arsenal-core` already calls `askJson` in ten places with our
+  own grounding check. New artifact types are generated from the same passage in our adapter, and
+  Coursewright stays the lesson-and-MCQ engine.
+
+**Decision: Route B for everything new.** One repo, one release, no re-pinning, and a diagram schema
+our own renderer defines rather than one we inherit. Route A only for the `answerIndex: 0` prompt
+example, as an upstream courtesy — the shuffle already makes us independent of it.
+
+## Order of work
+
+Tier 1 is three changes to one file plus one unrelated screen, so most of it is **serial by file**,
+not by choice:
+
+```
+1.1 shuffle + distribution gate  ─┐
+1.2 diagrams on                   ├─ all touch lib/learning/core.js → SERIAL
+1.3 publish gate                 ─┘
+1.4 HHEM support score in item review   ItemReview.js only → parallel
+
+then Tier 2 fans out (Route B, independent files):
+2.1 diagram quality   2.2 cloze   2.3 ordered procedure
+2.4 AI in item review ── after 1.4
+```
+
+## Machine limits
+
+Learned the hard way on 2026-09-17: **two agents maximum, and never two builds at once.** The crash
+was not the agents — all eighteen node processes together held 670 MB. It was concurrent `next build`
+spikes of 1–2 GB landing on a box already ~13 GB consumed. Agents may edit and test in parallel;
+builds are staggered or left to CI, which is the authoritative build environment regardless.
+
+## How the upgrade gets QA'd
+
+A **controlled before/after**, because a baseline exists: the ASTRA review of course
+`cmu5tmlyv000as6018rx1td4r` — 11 sections, 44 items, 5 blocking defects, each named by item id.
+
+Regenerate that course from the same source after the upgrade and diff against the report, driving
+the live app through Claude in Chrome:
+
+1. **Key distribution.** Walk all 44 items in the builder and record each key position. Baseline is
+   39/44 on option 1. Pass is no position above ~35% and none at 0%. This single number decides
+   whether any score the platform reports means anything.
+2. **The five named defects**, by item id. Is there still a Space Force item in a human-performance
+   section; do section 9's items match the page a learner is shown; does `6:post1` still key TACON
+   against its own page.
+3. **Diagrams.** Do they render, are labels legible at a real viewport, do they hold up in light
+   *and* dark theme (they paint through `--p-*` tokens, so the accent fix applies), and does a
+   section refuse a diagram honestly rather than drawing nonsense.
+4. **Grounding spot-check.** Read keys against the *rendered page*, not the source chunk — that is
+   precisely the check the report says rationale generation is failing.
+5. **Console, network and latency.** Zero console errors is the current baseline. Diagrams add a
+   model call per section, so generation time is part of the result.
+
+**What the browser cannot settle:** shuffle stability over time, distribution across many courses
+rather than one, and anything about recorded attempts. Those belong to the test suite — which is why
+the distribution gate matters more than the one-off check: it runs on every generation forever,
+where a browser pass only ever samples the course we happened to look at.
+
+**Honest limit:** one regenerated course is a sample of one. It will settle the mechanical fixes
+conclusively and give only evidence on the judgement-dependent ones.
