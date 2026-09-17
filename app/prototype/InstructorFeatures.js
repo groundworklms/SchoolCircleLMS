@@ -735,6 +735,49 @@ function rubricSummaryText(rubric) {
   return `${dimensions} · ${rubric.status === 'APPROVED' ? 'Approved' : 'Draft'}`;
 }
 
+function fmtRubricCreated(iso) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString(undefined, {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
+
+function rubricSourceTitle(sources, sourceId) {
+  if (!sourceId) return null;
+  const match = Array.isArray(sources) ? sources.find((s) => s.id === sourceId) : null;
+  // Fall back to the id itself: a rubric can outlive the source it was built
+  // from (revoked, deleted), and the id is still more than nothing.
+  return match?.title || sourceId;
+}
+
+/**
+ * When a source carries no real task code, generateRubric derives one from
+ * the title (SC-prefixed, so it can never pass for an official 0000-AAA-0000
+ * code). Two rubrics written for the same title from that fallback path
+ * therefore collide on both title and code by design -- that pairing is the
+ * one case a title and a code cannot tell apart, and the one this exists for.
+ *
+ * Either fact alone would disambiguate; both are shown because both are
+ * already sitting in memory (createdAt came back from listRubrics all along,
+ * sources is what this screen loads to populate the generator's own picker)
+ * and an instructor scanning the list benefits from knowing which document
+ * fed a rubric as much as when it was written.
+ */
+function RubricProvenance({ rubric, sources }) {
+  const source = rubricSourceTitle(sources, rubric.sourceId);
+  const created = fmtRubricCreated(rubric.createdAt);
+  if (!source && !created) return null;
+  return (
+    <div className="p-src">
+      {source ? <>From {source}</> : null}
+      {source && created ? ' · ' : null}
+      {created ? <>Generated {created}</> : null}
+    </div>
+  );
+}
+
 /**
  * The instructor's saved rubrics.
  *
@@ -742,7 +785,7 @@ function rubricSummaryText(rubric) {
  * older one could not be found, renamed or removed. Rubrics are owner-private,
  * so this is the owner's own list.
  */
-function SavedRubrics() {
+function SavedRubrics({ sources }) {
   const { data: rubrics, loading, error, refetch } = useApiQuery('/rubrics');
   const list = Array.isArray(rubrics) ? rubrics : [];
 
@@ -776,6 +819,7 @@ function SavedRubrics() {
                     one. Without it a saved rubric is a title and a task code
                     with nothing saying what course it belongs to. */}
                 {r.objective && <div className="p-src">Judges: {r.objective}</div>}
+                <RubricProvenance rubric={r} sources={sources} />
               </div>
             </div>
             <RowActions
@@ -789,6 +833,19 @@ function SavedRubrics() {
       </div>
     </div>
   );
+}
+
+// Below this, a wait reads as the quarry extraction (in-memory, no model
+// call); at or past it the model draft is the likelier explanation. It is a
+// guess, not a fact the server told us, so the copy that uses it stays
+// hedged ("likely", not "is").
+const FAST_SUGGESTION_SECONDS = 3;
+
+function suggestingText(elapsed) {
+  if (elapsed < FAST_SUGGESTION_SECONDS) return 'Reading the task from this source…';
+  return `Still reading (${elapsed}s) — this source likely has no saved task block, so a model `
+    + 'is drafting one from its text. That runs slower than reading a task written down, '
+    + 'usually under 30 seconds.';
 }
 
 const RUBRIC_TIERS = [
@@ -1052,6 +1109,14 @@ export function RubricsView() {
   const [suggestionOrigin, setSuggestionOrigin] = useState('');
   const [suggestionError, setSuggestionError] = useState(null);
   const [suggesting, setSuggesting] = useState(false);
+  // Seconds since this pick started waiting. There is exactly one model call
+  // in this path (draftRubricTask) and no intermediate stages to report, so a
+  // progress bar would be inventing precision it doesn't have; a running
+  // clock is the honest version of "it's still working" for a single opaque
+  // request, and past FAST_SUGGESTION_SECONDS it doubles as evidence this
+  // source had no task block to read verbatim -- the quarry extraction that
+  // path skips is in-memory and returns near-instantly.
+  const [suggestElapsed, setSuggestElapsed] = useState(0);
 
   const generateRubric = useApiMutation('/rubrics/generate', 'POST');
   const suggestTasks = useApiMutation('/rubrics/task-suggestions', 'POST');
@@ -1086,6 +1151,11 @@ export function RubricsView() {
     let current = true;
     setSuggesting(true);
     setSuggestionError(null);
+    setSuggestElapsed(0);
+    const startedAt = Date.now();
+    const clock = setInterval(() => {
+      if (current) setSuggestElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
     suggestTasks
       .mutate({ sourceId })
       .then((res) => {
@@ -1103,10 +1173,12 @@ export function RubricsView() {
         setSuggestionError(errText(e, 'Could not read a task from this source.'));
       })
       .finally(() => {
+        clearInterval(clock);
         if (current) setSuggesting(false);
       });
     return () => {
       current = false;
+      clearInterval(clock);
     };
     // suggestTasks is a fresh object each render; the source id is the input.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1139,7 +1211,7 @@ export function RubricsView() {
         <h1>Rubrics</h1>
       </div>
 
-      <SavedRubrics />
+      <SavedRubrics sources={sources} />
 
       <div className="p-panel">
         <h3>Generate a rubric</h3>
@@ -1166,7 +1238,7 @@ export function RubricsView() {
               <option key={s.id} value={s.id}>{s.title}</option>
             ))}
           </select>
-          {suggesting && <p className="p-src">Reading the task from this source…</p>}
+          {suggesting && <p className="p-src" role="status">{suggestingText(suggestElapsed)}</p>}
           {suggestionOrigin === 'quarry' && suggestions.length > 0 && (
             <p className="p-src">
               {suggestions.length === 1
@@ -1279,6 +1351,10 @@ function ObjectiveRubricForm({ courseId, objective, sourceOptions, existingRubri
   const [suggesting, setSuggesting] = useState(false);
   const [suggestionOrigin, setSuggestionOrigin] = useState('');
   const [suggestionError, setSuggestionError] = useState(null);
+  // See FAST_SUGGESTION_SECONDS on the Rubrics screen's own copy of this
+  // effect: same single opaque call, same reason a running clock is the
+  // honest version of progress here.
+  const [suggestElapsed, setSuggestElapsed] = useState(0);
 
   const generateRubric = useApiMutation('/rubrics/generate', 'POST');
   const suggestTasks = useApiMutation('/rubrics/task-suggestions', 'POST');
@@ -1295,6 +1371,11 @@ function ObjectiveRubricForm({ courseId, objective, sourceOptions, existingRubri
     let current = true;
     setSuggesting(true);
     setSuggestionError(null);
+    setSuggestElapsed(0);
+    const startedAt = Date.now();
+    const clock = setInterval(() => {
+      if (current) setSuggestElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
     suggestTasks
       .mutate({ sourceId })
       .then((res) => {
@@ -1313,10 +1394,12 @@ function ObjectiveRubricForm({ courseId, objective, sourceOptions, existingRubri
         setSuggestionError(errText(e, 'Could not read a task from this source.'));
       })
       .finally(() => {
+        clearInterval(clock);
         if (current) setSuggesting(false);
       });
     return () => {
       current = false;
+      clearInterval(clock);
     };
     // suggestTasks is a fresh object each render; the source id is the input.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1368,7 +1451,7 @@ function ObjectiveRubricForm({ courseId, objective, sourceOptions, existingRubri
         ) : (
           <p className="p-src">Grounded in {sourceOptions[0]?.title || 'the course source'}.</p>
         )}
-        {suggesting && <p className="p-src">Reading the task from this source…</p>}
+        {suggesting && <p className="p-src" role="status">{suggestingText(suggestElapsed)}</p>}
         {suggestionOrigin === 'quarry' && (
           <p className="p-src">Condition, standard and steps are the ones written in this source.</p>
         )}
