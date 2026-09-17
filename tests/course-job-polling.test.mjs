@@ -51,3 +51,25 @@ test('the count is generous, because waiting costs one interval and the job is u
   assert.ok(limit, 'the limit is named rather than inline');
   assert.ok(Number(limit[1]) >= 5, `a handful of blips must not end a job: got ${limit[1]}`);
 });
+
+/*
+ * Rejoining is read the same way and for the same reason: what matters is that
+ * the page asks, that it asks once, and that it does not fail the page when
+ * the answer is no.
+ */
+const library = readFileSync(new URL('../app/prototype/Library.js', import.meta.url), 'utf8');
+
+test('the page asks for a generation already running', () => {
+  assert.match(library, /draft\.running\(\)/, 'a job on a row outlives the tab that started it');
+  assert.match(library, /draft\.follow\(job\.id/, 'and is followed, which is also what restarts it');
+});
+
+test('it asks once, so two loops never feed the same event list', () => {
+  assert.match(library, /rejoined\.current/);
+});
+
+test('nothing to rejoin is not an error', () => {
+  const runningFn = source.slice(source.indexOf('const running = async'), source.indexOf('return { start, follow, running, loading }'));
+  assert.match(runningFn, /return \[\];/, 'an unreachable list reads as no jobs');
+  assert.doesNotMatch(runningFn, /throw/, 'a page load must not fail because this could not be asked');
+});
