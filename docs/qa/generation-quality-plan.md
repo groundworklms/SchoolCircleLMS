@@ -26,6 +26,67 @@ want that back it is a second Settings selection, never an env var.
 
 ---
 
+## Status, 17 Sep — re-aligned after running a real generation
+
+The plan below was written from the ASTRA review alone. A live generation against the same source
+then ran, and what it produced changed the order. Recorded here rather than edited into the sections
+below, so the original reasoning stays legible next to what actually happened.
+
+**Landed** (#158–#162, #147):
+
+| Finding | What shipped |
+|---|---|
+| **1.2 Turn diagrams on** | Turned on, then **turned back off** (#158). See below — this is the one the plan got wrong. |
+| **P3 · meta-prose** | `narration.js`. The page prompt forbids writing about the lesson, and `narratesTheLesson()` drops blocks that do it anyway, including in the micro-lesson fallback (#159). |
+| **P4.2 · verbatim repetition** | `repetition.js`. A section drops sentences restating earlier ones, across its whole set of pages (#160). |
+| **P4.3 · template collision** | Sections are written one at a time, so each is told which paragraph openings the course has already spent (#160). |
+| **P0-1, P0-2 · cross-context leakage** | `citation.js`. A citation resolves to its own passage or to nothing — never to the whole corpus (#161). |
+| **P2 · pre/post near-duplicates** | `item-similarity.js`. A post item is compared with its pre item on its keyed answer and its stem gist (#162). |
+| **1.1 · answer-position** | Already shipped before this review; the generation gate throws `COURSE_KEYS_BIASED` at ≥35% in any position, so the bias cannot reach a saved course. |
+| **1.3 · publish gate** | Already shipped: `COURSE_PAGES_UNWRITTEN`. |
+
+**What the generation taught us that the review could not**
+
+*Diagrams were the plan's mistake, and mine.* 1.2 reads "turn diagrams on" and treats it as a
+one-line change, because the pipeline was complete: generator, grounding check, renderer, learner
+surface, all built. That was true and it was not the question. A diagram that renders is not a
+diagram worth showing. Asking a language model for absolute coordinates produced hotspot markers
+sitting on top of the labels they point at (`Edg④`, `Lea⑦ing Env.`), a caption overflowing into the
+row above it, four of eight markers attached to nothing, and labels reduced to single words.
+
+So **2.1 is not an enhancement of 1.2, it is the precondition for it.** Diagrams come back when the
+renderer owns layout — nodes and edges placed deterministically, the model choosing what connects to
+what and never where it sits. Until then the flag stays off.
+
+*A second defect came with it:* the label pass promoted those single-word labels into a lesson page
+of its own titled "Diagram Labels". That page is gone with the flag, but the shape is worth naming —
+an artifact pass that emits a page whose body is fragments of another artifact.
+
+**Not yet addressed, in the order they now deserve**
+
+1. **P1.5 · rationales are written against the raw chunk, not the rendered page.** Multiple rationales
+   say "The passage states…" about text the learner was never shown. Constrain rationale generation
+   to the published page; a rationale that cannot be supported from the page is the signal that the
+   page is underwritten. This is the largest remaining correctness item.
+2. **P0-5, P5.1 · a title promising content that does not exist.** Section 11 is titled "Human
+   performance and bias" and the word "bias" appears exactly once in the course — in that title.
+   Same shape as the course title being a four-topic grab bag. A title is a claim and nothing
+   validates it against what was written.
+3. **P0-3 · internally contradictory stems.** "Inherent in COCOM *and* … tactical use of combat
+   support assets" keys to TACON, but the first clause says OPCON. Hard to catch generally; the
+   tractable version is a doctrinal-term lint (P4.1's "combat commanders" for "combatant commanders"
+   belongs here too).
+4. **P5.2, P5.3 · sequencing and citation integrity.** Sections cited 2, 5, 6, 7, 27, 121, 67, 124,
+   67, 131, 54 — out of order, with two sections sharing one page. #161 makes a wrong citation refuse
+   rather than silently widen, which is the floor under this, but ordering is untouched.
+5. **2.2, 2.3, 2.4** — cloze items, ordered procedure, AI assist in item review. Unchanged.
+
+**One process note.** `npm test` names its test files explicitly, and a file added on a branch that
+does not touch `package.json` never runs. Two files that predate today had already fallen out of the
+list. Every new test file must be registered, and a glob would remove the failure mode entirely.
+
+---
+
 ## Tier 1 — hours each, and two of them are blocking
 
 ### 1.1 Answer-position shuffle and distribution validator
