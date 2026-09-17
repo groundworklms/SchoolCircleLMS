@@ -42,6 +42,20 @@ function optionsOf(item) {
   return Array.isArray(item.options) ? item.options : [];
 }
 
+/* A LESSON row's `options` is not a choice list but the structured teaching
+   content a learner reads the prose through -- pages, diagram, cards (see
+   lib/learning/project-course.js `lessonContent`). The reviewer approving
+   the row is approving that too, so the card says what rides along. */
+function lessonContentOf(item) {
+  if (item?.kind !== 'LESSON' || !item.options || typeof item.options !== 'object' || Array.isArray(item.options)) return null;
+  const content = item.options;
+  const parts = [];
+  if (Array.isArray(content.pages) && content.pages.length) parts.push(`${content.pages.length} lesson page${content.pages.length === 1 ? '' : 's'}`);
+  if (content.diagram) parts.push(`a diagram${Array.isArray(content.labels) && content.labels.length ? ` with ${content.labels.length} explained labels` : ''}`);
+  if (Array.isArray(content.flashcards) && content.flashcards.length) parts.push(`${content.flashcards.length} flashcards`);
+  return parts.length ? { summary: parts.join(', '), pages: Array.isArray(content.pages) ? content.pages : [] } : null;
+}
+
 /* `support` is the HHEM score for the keyed answer. It is absent on items that
    were never verified, and "absent" has to read differently from "scored low". */
 function Evidence({ item }) {
@@ -169,6 +183,20 @@ function ItemCard({ item, busy, onDecide }) {
 
       {item.rationale && <p className="item-review-rationale">{item.rationale}</p>}
 
+      {lessonContentOf(item) && (
+        <details className="item-review-rationale">
+          <summary>Released with this lesson: {lessonContentOf(item).summary}. Written from the same passage and grounded block by block.</summary>
+          <ol>
+            {lessonContentOf(item).pages.map((page, index) => (
+              <li key={index}>
+                <strong>{page.title}</strong>
+                {' '}· {(page.blocks || []).map((block) => block.type).join(', ')}
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
+
       <Evidence item={item} />
 
       {editing ? (
@@ -258,6 +286,28 @@ export function CourseItemReview({ courseId, onChanged }) {
     }
   };
 
+  /* One deliberate click for everything still pending. The count is on the
+     button, the confirmation restates it, and withheld items are untouched. */
+  const [approvingAll, setApprovingAll] = useState(false);
+  const approveAll = async () => {
+    const pendingCount = data?.counts?.PENDING || 0;
+    if (!pendingCount) return;
+    if (typeof window !== 'undefined' && !window.confirm(`Approve all ${pendingCount} pending items? Each will be shown to learners as written. Withheld items stay withheld.`)) return;
+    setApprovingAll(true);
+    setError(null);
+    try {
+      const res = await authFetch(`/api/learning/courses/${courseId}/items/approve-all`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw json;
+      await load();
+      await onChanged?.();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setApprovingAll(false);
+    }
+  };
+
   if (loading && !data) return <p className="p-src">Loading items for review…</p>;
   if (error && !data) {
     return (
@@ -303,6 +353,15 @@ export function CourseItemReview({ courseId, onChanged }) {
           reviewer can leave an item alone without taking a risk, so it is said
           plainly and it is always on screen. */}
       <p className="p-truth">A learner sees only the approved ones.</p>
+
+      {counts.PENDING > 1 && (
+        <div className="p-btnrow" style={{ marginBottom: '0.75rem' }}>
+          <button type="button" className="p-btn ghost" disabled={approvingAll || Boolean(busyItem)} onClick={approveAll}>
+            {approvingAll ? 'Approving…' : `Approve all ${counts.PENDING} pending`}
+          </button>
+          <span className="p-src">Every pending lesson, check and card, as written. Withhold anything first that should not go out.</span>
+        </div>
+      )}
 
       {error && data && (
         <p className="s-shell-error" role="alert">{errText(error, 'That decision could not be saved.')}</p>
