@@ -1155,7 +1155,7 @@ test('a section the server dropped leaves the progress list and joins what is no
   assert.equal(view.failure, null);
 
   const markup = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
-  assert.match(markup, /Not covered by the selected sources/);
+  assert.match(markup, /Not covered by this course/);
   assert.match(markup, /counterintelligence discussion is incomplete/);
   assert.match(markup, /no approved passage covers this objective/);
   // Written, so the instructor is not told a saved course failed.
@@ -1182,7 +1182,120 @@ test('a pending draft still says what it does not cover, after the modal is gone
     },
   });
   const markup = renderToStaticMarkup(React.createElement(CourseDraft, { course: { id: 'course-1' } }));
-  assert.match(markup, /Not covered by the selected sources/);
+  assert.match(markup, /Not covered by this course/);
   assert.match(markup, /counterintelligence supports the MAGTF commander/);
   assert.match(markup, /its counterintelligence discussion is incomplete/);
+});
+
+test('a topic the outline scoped out reads differently from one the sources could not ground', () => {
+  // Three stages feed one list, and the whole point of merging them is that the
+  // instructor can still tell them apart: "the source covers this, the course
+  // does not" is answered by narrowing the request, "no passage covers this" by
+  // choosing a different source, and a generator refusal by neither.
+  const { generationView, GenerationProgress } = loadComponent('app/prototype/GenerationProgress.js');
+  const refusal = 'its counterintelligence discussion is incomplete';
+  const events = [
+    { phase: 'sources', documents: 108, characters: 260000 },
+    {
+      phase: 'outline',
+      status: 'done',
+      objectives: ['Identify the six intelligence functions'],
+      notCovered: [{ objective: 'Signals intelligence support', reason: "in the sources, but outside this course's scope" }],
+      thinCoverage: true,
+    },
+    { phase: 'sections', total: 2, passages: 2 },
+    { phase: 'coursewright', step: 'skipped', section: 'Explain collection management', reason: 'no approved passage covers this objective' },
+    { phase: 'coursewright', step: 'dropped', section: 'Explain how counterintelligence supports the MAGTF commander', reason: refusal },
+  ];
+
+  const view = JSON.parse(JSON.stringify(generationView(events)));
+  // The outline's gaps come first, because that is the stage they happened at.
+  assert.deepEqual(view.skipped, [
+    { objective: 'Signals intelligence support', reason: "in the sources, but outside this course's scope" },
+    { objective: 'Explain collection management', reason: 'no approved passage covers this objective' },
+    { objective: 'Explain how counterintelligence supports the MAGTF commander', reason: refusal },
+  ]);
+  assert.equal(view.thinCoverage, true);
+
+  const markup = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
+  assert.match(markup, /Not covered by this course/);
+  assert.match(markup, /outside this course&#x27;s scope/);
+  assert.match(markup, /no approved passage covers this objective/);
+  assert.match(markup, /counterintelligence discussion is incomplete/);
+  // The heading must not blame the sources for a topic they carry.
+  assert.doesNotMatch(markup, /Not covered by the selected sources/);
+});
+
+test('the narrow-it prompt names the objectives box, and only when coverage is thin', () => {
+  const { GenerationProgress } = loadComponent('app/prototype/GenerationProgress.js');
+  const thin = [
+    { phase: 'sources', documents: 108, characters: 260000 },
+    {
+      phase: 'outline',
+      status: 'done',
+      objectives: ['Identify the six intelligence functions'],
+      notCovered: [{ objective: 'Signals intelligence support', reason: "in the sources, but outside this course's scope" }],
+      thinCoverage: true,
+    },
+  ];
+  const thinMarkup = renderToStaticMarkup(React.createElement(GenerationProgress, { events: thin }));
+  assert.match(thinMarkup, /covers part of the selected sources/);
+  // It has to point at a control that exists, or it is only bad news.
+  assert.match(thinMarkup, /objectives box above/);
+
+  // A normal course reaches its whole source. Nothing to suggest, and a prompt
+  // that fires here would be the kind of warning instructors learn to ignore.
+  const whole = [
+    { phase: 'sources', documents: 4, characters: 9000 },
+    { phase: 'outline', status: 'done', objectives: ['Identify the six intelligence functions'] },
+    { phase: 'sections', total: 1, passages: 1 },
+  ];
+  const wholeMarkup = renderToStaticMarkup(React.createElement(GenerationProgress, { events: whole }));
+  assert.doesNotMatch(wholeMarkup, /covers part of the selected sources/);
+
+  // Nor does a course that lost an objective to retrieval: that is a source
+  // problem, and typing objectives would not fix it.
+  const skipped = [
+    ...whole,
+    { phase: 'coursewright', step: 'skipped', section: 'Explain collection management', reason: 'no approved passage covers this objective' },
+  ];
+  const skippedMarkup = renderToStaticMarkup(React.createElement(GenerationProgress, { events: skipped }));
+  assert.match(skippedMarkup, /Not covered by this course/);
+  assert.doesNotMatch(skippedMarkup, /covers part of the selected sources/);
+});
+
+test('a thin draft still points at the objectives box after the modal is gone', () => {
+  const draftPayload = (extra) => ({
+    '/courses/course-1': {
+      status: 'PENDING',
+      version: 0,
+      course: {
+        title: 'MAGTF intelligence',
+        sourceIds: ['source-1'],
+        sections: [{ id: 'section-1', title: 'Identify the six intelligence functions', cite: 'source-1 p.3', lesson: 'The six intelligence functions are planning and direction, collection, processing, production, dissemination, and utilization.' }],
+        skippedObjectives: [{
+          objective: 'Signals intelligence support',
+          reason: "in the sources, but outside this course's scope",
+        }],
+        ...extra,
+      },
+    },
+    '/sources': [],
+  });
+
+  const { CourseDraft: ThinDraft } = loadComponent('app/prototype/Library.js', {
+    queryData: draftPayload({ thinCoverage: true }),
+  });
+  const thinMarkup = renderToStaticMarkup(React.createElement(ThinDraft, { course: { id: 'course-1' } }));
+  assert.match(thinMarkup, /covers part of the selected sources/);
+  // The modal is closed by now, so the box is named rather than pointed at.
+  assert.match(thinMarkup, /Create course modal/);
+
+  // The same draft without the flag names its gap and says nothing else.
+  const { CourseDraft: WholeDraft } = loadComponent('app/prototype/Library.js', {
+    queryData: draftPayload({}),
+  });
+  const wholeMarkup = renderToStaticMarkup(React.createElement(WholeDraft, { course: { id: 'course-1' } }));
+  assert.match(wholeMarkup, /Signals intelligence support/);
+  assert.doesNotMatch(wholeMarkup, /covers part of the selected sources/);
 });

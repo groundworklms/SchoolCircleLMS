@@ -647,6 +647,156 @@ test('the stream says which objective a refusal cost, and why', async () => {
   assert.equal(skipped, undefined);
 });
 
+/* ---------- a publication is taught in part, and says which part ---------- */
+
+/* A publication rather than a handout. The three pages the outline teaches
+   from, plus eight more chapters of everything else it carries -- roughly
+   thirty thousand characters, which is the shape that made the outline
+   unsatisfiable: no twenty single-point objectives of 200 characters cover it.
+   The filler wording is deliberately unlike the three taught pages so it cannot
+   win retrieval away from them. */
+const EXTRA_CHAPTERS = [
+  'Signals intelligence support',
+  'Geospatial intelligence products',
+  'Imagery collection requests',
+  'Measurement and signature reporting',
+  'Operations centre manning',
+  'Reconnaissance and surveillance tasking',
+  'Target nomination and battle damage assessment',
+  'Weather and oceanographic support',
+];
+const BIG_DOCUMENTS = [
+  ...MAGTF_DOCUMENTS,
+  ...EXTRA_CHAPTERS.map((topic, index) => ({
+    source: `${MAGTF_SOURCE.id} p.${10 + index}`,
+    text: `${topic} is described at length in this chapter. `.repeat(80),
+  })),
+];
+const OUT_OF_SCOPE = "in the sources, but outside this course's scope";
+
+test('a publication too large for the objective budget is taught in part, not refused', async () => {
+  // The live MCWP 2-10 failure: 108 pages, and the model refused the outline
+  // rather than break a rule it had been given. It was right to -- "cover the
+  // full source content" plus one teaching point per objective plus twenty
+  // objectives cannot all hold at once -- so the instruction changed instead.
+  const calls = [];
+  const events = [];
+  const scoped = magtfAsk();
+  const ask = async (model, system, prompt) => {
+    calls.push({ model, system });
+    if (system.includes('instructional designer')) {
+      return {
+        title: 'MAGTF intelligence fundamentals',
+        objectives: MAGTF_OBJECTIVES.slice(0, 2),
+        notCovered: ['Signals intelligence support', 'Geospatial intelligence products'],
+      };
+    }
+    return scoped(model, system, prompt);
+  };
+  const course = await draftCourse(
+    { objectives: [], documents: BIG_DOCUMENTS, diagrams: false },
+    { load: upstream, ask, emit: (event) => events.push(event) },
+  );
+
+  const outlineSystem = calls.find((call) => call.model === 'coursewright-outline').system;
+  assert.doesNotMatch(outlineSystem, /Cover the full source content/);
+  assert.match(outlineSystem, /coherent subset/);
+  assert.match(outlineSystem, /"notCovered"/);
+  // Refusal is still described, but reserved for sources that carry no course.
+  assert.match(outlineSystem, /Breadth is never a reason to refuse/);
+
+  // The course teaches the subset it chose, completely.
+  assert.deepEqual(course.objectives, MAGTF_OBJECTIVES.slice(0, 2));
+  assert.equal(course.sections.length, 2);
+  // And declares what it decided not to reach, in the same list and the same
+  // shape as an objective retrieval could not ground -- with wording that keeps
+  // the two apart.
+  assert.deepEqual(course.skippedObjectives, [
+    { objective: 'Signals intelligence support', reason: OUT_OF_SCOPE },
+    { objective: 'Geospatial intelligence products', reason: OUT_OF_SCOPE },
+  ]);
+  assert.equal(course.thinCoverage, true);
+
+  // The modal is watching the outline stage, so it has to leave on the stream.
+  const done = events.find((event) => event.phase === 'outline' && event.status === 'done');
+  assert.deepEqual(done.notCovered, course.skippedObjectives);
+  assert.equal(done.thinCoverage, true);
+
+  // An instructor who typed their own objectives has already narrowed the
+  // course by hand, so the same publication prompts them to do nothing.
+  const byHand = await draftCourse(
+    {
+      title: 'MAGTF intelligence',
+      objectives: MAGTF_OBJECTIVES.slice(0, 2),
+      documents: BIG_DOCUMENTS,
+      diagrams: false,
+    },
+    { load: upstream, ask: magtfAsk() },
+  );
+  assert.equal(byHand.thinCoverage, undefined);
+  assert.equal(byHand.skippedObjectives, undefined);
+});
+
+test('sources that support no course at all are still refused at the outline', async () => {
+  // The guard on the half above. Teaching a subset instead of refusing must not
+  // become a way to generate a course from a document that carries none: this
+  // is cite-or-refuse at the outline layer, and it is the same refusal path,
+  // reached for the same reason it always was.
+  await assert.rejects(
+    () => draftCourse(
+      {
+        objectives: [],
+        documents: [{ source: 'scan p.1', text: 'iv v vi vii viii ix x xi xii' }],
+        diagrams: false,
+      },
+      {
+        load: upstream,
+        ask: async (_model, system) => (system.includes('instructional designer')
+          ? { refused: true, reason: 'the passages are page numbering and teach nothing testable' }
+          : { refused: false, lesson: 'unreachable' }),
+      },
+    ),
+    (error) =>
+      error.code === 'COURSE_OUTLINE_REFUSED' &&
+      error.status === 422 &&
+      /teach nothing testable/.test(error.message),
+  );
+});
+
+test('a gap the sources never mention is not reported, and a covered source is not called thin', async () => {
+  // Two separate ways this could mislead an instructor. An invented gap would
+  // have the screen report missing coverage of material no source ever carried
+  // -- the same fabrication the grounding floor exists to stop, arriving in the
+  // one field nothing else checks. And a prompt to narrow a source the outline
+  // genuinely did cover is a warning instructors learn to ignore, which costs
+  // the ones that mean something.
+  const scoped = magtfAsk();
+  const course = await draftCourse(
+    { objectives: [], documents: MAGTF_DOCUMENTS, diagrams: false },
+    {
+      load: upstream,
+      ask: async (model, system, prompt) => {
+        if (system.includes('instructional designer')) {
+          return {
+            title: 'MAGTF intelligence fundamentals',
+            objectives: MAGTF_OBJECTIVES.slice(0, 2),
+            notCovered: [
+              'Counterintelligence and human intelligence reporting categories',
+              'Orbital launch ceramic seal inspection',
+            ],
+          };
+        }
+        return scoped(model, system, prompt);
+      },
+    },
+  );
+  assert.deepEqual(course.skippedObjectives, [
+    { objective: 'Counterintelligence and human intelligence reporting categories', reason: OUT_OF_SCOPE },
+  ]);
+  // Three short pages: the outline had room for all of it, so nothing to say.
+  assert.equal(course.thinCoverage, undefined);
+});
+
 test('Rubricon validation and traceability run after injected generation', async () => {
   const result = await generateRubric(
     {

@@ -38,6 +38,10 @@ export function generationView(events) {
     passages: 0,
     sections: [],
     skipped: [],
+    // The outline reached only a slice of a large source, and the server said
+    // so. Never inferred here: the ratio behind it needs the source's size in
+    // characters, which only the generation side has.
+    thinCoverage: false,
     apply: {},
     done: false,
     saved: null,
@@ -77,6 +81,16 @@ export function generationView(events) {
       if (event.status === 'done') {
         view.outline = 'done';
         view.objectives = event.objectives || [];
+        /* Source topics the outline deliberately left outside the course. They
+           arrive a stage earlier than the retrieval skips and the generator
+           refusals below, but they read as the same fact to an instructor --
+           the course does not cover this -- so they join the same list rather
+           than getting a second one. Their reason is what keeps them apart. */
+        for (const entry of Array.isArray(event.notCovered) ? event.notCovered : []) {
+          const objective = String(entry?.objective || '');
+          if (objective) view.skipped.push({ objective, reason: String(entry?.reason || '') });
+        }
+        view.thinCoverage = event.thinCoverage === true;
       }
     } else if (event.phase === 'title') {
       view.title = event.title || '';
@@ -132,6 +146,26 @@ function Chip({ label, state, reason }) {
     >
       {state === false ? `${label} - skipped` : label}
     </span>
+  );
+}
+
+/* Coverage came out thin: the outline reached a slice of a large publication.
+   The fix is a control the instructor already has -- the objectives box in the
+   Create course modal, which skips outline generation entirely and grounds
+   exactly what was typed -- so this names that box rather than offering a
+   scoping feature that does not exist. One sentence, stated the way the rest of
+   the screen states a limit: what happened, then what to do about it.
+
+   Shared with the review screen, which reaches the same box by a different
+   route: by then the modal is closed, so it is named rather than pointed at. */
+export function ThinCoverageNotice({ inModal = false }) {
+  return (
+    <p className="p-src" style={{ marginTop: '0.5rem' }}>
+      This course covers part of the selected sources. To aim it at one topic, type the
+      objectives you want{' '}
+      {inModal ? 'in the objectives box above' : 'into the objectives box in the Create course modal'}
+      , one per line, and generate again.
+    </p>
   );
 }
 
@@ -219,23 +253,27 @@ export function GenerationProgress({ events }) {
 
       {view.skipped.length > 0 && (
         <div className="p-src" style={{ marginTop: '0.75rem' }}>
-          <p style={{ margin: 0 }}>
-            Not covered by the selected sources, so not written. The rest of the course was
-            saved:
-          </p>
+          {/* Not "not covered by the sources": one of the three stages feeding
+              this list is a topic the sources DO cover and the course simply
+              did not take. Naming the course rather than the sources is the
+              only heading true of all three. */}
+          <p style={{ margin: 0 }}>Not covered by this course. The rest of it was saved:</p>
           <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
             {view.skipped.map((entry) => (
               <li key={entry.objective}>
                 {entry.objective}
                 {/* The reason is the actionable half: it separates "pick a
                     source that covers this" from "the source covers it, the
-                    generator would not teach it from that page". */}
+                    generator would not teach it from that page" from "the
+                    source covers it, this course was not scoped to it". */}
                 {entry.reason ? <> &mdash; {entry.reason}</> : null}
               </li>
             ))}
           </ul>
         </div>
       )}
+
+      {view.thinCoverage && <ThinCoverageNotice inModal />}
 
       {Object.keys(view.apply).length > 0 && (
         <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.75rem' }}>
