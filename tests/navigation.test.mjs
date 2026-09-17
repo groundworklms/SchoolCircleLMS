@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   canAccessLocation,
@@ -8,6 +11,9 @@ import {
   publishedCourseHref,
   settingsHref,
 } from '../app/prototype/routes.js';
+
+const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const source = (relativePath) => fs.readFileSync(path.join(workspace, relativePath), 'utf8');
 
 test('canonical roots select the correct role and area', () => {
   assert.deepEqual(parse('/prototype'), {
@@ -107,6 +113,33 @@ test('saved-role access permits only the instructor preview locations', () => {
   assert.equal(canAccessLocation(instructor, parse('/prototype/course/course-1'), true), false);
   assert.equal(canAccessLocation({ role: 'LEARNER' }, parse('/prototype/instructor'), true), false);
   assert.equal(canAccessLocation({ role: 'BOTH' }, parse('/prototype/instructor'), true), true);
+});
+
+/* /plan is the team's hackathon board. The route stays -- we deep-link it
+   ourselves -- but it kept reappearing on both rails, where a judge or a Marine
+   sees it. The rails are checked at the source because a rail button is a raw
+   window.location assignment, not a routes.js location. */
+test('neither prototype rail offers the internal planning board', () => {
+  for (const shell of ['app/prototype/InstructorShell.js', 'app/prototype/StudentShell.js']) {
+    const text = source(shell);
+    assert.doesNotMatch(text, /Planning board/, shell);
+    // Sign-out still sends the browser to '/', so only /plan itself is barred.
+    assert.doesNotMatch(text, /['"]\/plan(?:[/?#]|['"])/, shell);
+  }
+});
+
+/* Both hero buttons used to land on /login -- "Explore the prototype" pointed at
+   the auth-gated /prototype, which redirects. A second CTA has to go somewhere a
+   signed-out visitor can actually reach. */
+test('the landing hero offers one way in and no auth-gated second CTA', () => {
+  const landing = source('app/page.js');
+  assert.doesNotMatch(landing, /href="\/prototype"/);
+
+  const anchors = [...landing.matchAll(/href="#([\w-]+)"/g)].map((m) => m[1]);
+  assert.ok(anchors.length > 0, 'expected an in-page CTA target');
+  for (const id of anchors) {
+    assert.match(landing, new RegExp(`id="${id}"`), `#${id} has no target on the page`);
+  }
 });
 
 test('settings tabs are addressable, canonical, and validated', () => {

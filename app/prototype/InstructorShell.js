@@ -376,10 +376,12 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
 
         </div>
         <div className="s-rail-footer">
+        {/* Role switching is the only escape hatch the rail offers. /plan is the
+            team's own hackathon board -- it stays reachable by URL for us, but it
+            is not product, so it is not on an instructor's or a student's rail. */}
         {onSwitchRole && (
           <RailButton icon={I.swap} label="View as student" onClick={onSwitchRole} />
         )}
-        <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/plan'; }} />
         </div>
       </nav>
 
