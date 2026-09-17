@@ -280,6 +280,11 @@ export function useApiStream(path) {
  * `onEvent` is given every event exactly once, in order, so the same reducer
  * that rendered the stream renders this unchanged.
  */
+// Consecutive failed polls before the client gives up on hearing about a
+// job. Generous, because the job itself is unaffected by any of them and the
+// cost of waiting is one more interval.
+const MAX_MISSED_POLLS = 8;
+
 export function useCourseJob(path = '/courses/draft/job') {
   const [loading, setLoading] = useState(false);
 
@@ -313,12 +318,47 @@ export function useCourseJob(path = '/courses/draft/job') {
    */
   const follow = async (id, onEvent, { pollMs = 2500, signal } = {}) => {
     let seen = 0;
+    let missed = 0;
     for (;;) {
       if (signal?.aborted) return null;
-      const res = await authFetch(`${API_BASE}${path}/${encodeURIComponent(id)}`);
+
+      /* A poll that fails is not a generation that failed.
+       *
+       * This loop runs for the length of a course -- twenty minutes is
+       * ordinary -- so it will meet a dropped request, a token refresh, a
+       * sleeping laptop. Throwing on the first one ends the loop, and ending
+       * the loop is worse here than it looks: polling is also what keeps the
+       * server instance handling requests, which is what keeps the detached
+       * generation moving. The first version of this threw, and a live
+       * generation reported a lost connection while the job was still running
+       * perfectly well.
+       *
+       * So a failed poll is retried, and only a run of them is treated as
+       * having lost the job. The state lives on the row, so a poll that misses
+       * costs nothing but its own interval. */
       let json = null;
-      try { json = await res.json(); } catch {}
-      if (!res.ok) throw json || new Error(`Status ${res.status}`);
+      let ok = false;
+      try {
+        const res = await authFetch(`${API_BASE}${path}/${encodeURIComponent(id)}`);
+        try { json = await res.json(); } catch {}
+        // A 404 is the one failure worth believing immediately: the job is not
+        // there, and asking again will not produce it.
+        if (res.status === 404) throw json || new Error('No such generation job.');
+        ok = res.ok;
+      } catch (error) {
+        if (error?.code === 'JOB_NOT_FOUND') throw error;
+        ok = false;
+      }
+
+      if (!ok) {
+        missed += 1;
+        if (missed > MAX_MISSED_POLLS) {
+          return { phase: 'unreachable', jobId: id };
+        }
+        await new Promise((resolve) => setTimeout(resolve, pollMs));
+        continue;
+      }
+      missed = 0;
 
       const events = Array.isArray(json?.events) ? json.events : [];
       for (const event of events.slice(seen)) onEvent(event);

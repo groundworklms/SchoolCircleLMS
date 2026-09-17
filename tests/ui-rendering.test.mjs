@@ -2045,7 +2045,9 @@ test('a lost stream offers waiting as the primary action and regenerating as the
   // for no reason.
   const notice = elements.find(
     (element) => element.props?.role === 'status'
-      && /the reporting stopped, not|generation did not/.test(JSON.stringify(element.props.children)),
+      && /Lost contact with the generation|Contact with the generation was lost/.test(
+        JSON.stringify(element.props.children),
+      ),
   );
   assert.ok(notice, 'the lost-stream explanation must not be replaced by the buttons');
 
@@ -2156,7 +2158,7 @@ test('a generation whose stream ended without an outcome says so instead of noth
   // error, and an assertive live region for it interrupts a screen reader to
   // say nothing is wrong.
   assert.match(lost, /role="status"/);
-  assert.match(lost, /ended before generation reported an outcome/);
+  assert.match(lost, /Contact with the generation was lost/);
   // It has to name the action that makes it worse, because that is the action
   // the silence was prompting.
   assert.match(lost, /second copy/);
@@ -2164,19 +2166,19 @@ test('a generation whose stream ended without an outcome says so instead of noth
   // A generation still in flight looks exactly the same in the events, so the
   // notice must never be inferred from a missing terminal phase.
   const running = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
-  assert.doesNotMatch(running, /ended before generation reported an outcome/);
+  assert.doesNotMatch(running, /Contact with the generation was lost/);
 
   // Nor after an outcome did arrive, in either direction.
   const saved = renderToStaticMarkup(React.createElement(GenerationProgress, {
     events: [...events, { phase: 'saved', record: { id: 'course-1' } }],
     interrupted: true,
   }));
-  assert.doesNotMatch(saved, /ended before generation reported an outcome/);
+  assert.doesNotMatch(saved, /Contact with the generation was lost/);
   const failed = renderToStaticMarkup(React.createElement(GenerationProgress, {
     events: [...events, { phase: 'failed', error: 'Course generation failed' }],
     interrupted: true,
   }));
-  assert.doesNotMatch(failed, /ended before generation reported an outcome/);
+  assert.doesNotMatch(failed, /Contact with the generation was lost/);
   assert.match(failed, /Course generation failed/);
 });
 
@@ -2374,7 +2376,7 @@ test('a long not-covered list folds to a count and groups its reasons', () => {
   for (const entry of notCovered) assert.ok(markup.includes(entry.objective), entry.objective);
 });
 
-test('a lost stream says the generation is still running, and stops asking the instructor to go and look', () => {
+test('losing contact with a job says the generation continues, and stops asking the instructor to go and look', () => {
   const { GenerationProgress } = loadComponent('app/prototype/GenerationProgress.js');
   const events = [
     { phase: 'sources', documents: 1, characters: 9000 },
@@ -2402,7 +2404,7 @@ test('a lost stream says the generation is still running, and stops asking the i
   const unwatched = renderToStaticMarkup(
     React.createElement(GenerationProgress, { events, interrupted: true }),
   );
-  assert.match(unwatched, /Check the course list in a few minutes/);
+  assert.match(unwatched, /check the course list in a few minutes/i);
 
   // And none of it appears on a generation that is simply still going.
   const running = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
