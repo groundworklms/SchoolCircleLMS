@@ -8,6 +8,8 @@ import {
   deriveMasteryPlan,
   generateRubric,
   ingestSource,
+  masteryCriteriaFromRubric,
+  masteryPlanProvenance,
   restoreMasterySession,
   serialiseMasterySession,
   startMasterySession,
@@ -1109,7 +1111,20 @@ test('shared mastery plans are canonical, grounded, and immutable in injected se
   );
   assert.equal(plan.status, 'PENDING');
   assert.match(plan.revision, /^sha256:/);
-  assert.deepEqual(plan.criteria, criteria);
+  // Nothing here was ratified, so every criterion is stamped DERIVED and the
+  // plan says so in one word -- the instructor is not left inferring it.
+  assert.deepEqual(
+    plan.criteria,
+    criteria.map((criterion) => ({ ...criterion, provenance: { origin: 'DERIVED' } })),
+  );
+  assert.deepEqual(plan.provenance, {
+    origin: 'DERIVED',
+    total: 2,
+    ratified: 0,
+    derived: 2,
+    rubricIds: [],
+    objectives: [],
+  });
   assert.equal(validateMasteryPlan(plan, { sourceText: source, sourceId: 'source-1' }).valid, true);
   assert.equal(
     validateMasteryPlan(
@@ -3208,4 +3223,279 @@ test('a stated role beats the heuristic in both directions', async () => {
   const outline = calls.find((call) => call.model === 'coursewright-outline');
   assert.ok(outline.prompt.indexOf(ESD_PAGES[0].text) < outline.prompt.indexOf('CONTENT PASSAGES'));
   assert.ok(outline.prompt.indexOf(POI_PAGE) > outline.prompt.indexOf('CONTENT PASSAGES'));
+});
+
+/* ---------- an approved rubric IS the mastery plan ----------
+ *
+ * Rubricon writes a BARS scale and a human approves it; Whetstone grades a
+ * learner against mastery criteria. Those were two separate artifacts derived
+ * from the same source by two separate model calls, so an instructor could
+ * approve one rubric and have their learners graded against a different, never
+ * approved one. These tests pin the connection: where a human has ratified the
+ * words, those words are the ones a learner is graded against. */
+
+const GUN_SOURCE = [
+  'The gunner confirms the weapon is clear before handling it.',
+  'The gunner announces a misfire and waits five seconds before opening the feed tray cover.',
+  'The assistant gunner keeps the belt flat and free of twists while feeding the weapon.',
+].join(' ');
+
+const CLEARING_OBJECTIVE = 'Clear and handle the weapon safely';
+const FEEDING_OBJECTIVE = 'Feed the weapon without inducing a stoppage';
+
+function approvedGunRubric(overrides = {}) {
+  return {
+    id: 'rubric-clearing',
+    status: 'APPROVED',
+    objective: CLEARING_OBJECTIVE,
+    rubric: {
+      flagged: false,
+      dimensions: [
+        {
+          name: 'Confirms the weapon is clear before handling',
+          source: 'confirms the weapon is clear before handling it',
+          anchors: {
+            unsatisfactory: 'Handles the weapon before it is confirmed clear.',
+            satisfactory: 'Confirms the weapon is clear before handling it.',
+            proficient: 'Confirms the weapon is clear and announces it before handling it.',
+          },
+        },
+        {
+          name: 'Announces a misfire before opening the feed tray cover',
+          source: 'announces a misfire and waits five seconds',
+          anchors: {
+            unsatisfactory: 'Opens the feed tray cover without announcing the misfire.',
+            satisfactory: 'Announces a misfire and waits five seconds before opening the feed tray cover.',
+            proficient: 'Announces a misfire, waits five seconds, then opens the feed tray cover.',
+          },
+        },
+      ],
+    },
+    ...overrides,
+  };
+}
+
+const FEEDING_CRITERION = {
+  elo: 'Keeps the belt flat and free of twists while feeding',
+  indicators: {
+    developing: 'Feeds the weapon with a twisted belt.',
+    competent: 'Keeps the belt flat while feeding the weapon.',
+    mastered: 'Keeps the belt flat and free of twists while feeding the weapon.',
+  },
+};
+
+test('an approved rubric becomes its objective mastery criteria without a model call', async () => {
+  let asked = 0;
+  const plan = await deriveMasteryPlan(
+    {
+      objectives: [CLEARING_OBJECTIVE],
+      source: GUN_SOURCE,
+      sourceId: 'source-gun',
+      ratifiedRubrics: [approvedGunRubric()],
+    },
+    {
+      load: upstream,
+      deriveRubric: async () => {
+        asked += 1;
+        return { criteria: [FEEDING_CRITERION] };
+      },
+    },
+  );
+  // The whole point: the words a human approved are the words used, and no
+  // second rubric was invented to sit beside them.
+  assert.equal(asked, 0);
+  assert.deepEqual(plan.criteria.map((criterion) => criterion.elo), [
+    'Confirms the weapon is clear before handling',
+    'Announces a misfire before opening the feed tray cover',
+  ]);
+  assert.deepEqual(plan.criteria[0].indicators, {
+    developing: 'Handles the weapon before it is confirmed clear.',
+    competent: 'Confirms the weapon is clear before handling it.',
+    mastered: 'Confirms the weapon is clear and announces it before handling it.',
+  });
+  assert.deepEqual(plan.criteria[0].provenance, {
+    origin: 'RATIFIED',
+    rubricId: 'rubric-clearing',
+    objective: CLEARING_OBJECTIVE,
+    dimension: 'Confirms the weapon is clear before handling',
+    sourcePhrase: 'confirms the weapon is clear before handling it',
+  });
+  assert.deepEqual(plan.provenance, {
+    origin: 'RATIFIED',
+    total: 2,
+    ratified: 2,
+    derived: 0,
+    rubricIds: ['rubric-clearing'],
+    objectives: [CLEARING_OBJECTIVE],
+  });
+  assert.equal(
+    validateMasteryPlan(plan, { sourceText: GUN_SOURCE, sourceId: 'source-gun' }).valid,
+    true,
+  );
+});
+
+test('a flagged or unapproved rubric can never become mastery criteria', async () => {
+  const flagged = approvedGunRubric({
+    rubric: {
+      flagged: true,
+      reason: 'The standard is too subjective to anchor.',
+      needsSME: 'Define what safe handling looks like.',
+    },
+  });
+  // Rubricon flags a standard it refuses to anchor and approveRubric rejects
+  // the result outright, so a flagged rubric reaching the mastery path is a
+  // routing defect. Fail loudly rather than skipping it into the model path,
+  // where the failure would be invisible.
+  assert.throws(() => masteryCriteriaFromRubric(flagged), /flagged for an SME/);
+  await assert.rejects(
+    () =>
+      deriveMasteryPlan(
+        {
+          objectives: [CLEARING_OBJECTIVE],
+          source: GUN_SOURCE,
+          sourceId: 'source-gun',
+          ratifiedRubrics: [flagged],
+        },
+        { load: upstream, deriveRubric: async () => ({ criteria: [FEEDING_CRITERION] }) },
+      ),
+    (error) => error.code === 'MASTERY_PLAN_RUBRIC_NOT_APPROVED',
+  );
+  await assert.rejects(
+    () =>
+      deriveMasteryPlan(
+        {
+          objectives: [CLEARING_OBJECTIVE],
+          source: GUN_SOURCE,
+          sourceId: 'source-gun',
+          ratifiedRubrics: [approvedGunRubric({ status: 'PENDING' })],
+        },
+        { load: upstream, deriveRubric: async () => ({ criteria: [FEEDING_CRITERION] }) },
+      ),
+    (error) => error.code === 'MASTERY_PLAN_RUBRIC_NOT_APPROVED',
+  );
+});
+
+test('an objective with no approved rubric still derives, and the plan admits the mixture', async () => {
+  const asked = [];
+  const plan = await deriveMasteryPlan(
+    {
+      objectives: [CLEARING_OBJECTIVE, FEEDING_OBJECTIVE],
+      source: GUN_SOURCE,
+      sourceId: 'source-gun',
+      ratifiedRubrics: [approvedGunRubric()],
+    },
+    {
+      load: upstream,
+      deriveRubric: async (objectives) => {
+        asked.push(objectives);
+        return { criteria: [FEEDING_CRITERION] };
+      },
+    },
+  );
+  // The model is asked about the objective nobody has ratified, and only that
+  // one: it cannot restate or contradict a competency a human already signed.
+  assert.deepEqual(asked, [[FEEDING_OBJECTIVE]]);
+  assert.equal(plan.criteria.length, 3);
+  assert.deepEqual(plan.criteria[2].provenance, { origin: 'DERIVED' });
+  // A part-ratified plan must not present as ratified.
+  assert.equal(plan.provenance.origin, 'MIXED');
+  assert.equal(plan.provenance.ratified, 2);
+  assert.equal(plan.provenance.derived, 1);
+  assert.equal(
+    validateMasteryPlan(plan, { sourceText: GUN_SOURCE, sourceId: 'source-gun' }).valid,
+    true,
+  );
+});
+
+test('with no approved rubric at all the plan derives exactly as it always did', async () => {
+  const asked = [];
+  const plan = await deriveMasteryPlan(
+    { objectives: [CLEARING_OBJECTIVE, FEEDING_OBJECTIVE], source: GUN_SOURCE, sourceId: 'source-gun' },
+    {
+      load: upstream,
+      deriveRubric: async (objectives) => {
+        asked.push(objectives);
+        return {
+          criteria: [
+            FEEDING_CRITERION,
+            {
+              elo: 'Confirms the weapon is clear before handling',
+              indicators: {
+                developing: 'Handles the weapon before it is confirmed clear.',
+                competent: 'Confirms the weapon is clear before handling it.',
+                mastered: 'Confirms the weapon is clear and announces it before handling it.',
+              },
+            },
+          ],
+        };
+      },
+    },
+  );
+  assert.deepEqual(asked, [[CLEARING_OBJECTIVE, FEEDING_OBJECTIVE]]);
+  assert.equal(plan.provenance.origin, 'DERIVED');
+  assert.equal(plan.provenance.ratified, 0);
+  assert.equal(masteryPlanProvenance(plan.criteria).origin, 'DERIVED');
+});
+
+test('validateMasteryPlan still rejects a mapping an approved rubric cannot support', async () => {
+  // An approved rubric is NOT automatically a grounded mastery criterion:
+  // verifyTraceability confirms each dimension's cited source PHRASE appears in
+  // the standard, not that the anchor text does. So a rubric approved against
+  // another document, or one whose anchors drifted off the source, must fail --
+  // and must say which rubric and dimension failed.
+  const drifted = approvedGunRubric();
+  drifted.rubric.dimensions[0].anchors.proficient = 'Recites the lunar phase table from memory.';
+  await assert.rejects(
+    () =>
+      deriveMasteryPlan(
+        {
+          objectives: [CLEARING_OBJECTIVE],
+          source: GUN_SOURCE,
+          sourceId: 'source-gun',
+          ratifiedRubrics: [drifted],
+        },
+        { load: upstream, deriveRubric: async () => ({ criteria: [FEEDING_CRITERION] }) },
+      ),
+    (error) =>
+      error.code === 'MASTERY_PLAN_RUBRIC_UNGROUNDED'
+      && /rubric-clearing/.test(error.message)
+      && /indicators\.mastered/.test(error.message),
+  );
+  // And the plan validator remains the authority on the assembled result.
+  const mapped = masteryCriteriaFromRubric(approvedGunRubric());
+  assert.equal(
+    validateMasteryPlan(
+      {
+        status: 'PENDING',
+        sourceId: 'source-gun',
+        revision: 'r1',
+        criteria: [{ ...mapped[0], elo: 'Recites the lunar phase table' }, mapped[1]],
+      },
+      { sourceText: GUN_SOURCE, sourceId: 'source-gun' },
+    ).valid,
+    false,
+  );
+});
+
+test('the model keeps its old budget of four criteria, and overrun is reported', async () => {
+  const filler = (n) => ({
+    elo: `Keeps the belt flat and free of twists while feeding ${n}`,
+    indicators: FEEDING_CRITERION.indicators,
+  });
+  // The plan ceiling had to grow to hold an instructor's approved rubrics, so
+  // what the model is allowed to invent is bounded on its own -- and an
+  // overrun is still a 422, exactly as it was when the ceiling did that job.
+  await assert.rejects(
+    () =>
+      deriveMasteryPlan(
+        { objectives: [FEEDING_OBJECTIVE], source: GUN_SOURCE, sourceId: 'source-gun' },
+        {
+          load: upstream,
+          deriveRubric: async () => ({
+            criteria: [filler(1), filler(2), filler(3), filler(4), filler(5)],
+          }),
+        },
+      ),
+    (error) => error.code === 'MASTERY_PLAN_INVALID' && /remaining slot/.test(error.message),
+  );
 });
