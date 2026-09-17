@@ -74,6 +74,11 @@ test('lessonCodeOf reads a schoolhouse file name: course prefix, annex, lesson, 
   assert.deepEqual(lessonCodeOf('BE0209_ACFundamentalsWX_LP'), { code: 'BE0209', prefix: 'BE', annex: 2, lesson: 9, name: 'AC Fundamentals WX', role: 'LP', exam: true });
   assert.equal(lessonCodeOf('BE0310_IntroToRegulators_ LP').name, 'Intro To Regulators');
   assert.equal(lessonCodeOf('BE0502 Network Switches  LP').name, 'Network Switches');
+  // A bare code and role: the role is still read, and the name falls back.
+  assert.deepEqual(lessonCodeOf('BE0201 LP'), { code: 'BE0201', prefix: 'BE', annex: 2, lesson: 1, name: 'Lesson 1', role: 'LP', exam: false });
+  assert.deepEqual(lessonCodeOf('BE0201_SHO'), { code: 'BE0201', prefix: 'BE', annex: 2, lesson: 1, name: 'Lesson 1', role: 'SHO', exam: false });
+  assert.equal(lessonCodeOf('BE0201').role, '');
+  assert.equal(lessonCodeOf('BE02011 Not a code'), null);
   assert.equal(lessonCodeOf('BASIC ELECTRONICS COURSE Formula Sheet (New)'), null);
   assert.equal(lessonCodeOf('AY27_8670_Prerequisite_Coursebook.pdf'), null);
 });
@@ -321,8 +326,11 @@ test('a coded corpus is outlined from its lesson codes; the model writes only ob
   seed({ id: 'lp-0204', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0204_Transformers_LP', pages: [{ page: 1, text: 'A transformer moves electrical energy between circuits through a shared magnetic field. The turns ratio sets the voltage ratio.' }] } });
   seed({ id: 'sho-0204', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0204_Transformers_SHO', pages: [{ page: 1, text: 'Student handout: the transformer turns ratio and the voltage ratio it sets.' }] } });
   seed({ id: 'lp-0205', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0205_Capacitors_LP', pages: [{ page: 1, text: 'A capacitor stores charge on two plates separated by a dielectric.' }] } });
+  // Another lesson's handout that covers BE0204's objective better than
+  // BE0204's own documents do. It must not write BE0204.
+  seed({ id: 'sho-0205', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0205_Capacitors_SHO', pages: [{ page: 1, text: 'Explain how the transformer turns ratio sets the voltage ratio: the transformer turns ratio sets the voltage ratio exactly.' }] } });
   seed({ id: 'lp-0209', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0209_ACFundamentalsWX_LP', pages: [{ page: 1, text: 'Written examination administration instructions.' }] } });
-  const created = (await plan.createPlan(OWNER, { body: { title: 'BEC', sourceIds: ['lp-0204', 'sho-0204', 'lp-0205', 'lp-0209'] } })).json;
+  const created = (await plan.createPlan(OWNER, { body: { title: 'BEC', sourceIds: ['lp-0204', 'sho-0204', 'lp-0205', 'sho-0205', 'lp-0209'] } })).json;
   await runUntil(plan.surveyPlanStep, created.id, (v) => v.status === 'outline');
   const outlined = (await plan.outlinePlanStep(OWNER, { params: { id: created.id }, body: {} })).json;
   assert.equal(outlined.outlinedFrom, 'lesson-codes');
@@ -337,9 +345,16 @@ test('a coded corpus is outlined from its lesson codes; the model writes only ob
 
   const mapped = (await plan.mapPlanStep(OWNER, { params: { id: created.id } })).json;
   const m = plan.planLessons(mapped);
-  // Its own plan and handout, in that order, ahead of anything else.
-  assert.deepEqual(m[0].sourceIds.slice(0, 2), ['lp-0204', 'sho-0204']);
+  // Its own plan and handout, in that order, and nothing else: the build reads
+  // every mapped source and retrieval picks by score, so the better-scoring
+  // handout from BE0205 would otherwise write BE0204.
+  assert.deepEqual(m[0].sourceIds, ['lp-0204', 'sho-0204']);
+  assert.ok(m[0].cites.every((cite) => /^(lp|sho)-0204\b/.test(cite)), `cites stay within the lesson's own documents: ${m[0].cites}`);
+  assert.equal(m[0].status, 'planned');
   assert.equal(m[2].status, 'skipped');
+  // An exam is never queued: it has no objective to build from.
+  await assert.rejects(plan.retryPlanLesson(OWNER, { params: { id: created.id }, body: { lessonId: m[2].id } }), /cannot be queued/);
+  assert.equal(plan.planLessons((await plan.getPlan(OWNER, { params: { id: created.id } })).json)[2].status, 'skipped');
 
   const built = (await plan.buildPlanStep(OWNER, { params: { id: created.id } })).json;
   assert.equal(built.built.id, 'A.01');
