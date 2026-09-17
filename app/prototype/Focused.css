@@ -241,15 +241,6 @@ html[data-theme="dark"] .focused-dashboard-content {
   min-width: 0;
 }
 
-.focused-dashboard-content .f-course-id {
-  background: var(--f-bg);
-  border-radius: 4px;
-  color: var(--f-dim);
-  flex: none;
-  font-family: var(--f-mono);
-  font-size: 0.75rem;
-  padding: 0.15rem 0.4rem;
-}
 
 .focused-dashboard-content .f-course-name {
   color: var(--f-text);

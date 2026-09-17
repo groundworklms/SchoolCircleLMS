@@ -679,7 +679,9 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
                   />
                   <span>
                     <strong>{s.title}</strong>
-                    <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages · {s.id}</small>
+                    <small style={{ display: 'block', color: 'var(--p-faint)' }}>
+                      {s.pages || 0} pages{s.sourceId && s.sourceId !== s.title ? ` · ${s.sourceId}` : ''}
+                    </small>
                   </span>
                 </label>
               ))}
