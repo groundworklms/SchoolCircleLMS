@@ -1993,6 +1993,67 @@ test('a lost stream offers waiting as the primary action and regenerating as the
   assert.equal(refreshes.length, 1);
 });
 
+test('the course picker selects a whole collection at once', () => {
+  // A collection is a zip of fifty lesson plans, and the course is built from
+  // all of it. Ticking fifty boxes is the defect; the heading toggles the group.
+  const sources = [
+    { id: 'lp-1', title: 'Lesson 1', status: 'APPROVED', collection: 'Lesson plans' },
+    { id: 'lp-2', title: 'Lesson 2', status: 'APPROVED', collection: 'Lesson plans' },
+    { id: 'lp-3', title: 'Lesson 3', status: 'PENDING', collection: 'Lesson plans' },
+    { id: 'loose', title: 'Syllabus', status: 'APPROVED' },
+  ];
+  const render = (selected) => {
+    const updates = [];
+    const { DraftCourseModal } = loadComponent('app/prototype/Library.js', {
+      expose: ['DraftCourseModal'],
+      stateValues: [
+        [true, () => {}],                 // open
+        ['', () => {}],                   // title
+        ['', () => {}],                   // objectives
+        [selected, (next) => updates.push(next)], // sourceIds
+      ],
+    });
+    const elements = collectReactElements(DraftCourseModal({
+      sources, sourcesLoading: false, sourcesError: null, onRetrySources: () => {}, onDrafted: () => {},
+    }));
+    const headings = elements.filter((element) => element.props?.className === 'source-pick-heading');
+    const groupButton = (name) => {
+      const heading = headings.find((element) => JSON.stringify(element.props.children).includes(name));
+      return collectReactElements(heading).find((element) => element.type === 'button');
+    };
+    // The setter receives an updater; applying it to the current selection is
+    // what the real useState would do. Spread into this realm: the component
+    // runs in a vm context, whose Array.prototype strict equality rejects.
+    const apply = (button) => { button.props.onClick(); return updates.map((next) => [...next(selected)]); };
+    return { headings, groupButton, apply };
+  };
+
+  const empty = render([]);
+  assert.equal(empty.headings.length, 2, 'every collection, and the ungrouped rest, gets a heading');
+  const selectAll = empty.groupButton('Lesson plans');
+  assert.equal(selectAll.props.children, 'Select all 2', 'counts approved documents only');
+  assert.deepEqual(empty.apply(selectAll), [['lp-1', 'lp-2']], 'the pending document is not selectable');
+
+  const partial = render(['lp-1', 'loose']);
+  assert.equal(partial.groupButton('Lesson plans').props.children, 'Select all 2');
+  assert.deepEqual(partial.apply(partial.groupButton('Lesson plans')), [['lp-1', 'loose', 'lp-2']],
+    'filling the group keeps what was already ticked, in and out of it');
+
+  const full = render(['lp-1', 'lp-2', 'loose']);
+  const clear = full.groupButton('Lesson plans');
+  assert.equal(clear.props.children, 'Clear');
+  assert.deepEqual(full.apply(clear), [['loose']], 'clearing a group leaves other selections alone');
+
+  // One approved document with no collection: nothing to select "all" of.
+  const single = collectReactElements(loadComponent('app/prototype/Library.js', {
+    expose: ['DraftCourseModal'],
+    stateValues: [[true, () => {}]],
+  }).DraftCourseModal({
+    sources: [sources[3]], sourcesLoading: false, sourcesError: null, onRetrySources: () => {}, onDrafted: () => {},
+  }));
+  assert.equal(single.filter((element) => element.props?.className === 'source-pick-heading').length, 0);
+});
+
 test('a generation whose stream ended without an outcome says so instead of nothing', () => {
   // draftCourseStream ends with 'saved' or 'failed'. When the response body
   // ends before either -- a proxy idle timeout on a long course -- the server
