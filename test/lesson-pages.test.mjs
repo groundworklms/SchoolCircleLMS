@@ -98,7 +98,13 @@ test('expandCoursePages writes pages onto grounded sections and records refusals
   assert.ok(sections[0].intro);
   assert.equal(sections[1].pages, undefined);
   assert.equal(sections[2].refusals.pages, 'pages not grounded in the passage');
-  assert.deepEqual(events.map((e) => e.ok), [true, false]);
+  // Filtered by kind rather than counting every event: a section that gets
+  // pages may also report items its pages cannot support, and this assertion
+  // is about which sections were written, not about how many events fired.
+  assert.deepEqual(
+    events.filter((e) => e.kind === 'pages').map((e) => e.ok),
+    [true, false],
+  );
 });
 
 // The corpus fallback this used to assert was removed: see

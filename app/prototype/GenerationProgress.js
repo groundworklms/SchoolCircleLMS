@@ -133,9 +133,19 @@ export function generationView(events) {
       // reports the same way: an ok per section, or the reason it refused.
       if (event.status === 'start') view.pages = 'running';
       if (event.status === 'done') view.pages = 'done';
+      // Keyed on event.kind, the same way the coursewright branch is. This
+      // pass emits more than one kind now -- 'pages' for the write itself and
+      // 'item-support' for items the written pages cannot answer -- and
+      // hardcoding 'pages' made the second overwrite the first.
       if (event.kind && event.section) {
         const section = byTitle.get(event.section);
-        if (section) section.artifacts.pages = { ok: event.ok, reason: event.reason };
+        if (section) {
+          section.artifacts[event.kind] = {
+            ok: event.ok,
+            reason: event.reason,
+            ...(event.items ? { items: event.items } : {}),
+          };
+        }
       }
     } else if (event.phase === 'saved') {
       view.saved = event.record || null;
@@ -285,6 +295,18 @@ export function GenerationProgress({ events, interrupted = false }) {
               {section.artifacts.lesson?.ok === false && (
                 <p className="p-src" style={{ margin: '0.35rem 0 0', color: 'var(--p-warning)' }}>
                   {section.artifacts.lesson.reason}
+                </p>
+              )}
+              {/* Not a chip. A chip says an artifact was produced or refused,
+                  and this is neither: the pages were written and the items
+                  were written, and some of the items ask about something the
+                  written pages do not teach. That is a note to the reviewer
+                  about where to look, so it reads as a sentence. */}
+              {section.artifacts['item-support']?.items > 0 && (
+                <p className="p-src" style={{ margin: '0.35rem 0 0', color: 'var(--p-warning)' }}>
+                  {section.artifacts['item-support'].items === 1
+                    ? '1 question asks about something these pages do not teach'
+                    : `${section.artifacts['item-support'].items} questions ask about something these pages do not teach`}
                 </p>
               )}
             </li>
