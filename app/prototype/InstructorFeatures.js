@@ -3,6 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApiQuery, useApiMutation } from '../_learning/useLearning';
 import { RowActions } from './RowActions';
+import {
+  RUBRIC_STATE_LABELS,
+  coverageSummary,
+  objectiveCoverage,
+} from './rubric-coverage';
 
 /* Instructor-side optional tools for a real (LearningRecord) course:
    syllabus (Cadence), doctrinal fidelity (Understudy), the after-action
@@ -565,6 +570,22 @@ export function InstructorAAR({ courseId }) {
 /* ---------- rubrics (Rubricon) ---------- */
 
 /**
+ * What a saved rubric row says about itself.
+ *
+ * It used to read "0 criteria · Draft" for every rubric ever generated: the
+ * count was taken from a `criteria` array Rubricon does not produce, and both
+ * a six-dimension BARS scale and a refusal to write one reported the same
+ * nothing. A flagged rubric is not a draft on its way to approval, so it says
+ * what it is instead of counting dimensions that were deliberately not
+ * written.
+ */
+function rubricSummaryText(rubric) {
+  if (rubric.flagged) return RUBRIC_STATE_LABELS.flagged;
+  const dimensions = `${rubric.dimensions} dimension${rubric.dimensions === 1 ? '' : 's'}`;
+  return `${dimensions} · ${rubric.status === 'APPROVED' ? 'Approved' : 'Draft'}`;
+}
+
+/**
  * The instructor's saved rubrics.
  *
  * This screen previously showed only the rubric it had just generated, so an
@@ -599,8 +620,12 @@ function SavedRubrics() {
                   {/* Plain text rather than Library's StatusTag: Library already
                       imports from this module, so importing it back would be a
                       circular dependency. */}
-                  {r.criteria} criteria · {r.status === 'APPROVED' ? 'Approved' : 'Draft'}
+                  {rubricSummaryText(r)}
                 </div>
+                {/* The objective this rubric judges, when it was written for
+                    one. Without it a saved rubric is a title and a task code
+                    with nothing saying what course it belongs to. */}
+                {r.objective && <div className="p-src">Judges: {r.objective}</div>}
               </div>
             </div>
             <RowActions
@@ -608,7 +633,6 @@ function SavedRubrics() {
               title={r.title}
               endpoint={`/api/learning/rubrics/${r.id}`}
               onChanged={refetch}
-              removeNote="A rubric a mastery session grades against cannot be removed."
             />
           </div>
         ))}
@@ -745,6 +769,109 @@ function RubricResult({ rubric }) {
   );
 }
 
+/**
+ * What the validators said about one generated rubric, the rubric itself, and
+ * the human approval gate.
+ *
+ * Shared by both screens that can produce a rubric -- the Rubrics library and
+ * a course objective -- so the approval rules are stated once and cannot drift
+ * apart. `onRewrite` is how a caller puts the instructor back in the Standard
+ * field that produced a refusal; the flagged branch offers it only when the
+ * caller has such a field on screen, because a button pointing at a control
+ * that is not there is worse than a sentence saying where to go.
+ */
+function RubricReview({ rubricId, approved, onApproved, onRewrite }) {
+  const { data, refetch } = useApiQuery(`/rubrics/${rubricId}`);
+  const approveRubric = useApiMutation(`/rubrics/${rubricId}/approve`, 'POST');
+  const [err, setErr] = useState(null);
+  const rubric = data?.rubric;
+
+  const handleApprove = async () => {
+    setErr(null);
+    try {
+      await approveRubric.mutate();
+      refetch();
+      await onApproved?.();
+    } catch (e) {
+      setErr(errText(e, 'Failed to approve rubric'));
+    }
+  };
+
+  return (
+    <div className="p-panel">
+      <h3>Review</h3>
+      {data ? (
+        <>
+          <div className="p-tiles">
+            <div className="p-tile">
+              <div className="p-tilelab">Status</div>
+              <div className="p-tileval" style={{ fontSize: '1.2em', color: data.status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }}>{data.status}</div>
+            </div>
+            {data.validation && (
+              <div className="p-tile">
+                <div className="p-tilelab">Validation</div>
+                <div className="p-tileval" style={{ fontSize: '1.2em', color: data.validation.valid ? 'var(--p-good)' : 'var(--p-critical)' }}>{data.validation.valid ? 'Valid' : 'Invalid'}</div>
+              </div>
+            )}
+            {data.traceability && (
+              <div className="p-tile">
+                <div className="p-tilelab">Traceability</div>
+                <div className="p-tileval" style={{ fontSize: '1.2em', color: data.traceability.grounded ? 'var(--p-good)' : 'var(--p-critical)' }}>{data.traceability.grounded ? 'Grounded' : 'Ungrounded'}</div>
+                {/* verifyTraceability is handed no dimensions for a flagged
+                    standard, so its 100% is the empty case, not a checked
+                    one. Claiming full coverage beside "no rubric was
+                    written" reads as a contradiction. */}
+                {rubric?.flagged
+                  ? <div className="p-tilenote">Nothing to trace yet</div>
+                  : typeof data.traceability.coverage === 'number' && <div className="p-tilenote">{Math.round(data.traceability.coverage * 100)}% coverage</div>}
+              </div>
+            )}
+          </div>
+          {data.traceability?.ungrounded?.length > 0 && (
+            <p className="s-shell-error" role="alert">
+              Ungrounded elements: {data.traceability.ungrounded.map((u) => (typeof u === 'string' ? u : u.source || u.element || JSON.stringify(u))).join(', ')}
+            </p>
+          )}
+          <RubricResult rubric={rubric} />
+          <Err msg={err} />
+          {approved && <p className="p-src" style={{ color: 'var(--p-good)' }}>Rubric approved.</p>}
+          {/* A flagged payload carries no dimensions, so there is no
+              artifact to approve and approveRubric refuses it outright. An
+              Approve button here could only ever fail, and a disabled one
+              would imply something unlocks it, so the flagged branch offers
+              the action that does exist instead: the form above, with the
+              standard rewritten to the SME wording. */}
+          {data.status === 'PENDING' && (rubric?.flagged ? (
+            <div style={{ marginTop: '1rem' }}>
+              <p className="p-src" style={{ margin: 0 }}>
+                There is nothing to approve yet — no criteria were written, which is the
+                intended outcome. The next step is a human one: rewrite the standard so it says
+                how performance is judged, then generate again.
+              </p>
+              {onRewrite && (
+                <button
+                  type="button"
+                  className="p-btn ghost"
+                  onClick={onRewrite}
+                  style={{ marginTop: '0.75rem' }}
+                >
+                  Rewrite the standard
+                </button>
+              )}
+            </div>
+          ) : (
+            <button className="p-btn" onClick={handleApprove} disabled={approveRubric.loading} style={{ marginTop: '1rem' }}>
+              {approveRubric.loading ? 'Approving…' : 'Approve rubric'}
+            </button>
+          ))}
+        </>
+      ) : (
+        <p>Loading rubric…</p>
+      )}
+    </div>
+  );
+}
+
 export function RubricsView() {
   const {
     data: sources,
@@ -778,8 +905,6 @@ export function RubricsView() {
 
   const generateRubric = useApiMutation('/rubrics/generate', 'POST');
   const suggestTasks = useApiMutation('/rubrics/task-suggestions', 'POST');
-  const approveRubric = useApiMutation(`/rubrics/${generatedRubricId}/approve`, 'POST');
-  const { data: rubricData, refetch } = useApiQuery(`/rubrics/${generatedRubricId}`, { enabled: !!generatedRubricId });
   // Performance steps are the one field long enough to scroll, and a scrolling
   // field here swallows the page's wheel gesture; see useWheelFallthrough.
   const stepsRef = useWheelFallthrough();
@@ -857,19 +982,6 @@ export function RubricsView() {
       setErr(errText(e, 'Failed to generate rubric'));
     }
   };
-
-  const handleApprove = async () => {
-    setErr(null);
-    try {
-      await approveRubric.mutate();
-      setApproved(true);
-      refetch();
-    } catch (e) {
-      setErr(errText(e, 'Failed to approve rubric'));
-    }
-  };
-
-  const rubric = rubricData?.rubric;
 
   return (
     <>
@@ -956,75 +1068,293 @@ export function RubricsView() {
       </div>
 
       {generatedRubricId && (
-        <div className="p-panel">
-          <h3>Review</h3>
-          {rubricData ? (
-            <>
-              <div className="p-tiles">
-                <div className="p-tile">
-                  <div className="p-tilelab">Status</div>
-                  <div className="p-tileval" style={{ fontSize: '1.2em', color: rubricData.status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }}>{rubricData.status}</div>
-                </div>
-                {rubricData.validation && (
-                  <div className="p-tile">
-                    <div className="p-tilelab">Validation</div>
-                    <div className="p-tileval" style={{ fontSize: '1.2em', color: rubricData.validation.valid ? 'var(--p-good)' : 'var(--p-critical)' }}>{rubricData.validation.valid ? 'Valid' : 'Invalid'}</div>
-                  </div>
-                )}
-                {rubricData.traceability && (
-                  <div className="p-tile">
-                    <div className="p-tilelab">Traceability</div>
-                    <div className="p-tileval" style={{ fontSize: '1.2em', color: rubricData.traceability.grounded ? 'var(--p-good)' : 'var(--p-critical)' }}>{rubricData.traceability.grounded ? 'Grounded' : 'Ungrounded'}</div>
-                    {/* verifyTraceability is handed no dimensions for a flagged
-                        standard, so its 100% is the empty case, not a checked
-                        one. Claiming full coverage beside "no rubric was
-                        written" reads as a contradiction. */}
-                    {rubric?.flagged
-                      ? <div className="p-tilenote">Nothing to trace yet</div>
-                      : typeof rubricData.traceability.coverage === 'number' && <div className="p-tilenote">{Math.round(rubricData.traceability.coverage * 100)}% coverage</div>}
-                  </div>
-                )}
-              </div>
-              {rubricData.traceability?.ungrounded?.length > 0 && (
-                <p className="s-shell-error" role="alert">
-                  Ungrounded elements: {rubricData.traceability.ungrounded.map((u) => (typeof u === 'string' ? u : u.source || u.element || JSON.stringify(u))).join(', ')}
-                </p>
-              )}
-              <RubricResult rubric={rubric} />
-              <Err msg={err} />
-              {approved && <p className="p-src" style={{ color: 'var(--p-good)' }}>Rubric approved.</p>}
-              {/* A flagged payload carries no dimensions, so there is no
-                  artifact to approve and approveRubric refuses it outright. An
-                  Approve button here could only ever fail, and a disabled one
-                  would imply something unlocks it, so the flagged branch offers
-                  the action that does exist instead: the form above, with the
-                  standard rewritten to the SME wording. */}
-              {rubricData.status === 'PENDING' && (rubric?.flagged ? (
-                <div style={{ marginTop: '1rem' }}>
-                  <p className="p-src" style={{ margin: 0 }}>
-                    There is nothing to approve yet — no criteria were written, which is the
-                    intended outcome. The next step is a human one: rewrite the standard so it says
-                    how performance is judged, then generate again.
-                  </p>
-                  <button
-                    type="button"
-                    className="p-btn ghost"
-                    onClick={() => standardRef.current?.focus()}
-                    style={{ marginTop: '0.75rem' }}
-                  >
-                    Rewrite the standard
-                  </button>
-                </div>
-              ) : (
-                <button className="p-btn" onClick={handleApprove} disabled={approveRubric.loading} style={{ marginTop: '1rem' }}>
-                  {approveRubric.loading ? 'Approving…' : 'Approve rubric'}
-                </button>
-              ))}
-            </>
-          ) : (
-            <p>Loading rubric…</p>
-          )}
+        <RubricReview
+          rubricId={generatedRubricId}
+          approved={approved}
+          onApproved={() => setApproved(true)}
+          onRewrite={() => standardRef.current?.focus()}
+        />
+      )}
+    </>
+  );
+}
+
+/* ---------- rubrics for a course's objectives ---------- */
+
+/* The states an objective's rubric can be in, and the colour each one earns.
+   `flagged` is deliberately not red: Rubricon refusing to anchor a vague
+   standard is the product working, not a failure. */
+const OBJECTIVE_STATE_COLOUR = {
+  none: 'var(--p-dim)',
+  draft: 'var(--p-warning)',
+  flagged: 'var(--p-warning)',
+  approved: 'var(--p-good)',
+};
+
+/**
+ * Write (or re-write) the rubric for one course objective.
+ *
+ * The objective *is* the task title -- that is the whole point of generating
+ * from the course rather than from a blank form -- so it is shown rather than
+ * typed. Everything a BARS rubric additionally needs (the code, the condition,
+ * the standard, the steps) is drafted from the approved source the course is
+ * already grounded in, and every one of those fields stays editable, because
+ * the standard is exactly what an instructor has to rewrite when Rubricon
+ * flags it.
+ */
+function ObjectiveRubricForm({ courseId, objective, sourceOptions, existingRubricId, onGenerated }) {
+  const [sourceId, setSourceId] = useState(sourceOptions[0]?.id || '');
+  const [taskCode, setTaskCode] = useState('');
+  const [taskCondition, setTaskCondition] = useState('');
+  const [taskStandard, setTaskStandard] = useState('');
+  const [taskSteps, setTaskSteps] = useState('');
+  const [err, setErr] = useState(null);
+  const [generatedRubricId, setGeneratedRubricId] = useState(null);
+  const [approved, setApproved] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestionOrigin, setSuggestionOrigin] = useState('');
+  const [suggestionError, setSuggestionError] = useState(null);
+
+  const generateRubric = useApiMutation('/rubrics/generate', 'POST');
+  const suggestTasks = useApiMutation('/rubrics/task-suggestions', 'POST');
+  const stepsRef = useWheelFallthrough();
+  // Same refusal loop as the Rubrics screen: a flagged standard is rewritten
+  // in this form's own Standard field, so the review below can put the caret
+  // in it rather than describing where to go.
+  const standardRef = useRef(null);
+
+  // The same auto-fill the Rubrics screen uses. A failure here leaves the form
+  // usable by hand rather than blocking generation for this objective.
+  useEffect(() => {
+    if (!sourceId) return undefined;
+    let current = true;
+    setSuggesting(true);
+    setSuggestionError(null);
+    suggestTasks
+      .mutate({ sourceId })
+      .then((res) => {
+        if (!current) return;
+        const task = (Array.isArray(res?.tasks) ? res.tasks : [])[0];
+        setSuggestionOrigin(res?.origin || '');
+        if (!task) return;
+        setTaskCode(task.code || '');
+        setTaskCondition(task.condition || '');
+        setTaskStandard(task.standard || '');
+        setTaskSteps((task.performanceSteps || []).join('\n'));
+      })
+      .catch((e) => {
+        if (!current) return;
+        setSuggestionOrigin('');
+        setSuggestionError(errText(e, 'Could not read a task from this source.'));
+      })
+      .finally(() => {
+        if (current) setSuggesting(false);
+      });
+    return () => {
+      current = false;
+    };
+    // suggestTasks is a fresh object each render; the source id is the input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceId]);
+
+  const handleGenerate = async () => {
+    if (!sourceId || !taskCode) return;
+    setErr(null);
+    setApproved(false);
+    try {
+      const res = await generateRubric.mutate({
+        sourceId,
+        // The server checks all three against the course record: it will not
+        // record a rubric as judging an objective the course does not teach,
+        // or ground one in a source the course was not built from.
+        courseId,
+        objective,
+        task: {
+          code: taskCode,
+          title: objective,
+          condition: taskCondition,
+          standard: taskStandard,
+          performanceSteps: taskSteps.split('\n').filter(Boolean),
+        },
+      });
+      setGeneratedRubricId(res.id);
+      await onGenerated?.();
+    } catch (e) {
+      setErr(errText(e, 'Failed to generate rubric'));
+    }
+  };
+
+  const rubricId = generatedRubricId || existingRubricId;
+
+  return (
+    <>
+      <div className="p-panel">
+        <h3>Rubric for this objective</h3>
+        <p className="p-src">{objective}</p>
+        {sourceOptions.length > 1 ? (
+          <select
+            className="scw-ti"
+            aria-label="Approved source for this rubric"
+            value={sourceId}
+            onChange={(e) => setSourceId(e.target.value)}
+          >
+            {sourceOptions.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+          </select>
+        ) : (
+          <p className="p-src">Grounded in {sourceOptions[0]?.title || 'the course source'}.</p>
+        )}
+        {suggesting && <p className="p-src">Reading the task from this source…</p>}
+        {suggestionOrigin === 'quarry' && (
+          <p className="p-src">Condition, standard and steps are the ones written in this source.</p>
+        )}
+        {suggestionOrigin === 'model' && (
+          <p className="p-src">
+            This source has no task block, so the condition and standard below are a draft written
+            from its text. Check them before generating.
+          </p>
+        )}
+        {suggestionError && (
+          <p className="p-src" role="status">{suggestionError} Fill the fields in by hand.</p>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <input className="scw-ti" placeholder="Task code" aria-label="Task code" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} />
+          <input className="scw-ti" placeholder="Condition" aria-label="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} />
+          <input ref={standardRef} className="scw-ti" placeholder="Standard" aria-label="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} />
+          <textarea ref={stepsRef} className="scw-ti" placeholder="Performance steps (one per line)" aria-label="Performance steps" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} />
+          <Err msg={err} />
+          <button
+            className="p-btn"
+            onClick={handleGenerate}
+            disabled={generateRubric.loading || suggesting || !sourceId || !taskCode}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            {generateRubric.loading ? 'Generating…' : existingRubricId ? 'Generate again' : 'Generate rubric'}
+          </button>
         </div>
+      </div>
+      {rubricId && (
+        <RubricReview
+          rubricId={rubricId}
+          approved={approved}
+          onApproved={async () => {
+            setApproved(true);
+            await onGenerated?.();
+          }}
+          onRewrite={() => standardRef.current?.focus()}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * Which of a course's objectives can actually be assessed, and the way to fix
+ * the ones that cannot.
+ *
+ * The course and the rubric were two screens that never referred to each
+ * other: a course taught objectives, a rubric was generated against a task
+ * typed into an unrelated form, and neither knew the other existed. This is
+ * the join. It claims nothing the server has not recorded -- an objective
+ * counts as assessable only when a human approved a rubric that the server
+ * confirmed was generated from this course's own approved source and named
+ * this course's own objective.
+ */
+export function CourseRubrics({ courseId }) {
+  const { data: envelope, loading, error } = useApiQuery(`/courses/${courseId}`);
+  const {
+    data: rubrics,
+    loading: rubricsLoading,
+    error: rubricsError,
+    refetch: refetchRubrics,
+  } = useApiQuery('/rubrics');
+  const { data: sources } = useApiQuery('/sources');
+  const [openObjective, setOpenObjective] = useState(null);
+
+  const course = envelope?.course;
+  const rows = objectiveCoverage(course, rubrics, courseId);
+  const summary = coverageSummary(rows);
+  const approvedSources = Array.isArray(sources) ? sources.filter((s) => s.status === 'APPROVED') : [];
+  // Only the course's own approved sources: the server refuses a rubric
+  // grounded in anything else, so offering anything else here is a dead end.
+  const sourceOptions = (course?.sourceIds || [])
+    .map((id) => approvedSources.find((s) => s.id === id))
+    .filter(Boolean);
+
+  if (loading || (!envelope && !error)) return <p>Loading course objectives…</p>;
+  if (error) {
+    return (
+      <p className="s-shell-error" role="alert">
+        {errText(error, 'Could not load this course.')}
+      </p>
+    );
+  }
+  if (rows.length === 0) {
+    return (
+      <p className="p-src">
+        This course draft carries no objectives yet, so there is nothing to write a rubric against.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <p className="p-src">
+        {summary.assessable} of {summary.objectives} objective{summary.objectives === 1 ? '' : 's'} can
+        be assessed against an approved rubric.
+        {summary.flagged > 0 ? ` ${summary.flagged} came back for a subject-matter expert.` : ''}
+      </p>
+      {rubricsError && (
+        <p className="s-shell-error" role="alert">
+          {errText(rubricsError, 'Could not load saved rubrics, so the coverage below is incomplete.')}
+        </p>
+      )}
+      {rubricsLoading && <p className="p-src">Loading rubrics…</p>}
+      <div className="s-courselist" data-testid="objective-rubric-coverage">
+        {rows.map((row) => (
+          <div className="s-courserow s-courserow-managed" key={row.objective}>
+            <div className="s-courserow-open s-courserow-static">
+              <div className="s-courserow-main">
+                <div className="s-card-title">{row.objective}</div>
+                <div className="s-card-school" style={{ color: OBJECTIVE_STATE_COLOUR[row.state] }}>
+                  {RUBRIC_STATE_LABELS[row.state]}
+                  {row.rubric && !row.rubric.flagged && row.rubric.dimensions > 0
+                    ? ` · ${row.rubric.dimensions} dimensions`
+                    : ''}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="p-btn ghost"
+              onClick={() => setOpenObjective(openObjective === row.objective ? null : row.objective)}
+            >
+              {openObjective === row.objective
+                ? 'Close'
+                : row.state === 'none' ? 'Write a rubric' : 'Open rubric'}
+            </button>
+          </div>
+        ))}
+      </div>
+      {sourceOptions.length === 0 ? (
+        <p className="p-src">
+          None of this course&rsquo;s sources is approved any more, so no rubric can be grounded in
+          one. Approve a source under Sources first.
+        </p>
+      ) : (
+        rows
+          .filter((row) => row.objective === openObjective)
+          .map((row) => (
+            // Keyed by objective so opening another one starts a clean form
+            // rather than carrying the previous standard into the next.
+            <ObjectiveRubricForm
+              key={row.objective}
+              courseId={courseId}
+              objective={row.objective}
+              sourceOptions={sourceOptions}
+              existingRubricId={row.rubric?.id || null}
+              onGenerated={refetchRubrics}
+            />
+          ))
       )}
     </>
   );

@@ -10,7 +10,7 @@ import Mastery from './Mastery';
 import AAR from './AAR';
 import Roster from './Roster';
 import { SourcesView, CoursesLibrary, CourseDraft } from './Library';
-import { InstructorFidelity, RubricsView } from './InstructorFeatures';
+import { CourseRubrics, InstructorFidelity, RubricsView } from './InstructorFeatures';
 import { courseFromRecord, useLearningCourses } from './learning';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
@@ -52,6 +52,9 @@ const REAL_VIEWS = [
   { id: 'builder', label: 'Review & publish' },
   { id: 'roster', label: 'Roster', secondary: true },
   { id: 'fidelity', label: 'Fidelity check', advanced: true },
+  // How each objective of THIS course is judged. The library's Rubrics screen
+  // is still the whole collection; this is one course's own coverage.
+  { id: 'rubrics', label: 'Objective rubrics', advanced: true },
   { id: 'mastery', label: 'Class Mastery', advanced: true },
   { id: 'aar', label: 'Course AAR', advanced: true },
   { id: 'settings', label: 'Course settings' },
@@ -300,6 +303,19 @@ export default function InstructorShell({ nav, onSwitchRole, role: profileRole }
             every answer against the approved sources. It does not block course review or publish.
           </p>
           <InstructorFidelity key={course.id} courseId={course.id} />
+        </>
+      );
+    } else if (view === 'rubrics') {
+      body = (
+        <>
+          <h2 className="p-h">Objective rubrics</h2>
+          <p className="p-sub">
+            A course teaches objectives; a rubric says how performance against one of them is
+            judged. Rubricon writes each one from this course&rsquo;s own approved sources, refuses
+            any standard too vague to anchor, and nothing counts as assessable until you approve
+            it. It does not block course review or publish.
+          </p>
+          <CourseRubrics key={course.id} courseId={course.id} />
         </>
       );
     } else {

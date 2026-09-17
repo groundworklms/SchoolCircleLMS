@@ -80,6 +80,7 @@ function loadInstructorShell({ courses = [] } = {}) {
       }
       if (request === './InstructorFeatures') {
         return {
+          CourseRubrics: component('course-rubrics'),
           InstructorFidelity: component('fidelity'),
           RubricsView: component('rubrics'),
         };
