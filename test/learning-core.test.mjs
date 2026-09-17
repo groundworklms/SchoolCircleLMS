@@ -1200,11 +1200,18 @@ test('the learner course projection carries structure, never unratified text', (
       lesson: 'Unratified lesson prose.',
       pre: [{ stem: 'An unratified pre-check?', options: ['A', 'B'], answer: 0 }],
       post: [{ stem: 'An unratified post-check?', options: ['A', 'B'], answer: 1 }],
+      annex: { letter: 'A', title: 'Basics' },
+      intro: 'An unratified intro.',
+      pages: [{ title: 'An unratified page', blocks: [{ type: 'p', text: 'Unratified page text.' }] }],
+      labels: [{ label: 'Core', text: 'Unratified label text.' }],
+      diagram: { title: 'Unratified diagram', elements: [] },
+      flashcards: [{ front: 'Unratified card', back: 'x' }],
     }],
   });
 
   // What course approval did release.
   assert.equal(projected.title, 'Movement');
+  assert.deepEqual(projected.sections[0].annex, { letter: 'A', title: 'Basics' });
   assert.deepEqual(projected.objectives, ['Move under fire']);
   assert.deepEqual(projected.sourceIds, ['source-1']);
   assert.equal(projected.sections[0].title, 'Movement fundamentals');
@@ -1215,9 +1222,14 @@ test('the learner course projection carries structure, never unratified text', (
   assert.equal(projected.sections[0].pre, undefined);
   assert.equal(projected.sections[0].post, undefined);
   assert.equal(projected.scenario, undefined);
+  // The page pass's output rides on the LESSON row and is ratified with it;
+  // the draft's copy is as unratified as the prose.
+  for (const key of ['intro', 'pages', 'labels', 'diagram', 'flashcards']) {
+    assert.equal(projected.sections[0][key], undefined, key);
+  }
   assert.doesNotMatch(
     JSON.stringify(projected),
-    /Unratified lesson prose|unratified pre-check|unratified post-check|unratified course-level scenario/i,
+    /Unratified lesson prose|unratified pre-check|unratified post-check|unratified course-level scenario|unratified (intro|page|label|diagram|card)/i,
   );
 });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useReducer, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation, useApiStream } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
 import { InstructorMasteryPlan, InstructorSyllabus } from './InstructorFeatures';
@@ -11,6 +11,8 @@ import { CoursePreview } from './LearnerFeatures';
 import { RowActions } from './RowActions';
 import { SourceLibraryCard, SourcePreviewDialog } from './SourceLibraryPreview';
 import { collectionFromFilename, isPdfFile, isZipFile, pdfEntriesFromZip, zipEntryForm } from './source-upload';
+import { groupSourcesByCollection } from './source-groups';
+import { CoursePlanner, PlanCourseModal, PlansList, usePlans } from './CoursePlanner';
 import './source-library.css';
 
 /* The instructor library — the parts of the persisted learning loop that are
@@ -24,27 +26,7 @@ function errText(e, fallback) {
 
 /* ---------- sources ---------- */
 
-const NO_COLLECTION = 'Other documents';
-
-/* Sources grouped by the collection they were uploaded under -- "Lesson plans",
-   "Student material" -- with the ungrouped ones last. Order inside a group puts
-   what still needs a decision first. */
-export function groupSourcesByCollection(sources) {
-  const groups = new Map();
-  for (const source of Array.isArray(sources) ? sources : []) {
-    const key = source.collection || NO_COLLECTION;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(source);
-  }
-  const named = [...groups.keys()].filter((key) => key !== NO_COLLECTION).sort((a, b) => a.localeCompare(b));
-  const keys = groups.has(NO_COLLECTION) ? [...named, NO_COLLECTION] : named;
-  return keys.map((name) => {
-    const items = groups.get(name);
-    const pending = items.filter((source) => source.status !== 'APPROVED');
-    const approved = items.filter((source) => source.status === 'APPROVED');
-    return { name, sources: [...pending, ...approved], pending, approved };
-  });
-}
+export { groupSourcesByCollection } from './source-groups';
 
 export function SourcesView() {
   const { data: sources, loading, error, refetch } = useApiQuery('/sources');
@@ -430,6 +412,22 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
     error: sourcesError,
     refetch: refetchSources,
   } = useApiQuery('/sources');
+  // A whole-course plan opens in place of the library; the shell's course
+  // navigation is unchanged, and the plan hands off to onOpen for its draft.
+  const plans = usePlans();
+  // useReducer rather than useState on purpose: the render harness in
+  // tests/ui-rendering.test.mjs feeds useState positionally, and a state
+  // slot here would shift every slot the draft dialog below expects.
+  const [openPlanId, setOpenPlanId] = useReducer((_, next) => next, null);
+  if (openPlanId) {
+    return (
+      <CoursePlanner
+        planId={openPlanId}
+        onBack={() => { setOpenPlanId(null); plans.refetch(); onDrafted?.(); }}
+        onOpenCourse={(id) => { onDrafted?.(); onOpen(id); }}
+      />
+    );
+  }
   // useApiQuery starts with no data before its first effect runs. Treat that
   // state as pending rather than presenting it as a successful empty library.
   const sourcesPending = sourcesLoading || (sources == null && !sourcesError);
@@ -441,14 +439,22 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
         <div>
           <h1>Courses</h1>
         </div>
-        <DraftCourseModal
-          sources={Array.isArray(sources) ? sources : []}
-          sourcesLoading={sourcesPending}
-          sourcesError={sourcesError}
-          onRetrySources={refetchSources}
-          onDrafted={onDrafted}
-        />
+        <div className="p-btnrow">
+          <PlanCourseModal
+            sources={Array.isArray(sources) ? sources : []}
+            onCreated={(plan) => { plans.refetch(); setOpenPlanId(plan.id); }}
+          />
+          <DraftCourseModal
+            sources={Array.isArray(sources) ? sources : []}
+            sourcesLoading={sourcesPending}
+            sourcesError={sourcesError}
+            onRetrySources={refetchSources}
+            onDrafted={onDrafted}
+          />
+        </div>
       </div>
+
+      <PlansList plans={Array.isArray(plans.data) ? plans.data : []} onOpen={setOpenPlanId} />
 
       {loading && <p>Loading courses…</p>}
       {error && <p className="s-shell-error" role="alert">{errText(error, 'Could not load courses.')}</p>}
