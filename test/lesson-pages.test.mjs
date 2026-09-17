@@ -101,13 +101,17 @@ test('expandCoursePages writes pages onto grounded sections and records refusals
   assert.deepEqual(events.map((e) => e.ok), [true, false]);
 });
 
-test('passageForCitation resolves a citation label and falls back to the corpus', () => {
+// The corpus fallback this used to assert was removed: see
+// test/citation-resolution.test.mjs and the comment on passageForCitation.
+// Grounding a section in every approved page makes the grounding check
+// vacuous, which is how a lesson citing p.67 got written from p.54.
+test('passageForCitation resolves a citation label, or nothing', () => {
   const documents = [
     { text: 'page one text', source: 'src1 p.1' },
     { text: 'page three text', source: 'src1 p.3' },
   ];
   assert.equal(passageForCitation(documents, 'src1 p.3'), 'page three text');
-  assert.equal(passageForCitation(documents, 'unknown'), 'page one text\n\npage three text');
+  assert.equal(passageForCitation(documents, 'unknown'), null);
   assert.equal(passageForCitation([], 'x'), null);
 });
 
