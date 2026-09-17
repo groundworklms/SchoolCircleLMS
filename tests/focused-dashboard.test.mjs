@@ -1,5 +1,56 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { readFileSync } from 'node:fs';
+import { studentGreeting, subscribeStudentGreeting } from '../app/prototype/student-greeting.js';
+
+test('student greeting covers every local-time boundary, including midnight', () => {
+  for (const [hour, minute, expected] of [
+    [0, 0, 'Good evening'], [4, 59, 'Good evening'],
+    [5, 0, 'Good morning'], [11, 59, 'Good morning'],
+    [12, 0, 'Good afternoon'], [16, 59, 'Good afternoon'],
+    [17, 0, 'Good evening'], [23, 59, 'Good evening'],
+  ]) {
+    assert.equal(studentGreeting(new Date(2026, 8, 17, hour, minute)), expected);
+  }
+});
+
+test('student greeting stays current across days, tab return, and cleanup', (t) => {
+  t.mock.timers.enable({ apis: ['Date', 'setInterval'], now: new Date(2026, 8, 17, 11, 59) });
+  const windowTarget = new EventTarget();
+  const documentTarget = new EventTarget();
+  const values = [];
+  const stop = subscribeStudentGreeting((value) => values.push(value), windowTarget, documentTarget);
+  assert.equal(values.at(-1), 'Good morning');
+  t.mock.timers.tick(60_000);
+  assert.equal(values.at(-1), 'Good afternoon');
+  t.mock.timers.tick(5 * 60 * 60_000);
+  assert.equal(values.at(-1), 'Good evening');
+  t.mock.timers.tick(12 * 60 * 60_000);
+  assert.equal(values.at(-1), 'Good morning');
+  t.mock.timers.tick(2 * 24 * 60 * 60_000);
+  assert.equal(values.at(-1), 'Good morning');
+  t.mock.timers.setTime(new Date(2026, 8, 20, 18).getTime());
+  windowTarget.dispatchEvent(new Event('focus'));
+  assert.equal(values.at(-1), 'Good evening');
+  t.mock.timers.setTime(new Date(2026, 8, 21, 13).getTime());
+  documentTarget.dispatchEvent(new Event('visibilitychange'));
+  assert.equal(values.at(-1), 'Good afternoon');
+  stop();
+  const count = values.length;
+  t.mock.timers.tick(60_000);
+  windowTarget.dispatchEvent(new Event('focus'));
+  documentTarget.dispatchEvent(new Event('visibilitychange'));
+  assert.equal(values.length, count, 'unmount removes the timer and listeners');
+});
+
+test('student dashboard keeps its greeting while instructor and navigation labels stay unchanged', () => {
+  const read = (file) => readFileSync(new URL(`../app/prototype/${file}`, import.meta.url), 'utf8');
+  assert.match(read('FocusedDashboard.js'), /className="f-header-title">\s*<StudentGreeting\s*\/>/);
+  assert.doesNotMatch(read('FocusedDashboard.js'), /className="f-header-title">Dashboard</);
+  assert.match(read('StudentShell.js'), /label="Dashboard"/);
+  assert.doesNotMatch(read('InstructorShell.js'), /StudentGreeting|student-greeting/);
+  assert.match(read('StudentGreeting.js'), /useEffect\(\(\) => subscribeStudentGreeting\(setGreeting\), \[\]\)/);
+});
 
 import {
   focusedAgendaItems,

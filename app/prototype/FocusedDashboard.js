@@ -1,6 +1,7 @@
 'use client';
 
 import './Focused.css';
+import StudentGreeting from './StudentGreeting';
 import {
   focusedCourseListState,
   focusedCourseRow,
@@ -70,7 +71,7 @@ export default function FocusedDashboard({
   return (
     <div className="focused-dashboard-content">
       <header className="f-header">
-        <div className="f-header-title">Dashboard</div>
+        <div className="f-header-title"><StudentGreeting /></div>
         <div className="f-header-date">Your courses</div>
       </header>
       <div className="f-main">
