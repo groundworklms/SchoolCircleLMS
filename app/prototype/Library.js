@@ -748,6 +748,57 @@ function DraftCourseModal({ courses = [], sources, sourcesLoading, sourcesError,
     };
   }, [lostStream, arrived, onDrafted]);
 
+  /* Pick up a generation that is already running.
+   *
+   * A job lives on a row rather than in this tab, so a reload, a second tab or
+   * a laptop that slept leaves one running with nobody watching -- and the
+   * polling is what keeps the server working on it, so nobody watching is
+   * exactly how a job stalls. Asking on the way in both reattaches the report
+   * and restarts the work.
+   *
+   * Once, on mount. A generation the instructor starts from this modal is
+   * followed by handleSubmit already, and asking again would have two loops
+   * feeding the same event list.
+   */
+  const rejoined = useRef(false);
+  useEffect(() => {
+    if (rejoined.current) return;
+    rejoined.current = true;
+    let cancelled = false;
+    (async () => {
+      const jobs = await draft.running();
+      const job = jobs[0];
+      if (cancelled || !job?.id) return;
+      setOpen(true);
+      setEvents([]);
+      knownCourseIds.current = new Set(courses.map((course) => course?.id).filter(Boolean));
+      try {
+        const last = await draft.follow(job.id, (event) => {
+          setEvents((current) => [...(current || []), event]);
+        });
+        if (cancelled) return;
+        if (last?.phase === 'saved') {
+          setOpen(false);
+          setEvents(null);
+          onDrafted?.(last.record);
+          return;
+        }
+        if (last?.phase === 'unreachable' || last?.phase === 'stalled') {
+          setLostStream(true);
+          await onDrafted?.();
+        }
+      } catch {
+        // A job that cannot be followed is not a page that should fail to
+        // load. The course list behind this is still correct.
+        if (!cancelled) setLostStream(true);
+      }
+    })();
+    return () => { cancelled = true; };
+    // Deliberately not re-run: `rejoined` makes it once-only, and listing the
+    // changing props would only make that harder to see.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const closeModal = () => {
     setOpen(false);
     setEvents(null);
