@@ -1,6 +1,6 @@
 'use client';
 
-import { useReducer, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation, useApiStream } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
 import { pageOf, publicationName, withoutPage } from '../_course/provenance';
@@ -526,6 +526,7 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
             onCreated={(plan) => { plans.refetch(); setOpenPlanId(plan.id); }}
           />
           <DraftCourseModal
+            courses={Array.isArray(courses) ? courses : []}
             sources={Array.isArray(sources) ? sources : []}
             sourcesLoading={sourcesPending}
             sourcesError={sourcesError}
@@ -591,7 +592,14 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
   );
 }
 
-function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySources, onDrafted }) {
+// How often the library is refreshed while waiting for a generation whose
+// stream was lost, and for how long. Ten seconds is frequent enough that the
+// course appears within a beat of being saved, and ten minutes is longer than
+// any generation observed while being slow enough to be nearly free.
+const WATCH_INTERVAL_MS = 10000;
+const WATCH_LIMIT_MS = 600000;
+
+function DraftCourseModal({ courses = [], sources, sourcesLoading, sourcesError, onRetrySources, onDrafted }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [objective, setObjective] = useState('');
@@ -603,6 +611,23 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const [events, setEvents] = useState(null);
   // The stream ended without reporting how it ended — see handleSubmit.
   const [lostStream, setLostStream] = useState(false);
+  /* Which courses existed when this generation started.
+   *
+   * The stream is the REPORTING; the generation is a server-side job that
+   * carries on without it. So a dropped connection -- a deploy rolling the
+   * instance, a proxy idle timeout, a laptop sleeping -- leaves a course that
+   * finishes and saves minutes later with nobody watching. Telling the
+   * instructor to go and look in a few minutes was honest and it was work this
+   * screen can do itself: a course whose id was not here when we started is
+   * the one this run produced. */
+  const knownCourseIds = useRef(null);
+  /* A course the snapshot did not have is the one this run produced.
+   * Derived rather than held in state: it is a fact about the props this
+   * render already has, and a copy of it could only ever disagree with them. */
+  const arrived =
+    lostStream && knownCourseIds.current
+      ? courses.find((course) => course?.id && !knownCourseIds.current.has(course.id)) || null
+      : null;
   const draft = useApiStream('/courses/draft/stream');
   const approvedSources = sources.filter((source) => source.status === 'APPROVED');
   const approvedGroups = groupSourcesByCollection(approvedSources);
@@ -613,6 +638,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
     setErr(null);
     setEvents([]);
     setLostStream(false);
+    knownCourseIds.current = new Set(courses.map((course) => course?.id).filter(Boolean));
     // Whether the stream ever opened. A throw before the first event is a
     // request that failed; a throw after one is a connection that died under a
     // generation the server is still running, which is a different fact.
@@ -667,6 +693,32 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
       setErr(errText(e, 'Failed to draft course'));
     }
   };
+
+  /* Keep looking, and stop as soon as it lands.
+   *
+   * Refetching once at the moment the stream drops almost never finds it: the
+   * generation still has sections to write. So the library is refreshed on an
+   * interval until a course appears that was not in the snapshot, or until the
+   * window closes -- long enough for a twelve-section course, and bounded so a
+   * generation that really did die does not leave a tab polling forever. */
+  useEffect(() => {
+    if (!lostStream || arrived) return undefined;
+    let cancelled = false;
+    let elapsed = 0;
+    const timer = setInterval(() => {
+      elapsed += WATCH_INTERVAL_MS;
+      if (cancelled) return;
+      if (elapsed >= WATCH_LIMIT_MS) {
+        clearInterval(timer);
+        return;
+      }
+      onDrafted?.();
+    }, WATCH_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [lostStream, arrived, onDrafted]);
 
   const closeModal = () => {
     setOpen(false);
@@ -843,7 +895,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           {err && <p className="s-shell-error" role="alert">{err}</p>}
           {Array.isArray(events) && (
             <section className="p-progress" aria-label="Course generation progress" aria-live="polite">
-              <GenerationProgress events={events} interrupted={lostStream} />
+              <GenerationProgress events={events} interrupted={lostStream} watching={lostStream && !arrived} arrived={Boolean(arrived)} />
             </section>
           )}
         </div>
@@ -865,11 +917,17 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
             outright has nothing to duplicate, and "Try again" is right there. */}
         {lostStream && Array.isArray(events) ? (
           <div className="p-modalfoot">
-            <button className="p-btn ghost" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
-              Generate a second copy anyway
-            </button>
+            {/* Once the course has landed, regenerating is no longer a
+                defensible second copy of something that might not exist -- it
+                is a duplicate of a course sitting in the list. So the escape
+                hatch goes away and the primary says what happened. */}
+            {!arrived && (
+              <button className="p-btn ghost" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
+                Generate a second copy anyway
+              </button>
+            )}
             <button className="p-btn" onClick={closeModal} disabled={draft.loading}>
-              Close and check the course list
+              {arrived ? 'The course is ready — open the list' : 'Close and check the course list'}
             </button>
           </div>
         ) : (
