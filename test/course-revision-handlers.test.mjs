@@ -556,12 +556,24 @@ test('revision stores a pending candidate while learners retain the prior releas
 
   const learnerView = await getCourse(LEARNER, { params: { id: course.id } });
   assert.equal(learnerView.json.hasPendingRevision, false);
+  /* A learner does not see the pending revision -- and no longer sees the
+     APPROVED draft's questions either. Both are unratified text: approving a
+     course releases its shape, and every sentence in it is a PENDING Item
+     until an instructor ratifies it one at a time. The learner reader now
+     takes all content from the delivery projection, which is the response that
+     has passed that gate, so nothing here is left to leak. */
+  assert.equal(learnerView.json.course.sections[0].pre, undefined);
+  assert.equal(learnerView.json.course.sections[0].post, undefined);
+  assert.equal(learnerView.json.course.sections[0].lesson, undefined);
+  const learnerJson = JSON.stringify(learnerView.json.course);
   assert.equal(
-    learnerView.json.course.sections[0].pre[0].stem,
-    original.sections[0].pre[0].stem,
-    'a learner must not see a pending revision',
+    learnerJson.includes(original.sections[0].pre[0].stem),
+    false,
+    'a learner must not see a pending revision, nor the unratified draft it revises',
   );
-  assert.equal(learnerView.json.course.sections[0].pre[0].answer, undefined);
+  assert.equal(learnerJson.includes(revisedQuestion().question.stem), false);
+  // The shape the approval did release is still there.
+  assert.equal(learnerView.json.course.sections[0].title, original.sections[0].title);
   assert.equal(learnerView.json.course.pendingRevisionId, undefined);
   assert.deepEqual(
     (await listCourses(LEARNER)).json,

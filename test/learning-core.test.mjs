@@ -1155,6 +1155,53 @@ test('shared mastery plans are canonical, grounded, and immutable in injected se
   assert.equal(restored.masteryPlanRevision, plan.revision);
 });
 
+/* The authoring draft is not a delivery channel.
+ *
+ * Course approval releases a SHAPE -- how many sections, in what order, under
+ * what titles, grounded in which source. Every sentence inside it is
+ * materialised as a PENDING Item and ratified one at a time, so the draft's
+ * `lesson`, `pre`, `post` and `scenario` are unratified text by definition.
+ * This response was handing them to learners: the reader stopped RENDERING the
+ * draft's questions when checks moved onto the delivery rows, but they stayed
+ * on the wire, and the prose was still being read straight off them. Fixing
+ * only the client would have left `curl` as the exploit.
+ */
+test('the learner course projection carries structure, never unratified text', () => {
+  const projected = learnerCourseProjection({
+    title: 'Movement',
+    sourceIds: ['source-1'],
+    objectives: ['Move under fire'],
+    scenario: { situation: 'An unratified course-level scenario.', task: 'Do the thing.' },
+    sections: [{
+      id: 'section-1',
+      title: 'Movement fundamentals',
+      order: 0,
+      cite: 'source-1 p.135',
+      cites: ['source-1 p.135', 'source-1 p.136'],
+      lesson: 'Unratified lesson prose.',
+      pre: [{ stem: 'An unratified pre-check?', options: ['A', 'B'], answer: 0 }],
+      post: [{ stem: 'An unratified post-check?', options: ['A', 'B'], answer: 1 }],
+    }],
+  });
+
+  // What course approval did release.
+  assert.equal(projected.title, 'Movement');
+  assert.deepEqual(projected.objectives, ['Move under fire']);
+  assert.deepEqual(projected.sourceIds, ['source-1']);
+  assert.equal(projected.sections[0].title, 'Movement fundamentals');
+  assert.equal(projected.sections[0].cite, 'source-1 p.135');
+
+  // What it did not.
+  assert.equal(projected.sections[0].lesson, undefined);
+  assert.equal(projected.sections[0].pre, undefined);
+  assert.equal(projected.sections[0].post, undefined);
+  assert.equal(projected.scenario, undefined);
+  assert.doesNotMatch(
+    JSON.stringify(projected),
+    /Unratified lesson prose|unratified pre-check|unratified post-check|unratified course-level scenario/i,
+  );
+});
+
 test('learner course projection exposes only approved plan source and revision', () => {
   const pending = learnerCourseProjection({
     sourceIds: ['source-1', 'source-2'],
