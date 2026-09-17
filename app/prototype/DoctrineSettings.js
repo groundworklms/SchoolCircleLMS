@@ -10,6 +10,14 @@
  *
  * Nothing here is a credential -- an Anchor address is an address -- so there
  * is no passphrase and no masked field, unlike Settings -> Generation model.
+ *
+ * The status light is a live probe, not a reading of the configuration. It used
+ * to be the latter: a green dot and "Connected" meant only that
+ * DOCTRINE_BASE_URL was SET, so the panel stayed green through two days of a
+ * dead endpoint while every grounded answer failed. This is the one control an
+ * operator checks before walking on stage, so green now requires that the
+ * engine answered /api/health, reported every model loaded, and is holding a
+ * corpus -- and anything less says so in words.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -17,11 +25,37 @@ import { authFetch } from '../../lib/firebase';
 import './doctrine-settings.css';
 
 const ENDPOINT = '/api/learning/doctrine-settings';
+const HEALTH_ENDPOINT = '/api/learning/doctrine-health';
+
+// Only `healthy` earns the green dot. `unconfigured` keeps the neutral grey it
+// has always had, because "nothing is set up" is not a fault.
+const STATE_CLASS = {
+  healthy: 'ok',
+  degraded: 'warn',
+  unreachable: 'bad',
+  unconfigured: '',
+};
 
 function errText(error, fallback) {
   return error?.error || error?.message || fallback;
 }
 
+/** Whole seconds of uptime as something a person reads at a glance. */
+function uptimeText(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return null;
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours) return `up ${hours}h ${minutes}m`;
+  if (minutes) return `up ${minutes}m`;
+  return 'up under a minute';
+}
+
+/**
+ * What the engine is actually holding. The publication COUNT is here on
+ * purpose: "it answered" does not distinguish a loaded board from an empty
+ * one, and pointing the demo at a freshly reflashed Orin is a realistic way to
+ * lose an afternoon.
+ */
 function CorpusSummary({ corpus }) {
   if (!corpus?.publications?.length) return null;
   const shown = corpus.publications.slice(0, 6);
@@ -29,9 +63,100 @@ function CorpusSummary({ corpus }) {
   return (
     <p className="doctrine-note">
       {corpus.totalChunks ? `${corpus.totalChunks.toLocaleString()} passages · ` : ''}
+      {corpus.publications.length} publication{corpus.publications.length === 1 ? '' : 's'} ·{' '}
       {shown.map((pub) => pub.pubId).join(', ')}
       {rest > 0 ? `, and ${rest} more` : ''}
     </p>
+  );
+}
+
+/**
+ * The live verdict.
+ *
+ * Every branch names what was observed rather than what is configured. While a
+ * check is in flight with no previous result the dot stays neutral -- "we do
+ * not know yet" must never look like "it works".
+ *
+ * Unreachable is written as a ROUTINE state, because it is one. The engine is a
+ * board on a USB cable that moves between laptops, and a tunnel gets a new
+ * hostname every time it restarts -- so a stale address is the normal case on a
+ * demo day, not a crash. The panel therefore says what to do about it, in the
+ * order an operator should try: sweep for the board, then type the new address.
+ */
+function HealthPanel({ health, checking, sourceNote, onRecheck, onEnterAddress }) {
+  const state = health?.state;
+  const endpoints = health?.endpoints || null;
+  // A route we watched come back 404, not one we simply could not ask about.
+  const missing = endpoints
+    ? Object.entries(endpoints).filter(([, present]) => present === false).map(([name]) => name)
+    : [];
+  const present = endpoints
+    ? Object.entries(endpoints).filter(([, value]) => value === true).map(([name]) => name)
+    : [];
+  const uptime = uptimeText(health?.uptimeS);
+
+  return (
+    <div className={`doctrine-status ${health ? STATE_CLASS[state] || '' : ''}`}>
+      <span className="doctrine-status-dot" aria-hidden="true" />
+      <div className="doctrine-status-body">
+        <p className="doctrine-status-line" role="status">
+          {checking && !health ? 'Checking…' : health?.headline || 'Not checked'}
+          {health?.baseUrl ? ` · ${health.baseUrl}` : ''}
+        </p>
+
+        <p className="doctrine-note">
+          {checking && !health
+            ? 'Asking the engine whether it answers.'
+            : (health?.detail || sourceNote)}
+        </p>
+
+        {health?.problems?.length > 0 && (
+          <ul className="doctrine-problems">
+            {health.problems.map((problem) => <li key={problem}>{problem}</li>)}
+          </ul>
+        )}
+
+        {health?.corpus && <CorpusSummary corpus={health.corpus} />}
+
+        {(present.length > 0 || missing.length > 0 || uptime) && (
+          <p className="doctrine-note">
+            {present.length > 0 ? `serves /api/${present.join(' · /api/')}` : ''}
+            {missing.length > 0
+              ? `${present.length ? ' · ' : ''}missing /api/${missing.join(' · /api/')}`
+              : ''}
+            {uptime ? `${present.length || missing.length ? ' · ' : ''}${uptime}` : ''}
+          </p>
+        )}
+
+        {(state === 'unreachable' || state === 'unconfigured') && (
+          <p className="doctrine-note">
+            {state === 'unreachable'
+              ? 'Nothing is answering there. The board moves between laptops, and a tunnel '
+                + 'takes a new hostname every time it restarts, so a saved address goes stale '
+                + 'on its own. '
+              : 'No address is set yet. '}
+            Try <strong>Find the Orin</strong> below — it sweeps the USB and tunnel addresses —
+            then type the new address in if the sweep comes up empty.
+          </p>
+        )}
+
+        <div className="p-btnrow">
+          <button
+            type="button"
+            className="doctrine-disclose"
+            onClick={onRecheck}
+            disabled={checking}
+          >
+            {checking ? 'Checking…' : 'Check again'}
+          </button>
+          {(state === 'unreachable' || state === 'unconfigured') && (
+            <button type="button" className="doctrine-disclose" onClick={onEnterAddress}>
+              Enter an address manually
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -68,6 +193,11 @@ export function DoctrineSettings() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
+  // The live probe, kept apart from the configuration read so the address is on
+  // screen immediately and a hanging engine can only delay this one line.
+  const [health, setHealth] = useState(null);
+  const [checking, setChecking] = useState(false);
+
   const [baseUrl, setBaseUrl] = useState('');
   const [manual, setManual] = useState(false);
   const [detected, setDetected] = useState(null);
@@ -92,6 +222,30 @@ export function DoctrineSettings() {
     return json;
   }, []);
 
+  /**
+   * Run the probe. Resolves either way: a failure to even ASK counts as
+   * unreachable, never as nothing. Failing toward red is the only safe
+   * direction here -- an operator who sees red checks the cable, an operator
+   * who sees a blank panel assumes it is fine.
+   */
+  const check = useCallback(async () => {
+    setChecking(true);
+    try {
+      const res = await authFetch(HEALTH_ENDPOINT);
+      const json = await res.json();
+      if (!res.ok) throw json;
+      return json.health;
+    } catch (error) {
+      return {
+        state: 'unreachable',
+        headline: 'Could not be checked',
+        problems: [errText(error, 'The check could not be run from this browser.')],
+      };
+    } finally {
+      setChecking(false);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -103,9 +257,19 @@ export function DoctrineSettings() {
       } finally {
         if (!cancelled) setLoading(false);
       }
+      // After the configuration, never alongside it: the address paints first
+      // and the probe fills in behind it.
+      const result = await check();
+      if (!cancelled) setHealth(result);
     })();
     return () => { cancelled = true; };
-  }, [adopt, request]);
+  }, [adopt, check, request]);
+
+  /** Re-probe after anything that changes which engine is in force. */
+  const recheck = useCallback(async () => {
+    setHealth(null);
+    setHealth(await check());
+  }, [check]);
 
   async function detect() {
     setBusy(true);
@@ -138,6 +302,9 @@ export function DoctrineSettings() {
       });
       adopt(json.settings);
       setSaved('Saved. Grounded answers now come from this engine.');
+      // A saved address is a different engine; the old verdict no longer
+      // describes anything.
+      await recheck();
     } catch (error) {
       setErr(errText(error, 'That address could not be saved.'));
     } finally {
@@ -153,6 +320,7 @@ export function DoctrineSettings() {
       const json = await request('DELETE');
       adopt(json.settings);
       setSaved('Reverted to the engine this deployment is configured with.');
+      await recheck();
     } catch (error) {
       setErr(errText(error, 'That could not be reverted.'));
     } finally {
@@ -171,6 +339,13 @@ export function DoctrineSettings() {
 
   const active = settings?.active;
   const current = active?.baseUrl || '';
+  // Where the address came from -- a configuration fact, and now clearly
+  // labelled as one. It is never the reason the dot is any particular colour.
+  const sourceNote = active?.ready
+    ? (active.source === 'setting'
+      ? 'Address set here in Settings.'
+      : 'Address from this deployment’s configuration (DOCTRINE_BASE_URL).')
+    : (active?.reason || 'No doctrine engine is configured.');
 
   return (
     <div className="doctrine-settings">
@@ -179,22 +354,13 @@ export function DoctrineSettings() {
         finds it on its own — no key and no tunnel needed.
       </p>
 
-      <div className={`doctrine-status${active?.ready ? ' ok' : ''}`}>
-        <span className="doctrine-status-dot" aria-hidden="true" />
-        <div>
-          <p className="doctrine-status-line">
-            {active?.ready ? 'Connected' : 'Not connected'}
-            {active?.ready && current ? ` · ${current}` : ''}
-          </p>
-          <p className="doctrine-note">
-            {active?.ready
-              ? (active.source === 'setting'
-                ? 'Set here in Settings.'
-                : 'From this deployment’s configuration (DOCTRINE_BASE_URL).')
-              : (active?.reason || 'No doctrine engine is configured.')}
-          </p>
-        </div>
-      </div>
+      <HealthPanel
+        health={health}
+        checking={checking}
+        sourceNote={sourceNote}
+        onRecheck={recheck}
+        onEnterAddress={() => setManual(true)}
+      />
 
       {err && <p className="s-shell-error" role="alert">{err}</p>}
       {saved && <p className="p-check ok" role="status">{saved}</p>}
@@ -251,7 +417,10 @@ export function DoctrineSettings() {
           </label>
           <p className="doctrine-note">
             The Orin over USB is <code>http://192.168.55.1:8000</code>. A laptop running
-            <code> ops/tunnel.sh</code> is <code>http://localhost:8000</code>.
+            <code> ops/tunnel.sh</code> is <code>http://localhost:8000</code>. Anything else —
+            a quick tunnel, another laptop on the venue network — takes a fresh hostname every
+            time it restarts, so paste the current one here and the status light will tell you
+            whether it answers.
           </p>
           <div className="p-btnrow">
             <button type="submit" className="p-btn" disabled={busy || !baseUrl.trim()}>
