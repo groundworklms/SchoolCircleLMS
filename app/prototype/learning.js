@@ -204,7 +204,10 @@ export function useLearningCourses({ includeManual = false } = {}) {
     courses: [...byId.values()],
     learningCourses,
     manualCourses,
-    loading: enabled && loading,
+    // useApiQuery starts with loading=false before its first effect runs.
+    // Treat the absent response as loading, but let an actual error win so a
+    // deleted/unavailable course reaches the shell's explicit error state.
+    loading: enabled && !error && (loading || data === null),
     error: enabled ? error : null,
     manualLoading: manualEnabled && manual.loading,
     manualError: manualEnabled ? manual.error : null,
