@@ -47,7 +47,12 @@ export async function GET() {
   );
 }
 
-export async function POST(request) {
+/**
+ * `deps.userClient` is a test seam only. Next.js invokes a route handler with
+ * (request, context), so the third parameter is always absent in production and
+ * `resolveOfflineUser` falls through to its own `db.user` default.
+ */
+export async function POST(request, _context, { userClient } = {}) {
   if (!offlineAuthEnabled()) return notFound();
 
   let body;
@@ -95,8 +100,9 @@ export async function POST(request) {
   let user;
   try {
     // Resolve through the same path an API request takes, so a session is only
-    // ever handed out when it already maps to a usable User row.
-    user = await resolveOfflineUser(session.token);
+    // ever handed out when it already maps to a usable User row. An absent
+    // userClient means the real Prisma client, via resolveOfflineUser's default.
+    user = await resolveOfflineUser(session.token, userClient);
   } catch {
     return Response.json(
       { error: 'Identity service unavailable', code: 'AUTH_UNAVAILABLE' },

@@ -11,11 +11,21 @@
  * The database is a small in-memory double. These assertions are about which
  * credential is accepted and which `User` row it maps to; a real Postgres would
  * make them slower without making them stronger.
+ *
+ * The double is passed in through the `userClient` test seam rather than with
+ * `mock.module`, which needs Node >= 22.3 and --experimental-test-module-mocks
+ * and so would silently never execute on the Node 20 that CI pins. This file
+ * must run under `node --test` with NO FLAGS. The last test in the file proves
+ * the seam has not swallowed the production default.
  */
 import assert from 'node:assert/strict';
-import { beforeEach, mock, test } from 'node:test';
+import { beforeEach, test } from 'node:test';
 
+import * as authModule from '../lib/auth.js';
+import { verifyFirebaseIdToken } from '../lib/firebase-auth.js';
+import * as offlineAuth from '../lib/offline-auth.js';
 import { hashPassphrase } from '../lib/settings-crypto.js';
+import * as route from '../app/api/auth/offline/session/route.js';
 
 /* ------------------------------- test doubles ----------------------------- */
 
@@ -53,21 +63,19 @@ const userClient = {
   },
 };
 
-mock.module('../lib/db.js', {
-  namedExports: {
-    db: { user: userClient },
-  },
-});
+/*
+ * The in-memory double, threaded through the production `userClient` seam.
+ * Everything else in each call -- token verification, the enabled gate, the
+ * externalId namespacing, the role rule, the error contract -- is the real
+ * production code path.
+ */
+const resolveOfflineUser = (token, client = userClient, verifier) =>
+  authModule.resolveOfflineUser(token, client, verifier);
+const resolveIdentity = (request) => authModule.resolveIdentity(request, userClient);
+const requireIdentity = (request) => authModule.requireIdentity(request, userClient);
+const requireAnyRole = (request, roles) => authModule.requireAnyRole(request, roles, userClient);
 
-const {
-  authReadiness,
-  requireAnyRole,
-  requireIdentity,
-  resolveIdentity,
-  resolveOfflineUser,
-} = await import('../lib/auth.js');
-const { verifyFirebaseIdToken } = await import('../lib/firebase-auth.js');
-const offlineAuth = await import('../lib/offline-auth.js');
+const { authReadiness } = authModule;
 const {
   authenticateOfflineOperator,
   isOfflineSessionToken,
@@ -82,7 +90,6 @@ const {
   signOfflineSession,
   verifyOfflineSessionToken,
 } = offlineAuth;
-const route = await import('../app/api/auth/offline/session/route.js');
 
 /* --------------------------------- helpers -------------------------------- */
 
@@ -184,6 +191,9 @@ test('with AUTH_MODE unset the session route answers 404 for every method', asyn
     assert.equal(get.status, 404);
     assert.deepEqual(await get.json(), { error: 'Not found', code: 'NOT_FOUND' });
 
+    // Deliberately NO injected user client: this is the route exactly as Next
+    // invokes it, with the real Prisma default behind it. It must 404 before
+    // anything reaches a database.
     const post = await route.POST(new Request('http://localhost/api/auth/offline/session', {
       method: 'POST',
       body: JSON.stringify({ subject: 'sgt-okafor', passphrase: PASSPHRASE }),
@@ -547,12 +557,17 @@ test('operator authentication accepts only the right passphrase', async () => {
 
 /* ============================ 5. THE WAY IN ============================== */
 
-const sessionPost = (body) =>
-  route.POST(new Request('http://localhost/api/auth/offline/session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: typeof body === 'string' ? body : JSON.stringify(body),
-  }));
+const sessionPost = (body, deps = { userClient }) =>
+  route.POST(
+    new Request('http://localhost/api/auth/offline/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: typeof body === 'string' ? body : JSON.stringify(body),
+    }),
+    // Next.js passes (request, context); the third argument is the test seam.
+    undefined,
+    deps,
+  );
 
 test('the session route issues a usable session for a real operator', async () => {
   await withEnv(OFFLINE_ON, async () => {
@@ -666,4 +681,71 @@ test('offline mode does not change how a Firebase token is handled', async () =>
       assert.equal(await resolveIdentity(request({ authorization: 'Basic abc' })), null);
     },
   );
+});
+
+/* ================ 7. THE TEST SEAM HAS NOT EATEN THE PRODUCT ============== */
+
+/*
+ * The failure mode of a dependency-injected rewrite is a suite that passes
+ * because it only ever exercises its own fakes. Guard against exactly that: when
+ * no user client is injected, the production default must be the REAL Prisma
+ * client, which in this environment has no reachable database and fails at
+ * initialization. If the default had silently become the in-memory double, these
+ * calls would succeed instead -- so a green result here is the fake being
+ * absent, not present.
+ */
+/*
+ * NOTE ON OUTPUT: lib/db.js configures Prisma with log: ['error'], and the
+ * Prisma engine writes that log straight to fd 2 from native code, so it cannot
+ * be captured from JavaScript. This test therefore prints four
+ *
+ *     prisma:error  Invalid `prisma.user.upsert()` invocation:
+ *     error: Environment variable not found: DATABASE_URL.
+ *
+ * banners on a completely healthy run. THEY ARE THE ASSERTION PASSING, not a
+ * failure: each one is the real Prisma client refusing to work without a
+ * database, which is precisely what proves the in-memory double is not wired in
+ * as the default. Judge this test by its ✔ and the suite's exit code.
+ */
+test('omitting the injected client reaches the real Prisma client, not the double', async () => {
+  await withEnv(OFFLINE_ON, async () => {
+    const token = signOfflineSession('sgt-okafor').token;
+
+    // resolveOfflineUser, production defaults.
+    await assert.rejects(
+      authModule.resolveOfflineUser(token),
+      (error) => {
+        assert.match(error.constructor.name, /^PrismaClient/);
+        return true;
+      },
+      'resolveOfflineUser must default to the real db.user',
+    );
+
+    // resolveIdentity, production defaults: the real client failing is wrapped
+    // as the boundary error, never an anonymous request.
+    await assert.rejects(
+      authModule.resolveIdentity(request({ authorization: `Bearer ${token}` })),
+      { code: 'AUTH_UNAVAILABLE', status: 503 },
+      'resolveIdentity must default to the real db.user',
+    );
+
+    // requireAnyRole, production defaults, called the way lib/learning/http.js
+    // calls it (two arguments).
+    await assert.rejects(
+      authModule.requireAnyRole(request({ authorization: `Bearer ${token}` }), ['INSTRUCTOR']),
+      { code: 'AUTH_UNAVAILABLE' },
+      'requireAnyRole must default to the real db.user',
+    );
+
+    // The route, invoked the way Next invokes it, with a correct passphrase:
+    // it gets as far as the database and fails there rather than minting a
+    // session against a fake.
+    const response = await sessionPost({ subject: 'sgt-okafor', passphrase: PASSPHRASE }, {});
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).code, 'AUTH_UNAVAILABLE');
+
+    // And none of that touched the double.
+    assert.equal(upserts.length, 0);
+    assert.equal(users.size, 0);
+  });
 });
