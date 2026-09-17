@@ -215,6 +215,7 @@ function CheckBlock({ block, preview, busy, onAnswer, answer, serverResult, onRe
             key={option.id}
             onClick={() => choose(option.id)}
             disabled={Boolean(busy) || (!preview && !onAnswer)}
+            aria-busy={Boolean(busy)}
             role="radio"
             aria-checked={selectedOption === option.id}
           >
