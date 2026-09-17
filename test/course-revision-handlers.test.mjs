@@ -443,6 +443,7 @@ mock.module('../lib/arsenal-core.js', {
     startMasterySession: async () => null,
     tutorAnswer: async () => null,
     validateCourseDraft: realArsenal.validateCourseDraft,
+    validateKeyDistribution: realArsenal.validateKeyDistribution,
     validateMasteryPlan: () => ({ valid: true, criteria: [] }),
   },
 });
