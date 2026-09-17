@@ -2622,6 +2622,10 @@ test('a question the course has already asked is not asked again', async () => {
   );
 
   const stems = course.sections.flatMap((section) => [...section.pre, ...section.post]).map((q) => q.stem);
+  // This assertion is also what guards the empty-phase floor: when the
+  // duplicate checks reject everything, the floor must step back to the items
+  // that passed the exact-stem check, not all the way to the model's raw
+  // reply -- which would re-admit this very stem.
   assert.equal(stems.filter((stem) => stem === shared).length, 1, stems.join(' | '));
   assert.ok(events.some((event) => event.step === 'duplicate-question'));
   // And no phase was emptied to achieve it.
