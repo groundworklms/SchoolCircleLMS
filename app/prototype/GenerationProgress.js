@@ -17,6 +17,10 @@ const ARTIFACTS = [
   { kind: 'pages', label: 'Pages' },
 ];
 
+// Artifacts whose chip appears only once that pass has reported on this
+// section. See the note where they are filtered.
+const DEFERRED_ARTIFACTS = new Set(['diagram', 'pages']);
+
 const APPLY = [
   { kind: 'scenario', label: 'Applied scenario' },
   { kind: 'discussion', label: 'Discussion prompts' },
@@ -309,8 +313,19 @@ export function GenerationProgress({ events, interrupted = false, watching = fal
                 </div>
               )}
               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+                {/* A chip is shown once there is something to say about it.
+                    Diagram, because a passage with no structure in it is not
+                    asked for one and an absent chip is the truthful report.
+                    Pages for a different reason: the page pass runs AFTER every
+                    section is written, so a Pages chip sits grey through the
+                    whole of section writing -- and the request is cut at five
+                    minutes, so on any course long enough to matter that pass
+                    never reports and the chip stays grey for good. A grey chip
+                    beside five green ones reads as "this one failed", which is
+                    a false statement about work that has not started. */}
                 {ARTIFACTS
-                  .filter((artifact) => artifact.kind !== 'diagram' || section.artifacts.diagram !== undefined)
+                  .filter((artifact) => !DEFERRED_ARTIFACTS.has(artifact.kind)
+                    || section.artifacts[artifact.kind] !== undefined)
                   .map((artifact) => (
                     <Chip
                       key={artifact.kind}
