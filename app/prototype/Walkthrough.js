@@ -104,12 +104,20 @@ function isWholeScreen(rect, viewport) {
 
 /* `cardHeight` is the card's measured height (see the layout effect); the whole
    card is kept on-screen so the footer with Next is never clipped. */
-function placeCard(rect, viewport, cardHeight = CARD_EST_HEIGHT) {
+function placeCard(rect, viewport, cardHeight = CARD_EST_HEIGHT, dock = null) {
   const height = Math.min(cardHeight || CARD_EST_HEIGHT, viewport.height - VIEWPORT_MARGIN * 2);
   const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
   const maxLeft = viewport.width - CARD_WIDTH - VIEWPORT_MARGIN;
   const maxTop = Math.max(VIEWPORT_MARGIN, viewport.height - height - VIEWPORT_MARGIN);
   const centerLeft = Math.max(VIEWPORT_MARGIN, (viewport.width - CARD_WIDTH) / 2);
+
+  // An explicit dock overrides gap-finding. The tutor stops use dock:'left'
+  // because their target (the Ask button) and the chat panel it opens both sit
+  // bottom-right; the card has to clear that whole corner, not just sit beside
+  // the button. Keep the spotlight on the (still bottom-right) button.
+  if (dock === 'left' && rect) {
+    return { left: VIEWPORT_MARGIN, top: clamp(Math.round(viewport.height * 0.28), VIEWPORT_MARGIN, maxTop), placement: 'left', spotlight: true };
+  }
 
   if (!rect || isWholeScreen(rect, viewport)) {
     // No specific element to point at: dock the card to the bottom-right, out of
@@ -373,7 +381,7 @@ export default function WalkthroughProvider({ nav, enabled = true, children }) {
   const drift = elapsed - scheduled;
   const overBudget = elapsed > BUDGET_SECONDS;
   const pace = overBudget ? 'over' : drift > 20 ? 'behind' : drift < -20 ? 'ahead' : 'onpace';
-  const card = placeCard(rect, viewport, cardHeight);
+  const card = placeCard(rect, viewport, cardHeight, step?.dock);
   const waitingForCourse = needsCourse(step) && !demoCourse;
   const left = card.left + (drag?.x || 0);
   const top = card.top + (drag?.y || 0);
