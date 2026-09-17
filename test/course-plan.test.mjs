@@ -4,6 +4,8 @@ import { mock, test } from 'node:test';
 const realArsenal = await import('../lib/arsenal-core.js');
 const {
   cleanPlanOutline,
+  lessonCodeOf,
+  outlineFromLessonCodes,
   passageIndex,
   rankPassages,
   sampleSourceText,
@@ -64,6 +66,49 @@ test('rankPassages finds the passages that cover an objective across sources and
   assert.ok(hits.length >= 1);
   assert.ok(hits.every((hit) => hit.source.startsWith('srcA')));
   assert.deepEqual(rankPassages('Describe how a diesel engine compresses air before injection.', index), []);
+});
+
+test('lessonCodeOf reads a schoolhouse file name: course prefix, annex, lesson, name, role, exam', () => {
+  assert.deepEqual(lessonCodeOf('BE0603 Cabling Performance Exam LP'), { code: 'BE0603', prefix: 'BE', annex: 6, lesson: 3, name: 'Cabling Performance Exam', role: 'LP', exam: true });
+  assert.deepEqual(lessonCodeOf('BE0405_DCtoDCConverters_SHO'), { code: 'BE0405', prefix: 'BE', annex: 4, lesson: 5, name: 'DC to DC Converters', role: 'SHO', exam: false });
+  assert.deepEqual(lessonCodeOf('BE0209_ACFundamentalsWX_LP'), { code: 'BE0209', prefix: 'BE', annex: 2, lesson: 9, name: 'AC Fundamentals WX', role: 'LP', exam: true });
+  assert.equal(lessonCodeOf('BE0310_IntroToRegulators_ LP').name, 'Intro To Regulators');
+  assert.equal(lessonCodeOf('BE0502 Network Switches  LP').name, 'Network Switches');
+  // A bare code and role: the role is still read, and the name falls back.
+  assert.deepEqual(lessonCodeOf('BE0201 LP'), { code: 'BE0201', prefix: 'BE', annex: 2, lesson: 1, name: 'Lesson 1', role: 'LP', exam: false });
+  assert.deepEqual(lessonCodeOf('BE0201_SHO'), { code: 'BE0201', prefix: 'BE', annex: 2, lesson: 1, name: 'Lesson 1', role: 'SHO', exam: false });
+  assert.equal(lessonCodeOf('BE0201').role, '');
+  assert.equal(lessonCodeOf('BE02011 Not a code'), null);
+  assert.equal(lessonCodeOf('BASIC ELECTRONICS COURSE Formula Sheet (New)'), null);
+  assert.equal(lessonCodeOf('AY27_8670_Prerequisite_Coursebook.pdf'), null);
+});
+
+test('outlineFromLessonCodes builds annexes and lessons from coded titles, pairs plan with handout, keeps exams in place unbuilt', () => {
+  const survey = [
+    { id: 'lp-0101', title: 'BE0101_IntroToBEC_LP', kind: 'lesson-plan', summary: 'Course intro.', topics: ['orientation'] },
+    { id: 'sho-0101', title: 'BE0101_IntroToBEC_SHO', kind: 'student-material', summary: 'Handout.', topics: [] },
+    { id: 'lp-0103', title: 'BE0103_DCTheory_LP', kind: 'lesson-plan', summary: 'DC theory.', topics: ['voltage', 'current'] },
+    { id: 'lp-0111', title: 'BE0111_DCFundamentalsWX_LP', kind: 'poi', summary: 'Written exam.', topics: [] },
+    { id: 'sho-0204', title: 'BE0204_Transformers_SHO', kind: 'student-material', summary: 'Transformers handout.', topics: ['turns ratio'] },
+    { id: 'lp-0204', title: 'BE0204_Transformers_LP', kind: 'lesson-plan', summary: 'Transformers.', topics: ['turns ratio'] },
+    { id: 'lp-0209', title: 'BE0209_ACFundamentalsWX_LP', kind: 'lesson-plan', summary: 'Exam.', topics: [] },
+    { id: 'ref', title: 'BASIC ELECTRONICS COURSE Formula Sheet (New)', kind: 'reference', summary: 'Formulas.', topics: [] },
+  ];
+  const out = outlineFromLessonCodes(survey);
+  assert.equal(out.coded, 5);
+  assert.deepEqual(out.annexes.map((a) => [a.letter, a.number, a.title, a.lessons.length]), [['A', 1, 'DC Fundamentals', 3], ['B', 2, 'AC Fundamentals', 2]]);
+  const [intro, dc, wx] = out.annexes[0].lessons;
+  assert.deepEqual([intro.id, intro.code, intro.title, intro.kind, intro.status], ['A.01', 'BE0101', 'Intro To BEC', 'lesson', 'planned']);
+  // The lesson plan first, then the handout -- the same code, one lesson.
+  assert.deepEqual(intro.suggestedSourceIds, ['lp-0101', 'sho-0101']);
+  assert.equal(dc.code, 'BE0103');
+  assert.deepEqual([wx.kind, wx.status], ['exam', 'skipped']);
+  assert.match(wx.reason, /not generated/);
+  // Handout listed before its plan in the survey still yields plan-first.
+  assert.deepEqual(out.annexes[1].lessons[0].suggestedSourceIds, ['lp-0204', 'sho-0204']);
+  assert.equal(out.annexes[1].lessons[0].title, 'Transformers');
+  // An uncoded corpus keeps the model outline.
+  assert.equal(outlineFromLessonCodes([{ id: 'a', title: 'Manual.pdf' }, { id: 'b', title: 'BE0101 x' }]), null);
 });
 
 /* ---------------- handlers, against in-memory stores ---------------- */
@@ -155,6 +200,12 @@ mock.module('../lib/arsenal-core.js', {
           ] },
         ],
       }, { knownSourceIds: survey.map((s) => s.id) });
+    },
+    async writeLessonObjectives({ lessons }) {
+      modelCalls.push(`objectives:${lessons.filter((l) => l.kind !== 'exam').length}`);
+      return new Map(lessons.filter((l) => l.kind !== 'exam').map((l) => [l.id, /Transformers/.test(l.title)
+        ? { objective: 'Explain how the transformer turns ratio sets the voltage ratio.', fallback: false }
+        : { objective: `Explain ${l.title}.`, fallback: true }]));
     },
     async draftCourse({ title, objectives, documents }) {
       modelCalls.push(`build:${title}`);
@@ -268,4 +319,59 @@ test('deleting a plan removes the plan and leaves the draft it built alone', asy
   assert.equal(records.get(created.id), undefined);
   assert.equal(records.get(built.courseId).type, 'COURSE_DRAFT');
   await assert.rejects(plan.getPlan(OWNER, { params: { id: created.id } }), /Plan not found/);
+});
+
+test('a coded corpus is outlined from its lesson codes; the model writes only objectives; exams are kept and never built', async () => {
+  records.clear(); modelCalls.length = 0; nextId = 1;
+  seed({ id: 'lp-0204', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0204_Transformers_LP', pages: [{ page: 1, text: 'A transformer moves electrical energy between circuits through a shared magnetic field. The turns ratio sets the voltage ratio.' }] } });
+  seed({ id: 'sho-0204', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0204_Transformers_SHO', pages: [{ page: 1, text: 'Student handout: the transformer turns ratio and the voltage ratio it sets.' }] } });
+  seed({ id: 'lp-0205', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0205_Capacitors_LP', pages: [{ page: 1, text: 'A capacitor stores charge on two plates separated by a dielectric.' }] } });
+  // Another lesson's handout that covers BE0204's objective better than
+  // BE0204's own documents do. It must not write BE0204.
+  seed({ id: 'sho-0205', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0205_Capacitors_SHO', pages: [{ page: 1, text: 'Explain how the transformer turns ratio sets the voltage ratio: the transformer turns ratio sets the voltage ratio exactly.' }] } });
+  seed({ id: 'lp-0209', ownerId: OWNER.id, type: 'SOURCE', status: 'APPROVED', payload: { title: 'BE0209_ACFundamentalsWX_LP', pages: [{ page: 1, text: 'Written examination administration instructions.' }] } });
+  const created = (await plan.createPlan(OWNER, { body: { title: 'BEC', sourceIds: ['lp-0204', 'sho-0204', 'lp-0205', 'sho-0205', 'lp-0209'] } })).json;
+  await runUntil(plan.surveyPlanStep, created.id, (v) => v.status === 'outline');
+  const outlined = (await plan.outlinePlanStep(OWNER, { params: { id: created.id }, body: {} })).json;
+  assert.equal(outlined.outlinedFrom, 'lesson-codes');
+  assert.equal(outlined.lessons, 3);
+  assert.deepEqual(outlined.annexes.map((a) => a.title), ['AC Fundamentals']);
+  // No model outline call: the codes decided the structure.
+  assert.ok(!modelCalls.includes('outline'));
+  assert.deepEqual(modelCalls.filter((c) => c.startsWith('objectives')), ['objectives:2']);
+  const lessons = plan.planLessons(outlined);
+  assert.deepEqual(lessons.map((l) => [l.code, l.kind, l.status]), [['BE0204', 'lesson', 'planned'], ['BE0205', 'lesson', 'planned'], ['BE0209', 'exam', 'skipped']]);
+  assert.equal(lessons[1].objectiveFallback, true);
+
+  const mapped = (await plan.mapPlanStep(OWNER, { params: { id: created.id } })).json;
+  const m = plan.planLessons(mapped);
+  // Its own plan and handout, in that order, and nothing else: the build reads
+  // every mapped source and retrieval picks by score, so the better-scoring
+  // handout from BE0205 would otherwise write BE0204.
+  assert.deepEqual(m[0].sourceIds, ['lp-0204', 'sho-0204']);
+  assert.ok(m[0].cites.every((cite) => /^(lp|sho)-0204\b/.test(cite)), `cites stay within the lesson's own documents: ${m[0].cites}`);
+  assert.equal(m[0].status, 'planned');
+  assert.equal(m[2].status, 'skipped');
+  // An exam is never queued: it has no objective to build from.
+  await assert.rejects(plan.retryPlanLesson(OWNER, { params: { id: created.id }, body: { lessonId: m[2].id } }), /cannot be queued/);
+  assert.equal(plan.planLessons((await plan.getPlan(OWNER, { params: { id: created.id } })).json)[2].status, 'skipped');
+
+  const built = (await plan.buildPlanStep(OWNER, { params: { id: created.id } })).json;
+  assert.equal(built.built.id, 'A.01');
+  const section = records.get(built.courseId).payload.sections[0];
+  assert.equal(section.code, 'BE0204');
+  await plan.buildPlanStep(OWNER, { params: { id: created.id } });
+  const done = (await plan.buildPlanStep(OWNER, { params: { id: created.id } })).json;
+  assert.equal(done.status, 'complete');
+  assert.equal(done.counts.skipped, 1);
+  assert.ok(!modelCalls.some((c) => /WX/.test(c)));
+
+  // Outlining again after a build leaves the old draft alone and starts a new one.
+  const again = (await plan.outlinePlanStep(OWNER, { params: { id: created.id }, body: { again: true } })).json;
+  assert.equal(again.status, 'map');
+  assert.equal(again.courseId, null);
+  assert.equal(records.get(built.courseId).type, 'COURSE_DRAFT');
+  await plan.mapPlanStep(OWNER, { params: { id: created.id } });
+  const rebuilt = (await plan.buildPlanStep(OWNER, { params: { id: created.id } })).json;
+  assert.ok(rebuilt.courseId && rebuilt.courseId !== built.courseId);
 });
