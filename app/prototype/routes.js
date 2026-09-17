@@ -30,6 +30,11 @@ const INSTRUCTOR_COURSE_VIEWS = new Set([
   'roster',
   'control',
   'fidelity',
+  // Rubrics exist at two addresses on purpose. The library one is the whole
+  // owner's collection; this one is a single course's objectives and the
+  // rubric each of them is judged by. `rubrics` is matched as a library view
+  // first (see parseInstructor), so the two never collide.
+  'rubrics',
   'mastery',
   'aar',
   'settings',

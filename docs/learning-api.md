@@ -329,10 +329,24 @@ the evidence persistence bridge.
 }
 ```
 
+The source must already be `APPROVED`, as for every other grounded generator.
+
+`courseId` and `objective` are optional and only valid together. They record
+which course objective the rubric judges, and the server checks both against
+the course record: the course must be the caller's, the objective must be one
+the draft teaches, and the source must be one the course was generated from.
+A rubric may still be generated without them -- a standard can become a BARS
+scale on its own.
+
 Rubricon validation and traceability checks run after the model output. The
 `RUBRIC` record remains `PENDING` and includes `validation` and
 `traceability`. The route calls upstream `generateRubric` with its isolated
 configuration; malformed or ungrounded output is not silently repaired.
+
+`GET /api/learning/rubrics` lists the owner's rubrics as
+`{ id, status, title, taskCode, sourceId, courseId, objective, dimensions,
+flagged, createdAt }`. `dimensions` counts the BARS dimensions Rubricon
+returned; a flagged rubric has none and reports `flagged: true` instead.
 
 `GET /api/learning/rubrics/:id` and `POST /api/learning/rubrics/:id/approve`
 are instructor-owner review endpoints. Rubrics are not learner delivery
