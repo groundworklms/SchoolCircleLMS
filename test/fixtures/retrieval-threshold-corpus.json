@@ -1,0 +1,824 @@
+{
+ "contract": "schoolcircle-grounding-v1",
+ "generated_utc": "2026-09-17T17:10:16.065Z",
+ "anchor": {
+  "base_url": "http://192.168.55.1:8000",
+  "total_chunks": 4731,
+  "publications": [
+   "MCDP 1",
+   "MCDP 1-0",
+   "MCDP 1-1",
+   "MCDP 1-2",
+   "MCDP 1-3",
+   "MCDP 2",
+   "MCDP 3",
+   "MCDP 5",
+   "MCDP 6",
+   "MCDP 7",
+   "MCWP 3-11.3",
+   "MCWP 5-10",
+   "TC 3-22.9",
+   "TCCC"
+  ],
+  "index_meta": {
+   "embedding_model": "bge-small-en-v1.5-q8_0.gguf",
+   "embedding_dim": "384",
+   "chunk_count": "4731",
+   "built_utc": "2026-08-20T09:39:11Z",
+   "built_note": "device RTC is unreliable; see DECISIONS.md D-010",
+   "corpus_documents": "13",
+   "corpus_pages": "1780",
+   "corpus_shas": "{\"MCDP 1-0\": \"88b01a40b83cd3a6\", \"MCDP 1-1\": \"90465b1684684d04\", \"MCDP 1-2\": \"6242f1596113224c\", \"MCDP 1-3\": \"16c7ba8fe2958587\", \"MCDP 1\": \"51008277a48f89dc\", \"MCDP 2\": \"9c6d353de4b1e2bd\", \"MCDP 3\": \"aa2750a5b8e53ce1\", \"MCDP 5\": \"69d7f5b41c430c17\", \"MCDP 6\": \"967db4d6b5611690\", \"MCDP 7\": \"117d777efa14e4a0\", \"MCWP 3-11.3\": \"1a2dc7ce46439047\", \"TCCC\": \"0055c81c39f57e36\", \"TC 3-22.9\": \"268941c0ed41e71e\", \"MCWP 5-10\": \"d89935e4ff2f0a40\"}"
+  }
+ },
+ "provenance": {
+  "answerable": "Anchor recall items. Each question was generated from an indexed chunk; source_text is that chunk verbatim and citation is its paragraph locator, both returned by POST /api/learn/answer. Ground truth is therefore held, not assumed.",
+  "unanswerable": "Candidates put to POST /api/ask over the full index; only questions Anchor itself abstained on are kept. Candidates Anchor could answer were dropped, not relabelled."
+ },
+ "answerable": [
+  {
+   "item_id": "MCDP1-c1-b373c23d93-0",
+   "question": "Describe the spectrum of relations among political groups, including the potential for military force, and explain the two primary ends of this spectrum.",
+   "pub_id": "MCDP 1",
+   "chapter": 1,
+   "chapter_title": "The Nature of War",
+   "section": "War Defined",
+   "source_text": "Total war and perfect peace rarely exist in practice. Instead, they are extremes between which exist the relations among most political groups. This range includes routine economic competition, more or less permanent political or ideological tension, and occasional crises among groups. The decision to resort to the use of military force of some kind may arise at any point within these extremes, even during periods of relative peace. On one end of the spectrum, military force may be used simply to maintain or restore order in civil disturbances or disaster relief operations. At the other extreme, force may be used to completely overturn the existing order within a society or between two or more societies. Some cultures consider it a moral imperative to go to war only as a last resort when all peaceful means to settle disagreements have failed. Others have no such hesitancy to resort to militaryforce to achieve their aims.",
+   "citation": "MCDP 1, (20 June 1997), Ch 1: The Nature of War, \"War Defined\", para 4, p.4",
+   "key_points": [
+    "The spectrum includes routine economic competition, permanent political or ideological tension, and occasional crises.",
+    "Military force may be used to maintain or restore order in civil disturbances or disaster relief operations.",
+    "Military force may be used to completely overturn the existing order within a society or between two or more societies."
+   ]
+  },
+  {
+   "item_id": "MCDP10-c3-07f6fb2bfd-0",
+   "question": "What are the essential elements a commander must ensure are connected to ongoing planning to allow the command to adapt to and understand changing situations?",
+   "pub_id": "MCDP 1-0",
+   "chapter": 3,
+   "chapter_title": "Chapter 3",
+   "section": "Planning",
+   "source_text": "For a planning process to be effective and enable the command’s ability to adapt to and understand changing situations, the commander must ensure feedback loops that connect ongoing planning with execution results and other sources of information. Since perfect understanding is not possible and time is constrained, commanders must assume risk. They must act when they believe they have achieved sufficient understanding of the problem. Whether planning occurs at the strategic, operational, or tactical level, its key functions are to—",
+   "citation": "MCDP 1-0, Ch 3, \"Planning\", para 1",
+   "key_points": [
+    "feedback loops connecting ongoing planning with execution results",
+    "connecting planning with other sources of information",
+    "assuming risk when perfect understanding is not possible and time is constrained"
+   ]
+  },
+  {
+   "item_id": "MCDP11-c1-59d6d0dd98-0",
+   "question": "Explain the relationship between politics and policy, and how war fits into this dynamic based on the provided description.",
+   "pub_id": "MCDP 1-1",
+   "chapter": 1,
+   "chapter_title": "The Strategic Environment",
+   "section": "The Nature of Politics and War",
+   "source_text": "A key characteristic of politics is that it is interactive—a cooperative or competitive process. It cannot be characterized as a rational process because actual outcomes are seldom what was consciously intended by any one of the participants. Political events and their outcomes are the product of conflicting, contradictory, sometimes compromising, but often adversarial forces. That description clearly applies to war. Policy, on the other hand, can be characterized as a rational process. The making of policy is a conscious effort by a distinct political body to use whatever power it possesses to accomplish some purpose—if only the mere continuation or increase of its own power. Policy is a rational subcomponent of politics, the reasoned purposes and actions of individuals in the political struggle. War can be a practical means, sometimes the only means available, for the achievement of rational policy aims—that is, the aims of one party in the political dispute. Hence, to describe war as an \"instrument of policy\" is entirely correct. It is an act offorce to compel our opponent to do our will.",
+   "citation": "MCDP 1-1, Ch 1: The Strategic Environment, \"The Nature of Politics and War\", para 8, p.11",
+   "key_points": [
+    "Politics is characterized as an interactive process involving cooperative or competitive forces.",
+    "Policy is a rational process representing the conscious effort of a political body to use power to achieve a specific purpose.",
+    "War can function as a practical means or instrument of policy by acting to compel an opponent to act in a desired manner."
+   ]
+  },
+  {
+   "item_id": "MCDP12-c1-663cbb61bf-0",
+   "question": "What are the core components that constitute military strategy as described in the doctrine?",
+   "pub_id": "MCDP 1-2",
+   "chapter": 1,
+   "chapter_title": "The Campaign",
+   "section": "Strategy",
+   "source_text": "National strategy is the art and science of developing and using the political, economic, and informational powers of a nation, together with its armed forces, during peace and war, to secure national objectives. National strategy connotes a global perspective, but it requires coordination of all the elements of national power at the regional or theater level as well. Because a campaign takes place within a designated geographic theater and may involve nonmilitary as well as military elements, campaign design is often equivalent to theater strategy. Military strategy is the art and science of employing the armed forces of a nation to secure the objectives of national policy by the application of force or the threat of force. It involves the establishment of military strategic objectives, the allocation of resources, the imposition of conditions on the use of force, and the development of war plans.7",
+   "citation": "MCDP 1-2, Ch 1: The Campaign, \"Strategy\", para 2, p.4",
+   "key_points": [
+    "establishment of military strategic objectives",
+    "allocation of resources",
+    "imposition of conditions on the use of force"
+   ]
+  },
+  {
+   "item_id": "MCDP13-c1-668a7a74ce-0",
+   "question": "Explain the relationship between the science of tactics and the execution of combat power, and detail the role tactical competence plays in achieving success at the operational and strategic levels.",
+   "pub_id": "MCDP 1-3",
+   "chapter": 1,
+   "chapter_title": "Understanding Tactics",
+   "section": "An Art and A Science",
+   "source_text": "The science of tactics lies in the technical application of combat power. It includes mastering the techniques and procedures that contribute to the development of warfighting skills such as marksmanship, navigation, gunnery, and close air support. The execution of these techniques and procedures must become second nature for us; this requires intensive and continuous training. Without mastery of basic warfighting skills, artistry and creativity in their application are impossible. Now that we have examined the art and science of tactics, let us look at how we use tactics to complement strategy and campaigning. Strategy and campaigning bring our forces to a particular place at a particular time. We use tactics to win in combat. A war typically involves many individual engagements that form a continuous fabric of activity. Sometimes a cluster of engagements flows together to make up a battle that may last for hours, days, or even several weeks. Tactical competence is indispensable to victory in such engagements and battles. Leaders at the operational and strategic levels use tactical victories to bring about success in the campaign and, ultimately, in the war as a whole.",
+   "citation": "MCDP 1-3, (30 July 1997), Ch 1: Understanding Tactics, \"An Art and A Science\", para 4, p.4",
+   "key_points": [
+    "The science of tactics is the technical application of combat power, which requires mastering techniques and procedures like marksmanship and gunnery.",
+    "Tactical competence is indispensable for winning individual engagements and battles, and tactical victories are used by leaders at higher levels to bring about success in the campaign and the war.",
+    "The application of tactics complements strategy and campaigning by providing the means to win in combat."
+   ]
+  },
+  {
+   "item_id": "MCDP2-c1-2387687b01-0",
+   "question": "According to the doctrine, what is the fundamental relationship between intelligence and leadership in maneuver warfare, and what role does a commander's judgment play in this context?",
+   "pub_id": "MCDP 2",
+   "chapter": 1,
+   "chapter_title": "The Nature of Intelligence",
+   "section": "How Important Is Intelligence?",
+   "source_text": "Accurate and timely intelligence—knowledge of the enemy and the surrounding environment—is a prerequisite for success in war. Certainly, maneuver warfare places a heavy emphasis on the judgment of leaders at all levels. Nonetheless, judgment, even genius, cannot substitute for good intelligence. Genius may make better sense of available information, and it may provide superior and faster use of the knowledge it gains from that information, but no commander—no matter how brilliant—can operate effectively without good intelligence. A brilliant commander, Field Marshal Erwin Rommel, proclaimed that, \"It is not that one general is more brilliant or experienced than the other; it is a question of which general has a better appreciation of the battlefield.\"3",
+   "citation": "MCDP 2, Ch 1: The Nature of Intelligence, \"How Important Is Intelligence?\", para 2, p.3",
+   "key_points": [
+    "Accurate and timely intelligence is a prerequisite for success in war.",
+    "Judgment, even genius, cannot substitute for good intelligence.",
+    "A commander's effectiveness relies on their ability to have a better appreciation of the battlefield."
+   ]
+  },
+  {
+   "item_id": "MCDP3-c1-a54620295f-0",
+   "question": "What are the primary challenges facing the United States in the current global political landscape, and what is the resulting shift in how potential adversaries might operate?",
+   "pub_id": "MCDP 3",
+   "chapter": 1,
+   "chapter_title": "The Landscape: Chaos in the Littorals",
+   "section": "After the Cold War: The \"New Anarchy\"",
+   "source_text": "The political map of the world is changing quickly, and the trend seems likely to continue for the foreseeable future. Democracy and capitalism continue to spread across the globe, although the transition is hardly a smooth or peaceful one. Where democracy has newly taken hold, its survival is not assured. For that matter, democratic states are not necessarily peaceful states. At the same time, anti-Western sentiment, especially anti-American sentiment, thrives in many parts of the world. According to one noted political scientist, the ideological clash of the Cold War will be replaced by a \"clash of civilizations.\"3 The perception of the U.S.'s political, economic, and military dominance, reinforced by the military resuits o the Gulf War, will lead many potential enemies to adopt asymmetrical methods that avoid our material and technological superiority and exploit our perceived weaknesses. Along with other asymmetrical forms of political violence, terrorism will continue to pose a threat to U.S. citizens, property, and interests and will remain difficult to combat.",
+   "citation": "MCDP 3, Ch 1: The Landscape: Chaos in the Littorals, \"After the Cold War: The \"New Anarchy\"\", para 3, p.4",
+   "key_points": [
+    "The transition to democracy is not always peaceful and the survival of newly democratic states is not guaranteed.",
+    "The ideological conflict of the Cold War is being replaced by a 'clash of civilizations'.",
+    "The perception of U.S. dominance may cause potential enemies to adopt asymmetrical methods to avoid material and technological superiority."
+   ]
+  },
+  {
+   "item_id": "MCDP5-c1-11920fdc0b-0",
+   "question": "Describe the core components of planning as it relates to projecting thoughts forward in time and space to influence events before they occur.",
+   "pub_id": "MCDP 5",
+   "chapter": 1,
+   "chapter_title": "The Nature of Planning",
+   "section": "Planning and Plans Defined",
+   "source_text": "Planning involves projecting our thoughts forward in time and space to influence events before they occur rather than merely responding to events as they occur. This means contemplating and evaluating potential decisions and actions in advance. It involves thinking through the consequences of certain potential actions in order to estimate whether they will bring us closer to the desired future. In war, this naturally involves trying to anticipate possible enemy responses to our actions. Planning also involves integrating these individual decisions and actions together into potential sequences and examining the possible implications of these sequences.",
+   "citation": "MCDP 5, (21 July 1997), Ch 1: The Nature of Planning, \"Planning and Plans Defined\", para 4, p.4",
+   "key_points": [
+    "contemplating and evaluating potential decisions and actions in advance",
+    "thinking through the consequences of certain potential actions to estimate progress toward the desired future",
+    "integrating individual decisions and actions into potential sequences and examining the implications of those sequences"
+   ]
+  },
+  {
+   "item_id": "MCDP6-c1-5b6132b4e2-0",
+   "question": "What is the fundamental relationship between command and control and the execution of military operations, and what consequences arise when command and control is absent?",
+   "pub_id": "MCDP 6",
+   "chapter": 1,
+   "chapter_title": "The Nature of Command and Control",
+   "section": "How Important is Command and Control?",
+   "source_text": "No single activity in war is more important than command and control. Command and control by itself will not drive home a single attack against an enemy force. It will not destroy a single enemy target. It will not effect a single emergency resupply. Yet none of these essential warfighting activities, or any others, would be possible without effective command and control. Without command and control, campaigns, battles, and organized engagements are impossible, military units degenerate into mobs, and the subordination of military force to policy is replaced by random violence. In short, command and control is essential to all military opera tions and activities.",
+   "citation": "MCDP 6, (4 October 1996), Ch 1: The Nature of Command and Control, \"How Important is Command and Control?\", para 1, p.35",
+   "key_points": [
+    "Command and control is essential to all military operations and activities.",
+    "Without command and control, campaigns, battles, and organized engagements are impossible.",
+    "The absence of command and control leads to military units degenerating into mobs and the replacement of force subordination to policy with random violence."
+   ]
+  },
+  {
+   "item_id": "MCDP7-c1-9da9d05c9a-0",
+   "question": "Describe the process by which Marines develop a bias for action, and explain how learning from previous experiences and adapting to changing conditions is demonstrated in the provided scenario.",
+   "pub_id": "MCDP 7",
+   "chapter": 1,
+   "chapter_title": "Chapter 1",
+   "section": "The Nature of Learning",
+   "source_text": "Through progressive learning and experience, Marines at all levels develop a bias for action enabled by adaptive, rapid decision-making. The more Marines learn and exercise this bias for action, the better it becomes. Although war games or training exercises approximate the conditions of war, Marines cannot fully replicate the dangers, complexity, emotions, and friction of actual combat. Marines experience a variety of training situations that approximate combat situations so that learned experiences can be remembered and applied during the stresses and friction of combat. Through both direct and indirect experiences, Marines develop a realistic appreciation for what is possible in combat and what is not. The following vignette, based upon a composite of Marines’ experiences during Operation Enduring Freedom and Operation Iraqi Freedom, illustrates the importance of learning from previous experiences and adapting to changing conditions. A Marine infantry company commander recognized in the first few days of an operation that the enemy was already anticipating and countering the unit’s tactics. After assessing the information about the enemy’s actions from several of the foot-mobile patrols, the commander concluded that the unit needed improved mobility and firepower to outmaneuver the enemy. The company commander spoke with the battalion commander and recommended attaching gun vehicles from the battalion’s weapons company to work directly with the infantry company, providing a highly mobile force with increased firepower to augment the foot patrols. The company commander task-organized the weapons company detachment to provide additional infantry for close-in operations in the area’s constricted terrain. This created an entirely different tactical plan for the company based upon observing the enemy’s behaviors, adapting, and quickly learning from Marines’ experiences. The highly mobile elements of the company began to appear unexpectedly, surprising enemy units who believed they were attacking only foot-mobile patrols. As the enemy attempted to adjust to the new Marine tactics, the company commander continued to learn and adapt, making adjustments accordingly. For example, when the enemy began trying to set ambushes for the vehicle-mounted elements, the enemy would instead encounter well-planned ambushes by foot-mobile elements at critical junctions along their route of march. The company’s mounted and foot-mobile elements continued to appear at critical locations again and again, repeatedly catching the enemy off guard and defeating their tactics. From the perspective of the enemy, the infantry company had become an overwhelming, omniscient, and omnipresent Marine Corps unit—and the enemy ended all operations in the area. The actual situation was not Marine omnipresence, but rather an attentive and learning-focused Marine company who observed the enemy’s behaviors, quickly learned to identify key cues and recognize patterns, and continuously developed new ways to adapt the company’s tactics—to outthink and overwhelm an enemy who failed to do the same. The company repeatedly put the enemy on the horns of a dilemma, convincing the enemy that success could not be achieved in the Marine company’s area of operations. Marines need to develop memory skills because Marines—as human",
+   "citation": "MCDP 7, Ch 1, \"The Nature of Learning\", para 10, p.1-7",
+   "key_points": [
+    "Progressive learning and experience enable the development of a bias for action through adaptive, rapid decision-making.",
+    "Marines develop a realistic appreciation for combat possibilities through direct and indirect experiences.",
+    "Learning from previous experiences and adapting to changing conditions is illustrated by a commander recognizing enemy anticipation, assessing information, and recommending a change in force composition to improve mobility and firepower."
+   ]
+  },
+  {
+   "item_id": "MCWP3113-c7-1b16299acd-0",
+   "question": "What factors determine the success of an infantry scout or patrol mission?",
+   "pub_id": "MCWP 3-11.3",
+   "chapter": 7,
+   "chapter_title": "Positioning",
+   "section": "Iooi. Purpose",
+   "source_text": "Infantrymen are sent out as scouts or as members of a patrol because the commander needs information about the enemy, terrain, and the location of friendly troops. The lives of the entire unit may depend upon the success or failure of a scout or patrol and the accuracy and timeliness of the report. The success of the scout or patrol will depend upon their training, preparation by the commander, and understanding their mission and the commander's requirements.",
+   "citation": "MCWP 3-11.3, Ch 7: Positioning, \"Iooi. Purpose\", para 2",
+   "key_points": [
+    "The success of the mission depends on the scout or patrol's training.",
+    "Success is contingent upon preparation by the commander.",
+    "Success requires a thorough understanding of both the mission and the commander's requirements."
+   ]
+  },
+  {
+   "item_id": "TC3229-c1-31c0dc6673-0",
+   "question": "What are the core elements covered in this manual regarding the Soldier's responsibility for applying accurate and effective fires?",
+   "pub_id": "TC 3-22.9",
+   "chapter": 1,
+   "chapter_title": "Chapter 1",
+   "section": "Overview",
+   "source_text": "1-1. Each Soldier is responsible for placing accurate and effective fires on threat targets with their individual weapon. This manual defines the functional elements of the shot process, the principles of operation of the weapon, the characteristics and description of ballistics and ammunition, and the various engagement techniques that are essential to build Soldier proficiency with their weapon. It includes standard drills and techniques that assist the Soldier to build, improve, and sustain their skills to achieve accurate and precise shots consistently during combat operations (see figure 1-1).",
+   "citation": "TC 3-22.9, (May 2016 (Change 3)), Ch 1, \"Overview\", para 2, p.1-1",
+   "key_points": [
+    "defining the functional elements of the shot process",
+    "outlining the principles of operation of the weapon",
+    "describing the characteristics and description of ballistics and ammunition"
+   ]
+  },
+  {
+   "item_id": "TCCC-c0-8ba3b7fca3-0",
+   "question": "When treating a suspected tension pneumothorax, what are the initial steps for managing the casualty's airway, positioning, and chest decompression, and what is the procedure for managing a casualty with significant torso trauma or primary blast injury in cardiac arrest?",
+   "pub_id": "TCCC",
+   "chapter": null,
+   "chapter_title": null,
+   "section": "5. Respiration/Breathing",
+   "source_text": "2. Initial treatment of suspected tension pneumothorax: 1. If the casualty has a chest seal in place, burp or remove the chest seal. 2. Establish pulse oximetry monitoring. 3. Place the casualty in the supine or recovery position unless he or she is conscious and needs to sit up to help keep the airway clear as a result of maxillofacial trauma. 4. Decompress the chest on the side of the injury with a 14-gauge or a 10-gauge, 3.25-inch needle/catheter unit.  Either the 5th intercostal space (ICS) in the anterior axillary line (AAL) or the 2nd ICS in the mid-clavicular line (MCL) may be used for needle decompression (NDC). If the anterior (MCL) site is used, do not insert the needle medial to the nipple line.  The needle/catheter unit should be inserted at an angle perpendicular to the chest wall and just over the top of the lower rib at the insertion site. Insert the needle/catheter unit all the way to the hub and hold it in place for 5-10 seconds to allow decompression to occur.  After the NDC has been performed, remove the needle and leave the catheter in place. 5. If a casualty has significant torso trauma or primary blast injury and is in traumatic cardiac arrest (no pulse, no respirations, no response to painful stimuli, no other signs of life), decompress both sides of the chest before discontinuing treatment.",
+   "citation": "TCCC, (01 May 2026), \"5. Respiration/Breathing\", para 2",
+   "key_points": [
+    "Establish pulse oximetry monitoring and position the casualty supine or in the recovery position unless conscious and needing to sit up for airway clearance.",
+    "Perform needle decompression by inserting the 14-gauge or 10-gauge needle/catheter unit at a specific intercostal space (5th ICS in AAL or 2nd ICS in MCL) at a perpendicular angle, holding it for 5-10 seconds to allow decompression.",
+    "If a casualty has significant torso trauma or primary blast injury and is in traumatic cardiac arrest, decompress both sides of the chest before discontinuing treatment."
+   ]
+  },
+  {
+   "item_id": "MCDP1-c1-c25b51d155-0",
+   "question": "Describe the various sources of friction that can impede military action, and explain the overarching principle regarding the impact of friction in a human enterprise.",
+   "pub_id": "MCDP 1",
+   "chapter": 1,
+   "chapter_title": "The Nature of War",
+   "section": "Friction",
+   "source_text": "Friction may be mental, as in indecision over a course of action. It may be physical, as in effective enemy fire or a terrain obstacle that must be overcome. Friction may be external, imposed by enemy action, the terrain, weather, or mere chance. Friction may be self-induced, caused by such factors as lack of a clearly defined goal, lack of coordination, unclear or complicated plans, complex task organizations or command relationships, or complicated technologies. Whatever form it takes, because war is a human enterprise, friction will always have a psychological as well as a physical impact.",
+   "citation": "MCDP 1, (20 June 1997), Ch 1: The Nature of War, \"Friction\", para 3, p.5",
+   "key_points": [
+    "Friction can manifest as mental, physical, or external factors.",
+    "Self-induced friction is caused by internal issues such as lack of clear goals, poor coordination, or complex planning.",
+    "Regardless of its form, friction will always have both a psychological and a physical impact."
+   ]
+  },
+  {
+   "item_id": "MCDP10-c3-ab664af3db-0",
+   "question": "Describe the relationship between top-down planning, single-battle concept, and integrated planning in shaping commander decision-making processes.",
+   "pub_id": "MCDP 1-0",
+   "chapter": 3,
+   "chapter_title": "Chapter 3",
+   "section": "Planning Tenets",
+   "source_text": "Top-down planning. Top-down planning is the active participation of commanders that drives the process at their respective levels to gain knowledge and promote understanding as a basis for decisionmaking. Single-battle concept. Single-battle is a unifying perspective of operations, which holds that actions anywhere in the operational environment can affect actions elsewhere. For example, early fires success in the deep fight facilitates rapid maneuver in the close battle, which exacerbates combat service support push over limited lines of communications. Integrated planning. Integrated planning is the application of a systemic and systematic approach to planning through the employment of a planning team that is composed of subject matter experts in appropriate disciplines to consider all relevant factors, reduce omissions, and share information.",
+   "citation": "MCDP 1-0, Ch 3, \"Planning Tenets\", para 2, p.3-2",
+   "key_points": [
+    "Top-down planning involves commanders actively driving the process to gain knowledge and promote understanding.",
+    "The single-battle concept provides a unifying perspective where actions in one area of the operational environment affect actions elsewhere.",
+    "Integrated planning utilizes a planning team of subject matter experts to apply a systematic approach, consider all relevant factors, reduce omissions, and share information."
+   ]
+  },
+  {
+   "item_id": "MCDP11-c1-270da4e8bc-0",
+   "question": "What is the fundamental distinction between an act that constitutes war and an act that does not, according to the provided text?",
+   "pub_id": "MCDP 1-1",
+   "chapter": 1,
+   "chapter_title": "The Strategic Environment",
+   "section": "Further Defining War",
+   "source_text": "In its broadest sense, war refers to any use of organized force for political purposes, whether that use results in actual violence or not. When we speak of warfare, however, we almost always mean actual violence of some considerable scale that is carried out over some considerable period of time. A single assassination, while certainly a violent political act, does not constitute a war. On the other hand, large-scale, long-term violence alone does not necessarily mean war either. For example, over a 25-year period—1969 through 1994—some 3,000 people were killed in Northern Ireland for an average of 120 deaths per year in a population of 1.5 million.5 For that same period, there were approximately 291 murders per year committed in Washington, D.C. in an average population of 642,000.6 The former situation is widely recognized as war, while the latter is not. The difference is a matter of organization. The perpetrators, victims, and targets of the violence in Northern Ireland reflect distinct political groups engaged in a power struggle. The violent death rate in Washington, D.C., roughly five times higher, seems to reflect random violence—a sign of social dysfunction rather than of some purposeful group movement toward any political goal. From all this, we can say that war is—",
+   "citation": "MCDP 1-1, Ch 1: The Strategic Environment, \"Further Defining War\", para 3, p.15",
+   "key_points": [
+    "War requires actual violence of some considerable scale carried out over some considerable period of time.",
+    "The key differentiator is the presence of organization among the perpetrators, victims, and targets.",
+    "War involves violence reflecting distinct political groups engaged in a power struggle, whereas non-war violence may reflect random social dysfunction."
+   ]
+  },
+  {
+   "item_id": "MCDP12-c1-be1b22f870-0",
+   "question": "Describe the multifaceted elements that constitute the tactical level of war and how these elements relate to the continuous nature of combat.",
+   "pub_id": "MCDP 1-2",
+   "chapter": 1,
+   "chapter_title": "The Campaign",
+   "section": "Tactics",
+   "source_text": "The tactical level of war includes the maneuver of forces in contact with the enemy to gain a fighting advantage, the application and coordination of fires, the sustainment of forces throughout combat, the immediate exploitation of success to seal the victory, the combination of different arms and weapons, the gathering and dissemination of pertinent information, and the technical application of combat power within a tactical action—all to cause the enemy's defeat. In practice, the events of combat form a continuous fabric of activity. Nonetheless, each tactical action, large or small, can generally be seen as a distinct episode fought within a distinct space and over a particular span of time.",
+   "citation": "MCDP 1-2, Ch 1: The Campaign, \"Tactics\", para 2, p.6",
+   "key_points": [
+    "Tactical level encompasses maneuver, fire application and coordination, force sustainment, exploitation of success, combination of arms and weapons, information gathering and dissemination, and technical application of combat power.",
+    "Combat events form a continuous fabric of activity, yet each tactical action is generally viewed as a distinct episode fought within a specific space and time."
+   ]
+  },
+  {
+   "item_id": "MCDP13-c1-36efd03d5a-0",
+   "question": "Describe the ways in which external conditions and technology influence the nature of battle and the tactical environment, focusing on the relationship between these factors and the resulting changes in force organization and warfare.",
+   "pub_id": "MCDP 1-3",
+   "chapter": 1,
+   "chapter_title": "Understanding Tactics",
+   "section": "The Environment",
+   "source_text": "Battle is also influenced by a variety of external conditions—directions and missions established by authorities, terrain, weather, attitudes of the civilian populace—that often cannot be foreseen. The outcome of combat can only be anticipated in terms of probabilities. Technology also affects the tactical environment—but not always as anticipated. Technology may reduce uncertainty, and it also may increase it. The Spartans, organized into phalanxes, attacked in close formation, making it easy to see and control one's forces. Today, tactical formations are less welldefined as distances between elements have increased, complicating command and control. Increased weapons lethality, communications range, and tactical mobility cause us to disperse forces over greater distances. War is more fluid as a result of technology. While the machine gun bogged down warfare in World War I, tactical innovations like the tank, the airplane, and the aircraft carrier made warfare more rapid and free-flowing in World War II.",
+   "citation": "MCDP 1-3, (30 July 1997), Ch 1: Understanding Tactics, \"The Environment\", para 7, p.7",
+   "key_points": [
+    "External conditions such as terrain, weather, and civilian attitudes often cannot be foreseen, and the outcome of combat is only anticipated in terms of probabilities.",
+    "Technology affects the tactical environment by potentially reducing or increasing uncertainty, and tactical innovations like the tank and airplane have made warfare more rapid and free-flowing.",
+    "Changes in tactical formations, driven by increased distances and weapon lethality, lead to the dispersal of forces over greater distances, complicating command and control."
+   ]
+  },
+  {
+   "item_id": "MCDP2-c1-a661a28209-0",
+   "question": "What are the four related tasks intelligence performs when achieving its primary objective, and how do these tasks relate to one another in the process?",
+   "pub_id": "MCDP 2",
+   "chapter": 1,
+   "chapter_title": "The Nature of Intelligence",
+   "section": "The Objectives of Intelligence",
+   "source_text": "In achieving its primary objective, intelligence performs four related tasks. First, it identifies and evaluates existing conditions and enemy capabilities. Second, based upon those existing conditions and capabilities, it estimates possible enemy courses of action, providing insight into possible future actions. Third, it aids in identifying friendly vulnerabilities the enemy may exploit. Finally, intelligence assists in the development and evaluation of friendly courses of action based on the results of the first three tasks.",
+   "citation": "MCDP 2, Ch 1: The Nature of Intelligence, \"The Objectives of Intelligence\", para 3, p.5",
+   "key_points": [
+    "Identifying and evaluating existing conditions and enemy capabilities",
+    "Estimating possible enemy courses of action based on existing conditions and capabilities",
+    "Identifying friendly vulnerabilities the enemy may exploit"
+   ]
+  },
+  {
+   "item_id": "MCDP3-c1-b0d3240cda-0",
+   "question": "What distinguishes a disruption from a disaster in terms of its origin, and what are some examples of the human intent behind such disruptions?",
+   "pub_id": "MCDP 3",
+   "chapter": 1,
+   "chapter_title": "The Landscape: Chaos in the Littorals",
+   "section": "Crises: Disaster, Disruption, Dispute",
+   "source_text": "The second class of crisis is disruption. Disruptions are intentionally disorderly activities that cause internal commotion on a scale sufficient to interfere with a government's ability to perform its functions. Unlike disasters, which are generally the result of the forces of nature or unintentional human actions, disruptions are the result of human intent. These may be the actions of an organized political group with a unified agenda such as an insurgency movement or terrorist organization, a criminal organization more interested in profits than politics such as a drug cartel, or an accumulation of individuals or small groups acting in their own self-interest. The effects of disruptions are internal to the country in question, although the disruptive element itself may originate externally or receive external support. Disruptions may include genocide, terrorism, insurgency, drug trafficking, and epidemic crime. They may stem from sectarianism, nationalism, racial or religious hatred, or extreme poverty. Disasters can lead to disruption if there is widespread dissatisfaction with the government response to the disaster.",
+   "citation": "MCDP 3, Ch 1: The Landscape: Chaos in the Littorals, \"Crises: Disaster, Disruption, Dispute\", para 3, p.6",
+   "key_points": [
+    "Disruptions are intentionally disorderly activities that cause internal commotion sufficient to interfere with a government's functions, whereas disasters are generally the result of natural forces or unintentional human actions.",
+    "Disruptions result from human intent, which can stem from organized political groups with unified agendas, criminal organizations focused on profit, or individuals acting in self-interest.",
+    "Examples of disruptions include genocide, terrorism, insurgency, drug trafficking, and epidemic crime, which may be rooted in factors like sectarianism or extreme poverty."
+   ]
+  },
+  {
+   "item_id": "MCDP5-c1-f0eb8b4f0e-0",
+   "question": "What is the relationship between planning and the time lag between decision and action on the battlefield, and how does this relationship manifest at different levels of command?",
+   "pub_id": "MCDP 5",
+   "chapter": 1,
+   "chapter_title": "The Nature of Planning",
+   "section": "The Value of Planning",
+   "source_text": "Second, planning is essential to reduce the unavoidable time lag between decision and action on the battlefield, especially at higher levels. Acknowledging this time lag is not an excuse for acting sluggishly but simply a recognition of the reality of war. While some actions can be implemented immediately, others require forethought and preparation. For example, changing the direction of attack may be a relatively simple and immediate matter at the squad level, but changing the scheme of maneuver of a division, to include all its support, is a more complicated and time-consuming effort requiring greater preparation. Simply changing the priority of fires in a division can take considerable time if it is necessary to move artillery units. If we wait until an event materializes to begin to prepare for it, we may not be able to react quickly enough. Proper planning should help us reduce crises by dealing with situations before they reach crisis proportions. In many situations, prompt action requires advance thought and preparation.",
+   "citation": "MCDP 5, (21 July 1997), Ch 1: The Nature of Planning, \"The Value of Planning\", para 5",
+   "key_points": [
+    "Planning is essential to reduce the unavoidable time lag between decision and action.",
+    "The complexity and time required for planning increase with the level of command, as demonstrated by the difference between a squad-level change and a division-level change in scheme of maneuver.",
+    "Proper planning allows for dealing with situations before they reach crisis proportions, enabling prompt action."
+   ]
+  },
+  {
+   "item_id": "MCDP6-c1-26546a6af2-0",
+   "question": "Describe the relationship between command and control as defined in this view, specifically detailing the role of control and how it influences subsequent command action.",
+   "pub_id": "MCDP 6",
+   "chapter": 1,
+   "chapter_title": "The Nature of Command and Control",
+   "section": "What is Command and Control?",
+   "source_text": "We suggest a different and more dynamic view of command and control which sees command as the exercise of authority and control as feedback about the effects of the action taken. (See figure 1.) The commander commands by deciding what needs to be done and by directing or influencing the conduct of others. Control takes the form of feedback—the continuous flow of information about the unfolding situation returning to the commander—which allows the commander to adjust and modify command action as needed. Feedback indicates the difference between the goals and the situation as it exists. Feedback may come from any direction and in any form—intelligence about how the enemy is reacting, information about the status of subordinate or adjacent units, or revised guidance from above based on developments. Feedback is the mechanism that allows commanders to adapt to changing circumstances—to exploit fleeting opmodify developing problems, respond portunities, to schemes, or redirect efforts. In this way, feedback \"controls\" subsequent command action. In such a command and control system, control is not strictly something that seniors impose on subordinates; rather, the entire system comes \"under control\" based on feedback about the changing situation.4",
+   "citation": "MCDP 6, (4 October 1996), Ch 1: The Nature of Command and Control, \"What is Command and Control?\", para 7, p.40",
+   "key_points": [
+    "Command is the exercise of authority and control is feedback about the effects of the action taken.",
+    "Control is the continuous flow of information about the unfolding situation that allows the commander to adjust and modify command action as needed.",
+    "Feedback serves as the mechanism that allows commanders to adapt to changing circumstances by exploiting opportunities, modifying problems, responding to schemes, or redirecting efforts."
+   ]
+  },
+  {
+   "item_id": "MCDP7-c2-b6ff795267-0",
+   "question": "Describe the evolution of tactical thinking and adaptation demonstrated by the Marines, contrasting their initial reliance on a specific formation with the methods they developed during combat operations.",
+   "pub_id": "MCDP 7",
+   "chapter": 2,
+   "chapter_title": "Chapter 2",
+   "section": "The Culture of Learning",
+   "source_text": "Those were before the days of lavish maps, to which the Americans afterwards attained. There was one map to each company, exclusive property of the captain. Platoon commanders had a look at it— “You’re here. The objective is a square patch of woods a kilometre and a half northwest, about. See?—this. Form your platoons in four waves—the guide will be right. Third Battalion is advancing their flank to conform. French on the left. . . .” Platoons were formed in four waves, the attack formation taught by the French, a formation proved in trench warfare, where there was a short way to go, and you calculated on losing the first three waves and getting the fourth one to the objective.5 After the first engagement, the Marines never used it again. It was a formation that simply accepted casualties, was not adapted for open warfare, and left formations rushing across open ground incredibly vulnerable. It did not take the Marines long to learn better and to adapt their tactics founded on sound basics learned during their training. Initial training made Marines adept at long-range marksmanship and close-in combat. Careful attention to the experiences of others highlighted both the advantages and disadvantages of trench warfare. The Marines recognized and overcame errors or omissions in map reading, orders dissemination, reconnaissance, and combined arms integration. During the fight for Belleau Wood, Marines learned and adapted as they fought. Unlike their initial use of the French formation, the final drive to secure Belleau Wood was achieved with close integration of maneuver with supporting artillery fire.",
+   "citation": "MCDP 7, Ch 2, \"The Culture of Learning\", para 13, p.2-7",
+   "key_points": [
+    "Initial reliance on a French formation that was not adapted for open warfare and accepted casualties.",
+    "Learning and adapting tactics based on sound basics from training, including recognizing and overcoming errors in map reading, orders dissemination, reconnaissance, and combined arms integration.",
+    "Achieving objectives through close integration of maneuver with supporting elements during actual engagements."
+   ]
+  },
+  {
+   "item_id": "MCWP3113-c7-e639c591da-0",
+   "question": "Describe the specific physical adjustments and hand positioning required to prepare a compass for taking an azimuth reading.",
+   "pub_id": "MCWP 3-11.3",
+   "chapter": 7,
+   "chapter_title": "Positioning",
+   "section": "The Lensatic Compass",
+   "source_text": "Reading an Azimuth To read an azimuth to any point, the cover of the compass is raised to an angle of 90 degrees in relation to the index face, and the eyepiece is lifted to a 45degree angle in relation to the bezel, or so the numbers on the dial can be seen. The thumb of either hand is placed in the thumb ioop, the index finger extended along the side of the compass case, and the remainder of the hand closed. The closed hand and wrist are grasped with the other hand. The elbows are drawn in close to the body, forming a firm foundation for the compass. The eye is placed to the lens on the eyepiece. The compass is pointed at the object or point to which the azimuth is to be read. A sighting is taken through the sighting slot in the eyepiece, and the point is lined up with the sighting wire in the cover. The compass is held until the dial steadies; then the reading is taken through the lens of the eyepiece. This reading is the magnetic azimuth of the line from the observer to the point.",
+   "citation": "MCWP 3-11.3, Ch 7: Positioning, \"The Lensatic Compass\", para 5, p.2-2",
+   "key_points": [
+    "Raising the cover to 90 degrees relative to the index face and lifting the eyepiece to 45 degrees relative to the bezel to view the dial numbers.",
+    "Placing the thumb in the thumb loop, extending the index finger along the side of the case, and closing the remainder of the hand while grasping the closed hand and wrist with the other hand.",
+    "Drawing the elbows in close to the body to establish a firm foundation for the compass."
+   ]
+  },
+  {
+   "item_id": "TC3229-c1-085c5f93f0-0",
+   "question": "Describe the three components that build safe weapons handling procedures and explain the specific responsibility of the Soldier within each component.",
+   "pub_id": "TC 3-22.9",
+   "chapter": 1,
+   "chapter_title": "Chapter 1",
+   "section": "Rules of Firearms Safety",
+   "source_text": "Figure 1-1. Employment skills 1-2. Safe weapons handling procedures are a consistent and standardized way for Soldiers to handle, operate, and employ the weapon safely and effectively. Weapons handling is built on three components; the Soldier, the weapon, and the environment: The Soldier must maintain situational understanding of friendly forces, the  status of the weapon, and the ability to evaluate the environment to properly handle any weapon. The smart, adaptive, and disciplined Soldier is the primary safety mechanism for all weapons under his control. The weapon is the primary tool of the Soldier to defeat threats in combat.  The Soldier must know of and how to operate the mechanical safeties built into the weapons they employ, as well as the principles of operation for those weapons. The environment is the Soldier’s surroundings. The Soldier must be aware  of muzzle discipline, the nature of the target, and what is behind it.",
+   "citation": "TC 3-22.9, (May 2016 (Change 3)), Ch 1, \"Rules of Firearms Safety\", para 1, p.1-2",
+   "key_points": [
+    "The Soldier must maintain situational understanding of friendly forces, the status of the weapon, and the ability to evaluate the environment.",
+    "The weapon is the primary tool of the Soldier to defeat threats in combat.",
+    "The Soldier must know of and how to operate the mechanical safeties built into the weapons they employ, as well as the principles of operation for those weapons."
+   ]
+  },
+  {
+   "item_id": "TCCC-c0-3efb0ff7df-0",
+   "question": "When managing a suspected pelvic fracture, what sequence of actions must be taken regarding tourniquet application and wound management, and under what conditions should a tourniquet be converted to a hemostatic or pressure dressing?",
+   "pub_id": "TCCC",
+   "chapter": null,
+   "chapter_title": null,
+   "section": "6. Circulation",
+   "source_text": "a. Bleeding 1. A pelvic binder should be applied for cases of suspected pelvic fracture: 1. Severe blunt force or blast injury with one or more of the following indications:  Pelvic pain  Any major lower limb amputation or near amputation  Physical exam findings suggestive of a pelvic fracture  Unconsciousness  Shock 2. Reassess prior tourniquet application. Expose the wound and determine if a tourniquet is needed. If it is needed, reposition any limb tourniquet placed over the uniform by applying a second one directly to the skin 2-3 inches above the bleeding site, then loosening the first tourniquet. Ensure that bleeding is stopped. If there is no traumatic amputation, a distal pulse should be checked. If bleeding persists or a distal pulse is still present, consider additional tightening of the tourniquet or the use of a second tourniquet sideby-side with the first to eliminate both bleeding and the distal pulse. If the reassessment determines that the prior tourniquet was not needed, then remove the tourniquet and note time of removal on the TCCC Casualty Card. 3. Limb tourniquets and junctional tourniquets should be converted to hemostatic or pressure dressings as soon as possible if three criteria are met: the casualty is not in shock; it is possible to monitor the wound closely for bleeding; and the tourniquet is not being used to control bleeding from an amputated extremity. Every effort should be made to convert tourniquets in less than 2 hours if bleeding can be controlled with other means. Do not remove a tourniquet that has been in place more than 6 hours unless close monitoring and lab capability are available.",
+   "citation": "TCCC, (01 May 2026), \"6. Circulation\", para 1",
+   "key_points": [
+    "Apply a pelvic binder for suspected pelvic fractures indicated by severe blunt force/blast injury, pelvic pain, major lower limb injury, physical exam findings suggestive of a fracture, or unconsciousness.",
+    "Reassess prior tourniquet application by exposing the wound and determining if a tourniquet is needed, and if so, repositioning any limb tourniquet to apply a second one 2-3 inches above the bleeding site before loosening the first.",
+    "Convert limb and junctional tourniquets to hemostatic or pressure dressings when the casualty is not in shock, the wound can be monitored closely for bleeding, and the tourniquet is not controlling bleeding from an amputated extremity."
+   ]
+  },
+  {
+   "item_id": "MCDP1-c1-6fbd5d504f-0",
+   "question": "Given the inherent unpredictability of war, what are the four methods outlined for developing effective plans and procedures to fight despite uncertainty?",
+   "pub_id": "MCDP 1",
+   "chapter": 1,
+   "chapter_title": "The Nature of War",
+   "section": "Uncertainty",
+   "source_text": "War is intrinsically unpredictable. At best, we can hope to determine possibilities and probabilities. This implies a certain standard of military judgment: What is possible and what is not? What is probable and what is not? By judging probability, we make an estimate of our enemy's designs and act accordingly. Having said this, we realize that it is precisely those actions that seem improbable that often have the greatest impact on the outcome of war. Because we can never eliminate uncertainty, we must learn to fight effectively despite it. We can do this by developing simple, flexible plans; planning for likely contingencies; developing standing operating procedures; and fostering initiative among subordinates.",
+   "citation": "MCDP 1, (20 June 1997), Ch 1: The Nature of War, \"Uncertainty\", para 2, p.7",
+   "key_points": [
+    "developing simple, flexible plans",
+    "planning for likely contingencies",
+    "developing standing operating procedures"
+   ]
+  },
+  {
+   "item_id": "MCDP10-c3-1892fad19b-0",
+   "question": "Describe the nature of the planning process as it relates to the Marine Corps Planning Process, emphasizing how the process is characterized in practice.",
+   "pub_id": "MCDP 1-0",
+   "chapter": 3,
+   "chapter_title": "Chapter 3",
+   "section": "The Marine Corps Planning Process",
+   "source_text": "There are six steps in the MCPP. While these steps appear in a particular sequence, planning seldom occurs in the same straightforward manner. Environmental factors, enemy action, updated intelligence, revised guidance, and feedback as a result of operations all contribute to making most planning endeavors highly complex and nonlinear in practice. The problem will evolve in the process of being solved. Above all else, planning is a dynamic learning process—one that improves the understanding of a situation even as the situation constantly evolves. For a detailed discussion of the MCPP, refer to MCWP 5-1, Marine Corps Planning Process. The six-step MCPP involves problem framing, COA development, COA war game, COA comparison and decision, orders development, and transition.",
+   "citation": "MCDP 1-0, Ch 3, \"The Marine Corps Planning Process\", para 2, p.3-2",
+   "key_points": [
+    "Planning is a dynamic learning process that improves understanding as the situation evolves.",
+    "Planning is highly complex and nonlinear due to the influence of environmental factors, enemy action, updated intelligence, revised guidance, and feedback.",
+    "The six steps of the MCPP are problem framing, COA development, COA war game, COA comparison and decision, orders development, and transition."
+   ]
+  },
+  {
+   "item_id": "MCDP11-c1-a0a940444c-0",
+   "question": "What are the fundamental characteristics of real political units that distinguish them from the unitary rational actor model, and what does accepting the latter model lead to in terms of strategic understanding?",
+   "pub_id": "MCDP 1-1",
+   "chapter": 1,
+   "chapter_title": "The Strategic Environment",
+   "section": "Entities",
+   "source_text": "The attempt to apply a scientific approach can result in some misleading ideas. For example, some political scientists treat political entities as unitary rational actors, the social equivalents of Newton's solid bodies hurtling through space. Real political units, however, are not unitary. Rather, they are collections of intertwined but fundamentally distinct actors and systems. Their behavior derives from the internal interplay of both rational and irrational forces as well as from the peculiarities of their own histories and of chance. Strategists who accept the unitary rational actor model as a description of adversaries at war will have difficulty understanding either side's motivations or actual behavior. Such strategists ignore their own side's greatest potential vulnerabilities and deny themselves potential levers and targets—the fault lines that exist within any human political construct.",
+   "citation": "MCDP 1-1, Ch 1: The Strategic Environment, \"Entities\", para 2, p.16",
+   "key_points": [
+    "Real political units are collections of intertwined but fundamentally distinct actors and systems.",
+    "Their behavior is driven by the internal interplay of both rational and irrational forces, as well as the peculiarities of their own histories and chance.",
+    "Accepting the unitary rational actor model causes strategists to overlook their own side's greatest potential vulnerabilities and deny themselves potential levers and targets."
+   ]
+  },
+  {
+   "item_id": "MCDP12-c1-ea15f80f04-0",
+   "question": "Under what condition is a military action considered to be occurring at the operational level, regardless of the size of the military force or the scope of the tactical action?",
+   "pub_id": "MCDP 1-2",
+   "chapter": 1,
+   "chapter_title": "The Campaign",
+   "section": "Operations",
+   "source_text": "Although the operational level of war is sometimes described as large-unit tactics, it is erroneous to define the operational level according to echelon of command. Military actions need not be of large scale or involve extensive combat to have an important political impact.13 The distance between tactical actions and their strategic effects varies greatly from conflict to conflict. In World War II, for example, strategic effects could usually be obtained only from the operations of whole armies or fleets. In a future very large-scale conventional conflict, a corps commander may well be the lowestlevel operational commander. In Somalia, on the other hand, strategic (i.e., political) effects could result from the actions of squads or even individuals. Regardless of the size of a military force or the scope of a tactical action, f it is being used to directly achieve a strategic objective, then it is being employed at the operational level.",
+   "citation": "MCDP 1-2, Ch 1: The Campaign, \"Operations\", para 5, p.9",
+   "key_points": [
+    "The action must be used to directly achieve a strategic objective.",
+    "The definition of the operational level is not based on the echelon of command.",
+    "The operational level can involve actions from squads or individuals, even if the force is small."
+   ]
+  },
+  {
+   "item_id": "MCDP13-c1-bf0dceeb1a-0",
+   "question": "What is the fundamental difference between the deterministic and probabilistic views of combat, and what is the operational consequence of adhering to the deterministic view?",
+   "pub_id": "MCDP 1-3",
+   "chapter": 1,
+   "chapter_title": "Understanding Tactics",
+   "section": "How We View Combat and How We Fight",
+   "source_text": "How we view the combat environment in large part determines how we operate in it. There are two competing views of combat. Some see it in simple terms as if the battle and the environment represent a closed mechanical system. This \"deterministic\" view argues that combat is predictable. Among the advocates of this view are military theorists who seek prescriptive rules for battle and analysts who predict battle outcomes based upon force ratios. The other view is that combat is chaotic and uncertain. In this \"probabilistic\" view, battle is seen as a complex phenomenon in which participants interact with one another and respond and adapt to their environment. The probabilistic viewpoint sees combat as unpredictable. The distinctions between these two views of combat are important. They drive the choices commanders make in combat. The deterministic view of combat often leads to centralized control. It can be a recipe for micromanagement stifling the initiative subordinates need to deal with combat's inevitable uncertainties. Overly prescriptive orders and plans inhibit a unit's ability to cope with uncertainty and change. Eventually, the unit, inflexible and unable to adapt, may be overwhelmed by events.",
+   "citation": "MCDP 1-3, (30 July 1997), Ch 1: Understanding Tactics, \"How We View Combat and How We Fight\", para 1, p.9",
+   "key_points": [
+    "Deterministic view sees combat as a closed mechanical system where battle is predictable.",
+    "Probabilistic view sees combat as a complex phenomenon where participants interact and adapt to their environment.",
+    "Adhering to the deterministic view often leads to centralized control, which can result in micromanagement that stifles subordinate initiative and adaptability."
+   ]
+  },
+  {
+   "item_id": "MCDP2-c1-5313eeba4d-0",
+   "question": "Explain the fundamental difference between information and intelligence, detailing the process by which raw material is transformed into meaningful knowledge.",
+   "pub_id": "MCDP 2",
+   "chapter": 1,
+   "chapter_title": "The Nature of Intelligence",
+   "section": "Intelligence as Knowledge",
+   "source_text": "What do we mean by knowledge? In describing intelligence as knowledge, we are distinguishing intelligence from data or information.6 Intelligence is developed from information, but it is important to recognize that intelligence is not simply another term for information. Information is unevaluated material of any kind—enemy prisoner of war interroreports, gation reconnaissance radio intercepts, reports, photographs—and represents the raw material from which intelligence is ultimately derived. Few pieces of information speak conclusively for themselves. They must be combined and compared with other pieces of information, analyzed, evaluated, and, finally, given meaning. Good intelligence does not simply repeat the information which a source reveals. Rather, it develops this raw material in order to tell us what that information means and identifies the implications for decisionmaking. In other words, intelligence is the analysis and synthesis of information into knowledge. The end result is not more information, but knowledge that gives us a meaningful assessment of the situation.7",
+   "citation": "MCDP 2, Ch 1: The Nature of Intelligence, \"Intelligence as Knowledge\", para 3, p.7",
+   "key_points": [
+    "Information is unevaluated material that requires combination and comparison to be transformed into intelligence.",
+    "Intelligence is the analysis and synthesis of information to develop a meaningful assessment of the situation.",
+    "The ultimate result of this process is knowledge, which provides a meaningful assessment rather than just more raw information."
+   ]
+  },
+  {
+   "item_id": "MCDP3-c1-999a06127a-0",
+   "question": "Describe the primary drivers of increased economic integration in the global landscape and explain how this trend is manifested in the relationship between national interests and military action.",
+   "pub_id": "MCDP 3",
+   "chapter": 1,
+   "chapter_title": "The Landscape: Chaos in the Littorals",
+   "section": "Fragmentation and Integration",
+   "source_text": "A second major trend in global relations is integration. At the same time that the world is fragmenting politically, it is becoming increasingly connected economically through the rise in global markets. This economic integration results largely from advances in communications technologies that provide both near-instantaneous worldwide transfer of capital and worldwide access to goods and services. As a simple example, one popular \"American\" basketball shoe is actually assembled from 52 different components that come from five different countries, and it is shipped by sea or air to markets all over the world.9 The United States has significant commercial interests worldwide. Some of them, such as Persian Gulf oil, are clearly vital to national interests while others, such as the basketball shoe industry, are important but not vital. Another manifestation of increased interconnectedness may be the current decline of unilateral action and the rise of consensus-building among governments before applying military force.",
+   "citation": "MCDP 3, Ch 1: The Landscape: Chaos in the Littorals, \"Fragmentation and Integration\", para 3, p.8",
+   "key_points": [
+    "Advances in communications technologies facilitate near-instantaneous worldwide transfer of capital and access to goods and services.",
+    "Economic integration is exemplified by complex supply chains, such as a single product being assembled from components sourced from multiple countries.",
+    "The decline of unilateral action is a manifestation of increased interconnectedness, leading to a rise in consensus-building among governments before applying military force."
+   ]
+  },
+  {
+   "item_id": "MCDP5-c1-543b3d7855-0",
+   "question": "Describe the scope of operation planning across the strategic, operational, and tactical levels, detailing what each level is responsible for developing.",
+   "pub_id": "MCDP 5",
+   "chapter": 1,
+   "chapter_title": "The Nature of Planning",
+   "section": "Categories of Military Planning",
+   "source_text": "Operation planning is planning for the mobilization, deployment, employment, sustainment, and redeployment of military forces to accomplish assigned missions. At the strategic level, operation planning involves the development of strategic military objectives, strategic concepts, and tasks in support of national security strategy. At the operational level, planning involves developing campaign plans to link the tactical employment of forces with strategic objectives. At the tactical level, planning involves developing objectives, concepts of operations, and tasks for the employment and sustainment of military forces in combat or noncombat military activities at a particular time and place. This publication will focus on operation planning, although the principles discussed apply in general to force planning.",
+   "citation": "MCDP 5, (21 July 1997), Ch 1: The Nature of Planning, \"Categories of Military Planning\", para 2",
+   "key_points": [
+    "Strategic level involves developing strategic military objectives, concepts, and tasks in support of national security strategy.",
+    "Operational level involves developing campaign plans to link the tactical employment of forces with strategic objectives.",
+    "Tactical level involves developing objectives, concepts of operations, and tasks for the employment and sustainment of military forces in combat or noncombat military activities at a particular time and place."
+   ]
+  },
+  {
+   "item_id": "MCDP6-c1-2c98a0da1a-0",
+   "question": "Describe the relationship between commanding and controlling forces as depicted in the figure, and contrast the traditional, strong, coercive model of command and control with the reality of modern warfare.",
+   "pub_id": "MCDP 6",
+   "chapter": 1,
+   "chapter_title": "The Nature of Command and Control",
+   "section": "What Does it Mean to be \"In Control\"?",
+   "source_text": "Figure 1. Two views of the relationship between command and control. take in which complementary commanding and controlling forces interact to ensure that the force as a whole can adapt continuously to changing requirements. The typical understanding of effective command and control is that someone \"in command\" should also be \"in control.\" Typically, we think of a strong, coercive type of command and control—a sort of pushbutton control—by which those \"in control\" dictate the actions of others and those \"under control\" respond promptly and precisely, as a chess player controls the movements of the chess pieces. But given the nature of war, can commanders control their forces with anything even resembling the omnipotence of the chess player? We might say that a gunner is in control of a weapon system or that a pilot is in control of an aircraft. But is a flight leader really directly in control of how the other pilots fly their aircraft? Is a senior commander really in control of the squads of Marines actually engaging the enemy, especially on a modern battlefield on which units and individuals will often be widely dispersed, even to the point of isolation?",
+   "citation": "MCDP 6, (4 October 1996), Ch 1: The Nature of Command and Control, \"What Does it Mean to be \"In Control\"?\", para 1, p.42",
+   "key_points": [
+    "Command and control involves complementary forces interacting to ensure the force as a whole can adapt continuously to changing requirements.",
+    "The traditional model assumes a strong, coercive command and control where those 'in control' dictate actions and those 'under control' respond precisely.",
+    "Modern warfare challenges the traditional model by questioning whether a senior commander can maintain direct control over widely dispersed units and individuals."
+   ]
+  },
+  {
+   "item_id": "MCDP7-c2-d11d451b2e-0",
+   "question": "Describe the continuous cycle of professional development that a Marine must engage in, detailing the actions required to manage their learning from initial goal setting to advanced expertise.",
+   "pub_id": "MCDP 7",
+   "chapter": 2,
+   "chapter_title": "Chapter 2",
+   "section": "Four Functional Areas of Responsibility for the Culture of Learning.",
+   "source_text": "Learning is a developmental process. Professional learning goals are generally process-oriented so that short- and mid-term goals lead to long-term ambitions. Each Marine should identify professional learning goals, establish a plan of action, seek feedback, and regularly assess his or her progress. Just as learning is continuous, Marines regularly review, revise, and hold each other accountable for their professional development goals. Individual goals and progress can be discussed with peers, mentors, leaders, and—as appropriate—with subordinates. Additionally, professional learning expectations rise with seniority. While junior Marines are generally introduced to specific topics, subjects, and expectations, more senior Marines are expected to independently broaden the scope of their learning to advance their expertise. Taking time to organize one’s thoughts, reflect upon professional goals, challenge existing ideas, and process new information is important at every level of the developmental process.",
+   "citation": "MCDP 7, Ch 2, \"Four Functional Areas of Responsibility for the Culture of Learning.\", para 7, p.2-11",
+   "key_points": [
+    "Establishing a plan of action and seeking feedback for professional learning goals.",
+    "Regularly reviewing, revising, and holding oneself accountable for professional development goals.",
+    "Independently broadening the scope of learning as seniority increases."
+   ]
+  }
+ ],
+ "unanswerable": [
+  {
+   "id": "u-aviation-preflight",
+   "why": "aviation maintenance; no aviation pub indexed",
+   "question": "What are the required preflight inspection steps for an F-35B before a vertical landing?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -6.029805660247803,
+    "top_effective_score": -6.343805660247803
+   }
+  },
+  {
+   "id": "u-nuclear-release",
+   "why": "nuclear release authority is not in these pubs",
+   "question": "Who holds release authority for the employment of tactical nuclear weapons, and what is the authentication sequence?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -4.24950647354126,
+    "top_effective_score": -4.3605064735412595
+   }
+  },
+  {
+   "id": "u-fitrep-sections",
+   "why": "performance evaluation administration, not doctrine",
+   "question": "Which sections of a Marine Corps fitness report does the reviewing officer complete, and what are the attribute markings?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -2.90078067779541,
+    "top_effective_score": -1.90178067779541
+   }
+  },
+  {
+   "id": "u-uniform-ribbons",
+   "why": "uniform regulations are a separate order",
+   "question": "What is the correct order of precedence for ribbons on the Marine Corps dress blue coat?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -5.7692437171936035,
+    "top_effective_score": -5.7692437171936035
+   }
+  },
+  {
+   "id": "u-bah-rates",
+   "why": "pay and allowances, not doctrine",
+   "question": "How is the Basic Allowance for Housing rate determined for a sergeant with dependents?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -7.055481910705566,
+    "top_effective_score": -7.921481910705566
+   }
+  },
+  {
+   "id": "u-ucmj-article-15",
+   "why": "military justice procedure, not in these pubs",
+   "question": "What are the maximum punishments a battalion commander may impose at office hours under the UCMJ?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -6.79293966293335,
+    "top_effective_score": -6.80893966293335
+   }
+  },
+  {
+   "id": "u-drill-manual",
+   "why": "drill and ceremonies is a separate publication",
+   "question": "What are the commands and counts for executing a rifle salute at right shoulder arms during a pass in review?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -4.3714375495910645,
+    "top_effective_score": -5.846437549591064
+   }
+  },
+  {
+   "id": "u-submarine-ops",
+   "why": "submarine operations are not a Marine Corps pub",
+   "question": "What is the procedure for a submarine to conduct an emergency blow and surface?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -3.446096897125244,
+    "top_effective_score": -3.760096897125244
+   }
+  },
+  {
+   "id": "u-space-orbits",
+   "why": "space operations not indexed",
+   "question": "How is a sun-synchronous orbit selected for a tactical imagery satellite, and what revisit interval does it give?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -5.2401556968688965,
+    "top_effective_score": -4.826155696868897
+   }
+  },
+  {
+   "id": "u-cyber-ttp",
+   "why": "defensive cyber TTPs not in these pubs",
+   "question": "What are the specific steps for isolating a compromised host on a tactical network during a defensive cyberspace operation?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -3.0434060096740723,
+    "top_effective_score": -3.9094060096740724
+   }
+  },
+  {
+   "id": "u-contracting-far",
+   "why": "federal acquisition regulation, not doctrine",
+   "question": "Which FAR part governs a sole-source justification for a bridge contract, and what approval threshold applies?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -5.785696029663086,
+    "top_effective_score": -5.785696029663086
+   }
+  },
+  {
+   "id": "u-recruiting-quota",
+   "why": "recruiting administration not indexed",
+   "question": "How is a monthly recruiting quota assigned to a Marine Corps recruiting substation?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -4.33177375793457,
+    "top_effective_score": -4.44277375793457
+   }
+  },
+  {
+   "id": "u-mos-school-length",
+   "why": "school curriculum lengths not in doctrine",
+   "question": "How many training days is the entry-level course for the 0621 radio operator military occupational specialty?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -3.6040501594543457,
+    "top_effective_score": -2.6050501594543456
+   }
+  },
+  {
+   "id": "u-ship-engineering",
+   "why": "shipboard engineering plant not indexed",
+   "question": "What is the lineup procedure for bringing a second main propulsion diesel engine online aboard an amphibious transport dock?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -5.85795259475708,
+    "top_effective_score": -5.96895259475708
+   }
+  },
+  {
+   "id": "u-camry-torque",
+   "why": "civilian automotive repair",
+   "question": "What is the recommended torque specification for a Toyota Camry cylinder head bolt?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -4.7609333992004395,
+    "top_effective_score": -6.235933399200439
+   }
+  },
+  {
+   "id": "u-chemo-dosing",
+   "why": "oncology dosing is far outside TCCC",
+   "question": "What is the standard cisplatin dosing schedule for advanced non-small-cell lung cancer?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -3.497274160385132,
+    "top_effective_score": -2.1082741603851316
+   }
+  },
+  {
+   "id": "u-tax-deduction",
+   "why": "tax law",
+   "question": "How do I claim a home office deduction on a US federal income tax return?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -8.01617431640625,
+    "top_effective_score": -7.01717431640625
+   }
+  },
+  {
+   "id": "u-sourdough",
+   "why": "cooking",
+   "question": "What hydration ratio should I use for a sourdough starter kept at room temperature?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -5.244502067565918,
+    "top_effective_score": -3.8555020675659177
+   }
+  },
+  {
+   "id": "u-postgres-index",
+   "why": "software engineering",
+   "question": "How do I create a partial B-tree index in PostgreSQL to speed up a filtered query?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -6.317951202392578,
+    "top_effective_score": -6.036951202392578
+   }
+  },
+  {
+   "id": "u-arabic-grammar",
+   "why": "language instruction",
+   "question": "What is the rule for forming the broken plural of a triliteral Arabic noun?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -6.860649585723877,
+    "top_effective_score": -8.335649585723877
+   }
+  },
+  {
+   "id": "u-2027-election",
+   "why": "future/unknowable and not doctrine",
+   "question": "Who won the 2027 Australian federal election and what was the seat count?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -5.985092639923096,
+    "top_effective_score": -6.145092639923096
+   }
+  },
+  {
+   "id": "u-crypto-price",
+   "why": "market data, not doctrine",
+   "question": "What was the closing price of Bitcoin on 14 September 2026?",
+   "anchor_ask": {
+    "abstained": true,
+    "abstain_reason": "low_retrieval_score",
+    "top_rerank_score": -8.11374568939209,
+    "top_effective_score": -8.22474568939209
+   }
+  }
+ ],
+ "dropped_unanswerable": []
+}
