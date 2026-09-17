@@ -145,6 +145,7 @@ function loadInstructorFeatures(expose) {
       if (request === '../_learning/useLearning') return { useApiQuery: () => ({}), useApiMutation: () => ({}) };
       if (request === './RowActions') return { RowActions: () => null };
       if (request === './rubric-coverage') return require(path.join(workspace, 'app/prototype/rubric-coverage.js'));
+      if (request === './source-groups') return require(path.join(workspace, 'app/prototype/source-groups.js'));
       return require(request);
     },
   };

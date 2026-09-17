@@ -136,8 +136,7 @@ function ReviseForm({ item, busy, onCancel, onSubmit }) {
           would not guess: it ratifies the item. Set to be read, not filed under
           the form as a grey footnote. */}
       <p className="p-truth">
-        The citation and support score stay as measured — they describe the passage this item came
-        from, not the wording. Saving also approves the item.
+        The citation and support score stay as measured. Saving also approves the item.
       </p>
       <div className="p-btnrow">
         <button type="submit" className="p-btn" disabled={busy}>
@@ -185,7 +184,7 @@ function ItemCard({ item, busy, onDecide }) {
 
       {lessonContentOf(item) && (
         <details className="item-review-rationale">
-          <summary>Released with this lesson: {lessonContentOf(item).summary}. Written from the same passage and grounded block by block.</summary>
+          <summary>Released with this lesson: {lessonContentOf(item).summary}.</summary>
           <ol>
             {lessonContentOf(item).pages.map((page, index) => (
               <li key={index}>
@@ -359,7 +358,7 @@ export function CourseItemReview({ courseId, onChanged }) {
           <button type="button" className="p-btn ghost" disabled={approvingAll || Boolean(busyItem)} onClick={approveAll}>
             {approvingAll ? 'Approving…' : `Approve all ${counts.PENDING} pending`}
           </button>
-          <span className="p-src">Every pending lesson, check and card, as written. Withhold anything first that should not go out.</span>
+          <span className="p-src">Every pending lesson, check and card, as written.</span>
         </div>
       )}
 

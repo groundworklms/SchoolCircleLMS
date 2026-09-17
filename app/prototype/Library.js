@@ -340,7 +340,7 @@ function IngestSourceModal({ onIngested, variant = 'primary' }) {
       <div className="p-panel p-modal p-modal-lg" role="dialog" aria-modal="true" aria-label="Add source">
         <div className="p-modalhead">
           <h3>Add source</h3>
-          <p>Saved to your reusable source library. Review and explicitly approve it before generating a course.</p>
+          <p>Saved to your source library. Approve it before generating a course.</p>
         </div>
 
         <div className="p-modalbody">
@@ -374,8 +374,7 @@ function IngestSourceModal({ onIngested, variant = 'primary' }) {
               <section className="p-choice">
                 <h4>Upload a PDF, or a zip of PDFs</h4>
                 <p>
-                  Pages are preserved so instructors and learners can inspect a cited passage. A zip
-                  becomes one document per PDF, grouped under its collection.
+                  A zip becomes one document per PDF, grouped under its collection.
                 </p>
                 <div className="p-filepick">
                   <label className="p-btn ghost p-filebtn">
@@ -538,7 +537,7 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
 
       {/* The two controls do different jobs and sat unlabelled side by side. */}
       <p className="p-src s-courses-hint">
-        <strong>Plan a full course</strong> builds a complete, multi-section course from many sources — outline, lessons and per-lesson grounding.
+        <strong>Plan a full course</strong> builds a multi-section course from many sources.
         {' '}<strong>Create course</strong> generates a single draft from the sources you pick.
       </p>
 
@@ -556,9 +555,9 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
         </div>
       )}
       {!sourcesPending && !sourcesError && Array.isArray(sources) && approvedSources.length === 0 && (
-        <p>No approved sources yet. Choose Create course to add, review and approve your sources in one place.</p>
+        <p>No approved sources yet. Use Create course to add and approve them.</p>
       )}
-      {!loading && !error && courses.length === 0 && <p>No courses yet. Create a course from your sources, then review the generated draft.</p>}
+      {!loading && !error && courses.length === 0 && <p>No courses yet. Create one from your sources.</p>}
       {courses.length > 0 && (
         <div className="s-courselist">
           {courses.map((c) => (
@@ -789,15 +788,14 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
       )}
       {sourcesLoading && <p role="status" style={{ marginTop: '0.75rem' }}>Loading sources…</p>}
       {!sourcesLoading && !sourcesError && approvedSources.length === 0 && (
-        <p className="p-src" style={{ margin: '0.75rem 0 0' }}>No approved sources yet. Add a source above, then open its review and approve it.</p>
+        <p className="p-src" style={{ margin: '0.75rem 0 0' }}>No approved sources yet. Add one above, then approve it.</p>
       )}
     </div>
 
     <div>
       <p className="p-sectionlab">Generate from selected sources</p>
       <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
-        The title and objectives are written from the sources you select. Fill either in only to
-        override what the model would choose.
+        Title and objectives are written from your selected sources. Fill either in only to override.
       </p>
       <div className="p-fieldset">
         <label className="p-field">
@@ -832,7 +830,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
       <div className="p-panel p-modal p-modal-lg" role="dialog" aria-modal="true" aria-label="Create course">
         <div className="p-modalhead">
           <h3>Create course</h3>
-          <p>Add a PDF or paste text, review and approve it, then select it for this course. Existing approved sources can be reused.</p>
+          <p>Add a PDF or paste text, approve it, then select it. Existing approved sources can be reused.</p>
         </div>
 
         <div className="p-modalbody">
@@ -1345,7 +1343,6 @@ export function CourseDraft({ course, onChanged }) {
           <h2 className="p-h">{draft?.title || course.name || 'Course draft'}</h2>
           <p className="p-sub">
             Grounded in {sourceCount || 'the selected'} approved source{sourceCount === 1 ? '' : 's'}.
-            {' '}Review the generated content, then approve and publish this exact version.
           </p>
         </div>
         <span className={`p-live${status === 'APPROVED' && !hasPendingRevision ? ' on' : ''}`}>
@@ -1412,7 +1409,7 @@ export function CourseDraft({ course, onChanged }) {
       {preview && !showingLoading && (
         <div className="p-panel" style={{ marginBottom: '1.25rem' }}>
           <p className="p-src" style={{ marginTop: 0 }}>
-            Exactly what a learner sees, on the same player. Your copy carries the answer keys, so checks grade here; a learner&apos;s copy does not, and grades on the server.
+            Exactly what a learner sees. Your copy carries the answer keys, so checks grade here; a learner&apos;s grades on the server.
           </p>
           <CoursePreview key={version} course={{ id: course.id, name: draft?.title || course.name || 'Course draft' }} draft={draft} />
         </div>
@@ -1473,7 +1470,7 @@ export function CourseDraft({ course, onChanged }) {
       )}
       <details className="p-panel p-disclose">
         <summary>Optional learning tools · syllabus and mastery plan</summary>
-        <p className="p-src">These tools do not block course publication. Objective rubrics and Fidelity check are in the rail, under Quality checks.</p>
+        <p className="p-src">Optional; don&apos;t block publication. Objective rubrics and Fidelity check are in the rail, under Quality checks.</p>
         {status === 'PENDING' && <InstructorSyllabus courseId={course.id} />}
         <InstructorMasteryPlan
           courseId={course.id}
