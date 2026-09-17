@@ -287,7 +287,7 @@ function Courses({
 }) {
   const list = Object.values(COURSES);
   return (
-    <div className="s-two">
+    <div>
       <div>
         <div className="s-pagehead">
           <h1>Courses</h1>
@@ -395,10 +395,6 @@ function Courses({
         </div>
       </div>
 
-      <details>
-        <summary className="s-label">Demo schedule</summary>
-        <Agenda courseId={null} onOpen={onOpen} />
-      </details>
     </div>
   );
 }

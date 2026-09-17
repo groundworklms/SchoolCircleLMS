@@ -12,6 +12,18 @@ const React = require('react');
 const { renderToStaticMarkup } = require('react-dom/server');
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+test('Courses removes only its right-side agenda and keeps the original course sections', () => {
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/StudentShell.js'), 'utf8');
+  const courses = source.slice(source.indexOf('function Courses('), source.indexOf('/* ---------- course view'));
+  assert.doesNotMatch(courses, /<Agenda|Demo schedule|className="s-two"/);
+  for (const section of ['Available courses', 'Published courses', 'Demo courses and training (not enrolled)', 'Required training', 'Completed']) {
+    assert.ok(courses.includes(section), `preserves ${section}`);
+  }
+  assert.match(courses, /<LibraryList onOpen=\{onOpenPublished\}/);
+  assert.match(courses, /onOpen\(c\.id, 'home'\)/);
+  assert.equal((source.match(/<Agenda /g) || []).length, 2, 'dashboard and course-home agendas remain');
+});
+
 test('shared instructor shell omits breadcrumbs while retaining course status and navigation', () => {
   const source = fs.readFileSync(path.join(workspace, 'app/prototype/InstructorShell.js'), 'utf8');
   assert.doesNotMatch(source, /s-crumb|crumbTail/);
