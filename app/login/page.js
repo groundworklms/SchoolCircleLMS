@@ -25,12 +25,17 @@ export default function LoginPage() {
     profileLoading,
     profileError,
     ready,
+    offlineEnabled,
+    signInOffline,
   } = useAuth();
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Local operator sign-in, shown only on a deployment built for offline use.
+  const [operatorId, setOperatorId] = useState('');
+  const [passphrase, setPassphrase] = useState('');
   // Where to land after sign-in. The persisted role chooses the default after
   // the profile request completes; a same-site permitted ?next= wins.
   const [next, setNext] = useState(null);
@@ -45,7 +50,10 @@ export default function LoginPage() {
   // navigate from Firebase's user callback alone: the profile may still be
   // loading, and the persisted role is the source of truth.
   useEffect(() => {
-    if (!nextReady || !ready || !user || !isAllowedEmail(user.email) || profileLoading) return;
+    // An offline operator is admitted by the server-side roster, not by the
+    // email allowlist (see AuthGuard).
+    const admitted = user?.offline === true || isAllowedEmail(user?.email);
+    if (!nextReady || !ready || !user || !admitted || profileLoading) return;
     if (profileError) {
       setErr(profileError.error || profileError.message || 'Unable to load your account. Please try again.');
       return;
@@ -113,6 +121,23 @@ export default function LoginPage() {
     }
   }
 
+  /* Local operator sign-in. The server decides whether this is possible at
+     all: without AUTH_MODE=offline and a local signing secret the route this
+     posts to answers 404, and the form says so rather than pretending. */
+  async function offlineSignIn(e) {
+    e.preventDefault();
+    setErr('');
+    setBusy(true);
+    try {
+      await signInOffline(operatorId, passphrase);
+      setPassphrase('');
+    } catch (e3) {
+      setErr(e3?.error || e3?.message || 'Offline sign-in failed.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="scl-page">
       <nav className="scl-nav">
@@ -126,7 +151,7 @@ export default function LoginPage() {
           <h1>{mode === 'signup' ? 'Create your account' : 'Sign in'}</h1>
           <p className="scl-lead">Access the SchoolCircle prototype.</p>
 
-          {!firebaseReady && (
+          {!firebaseReady && !offlineEnabled && (
             <div className="scl-note">
               Sign-in isn’t configured on this deployment yet. You can continue straight to the
               prototype for now.
@@ -135,6 +160,44 @@ export default function LoginPage() {
                   Continue to the prototype →
                 </Link>
               </div>
+            </div>
+          )}
+
+          {offlineEnabled && (
+            <div data-testid="offline-signin">
+              {err && !firebaseReady && <div className="scl-err">{err}</div>}
+              <p className="scl-lead">
+                This deployment runs disconnected. Sign in with the operator id and passphrase
+                issued for this machine.
+              </p>
+              <form onSubmit={offlineSignIn}>
+                <div className="scl-field">
+                  <label htmlFor="operator-id">Operator id</label>
+                  <input
+                    id="operator-id"
+                    type="text"
+                    autoComplete="username"
+                    value={operatorId}
+                    onChange={(ev) => setOperatorId(ev.target.value)}
+                    required
+                  />
+                </div>
+                <div className="scl-field">
+                  <label htmlFor="operator-passphrase">Operator passphrase</label>
+                  <input
+                    id="operator-passphrase"
+                    type="password"
+                    autoComplete="current-password"
+                    value={passphrase}
+                    onChange={(ev) => setPassphrase(ev.target.value)}
+                    required
+                  />
+                </div>
+                <button className="scl-btn scl-btn-primary scl-btn-block" type="submit" disabled={busy}>
+                  {busy ? 'Working…' : 'Sign in offline'}
+                </button>
+              </form>
+              {firebaseReady && <div className="scl-or">or</div>}
             </div>
           )}
 
