@@ -10,7 +10,7 @@
     "test:model": "node --experimental-test-module-mocks --test test/model-openrouter.test.mjs test/model-settings.test.mjs test/model-catalog.test.mjs",
     "test:doctrine": "node --experimental-test-module-mocks --test test/doctrine-settings.test.mjs",
     "test:student-grounding": "node --experimental-test-module-mocks --test test/student-model.test.mjs test/student-grounding.test.mjs test/student-grounding-doctrine.test.mjs",
-    "test:ui-rendering": "node --test app/prototype/courseTreeState.test.mjs tests/learning-query-race.test.mjs tests/ui-rendering.test.mjs tests/inbox-filter-contrast.test.mjs tests/auth-guard-chrome.test.mjs tests/theme-contrast.test.mjs tests/student-demo-shell.test.mjs tests/student-demo-globals.test.mjs",
+    "test:ui-rendering": "node --test app/prototype/courseTreeState.test.mjs tests/student-view-overlay.test.mjs tests/learning-query-race.test.mjs tests/ui-rendering.test.mjs tests/inbox-filter-contrast.test.mjs tests/auth-guard-chrome.test.mjs tests/theme-contrast.test.mjs tests/student-demo-shell.test.mjs tests/student-demo-globals.test.mjs",
     "test:source-library": "node --experimental-test-module-mocks --test test/source-library.test.mjs test/source-library-hermetic.test.mjs tests/source-upload.test.mjs",
     "test:ai-authoring": "node --experimental-test-module-mocks --test test/course-plan.test.mjs test/course-revisions.test.mjs test/course-revision-handlers.test.mjs test/course-revision-transaction.test.mjs test/delivery.test.mjs test/delivery-route.test.mjs tests/learner-redaction.test.mjs tests/authoring-retired.test.mjs",
     "test:authoring": "node --test tests/authoring-server.test.mjs tests/authoring-retired.test.mjs",
@@ -31,7 +31,7 @@
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
     "test": "node --test test/arsenal-packaging.test.mjs test/auth.test.mjs test/lesson-pages.test.mjs test/project-course.test.mjs test/item-support.test.mjs test/item-review.test.mjs test/course-attempts.test.mjs test/course-evidence-count.test.mjs test/shared-model-helpers.test.mjs test/learning-core.test.mjs test/learning-evidence.test.mjs test/learning-handlers.test.mjs test/scorm-export.test.mjs test/learning-persistence.test.mjs test/pdf-upload.test.mjs tests/navigation.test.mjs tests/focused-dashboard.test.mjs tests/role-destination.test.mjs tests/legacy-route-removal.mjs tests/auth-redirect.test.mjs tests/golden-course-seed.test.mjs tests/rubric-coverage.test.mjs && npm run test:source-library",
-    "test:record-admin": "node --experimental-test-module-mocks --test test/record-admin.test.mjs"
+    "test:record-admin": "node --experimental-test-module-mocks --test test/record-admin.test.mjs tests/rubric-list-identity.test.mjs"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
