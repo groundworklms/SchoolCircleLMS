@@ -205,6 +205,7 @@ function deliveredSection(section, index, delivery, publication) {
   return {
     id: String(section?.id || `section-${index + 1}`),
     title: section?.title || `Section ${index + 1}`,
+    annex: section?.annex && typeof section.annex === 'object' ? section.annex : null,
     lesson: released ? prose.text : '',
     withheld: Boolean(prose && !released),
     publication,
@@ -217,6 +218,30 @@ function deliveredSection(section, index, delivery, publication) {
     pre: checks.filter((item) => item.phase !== 'post').map(question),
     post: checks.filter((item) => item.phase === 'post').map(question),
   };
+}
+
+/* Lessons grouped the way the course was planned: one module per annex when
+   the sections carry one (a planned course), else the whole course as one
+   module. Lesson codes are the plan's ("B.03") or a running number. */
+function modulesOf(lessons, courseName) {
+  const modules = [];
+  const byKey = new Map();
+  lessons.forEach((l, index) => {
+    const annex = l.annex && typeof l.annex === 'object' ? l.annex : null;
+    const key = annex ? String(annex.letter || annex.title) : '__course';
+    if (!byKey.has(key)) {
+      const mod = {
+        key,
+        letter: annex ? annex.letter || String(modules.length + 1) : String(lessons.length),
+        title: annex ? annex.title || `Annex ${annex.letter}` : courseName,
+        lessons: [],
+      };
+      byKey.set(key, mod);
+      modules.push(mod);
+    }
+    byKey.get(key).lessons.push({ ...l, code: annex && /^[A-Z]+\.\d+$/.test(l.id) ? l.id : String(index + 1) });
+  });
+  return modules;
 }
 
 /* The lesson list and player, shared by the learner reader and the instructor
@@ -276,7 +301,7 @@ function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = nu
     return (
       <LessonPlayer
         lessonId={`${course.id}:${lesson.id}`}
-        kicker={<>Lesson {i + 1} of {withStatus.length} · {course.name}</>}
+        kicker={<>{lesson.annex ? `Annex ${lesson.annex.letter} · ${lesson.annex.title}` : `Lesson ${i + 1} of ${withStatus.length} · ${course.name}`}</>}
         title={lesson.title}
         intro={lesson.intro}
         facts={[[`~${Math.max(5, lesson.items.length * 3)} min`, 'to read'], ['✓', 'cited to source']]}
@@ -349,28 +374,34 @@ function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = nu
       )}
 
       <div className="s-modules">
-        <section className="s-module current">
-          <div className="s-module-head" style={{ cursor: 'default' }}>
-            <span className="s-module-twisty">▾</span>
-            <span className="s-module-letter">{withStatus.length}</span>
-            <span className="s-module-title">{course.name}</span>
-            <span className="s-module-meta">{withStatus.length} {withStatus.length === 1 ? 'lesson' : 'lessons'}</span>
-            <span className="s-module-status current">{done}/{withStatus.length} done</span>
-          </div>
-          <ol className="s-lessons">
-            {withStatus.map((l, k) => (
-              <li key={l.id}>
-                <button className={`s-lesson ${l.status}`} disabled={pending} onClick={() => open(l)}>
-                  <span className="s-lesson-mark">{l.status === 'complete' ? '✓' : l.status === 'current' ? '●' : ''}</span>
-                  <code>{k + 1}</code>
-                  <span className="s-lesson-title">{l.title}</span>
-                  <span className="s-lesson-hours">{l.items.filter((it) => it.type === 'page').length} pages</span>
-                  <span className="s-lesson-status">{pending ? 'Loading' : l.status === 'complete' ? 'Complete' : l.status === 'current' ? 'In progress' : 'Upcoming'}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
-        </section>
+        {modulesOf(withStatus, course.name).map((mod) => {
+          const modDone = mod.lessons.filter((l) => l.status === 'complete').length;
+          const modStatus = modDone === mod.lessons.length ? 'complete' : mod.lessons.some((l) => l.status !== 'upcoming') ? 'current' : 'upcoming';
+          return (
+            <section key={mod.key} className={`s-module ${modStatus}`}>
+              <div className="s-module-head" style={{ cursor: 'default' }}>
+                <span className="s-module-twisty">▾</span>
+                <span className="s-module-letter">{mod.letter}</span>
+                <span className="s-module-title">{mod.title}</span>
+                <span className="s-module-meta">{mod.lessons.length} {mod.lessons.length === 1 ? 'lesson' : 'lessons'}</span>
+                <span className={`s-module-status ${modStatus}`}>{modStatus === 'complete' ? '✓ Complete' : modStatus === 'current' ? `${modDone}/${mod.lessons.length} done` : 'Upcoming'}</span>
+              </div>
+              <ol className="s-lessons">
+                {mod.lessons.map((l) => (
+                  <li key={l.id}>
+                    <button className={`s-lesson ${l.status}`} disabled={pending} onClick={() => open(l)}>
+                      <span className="s-lesson-mark">{l.status === 'complete' ? '✓' : l.status === 'current' ? '●' : ''}</span>
+                      <code>{l.code}</code>
+                      <span className="s-lesson-title">{l.title}</span>
+                      <span className="s-lesson-hours">{l.items.filter((it) => it.type === 'page').length} pages</span>
+                      <span className="s-lesson-status">{pending ? 'Loading' : l.status === 'complete' ? 'Complete' : l.status === 'current' ? 'In progress' : 'Upcoming'}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          );
+        })}
       </div>
     </>
   );
@@ -391,6 +422,7 @@ export function CourseReader({ course, lessonId, page, onOpenLesson }) {
         id: delivered.id,
         title: delivered.title,
         cite: delivered.cite,
+        annex: delivered.annex,
         ...lessonPagesForSection(delivered, { id: delivered.id, sourceLabel: publication }),
       };
     });

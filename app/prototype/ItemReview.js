@@ -286,6 +286,28 @@ export function CourseItemReview({ courseId, onChanged }) {
     }
   };
 
+  /* One deliberate click for everything still pending. The count is on the
+     button, the confirmation restates it, and withheld items are untouched. */
+  const [approvingAll, setApprovingAll] = useState(false);
+  const approveAll = async () => {
+    const pendingCount = data?.counts?.PENDING || 0;
+    if (!pendingCount) return;
+    if (typeof window !== 'undefined' && !window.confirm(`Approve all ${pendingCount} pending items? Each will be shown to learners as written. Withheld items stay withheld.`)) return;
+    setApprovingAll(true);
+    setError(null);
+    try {
+      const res = await authFetch(`/api/learning/courses/${courseId}/items/approve-all`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw json;
+      await load();
+      await onChanged?.();
+    } catch (err) {
+      setError(err);
+    } finally {
+      setApprovingAll(false);
+    }
+  };
+
   if (loading && !data) return <p className="p-src">Loading items for review…</p>;
   if (error && !data) {
     return (
@@ -331,6 +353,15 @@ export function CourseItemReview({ courseId, onChanged }) {
           reviewer can leave an item alone without taking a risk, so it is said
           plainly and it is always on screen. */}
       <p className="p-truth">A learner sees only the approved ones.</p>
+
+      {counts.PENDING > 1 && (
+        <div className="p-btnrow" style={{ marginBottom: '0.75rem' }}>
+          <button type="button" className="p-btn ghost" disabled={approvingAll || Boolean(busyItem)} onClick={approveAll}>
+            {approvingAll ? 'Approving…' : `Approve all ${counts.PENDING} pending`}
+          </button>
+          <span className="p-src">Every pending lesson, check and card, as written. Withhold anything first that should not go out.</span>
+        </div>
+      )}
 
       {error && data && (
         <p className="s-shell-error" role="alert">{errText(error, 'That decision could not be saved.')}</p>

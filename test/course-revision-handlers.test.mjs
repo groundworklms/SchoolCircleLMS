@@ -361,6 +361,7 @@ const dbMock = {
   async getLearningRecord(id) {
     return snapshot(records.get(id) || null);
   },
+  async approvePendingDeliveryCourseItems() { return 0; },
   async listDeliveryCourseItems() {
     // Per-item ratification (863f724) added these to lib/db.js. The mock has
     // to offer every export core.js imports or the module fails to link and

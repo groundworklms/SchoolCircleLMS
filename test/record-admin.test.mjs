@@ -106,6 +106,7 @@ mock.module('../lib/db.js', {
       for (const id of new Set(courseIds)) if (courses.delete(id)) dropped += 1;
       return { records: removed, courses: dropped };
     },
+    async approvePendingDeliveryCourseItems() { return 0; },
     async listDeliveryCourseItems() {
       // Per-item ratification (863f724) added these to lib/db.js. The mock has
       // to offer every export core.js imports or the module fails to link and

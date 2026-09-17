@@ -269,6 +269,49 @@ optional `releaseId`; mastery sessions persist the selected `releaseId` and
 analytics default to the current release while retaining explicit historical
 selection.
 
+## Planning a whole course
+
+A hundred documents and forty-eight lessons do not fit the single-draft path:
+the outline prompt pastes every selected source, and the objective cap is
+twelve. A plan runs the same generation one bounded step per request.
+
+### `POST /api/learning/plans` — instructor
+
+`{ "title": "", "sourceIds": [...], "diagrams": true }` -> `201` with the plan.
+Every source must be approved. `GET /api/learning/plans` lists the caller's
+plans; `GET /api/learning/plans/:id` returns one (owner only). A plan carries
+`status` (`survey` | `outline` | `map` | `build` | `complete`), `survey`
+(one entry per source read: kind, summary, topics, lessons it enumerates),
+`annexes[].lessons[]` (id `A.01`, title, objective, `sourceIds`, `cites`,
+`status` planned/drafted/failed/ungrounded with `reason`), `dropped` (what the
+outline asked for and the rules rejected), `counts` and `courseId`.
+
+### `POST /api/learning/plans/:id/{survey|outline|map|build}` — owner
+
+One step of the stage the plan is in; a call for another stage is a no-op that
+returns the plan. The client repeats the call until `status` moves on:
+
+- `survey` reads the next three unsurveyed sources -- each sampled evenly
+  within a character budget -- and catalogues them in one model call per batch.
+- `outline` is one model call over the catalogue: annexes and lessons, one
+  objective each (a `poi`-kind source's own lesson list is followed), capped
+  at 12 annexes / 60 lessons; `{ "again": true }` re-outlines before any
+  lesson is built.
+- `map` is retrieval, no model: the passages that cover each objective are
+  ranked across every selected source and the lesson's `sourceIds` are the
+  sources they belong to. A lesson nothing covers is `ungrounded` and not built.
+- `build` drafts the next planned lesson through `draftCourse` (grounding,
+  citations, refusals and the page pass unchanged) over the lesson's mapped
+  sources, and appends it as a section -- carrying `annex` and `lessonId` --
+  to the plan's `COURSE_DRAFT`, created on the first build. The response
+  carries `built: { id, title, ok, reason }`.
+
+`POST /api/learning/plans/:id/retry` `{ "lessonId": "B.03" }` queues a failed or
+ungrounded lesson again. The finished draft is reviewed, approved and ratified
+like any other; `POST /api/learning/courses/:id/items/approve-all` approves
+every item still PENDING on the release in one deliberate action (withheld
+items are untouched).
+
 ## Answering a check in a generated course
 
 ### `GET /api/learning/courses/:id/attempts` — learner or instructor
