@@ -35,7 +35,7 @@ test('shared instructor shell omits breadcrumbs while retaining course status an
   // The status the breadcrumb used to carry must survive its removal, and it
   // must use courseHeaderStatus so a pending revision still reads as needing
   // review rather than flattening to Approved/Draft.
-  assert.match(source, /<main className="s-main">[\s\S]*courseHeaderStatus\(course\)/);
+  assert.match(source, /<main className="s-main"[^>]*>[\s\S]*courseHeaderStatus\(course\)/);
   assert.doesNotMatch(source, /Legacy|authoring\/courses/i);
   assert.match(source, /id: 'roster'/);
 });

@@ -20,6 +20,8 @@ import {
 } from './LearnerFeatures';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
+import { useWalkthrough } from './walkthrough-context';
+import { studentTourAnchor } from './walkthrough-anchors';
 import CoursesMenu from './CoursesMenu';
 import {
   expandCourse,
@@ -121,9 +123,9 @@ function UnsupportedCourseTool({ course, view }) {
     </div>
   );
 }
-
 export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const auth = useAuth();
+  const tour = useWalkthrough();
   const { ready: authReady, user, profile, signOut, signOutError } = auth;
   const { authenticated, name: displayName, rank: displayRank, initials } =
     accountDisplay({ ready: authReady, profile, demo: STUDENT });
@@ -255,6 +257,16 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const menuItems = [
     { label: 'Settings', hint: 'Reminders · How I learn', onClick: () => setArea('settings') },
   ];
+  /* Same entry point on both sides of the account: a judge who lands on the
+     learner shell first should not have to find the instructor view to start
+     the tour. Omitted when it cannot run (see Prototype.js). */
+  if (tour.start && !tour.running) {
+    menuItems.push({
+      label: 'Guided tour',
+      hint: `Walk the whole product · ${tour.scriptLabel}`,
+      onClick: tour.start,
+    });
+  }
   if (learning.courses.length) {
     menuItems.push({ label: 'My progress', onClick: () => open(learning.courses[0].id, 'progress') });
   }
@@ -300,7 +312,7 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
       </nav>
 
       <div className="s-content">
-        <main className="s-main">
+        <main className="s-main" data-tour={studentTourAnchor(nav)}>
           <div className="s-container">
             {railContext && (
               <div className="s-railcontext">
