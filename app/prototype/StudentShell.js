@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import './student.css';
 
@@ -26,6 +26,15 @@ import LibraryList from './published/Library';
 import PublishedCourseReader from './published/CourseReader';
 import { useAuth } from '../_auth/AuthProvider';
 import { accountDisplay } from '../_auth/account-display';
+import CoursesMenu from './CoursesMenu';
+import {
+  COURSE_NAV as TREE_COURSE_NAV,
+  expandCourse,
+  expandOnCourseSelection,
+  initialExpandedCourseIds,
+  pruneExpandedCourseIds,
+  toggleExpandedCourse,
+} from './courseTreeState.mjs';
 
 /* Student shell. Canvas-shaped — global icon rail, dashboard with course cards,
    course sub-nav, breadcrumb, and a To-Do column — on a neutral palette.
@@ -570,6 +579,40 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const pendingCourse = !isPublished && area === 'course' && Boolean(courseId) && !course && learning.loading;
   const NAV = isReal ? REAL_COURSE_NAV : COURSE_NAV;
   const inboxUnread = useInboxMessages().filter((m) => m.unread).length;
+  const [expandedCourseIds, setExpandedCourseIds] = useState(() => initialExpandedCourseIds(courseId));
+  const [coursesExpanded, setCoursesExpanded] = useState(() => Boolean(courseId));
+  const previousCourseId = useRef(courseId);
+  const previousLearningCourseIds = useRef(null);
+
+  useEffect(() => {
+    setExpandedCourseIds((expanded) => (
+      expandOnCourseSelection(expanded, previousCourseId.current, courseId)
+    ));
+    if (courseId) setCoursesExpanded(true);
+    previousCourseId.current = courseId;
+  }, [courseId]);
+
+  // Keep disclosure state bounded to the current API projection. A removed
+  // course must not leave a stale entry that re-opens if its ID is later
+  // reused; a newly re-added selected course starts expanded again.
+  const learningCourseIds = learning.courses
+    .map((entry) => entry?.id)
+    .filter((id) => id !== null && id !== undefined && String(id));
+  const normalizedLearningCourseIds = learningCourseIds.map((id) => String(id));
+  const learningCourseSignature = JSON.stringify(normalizedLearningCourseIds);
+  useEffect(() => {
+    if (!learning.enabled || learning.loading || learning.error) return;
+    const previousIds = previousLearningCourseIds.current;
+    const selectedWasReadded = courseId
+      && normalizedLearningCourseIds.includes(String(courseId))
+      && previousIds
+      && !previousIds.includes(String(courseId));
+    setExpandedCourseIds((expanded) => {
+      const pruned = pruneExpandedCourseIds(expanded, learningCourseIds);
+      return selectedWasReadded ? expandCourse(pruned, courseId) : pruned;
+    });
+    previousLearningCourseIds.current = normalizedLearningCourseIds;
+  }, [courseId, learning.enabled, learning.loading, learning.error, learningCourseSignature]);
 
   // Remember the lesson + page you were on per course, so leaving Lessons for
   // another screen and coming back resumes where you left off instead of the
@@ -590,6 +633,8 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const openPublished = (id) => nav.go({ area: 'published', courseId: id, view: null, lessonId: null, page: null, threadId: null });
   const openLesson = (id, pg = null) => nav.go({ area: 'course', courseId, view: 'lessons', lessonId: id, page: pg, threadId: null });
   const openThread = (id, forLesson = null) => nav.go({ area: 'course', courseId, view: 'discussions', threadId: id, lessonId: forLesson, page: null });
+  const toggleCourse = (id) => setExpandedCourseIds((expanded) => toggleExpandedCourse(expanded, id));
+  const expandSelectedCourse = (id) => setExpandedCourseIds((expanded) => expandCourse(expanded, id));
 
   /* The breadcrumb row is gone: the rail already names the course and marks the
      section you are in, and a reading surface should not spend a row saying it
@@ -678,13 +723,26 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
           ]}
         />
         <RailButton icon={I.dashboard} label="Dashboard" on={area === 'dashboard'} onClick={() => setArea('dashboard')} />
-        <RailButton icon={I.courses} label="Courses" on={area === 'courses'} onClick={() => setArea('courses')} />
+        <CoursesMenu
+          expanded={coursesExpanded}
+          onToggle={() => setCoursesExpanded((expanded) => !expanded)}
+          selectedCourseId={course?.record ? courseId : null}
+          selectedView={course?.record ? view : null}
+          expandedCourseIds={expandedCourseIds}
+          onToggleCourse={toggleCourse}
+          onExpandCourse={expandSelectedCourse}
+          onOpenCourse={open}
+          courses={learning.courses}
+          loading={learning.loading}
+          error={learning.error}
+          navForCourse={(entry) => (entry.record ? REAL_COURSE_NAV : TREE_COURSE_NAV)}
+        />
         {prefs.showCalendar !== false && (
           <RailButton icon={I.calendar} label="Calendar" on={area === 'calendar'} onClick={() => setArea('calendar')} />
         )}
         <RailButton icon={I.inbox} label="Inbox" on={area === 'inbox'} onClick={() => setArea('inbox')} badge={inboxUnread} />
 
-        {area === 'course' && course ? (
+        {area === 'course' && course && !course.record ? (
           <>
             <div className="s-rail-sec">
               <span className="s-rail-sec-name">{course.name}</span>
@@ -694,18 +752,13 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
               <RailButton key={n.id} label={n.label} sub on={view === n.id} onClick={() => setView(n.id)} />
             ))}
           </>
+        ) : area === 'course' && !course ? (
+          <div className="s-rail-sec">
+            <span className="s-rail-sec-name">Course unavailable</span>
+            {courseId && <code>{courseId}</code>}
+          </div>
         ) : (
           <>
-            <div className="s-rail-sec">Available courses</div>
-            {learning.courses.map((c) => (
-              <RailButton
-                key={c.id}
-                sub
-                icon={<span className="s-rail-dot" style={{ background: 'var(--p-good)' }} />}
-                label={c.name}
-                onClick={() => open(c.id, 'home')}
-              />
-            ))}
             <div className="s-rail-sec">Demo samples</div>
             {Object.values(COURSES).map((c) => (
               <RailButton
