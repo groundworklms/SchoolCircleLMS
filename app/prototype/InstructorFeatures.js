@@ -1,8 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApiQuery, useApiMutation } from '../_learning/useLearning';
 import { RowActions } from './RowActions';
+import {
+  RUBRIC_STATE_LABELS,
+  coverageSummary,
+  objectiveCoverage,
+} from './rubric-coverage';
 
 /* Instructor-side optional tools for a real (LearningRecord) course:
    syllabus (Cadence), doctrinal fidelity (Understudy), the after-action
@@ -18,6 +23,68 @@ function errText(e, fallback) {
 
 function Err({ msg }) {
   return msg ? <p className="s-shell-error" role="alert">{msg}</p> : null;
+}
+
+/* Wheel deltas arrive in pixels, lines or pages depending on the device and
+   browser; normalise to pixels before handing them to an ancestor scroller. */
+function wheelPixels(event, element) {
+  if (event.deltaMode === 1) return event.deltaY * 16;
+  if (event.deltaMode === 2) return event.deltaY * element.clientHeight;
+  return event.deltaY;
+}
+
+function scrollingAncestor(element) {
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    const overflowY = window.getComputedStyle(node).overflowY;
+    if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+  }
+  return null;
+}
+
+/**
+ * The wheel handler that lets a gesture over a scrollable field fall through
+ * to the page.
+ *
+ * The prototype shell is a fixed-height column whose <main> is the only
+ * scroller, so nothing chains to the document. A browser latches a wheel
+ * gesture to the first scrollable element under the pointer, and a textarea
+ * holding more lines than it shows is one -- so a pointer resting over a
+ * filled form field swallowed the gesture and the Review panel below the
+ * rubric form could not be reached at all.
+ *
+ * It takes over only once the field has no scroll left in the wheel's
+ * direction, so the field's own scrolling and its resize handle are unchanged.
+ * `findScroller` is the injection seam the contract test drives it through.
+ */
+function wheelFallthrough(element, findScroller = scrollingAncestor) {
+  return (event) => {
+    // Ctrl+wheel is browser zoom, not scrolling.
+    if (event.ctrlKey || event.deltaY === 0) return;
+    const exhausted = event.deltaY < 0
+      ? element.scrollTop <= 0
+      : element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
+    if (!exhausted) return;
+    const scroller = findScroller(element);
+    if (!scroller) return;
+    event.preventDefault();
+    scroller.scrollTop += wheelPixels(event, element);
+  };
+}
+
+/* Attached by hand rather than through onWheel: React registers wheel
+   listeners passively, where preventDefault() is ignored. */
+function useWheelFallthrough() {
+  const ref = useRef(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return undefined;
+    const onWheel = wheelFallthrough(element);
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => element.removeEventListener('wheel', onWheel);
+  }, []);
+  return ref;
 }
 
 /*
@@ -125,6 +192,7 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
             {plan.sourceId && <span className="p-src"> · Source {plan.sourceId}</span>}
             {plan.revision && <span className="p-src"> · Revision {plan.revision}</span>}
           </p>
+          <MasteryPlanProvenance criteria={plan.criteria} status={plan.status} />
           <MasteryPlanCriteria criteria={plan.criteria} />
           {plan.status === 'PENDING' ? (
             <button
@@ -147,6 +215,90 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
   );
 }
 
+/*
+ * Where one criterion came from, using the server's own rule: a criterion is
+ * ratified only if it says so.  Everything else is model-written, which is not
+ * a guess -- every plan written before provenance existed was derived in full,
+ * so an absent block is a fact about that plan and not a missing field.  This
+ * mirrors criterionOrigin in lib/arsenal-core.js, which is the authority.
+ */
+function criterionIsRatified(criterion) {
+  return criterion?.provenance?.origin === 'RATIFIED';
+}
+
+/*
+ * The plan's account of itself, counted from the criteria on screen rather
+ * than read off planResponse.provenance.
+ *
+ * The server sends a summary and computes it the same way, but a summary that
+ * travelled separately from the criteria it describes is a claim this screen
+ * cannot check.  Counting the rendered list instead means the sentence above
+ * the criteria can never disagree with the criteria below it -- which is the
+ * only thing that makes MIXED worth printing.
+ */
+function planOrigin(criteria) {
+  const list = Array.isArray(criteria) ? criteria : [];
+  const ratified = list.filter(criterionIsRatified);
+  const origin = list.length === 0 || ratified.length === 0
+    ? 'DERIVED'
+    : ratified.length === list.length
+      ? 'RATIFIED'
+      : 'MIXED';
+  return {
+    origin,
+    total: list.length,
+    ratified: ratified.length,
+    derived: list.length - ratified.length,
+    rubricIds: [...new Set(ratified.map((c) => c.provenance?.rubricId).filter(Boolean))],
+  };
+}
+
+/*
+ * An honoured approval that nobody can see buys nothing, so the plan says in
+ * one sentence whose words these are before an instructor signs for them.
+ *
+ * The copy is not softened in either direction.  A ratified plan is allowed to
+ * say so plainly; a MIXED one leads with the count that is NOT ratified in the
+ * same sentence, because the whole point of the distinction is that a part-
+ * ratified plan must never read as a fully approved one.  Model-written is
+ * stated as the ordinary fact it is -- the model wrote it, a human did not
+ * approve it as a rubric -- with no warning colour and no euphemism.
+ */
+function MasteryPlanProvenance({ criteria, status }) {
+  const { origin, total, ratified, derived, rubricIds } = planOrigin(criteria);
+  if (total === 0) return null;
+
+  // A plan carries at least two criteria, but a count that reads "1 criteria
+  // were written" undermines the sentence it is the point of.
+  const count = (n) => `${n} ${n === 1 ? 'criterion' : 'criteria'}`;
+  const was = (n) => (n === 1 ? 'was' : 'were');
+  const rubricWord = ratified === 1 ? 'a rubric you approved' : 'rubrics you approved';
+
+  const sentence = origin === 'RATIFIED'
+    ? `All ${count(total)} came from ${rubricWord}. The words a learner is graded against are `
+      + 'the words you signed; the model wrote none of them.'
+    : origin === 'MIXED'
+      ? `Of the ${count(total)} here, ${derived} ${was(derived)} written by the model and did not `
+        + `come from an approved rubric. The other ${ratified} came from ${rubricWord}.`
+      : `No criterion here came from an approved rubric. The model wrote ${
+        total === 1 ? 'it' : `all ${total}`} from the approved source.`;
+  const consequence = status === 'PENDING'
+    ? ` Approving this plan makes ${
+      total === 1 ? 'it' : `all ${total}`} the grading contract for this course.`
+    : '';
+
+  return (
+    <div data-testid="mastery-plan-provenance" data-provenance={origin}>
+      <p className="p-truth">{`${sentence}${consequence}`}</p>
+      {rubricIds.length > 0 && (
+        <p className="p-src" style={{ margin: '0.35rem 0 0' }}>
+          Approved rubrics used: {rubricIds.join(', ')}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function MasteryPlanCriteria({ criteria }) {
   if (!Array.isArray(criteria) || criteria.length === 0) {
     return <p className="p-src">No criteria were returned for review.</p>;
@@ -163,8 +315,13 @@ function MasteryPlanCriteria({ criteria }) {
       <strong style={{ fontSize: '0.85em' }}>Reviewed criteria</strong>
       <ul style={{ paddingLeft: '1.25rem', margin: '0.35rem 0 0' }}>
         {criteria.map((criterion, index) => (
-          <li key={`${criterion.elo || 'criterion'}-${index}`} style={{ marginBottom: '0.35rem', fontSize: '0.85em' }}>
+          <li
+            key={`${criterion.elo || 'criterion'}-${index}`}
+            data-provenance={criterionIsRatified(criterion) ? 'RATIFIED' : 'DERIVED'}
+            style={{ marginBottom: '0.35rem', fontSize: '0.85em' }}
+          >
             <strong>{criterion.elo || criterion.competency || `Criterion ${index + 1}`}</strong>
+            <CriterionOrigin criterion={criterion} />
             {criterion.indicators && typeof criterion.indicators === 'object' && !Array.isArray(criterion.indicators) ? (
               <ul style={{ paddingLeft: '1.25rem', marginTop: '0.2rem' }}>
                 {indicatorLevels.map(([level, label]) => (
@@ -180,6 +337,34 @@ function MasteryPlanCriteria({ criteria }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/*
+ * One criterion's origin, and for a ratified one the trail back to the
+ * decision: the rubric record, the objective it judges, the dimension it came
+ * from, and the phrase Rubricon's traceability check matched in the standard.
+ * That is enough to reopen the rubric and see the same words, which is what
+ * makes "you approved this" a checkable claim rather than a badge.
+ */
+function CriterionOrigin({ criterion }) {
+  if (!criterionIsRatified(criterion)) {
+    return (
+      <div className="p-src" style={{ marginTop: '0.15rem' }}>
+        Written by the model. Not taken from a rubric you approved.
+      </div>
+    );
+  }
+  const { rubricId, objective, dimension, sourcePhrase } = criterion.provenance;
+  return (
+    <div className="p-src" style={{ marginTop: '0.15rem' }}>
+      <div>
+        Taken from the rubric you approved{rubricId ? ` (${rubricId})` : ''}
+        {objective ? ` for “${objective}”` : ''}
+        {dimension ? `, dimension “${dimension}”` : ''}.
+      </div>
+      {sourcePhrase && <div>Traced to the standard at “{sourcePhrase}”.</div>}
     </div>
   );
 }
@@ -213,10 +398,19 @@ export function InstructorSyllabus({ courseId }) {
         Add one dated row per lesson or exam.
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        {/* Row fields carry their own labels. A repeated row of bare inputs
+            leaves a screen reader announcing "edit text" twice per row, and
+            leaves anyone re-reading a filled row with no field names at all. */}
         {syllabus.map((item, i) => (
-          <div key={i} style={{ display: 'flex', gap: '0.5rem' }}>
-            <input className="scw-ti" placeholder="Title" value={item.title} onChange={(e) => update(i, 'title', e.target.value)} style={{ flex: 1 }} />
-            <input className="scw-ti" type="date" value={item.due} onChange={(e) => update(i, 'due', e.target.value)} />
+          <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+            <label className="p-field" style={{ flex: 1 }}>
+              <span>Lesson or exam {i + 1}</span>
+              <input className="scw-ti" placeholder="Annex B practical" value={item.title} onChange={(e) => update(i, 'title', e.target.value)} style={{ width: '100%' }} />
+            </label>
+            <label className="p-field">
+              <span>Date</span>
+              <input className="scw-ti" type="date" value={item.due} onChange={(e) => update(i, 'due', e.target.value)} />
+            </label>
           </div>
         ))}
         <button className="p-btn ghost" onClick={() => setSyllabus((rows) => [...rows, { title: '', due: '' }])} style={{ alignSelf: 'flex-start' }}>
@@ -287,12 +481,26 @@ export function InstructorFidelity({ courseId }) {
             Optional advanced tool.{' '}
             Situations a learner might raise, and what doctrine says should come back. Understudy runs each through the tutor and grades the answer against the approved sources.
           </p>
-          <input className="scw-ti" placeholder="Source IDs (comma-separated)" value={sourceIdsStr} onChange={(e) => setSourceIdsStr(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
-          <input className="scw-ti" placeholder="Persona (e.g. a new Lance Corporal on the range)" value={persona} onChange={(e) => setPersona(e.target.value)} style={{ width: '100%', marginBottom: '0.5rem' }} />
+          <div className="p-fieldset" style={{ marginBottom: '0.75rem' }}>
+            <label className="p-field">
+              <span>Source IDs</span>
+              <input className="scw-ti" placeholder="Comma-separated" value={sourceIdsStr} onChange={(e) => setSourceIdsStr(e.target.value)} style={{ width: '100%' }} />
+            </label>
+            <label className="p-field">
+              <span>Persona</span>
+              <input className="scw-ti" placeholder="A new Lance Corporal on the range" value={persona} onChange={(e) => setPersona(e.target.value)} style={{ width: '100%' }} />
+            </label>
+          </div>
           {casesList.map((c, i) => (
-            <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-              <input className="scw-ti" placeholder="Situation" value={c.situation} onChange={(e) => updateCase(i, 'situation', e.target.value)} style={{ flex: 1 }} />
-              <input className="scw-ti" placeholder="Expected doctrine" value={c.expect} onChange={(e) => updateCase(i, 'expect', e.target.value)} style={{ flex: 1 }} />
+            <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              <label className="p-field" style={{ flex: 1 }}>
+                <span>Situation {i + 1}</span>
+                <input className="scw-ti" value={c.situation} onChange={(e) => updateCase(i, 'situation', e.target.value)} style={{ width: '100%' }} />
+              </label>
+              <label className="p-field" style={{ flex: 1 }}>
+                <span>Expected doctrine</span>
+                <input className="scw-ti" value={c.expect} onChange={(e) => updateCase(i, 'expect', e.target.value)} style={{ width: '100%' }} />
+              </label>
             </div>
           ))}
           <div className="p-btnrow">
@@ -434,14 +642,23 @@ export function InstructorAAR({ courseId }) {
         <p className="p-src" style={{ marginBottom: '0.75rem' }}>
           Record instructor or survey feedback here to build the AAR.
         </p>
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <input className="scw-ti" placeholder="Area (e.g. Annex B practical)" value={critiqueArea} onChange={(e) => setCritiqueArea(e.target.value)} style={{ flex: 1 }} />
-          <select className="scw-ti" value={critiqueKind} onChange={(e) => setCritiqueKind(e.target.value)}>
-            <option value="sustain">Sustain</option>
-            <option value="improve">Improve</option>
-          </select>
+        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'flex-end' }}>
+          <label className="p-field" style={{ flex: 1 }}>
+            <span>Area</span>
+            <input className="scw-ti" placeholder="Annex B practical" value={critiqueArea} onChange={(e) => setCritiqueArea(e.target.value)} style={{ width: '100%' }} />
+          </label>
+          <label className="p-field">
+            <span>Kind</span>
+            <select className="scw-ti" value={critiqueKind} onChange={(e) => setCritiqueKind(e.target.value)}>
+              <option value="sustain">Sustain</option>
+              <option value="improve">Improve</option>
+            </select>
+          </label>
         </div>
-        <textarea className="scw-ti" placeholder="What happened, and what to keep or change" value={critiqueText} onChange={(e) => setCritiqueText(e.target.value)} rows={2} style={{ width: '100%', marginBottom: '0.5rem' }} />
+        <label className="p-field" style={{ marginBottom: '0.75rem' }}>
+          <span>What happened, and what to keep or change</span>
+          <textarea className="scw-ti" value={critiqueText} onChange={(e) => setCritiqueText(e.target.value)} rows={2} style={{ width: '100%' }} />
+        </label>
         <Err msg={err} />
         {saved && <p className="p-src" style={{ color: 'var(--p-good)' }}>Critique recorded.</p>}
         <button className="p-btn ghost" onClick={handleCritiques} disabled={submitCritiques.loading || !critiqueArea || !critiqueText}>
@@ -503,6 +720,22 @@ export function InstructorAAR({ courseId }) {
 /* ---------- rubrics (Rubricon) ---------- */
 
 /**
+ * What a saved rubric row says about itself.
+ *
+ * It used to read "0 criteria · Draft" for every rubric ever generated: the
+ * count was taken from a `criteria` array Rubricon does not produce, and both
+ * a six-dimension BARS scale and a refusal to write one reported the same
+ * nothing. A flagged rubric is not a draft on its way to approval, so it says
+ * what it is instead of counting dimensions that were deliberately not
+ * written.
+ */
+function rubricSummaryText(rubric) {
+  if (rubric.flagged) return RUBRIC_STATE_LABELS.flagged;
+  const dimensions = `${rubric.dimensions} dimension${rubric.dimensions === 1 ? '' : 's'}`;
+  return `${dimensions} · ${rubric.status === 'APPROVED' ? 'Approved' : 'Draft'}`;
+}
+
+/**
  * The instructor's saved rubrics.
  *
  * This screen previously showed only the rubric it had just generated, so an
@@ -537,8 +770,12 @@ function SavedRubrics() {
                   {/* Plain text rather than Library's StatusTag: Library already
                       imports from this module, so importing it back would be a
                       circular dependency. */}
-                  {r.criteria} criteria · {r.status === 'APPROVED' ? 'Approved' : 'Draft'}
+                  {rubricSummaryText(r)}
                 </div>
+                {/* The objective this rubric judges, when it was written for
+                    one. Without it a saved rubric is a title and a task code
+                    with nothing saying what course it belongs to. */}
+                {r.objective && <div className="p-src">Judges: {r.objective}</div>}
               </div>
             </div>
             <RowActions
@@ -546,11 +783,241 @@ function SavedRubrics() {
               title={r.title}
               endpoint={`/api/learning/rubrics/${r.id}`}
               onChanged={refetch}
-              removeNote="A rubric a mastery session grades against cannot be removed."
             />
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+const RUBRIC_TIERS = [
+  ['unsatisfactory', 'Unsatisfactory'],
+  ['satisfactory', 'Satisfactory'],
+  ['proficient', 'Proficient'],
+];
+
+function RubricTask({ task }) {
+  if (!task || (!task.code && !task.title)) return null;
+  return (
+    <div style={{ marginBottom: '0.9rem' }}>
+      <div className="s-card-title">{task.title || task.code}</div>
+      {task.title && task.code && <div className="s-card-school">{task.code}</div>}
+    </div>
+  );
+}
+
+function RubricNotes({ notes }) {
+  const list = Array.isArray(notes) ? notes.filter((n) => typeof n === 'string' && n.trim()) : [];
+  if (!list.length) return null;
+  return (
+    <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.25rem' }}>
+      {list.map((note, i) => <li key={i} className="p-findbody">{note}</li>)}
+    </ul>
+  );
+}
+
+/**
+ * A standard Rubricon refused to anchor.
+ *
+ * This is the product's headline behaviour, not an error: rather than invent
+ * criteria for a standard too vague to measure, Rubricon returns the refusal
+ * and what a human would have to define. The instructor has to be able to read
+ * both and hand them to a subject-matter expert, so they are prose under
+ * labels rather than the payload they arrive in.
+ */
+function FlaggedRubric({ rubric }) {
+  return (
+    <div className="p-find warn" role="status" data-testid="rubric-flagged">
+      <div className="p-findhead">
+        <span style={{ color: 'var(--p-warning)', fontSize: '0.8em' }}>●</span>
+        Flagged for a subject-matter expert — no rubric was written
+      </div>
+      <p className="p-findbody">
+        {rubric.reason || 'This standard could not be anchored to observable performance.'}
+      </p>
+      {rubric.needsSME && (
+        <>
+          <div className="p-findhead" style={{ marginTop: '0.9rem' }}>What an SME must define</div>
+          <p className="p-findbody">{rubric.needsSME}</p>
+        </>
+      )}
+      <RubricNotes notes={rubric.notes} />
+      <p className="p-src">Nothing above was invented.</p>
+    </div>
+  );
+}
+
+/**
+ * The BARS rubric itself. Each dimension carries the verbatim source phrase
+ * that verifyTraceability checked its anchors against, so the grounding claim
+ * in the Traceability tile can be read against the evidence beside it.
+ */
+function RubricDimensions({ dimensions }) {
+  return (
+    <div className="p-tablewrap" data-testid="rubric-dimensions">
+      <table className="p-table">
+        <thead>
+          <tr>
+            <th>Dimension</th>
+            {RUBRIC_TIERS.map(([tier, label]) => <th key={tier}>{label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {dimensions.map((dimension, i) => (
+            <tr key={dimension.name || i}>
+              <td>
+                {dimension.name || `Dimension ${i + 1}`}
+                {dimension.source && <div className="p-src">“{dimension.source}”</div>}
+              </td>
+              {RUBRIC_TIERS.map(([tier]) => (
+                <td key={tier}>{dimension.anchors?.[tier] || <span className="p-src">Not supplied</span>}</td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/**
+ * Rubricon returns one of exactly two shapes -- a rubric with `dimensions`, or
+ * a refusal with `flagged`/`reason`/`needsSME`. This screen used to look for
+ * `criteria`/`elements`, which neither shape has and no server path produces,
+ * so *every* generated rubric fell through to a JSON dump and the instructor
+ * read the payload instead of the rubric.
+ *
+ * The third branch is for a shape matching neither contract. The shape gate in
+ * generateRubric should make that unreachable, so it stays collapsed and says
+ * what it is rather than presenting the payload as the result.
+ */
+function RubricResult({ rubric }) {
+  if (!rubric || typeof rubric !== 'object') return null;
+  const dimensions = Array.isArray(rubric.dimensions) ? rubric.dimensions : null;
+  return (
+    <>
+      <RubricTask task={rubric.task} />
+      {rubric.flagged ? <FlaggedRubric rubric={rubric} /> : null}
+      {!rubric.flagged && dimensions?.length ? (
+        <>
+          <RubricDimensions dimensions={dimensions} />
+          <RubricNotes notes={rubric.notes} />
+        </>
+      ) : null}
+      {!rubric.flagged && !dimensions?.length ? (
+        <details>
+          <summary className="p-src">
+            This rubric is in a shape this screen does not recognise. Open the raw record.
+          </summary>
+          <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.85em', background: 'var(--p-surface-2)', padding: '1rem', overflowX: 'auto' }}>
+            {JSON.stringify(rubric, null, 2)}
+          </pre>
+        </details>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * What the validators said about one generated rubric, the rubric itself, and
+ * the human approval gate.
+ *
+ * Shared by both screens that can produce a rubric -- the Rubrics library and
+ * a course objective -- so the approval rules are stated once and cannot drift
+ * apart. `onRewrite` is how a caller puts the instructor back in the Standard
+ * field that produced a refusal; the flagged branch offers it only when the
+ * caller has such a field on screen, because a button pointing at a control
+ * that is not there is worse than a sentence saying where to go.
+ */
+function RubricReview({ rubricId, approved, onApproved, onRewrite }) {
+  const { data, refetch } = useApiQuery(`/rubrics/${rubricId}`);
+  const approveRubric = useApiMutation(`/rubrics/${rubricId}/approve`, 'POST');
+  const [err, setErr] = useState(null);
+  const rubric = data?.rubric;
+
+  const handleApprove = async () => {
+    setErr(null);
+    try {
+      await approveRubric.mutate();
+      refetch();
+      await onApproved?.();
+    } catch (e) {
+      setErr(errText(e, 'Failed to approve rubric'));
+    }
+  };
+
+  return (
+    <div className="p-panel">
+      <h3>Review</h3>
+      {data ? (
+        <>
+          <div className="p-tiles">
+            <div className="p-tile">
+              <div className="p-tilelab">Status</div>
+              <div className="p-tileval" style={{ fontSize: '1.2em', color: data.status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }}>{data.status}</div>
+            </div>
+            {data.validation && (
+              <div className="p-tile">
+                <div className="p-tilelab">Validation</div>
+                <div className="p-tileval" style={{ fontSize: '1.2em', color: data.validation.valid ? 'var(--p-good)' : 'var(--p-critical)' }}>{data.validation.valid ? 'Valid' : 'Invalid'}</div>
+              </div>
+            )}
+            {data.traceability && (
+              <div className="p-tile">
+                <div className="p-tilelab">Traceability</div>
+                <div className="p-tileval" style={{ fontSize: '1.2em', color: data.traceability.grounded ? 'var(--p-good)' : 'var(--p-critical)' }}>{data.traceability.grounded ? 'Grounded' : 'Ungrounded'}</div>
+                {/* verifyTraceability is handed no dimensions for a flagged
+                    standard, so its 100% is the empty case, not a checked
+                    one. Claiming full coverage beside "no rubric was
+                    written" reads as a contradiction. */}
+                {rubric?.flagged
+                  ? <div className="p-tilenote">Nothing to trace yet</div>
+                  : typeof data.traceability.coverage === 'number' && <div className="p-tilenote">{Math.round(data.traceability.coverage * 100)}% coverage</div>}
+              </div>
+            )}
+          </div>
+          {data.traceability?.ungrounded?.length > 0 && (
+            <p className="s-shell-error" role="alert">
+              Ungrounded elements: {data.traceability.ungrounded.map((u) => (typeof u === 'string' ? u : u.source || u.element || JSON.stringify(u))).join(', ')}
+            </p>
+          )}
+          <RubricResult rubric={rubric} />
+          <Err msg={err} />
+          {approved && <p className="p-src" style={{ color: 'var(--p-good)' }}>Rubric approved.</p>}
+          {/* A flagged payload carries no dimensions, so there is no
+              artifact to approve and approveRubric refuses it outright. An
+              Approve button here could only ever fail, and a disabled one
+              would imply something unlocks it, so the flagged branch offers
+              the action that does exist instead: the form above, with the
+              standard rewritten to the SME wording. */}
+          {data.status === 'PENDING' && (rubric?.flagged ? (
+            <div style={{ marginTop: '1rem' }}>
+              <p className="p-src" style={{ margin: 0 }}>
+                There is nothing to approve yet — no criteria were written, which is the
+                intended outcome. The next step is a human one: rewrite the standard so it says
+                how performance is judged, then generate again.
+              </p>
+              {onRewrite && (
+                <button
+                  type="button"
+                  className="p-btn ghost"
+                  onClick={onRewrite}
+                  style={{ marginTop: '0.75rem' }}
+                >
+                  Rewrite the standard
+                </button>
+              )}
+            </div>
+          ) : (
+            <button className="p-btn" onClick={handleApprove} disabled={approveRubric.loading} style={{ marginTop: '1rem' }}>
+              {approveRubric.loading ? 'Approving…' : 'Approve rubric'}
+            </button>
+          ))}
+        </>
+      ) : (
+        <p>Loading rubric…</p>
+      )}
     </div>
   );
 }
@@ -588,8 +1055,14 @@ export function RubricsView() {
 
   const generateRubric = useApiMutation('/rubrics/generate', 'POST');
   const suggestTasks = useApiMutation('/rubrics/task-suggestions', 'POST');
-  const approveRubric = useApiMutation(`/rubrics/${generatedRubricId}/approve`, 'POST');
-  const { data: rubricData, refetch } = useApiQuery(`/rubrics/${generatedRubricId}`, { enabled: !!generatedRubricId });
+  // Performance steps are the one field long enough to scroll, and a scrolling
+  // field here swallows the page's wheel gesture; see useWheelFallthrough.
+  const stepsRef = useWheelFallthrough();
+  // A flagged standard is rewritten in the Standard field of this same form,
+  // so the refusal below can put the caret in it instead of describing where
+  // to go. focus() is all that is needed -- browsers scroll a focused field
+  // into view themselves.
+  const standardRef = useRef(null);
 
   const applySuggestion = (task) => {
     if (!task) return;
@@ -660,20 +1133,6 @@ export function RubricsView() {
     }
   };
 
-  const handleApprove = async () => {
-    setErr(null);
-    try {
-      await approveRubric.mutate();
-      setApproved(true);
-      refetch();
-    } catch (e) {
-      setErr(errText(e, 'Failed to approve rubric'));
-    }
-  };
-
-  const rubric = rubricData?.rubric;
-  const criteria = rubric?.criteria || rubric?.elements || null;
-
   return (
     <>
       <div className="s-pagehead">
@@ -701,7 +1160,7 @@ export function RubricsView() {
           <p className="p-src">No approved sources. Add and approve one before generating.</p>
         )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <select className="scw-ti" value={sourceId} onChange={(e) => setSourceId(e.target.value)} disabled={sourcesUnavailable}>
+          <select className="scw-ti" aria-label="Approved source for this rubric" value={sourceId} onChange={(e) => setSourceId(e.target.value)} disabled={sourcesUnavailable}>
             <option value="">Select an approved source…</option>
             {approvedSources.map((s) => (
               <option key={s.id} value={s.id}>{s.title}</option>
@@ -740,17 +1199,32 @@ export function RubricsView() {
           {suggestionError && (
             <p className="p-src" role="status">{suggestionError} Fill the fields in by hand.</p>
           )}
-          <input className="scw-ti" placeholder="Task code (e.g. 0311-M16-1001)" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} disabled={sourcesUnavailable} />
+          <label className="p-field">
+            <span>Task code</span>
+            <input className="scw-ti" placeholder="0311-M16-1001" aria-label="Task code" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} disabled={sourcesUnavailable} />
+          </label>
           {suggestions[suggestionIndex]?.codeGenerated && taskCode === suggestions[suggestionIndex]?.code && (
             <small style={{ color: 'var(--p-faint)', marginTop: '-0.25rem' }}>
               This source carries no task code, so one was derived from the title. Replace it with
               the real code if the task has one.
             </small>
           )}
-          <input className="scw-ti" placeholder="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} disabled={sourcesUnavailable} />
-          <input className="scw-ti" placeholder="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} disabled={sourcesUnavailable} />
-          <input className="scw-ti" placeholder="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
-          <textarea className="scw-ti" placeholder="Performance steps (one per line)" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
+          <label className="p-field">
+            <span>Task title</span>
+            <input className="scw-ti" aria-label="Task title" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} disabled={sourcesUnavailable} />
+          </label>
+          <label className="p-field">
+            <span>Condition</span>
+            <input className="scw-ti" aria-label="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} disabled={sourcesUnavailable} />
+          </label>
+          <label className="p-field">
+            <span>Standard</span>
+            <input ref={standardRef} className="scw-ti" aria-label="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} disabled={sourcesUnavailable} />
+          </label>
+          <label className="p-field">
+            <span>Performance steps</span>
+            <textarea ref={stepsRef} className="scw-ti" placeholder="One per line" aria-label="Performance steps" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} disabled={sourcesUnavailable} />
+          </label>
           <Err msg={err} />
           <button className="p-btn" onClick={handleGenerate} disabled={generateRubric.loading || suggesting || sourcesUnavailable || !sourceId || !taskCode} style={{ alignSelf: 'flex-start' }}>
             {generateRubric.loading ? 'Generating…' : 'Generate rubric'}
@@ -759,72 +1233,305 @@ export function RubricsView() {
       </div>
 
       {generatedRubricId && (
-        <div className="p-panel">
-          <h3>Review</h3>
-          {rubricData ? (
-            <>
-              <div className="p-tiles">
-                <div className="p-tile">
-                  <div className="p-tilelab">Status</div>
-                  <div className="p-tileval" style={{ fontSize: '1.2em', color: rubricData.status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }}>{rubricData.status}</div>
-                </div>
-                {rubricData.validation && (
-                  <div className="p-tile">
-                    <div className="p-tilelab">Validation</div>
-                    <div className="p-tileval" style={{ fontSize: '1.2em', color: rubricData.validation.valid ? 'var(--p-good)' : 'var(--p-critical)' }}>{rubricData.validation.valid ? 'Valid' : 'Invalid'}</div>
-                  </div>
-                )}
-                {rubricData.traceability && (
-                  <div className="p-tile">
-                    <div className="p-tilelab">Traceability</div>
-                    <div className="p-tileval" style={{ fontSize: '1.2em', color: rubricData.traceability.grounded ? 'var(--p-good)' : 'var(--p-critical)' }}>{rubricData.traceability.grounded ? 'Grounded' : 'Ungrounded'}</div>
-                    {typeof rubricData.traceability.coverage === 'number' && <div className="p-tilenote">{Math.round(rubricData.traceability.coverage * 100)}% coverage</div>}
-                  </div>
-                )}
-              </div>
-              {rubricData.traceability?.ungrounded?.length > 0 && (
-                <p className="s-shell-error" role="alert">
-                  Ungrounded elements: {rubricData.traceability.ungrounded.map((u) => (typeof u === 'string' ? u : u.source || u.element || JSON.stringify(u))).join(', ')}
-                </p>
-              )}
-              {rubric?.flagged && (
-                <p className="s-shell-error" role="alert">Flagged: {rubric.flagReason || 'review before approving'}</p>
-              )}
-              {Array.isArray(criteria) ? (
-                <div className="p-tablewrap">
-                  <table className="p-table">
-                    <thead>
-                      <tr><th>Criterion</th><th>Developing</th><th>Competent</th><th>Mastered</th></tr>
-                    </thead>
-                    <tbody>
-                      {criteria.map((c, i) => (
-                        <tr key={i}>
-                          <td>{c.elo || c.criterion || c.name || c.title || `Criterion ${i + 1}`}</td>
-                          <td>{c.indicators?.developing || c.developing || ''}</td>
-                          <td>{c.indicators?.competent || c.competent || ''}</td>
-                          <td>{c.indicators?.mastered || c.mastered || ''}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.85em', background: 'var(--p-surface-2)', padding: '1rem', overflowX: 'auto' }}>
-                  {JSON.stringify(rubric || rubricData, null, 2)}
-                </pre>
-              )}
-              <Err msg={err} />
-              {approved && <p className="p-src" style={{ color: 'var(--p-good)' }}>Rubric approved.</p>}
-              {rubricData.status === 'PENDING' && (
-                <button className="p-btn" onClick={handleApprove} disabled={approveRubric.loading} style={{ marginTop: '1rem' }}>
-                  {approveRubric.loading ? 'Approving…' : 'Approve rubric'}
-                </button>
-              )}
-            </>
-          ) : (
-            <p>Loading rubric…</p>
-          )}
+        <RubricReview
+          rubricId={generatedRubricId}
+          approved={approved}
+          onApproved={() => setApproved(true)}
+          onRewrite={() => standardRef.current?.focus()}
+        />
+      )}
+    </>
+  );
+}
+
+/* ---------- rubrics for a course's objectives ---------- */
+
+/* The states an objective's rubric can be in, and the colour each one earns.
+   `flagged` is deliberately not red: Rubricon refusing to anchor a vague
+   standard is the product working, not a failure. */
+const OBJECTIVE_STATE_COLOUR = {
+  none: 'var(--p-dim)',
+  draft: 'var(--p-warning)',
+  flagged: 'var(--p-warning)',
+  approved: 'var(--p-good)',
+};
+
+/**
+ * Write (or re-write) the rubric for one course objective.
+ *
+ * The objective *is* the task title -- that is the whole point of generating
+ * from the course rather than from a blank form -- so it is shown rather than
+ * typed. Everything a BARS rubric additionally needs (the code, the condition,
+ * the standard, the steps) is drafted from the approved source the course is
+ * already grounded in, and every one of those fields stays editable, because
+ * the standard is exactly what an instructor has to rewrite when Rubricon
+ * flags it.
+ */
+function ObjectiveRubricForm({ courseId, objective, sourceOptions, existingRubricId, onGenerated }) {
+  const [sourceId, setSourceId] = useState(sourceOptions[0]?.id || '');
+  const [taskCode, setTaskCode] = useState('');
+  const [taskCondition, setTaskCondition] = useState('');
+  const [taskStandard, setTaskStandard] = useState('');
+  const [taskSteps, setTaskSteps] = useState('');
+  const [err, setErr] = useState(null);
+  const [generatedRubricId, setGeneratedRubricId] = useState(null);
+  const [approved, setApproved] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestionOrigin, setSuggestionOrigin] = useState('');
+  const [suggestionError, setSuggestionError] = useState(null);
+
+  const generateRubric = useApiMutation('/rubrics/generate', 'POST');
+  const suggestTasks = useApiMutation('/rubrics/task-suggestions', 'POST');
+  const stepsRef = useWheelFallthrough();
+  // Same refusal loop as the Rubrics screen: a flagged standard is rewritten
+  // in this form's own Standard field, so the review below can put the caret
+  // in it rather than describing where to go.
+  const standardRef = useRef(null);
+
+  // The same auto-fill the Rubrics screen uses. A failure here leaves the form
+  // usable by hand rather than blocking generation for this objective.
+  useEffect(() => {
+    if (!sourceId) return undefined;
+    let current = true;
+    setSuggesting(true);
+    setSuggestionError(null);
+    suggestTasks
+      .mutate({ sourceId })
+      .then((res) => {
+        if (!current) return;
+        const task = (Array.isArray(res?.tasks) ? res.tasks : [])[0];
+        setSuggestionOrigin(res?.origin || '');
+        if (!task) return;
+        setTaskCode(task.code || '');
+        setTaskCondition(task.condition || '');
+        setTaskStandard(task.standard || '');
+        setTaskSteps((task.performanceSteps || []).join('\n'));
+      })
+      .catch((e) => {
+        if (!current) return;
+        setSuggestionOrigin('');
+        setSuggestionError(errText(e, 'Could not read a task from this source.'));
+      })
+      .finally(() => {
+        if (current) setSuggesting(false);
+      });
+    return () => {
+      current = false;
+    };
+    // suggestTasks is a fresh object each render; the source id is the input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sourceId]);
+
+  const handleGenerate = async () => {
+    if (!sourceId || !taskCode) return;
+    setErr(null);
+    setApproved(false);
+    try {
+      const res = await generateRubric.mutate({
+        sourceId,
+        // The server checks all three against the course record: it will not
+        // record a rubric as judging an objective the course does not teach,
+        // or ground one in a source the course was not built from.
+        courseId,
+        objective,
+        task: {
+          code: taskCode,
+          title: objective,
+          condition: taskCondition,
+          standard: taskStandard,
+          performanceSteps: taskSteps.split('\n').filter(Boolean),
+        },
+      });
+      setGeneratedRubricId(res.id);
+      await onGenerated?.();
+    } catch (e) {
+      setErr(errText(e, 'Failed to generate rubric'));
+    }
+  };
+
+  const rubricId = generatedRubricId || existingRubricId;
+
+  return (
+    <>
+      <div className="p-panel">
+        <h3>Rubric for this objective</h3>
+        <p className="p-src">{objective}</p>
+        {sourceOptions.length > 1 ? (
+          <select
+            className="scw-ti"
+            aria-label="Approved source for this rubric"
+            value={sourceId}
+            onChange={(e) => setSourceId(e.target.value)}
+          >
+            {sourceOptions.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+          </select>
+        ) : (
+          <p className="p-src">Grounded in {sourceOptions[0]?.title || 'the course source'}.</p>
+        )}
+        {suggesting && <p className="p-src">Reading the task from this source…</p>}
+        {suggestionOrigin === 'quarry' && (
+          <p className="p-src">Condition, standard and steps are the ones written in this source.</p>
+        )}
+        {suggestionOrigin === 'model' && (
+          <p className="p-src">
+            This source has no task block, so the condition and standard below are a draft written
+            from its text. Check them before generating.
+          </p>
+        )}
+        {suggestionError && (
+          <p className="p-src" role="status">{suggestionError} Fill the fields in by hand.</p>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <label className="p-field">
+            <span>Task code</span>
+            <input className="scw-ti" placeholder="0311-M16-1001" aria-label="Task code" value={taskCode} onChange={(e) => setTaskCode(e.target.value)} />
+          </label>
+          <label className="p-field">
+            <span>Condition</span>
+            <input className="scw-ti" aria-label="Condition" value={taskCondition} onChange={(e) => setTaskCondition(e.target.value)} />
+          </label>
+          <label className="p-field">
+            <span>Standard</span>
+            <input ref={standardRef} className="scw-ti" aria-label="Standard" value={taskStandard} onChange={(e) => setTaskStandard(e.target.value)} />
+          </label>
+          <label className="p-field">
+            <span>Performance steps</span>
+            <textarea ref={stepsRef} className="scw-ti" placeholder="One per line" aria-label="Performance steps" value={taskSteps} onChange={(e) => setTaskSteps(e.target.value)} rows={4} />
+          </label>
+          <Err msg={err} />
+          <button
+            className="p-btn"
+            onClick={handleGenerate}
+            disabled={generateRubric.loading || suggesting || !sourceId || !taskCode}
+            style={{ alignSelf: 'flex-start' }}
+          >
+            {generateRubric.loading ? 'Generating…' : existingRubricId ? 'Generate again' : 'Generate rubric'}
+          </button>
         </div>
+      </div>
+      {rubricId && (
+        <RubricReview
+          rubricId={rubricId}
+          approved={approved}
+          onApproved={async () => {
+            setApproved(true);
+            await onGenerated?.();
+          }}
+          onRewrite={() => standardRef.current?.focus()}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * Which of a course's objectives can actually be assessed, and the way to fix
+ * the ones that cannot.
+ *
+ * The course and the rubric were two screens that never referred to each
+ * other: a course taught objectives, a rubric was generated against a task
+ * typed into an unrelated form, and neither knew the other existed. This is
+ * the join. It claims nothing the server has not recorded -- an objective
+ * counts as assessable only when a human approved a rubric that the server
+ * confirmed was generated from this course's own approved source and named
+ * this course's own objective.
+ */
+export function CourseRubrics({ courseId }) {
+  const { data: envelope, loading, error } = useApiQuery(`/courses/${courseId}`);
+  const {
+    data: rubrics,
+    loading: rubricsLoading,
+    error: rubricsError,
+    refetch: refetchRubrics,
+  } = useApiQuery('/rubrics');
+  const { data: sources } = useApiQuery('/sources');
+  const [openObjective, setOpenObjective] = useState(null);
+
+  const course = envelope?.course;
+  const rows = objectiveCoverage(course, rubrics, courseId);
+  const summary = coverageSummary(rows);
+  const approvedSources = Array.isArray(sources) ? sources.filter((s) => s.status === 'APPROVED') : [];
+  // Only the course's own approved sources: the server refuses a rubric
+  // grounded in anything else, so offering anything else here is a dead end.
+  const sourceOptions = (course?.sourceIds || [])
+    .map((id) => approvedSources.find((s) => s.id === id))
+    .filter(Boolean);
+
+  if (loading || (!envelope && !error)) return <p>Loading course objectives…</p>;
+  if (error) {
+    return (
+      <p className="s-shell-error" role="alert">
+        {errText(error, 'Could not load this course.')}
+      </p>
+    );
+  }
+  if (rows.length === 0) {
+    return (
+      <p className="p-src">
+        This course draft carries no objectives yet, so there is nothing to write a rubric against.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <p className="p-src">
+        {summary.assessable} of {summary.objectives} objective{summary.objectives === 1 ? '' : 's'} can
+        be assessed against an approved rubric.
+        {summary.flagged > 0 ? ` ${summary.flagged} came back for a subject-matter expert.` : ''}
+      </p>
+      {rubricsError && (
+        <p className="s-shell-error" role="alert">
+          {errText(rubricsError, 'Could not load saved rubrics, so the coverage below is incomplete.')}
+        </p>
+      )}
+      {rubricsLoading && <p className="p-src">Loading rubrics…</p>}
+      <div className="s-courselist" data-testid="objective-rubric-coverage">
+        {rows.map((row) => (
+          <div className="s-courserow s-courserow-managed" key={row.objective}>
+            <div className="s-courserow-open s-courserow-static">
+              <div className="s-courserow-main">
+                <div className="s-card-title">{row.objective}</div>
+                <div className="s-card-school" style={{ color: OBJECTIVE_STATE_COLOUR[row.state] }}>
+                  {RUBRIC_STATE_LABELS[row.state]}
+                  {row.rubric && !row.rubric.flagged && row.rubric.dimensions > 0
+                    ? ` · ${row.rubric.dimensions} dimensions`
+                    : ''}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="p-btn ghost"
+              onClick={() => setOpenObjective(openObjective === row.objective ? null : row.objective)}
+            >
+              {openObjective === row.objective
+                ? 'Close'
+                : row.state === 'none' ? 'Write a rubric' : 'Open rubric'}
+            </button>
+          </div>
+        ))}
+      </div>
+      {sourceOptions.length === 0 ? (
+        <p className="p-src">
+          None of this course&rsquo;s sources is approved any more, so no rubric can be grounded in
+          one. Approve a source under Sources first.
+        </p>
+      ) : (
+        rows
+          .filter((row) => row.objective === openObjective)
+          .map((row) => (
+            // Keyed by objective so opening another one starts a clean form
+            // rather than carrying the previous standard into the next.
+            <ObjectiveRubricForm
+              key={row.objective}
+              courseId={courseId}
+              objective={row.objective}
+              sourceOptions={sourceOptions}
+              existingRubricId={row.rubric?.id || null}
+              onGenerated={refetchRubrics}
+            />
+          ))
       )}
     </>
   );

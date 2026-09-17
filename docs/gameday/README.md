@@ -10,7 +10,7 @@ read these three, then jump to your lane's deep docs in [`../`](../README.md).
 
 | File | What it is |
 |---|---|
-| [RANGE-CARD.md](RANGE-CARD.md) | The operator's brief — pitch, numbers, architecture, the four integration sequences, runbook, the 5-minute demo, contingencies, submission. |
+| [RANGE-CARD.md](RANGE-CARD.md) | The operator's brief — pitch, **numbers (each with how it was measured)**, what the corpus deliberately does not hold, the honest use-case assessment, architecture, the four integration sequences, runbook, the 5-minute demo, contingencies, submission. |
 | [COLD-BORE.md](COLD-BORE.md) | The battle plan — scheme, the five use cases, the arsenal (12 repos), assembly, the **Build Kit** (design/data/grounding/env/consume), Orin access, the honest scorecard. |
 | [TEAM-PLAN.md](TEAM-PLAN.md) | Who owns what — the four lanes, the QA→triage→build→review loop, per-member tasks, and McDonald's ramp. |
 | [BOOT.md](BOOT.md) | Copy-paste boot prompts — one per teammate — that provision a **fresh** machine and bring each lane up. No installs, keys, or USB needed beforehand. Start here on gameday. |

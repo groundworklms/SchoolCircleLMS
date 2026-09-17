@@ -107,6 +107,14 @@ mock.module('../lib/auth.js', {
     hasRole(role, required) {
       return role === required || (role === 'BOTH' && ['INSTRUCTOR', 'LEARNER'].includes(required));
     },
+    // lib/learning/http.js imports this, so the mock has to offer it or the
+    // module fails to link and the suite reports one error with no assertion.
+    // Same behaviour as the real one: an instructor asking for the learner view
+    // keeps their id and drops to LEARNER; everyone else is unchanged.
+    learnerScopedIdentity(identity) {
+      if (!identity || !(identity.role === 'INSTRUCTOR' || identity.role === 'BOTH')) return identity;
+      return { ...identity, role: 'LEARNER', learnerScoped: true };
+    },
     async requireAnyRole(request, roles) {
       const role = request.headers.get('x-test-role') || 'LEARNER';
       if (!roles.some((required) => role === required || (role === 'BOTH' && ['INSTRUCTOR', 'LEARNER'].includes(required)))) {
@@ -125,6 +133,8 @@ mock.module('../lib/auth.js', {
 mock.module('../lib/arsenal-core.js', {
   namedExports: {
     answerMasterySession: async () => null,
+    sourcePassageIndex: () => null,
+    masteryPlanProvenance: () => null,
     deriveMasteryPlan: async () => null,
     draftRubricTask: async () => ({ task: 'Generated task' }),
     draftCourse: async () => {
@@ -353,7 +363,11 @@ test('source guards reject deletion during course/rubric generation', async () =
   const rubricSource = await dbMock.createLearningRecord({
     ownerId: OWNER.id,
     type: 'SOURCE',
-    status: 'PENDING',
+    // generateRubricRecord now resolves the source approved-only: the screen
+    // always offered approved sources alone, but the route used to accept any
+    // source its owner could read. This test is about the deletion guard during
+    // generation, so it needs a source generation will actually start from.
+    status: 'APPROVED',
     payload: {
       title: 'Rubric source',
       sourceId: 'rubric-source',

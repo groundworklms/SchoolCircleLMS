@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
+import { provenanceOf } from '../_course/provenance';
 import './item-review.css';
 
 function errText(e, fallback) {
@@ -44,12 +45,13 @@ function optionsOf(item) {
 /* `support` is the HHEM score for the keyed answer. It is absent on items that
    were never verified, and "absent" has to read differently from "scored low". */
 function Evidence({ item }) {
-  const citation = item.citation?.citation || item.citation?.pubId || null;
-  const page = item.citation?.page;
+  const provenance = provenanceOf(item.citation);
   const verified = typeof item.support === 'number';
   return (
     <p className={`item-review-evidence${verified ? '' : ' is-unverified'}`}>
-      {citation ? `Grounded in ${citation}${page ? ` p.${page}` : ''}` : 'No citation recorded'}
+      {provenance
+        ? <span title={provenance.locator || undefined}>Grounded in {provenance.text}</span>
+        : 'No citation recorded'}
       {' · '}
       {verified ? `support ${item.support.toFixed(2)}` : 'not verified'}
     </p>
@@ -116,7 +118,10 @@ function ReviseForm({ item, busy, onCancel, onSubmit }) {
         <textarea rows={2} value={rationale} onChange={(event) => setRationale(event.target.value)} />
       </label>
 
-      <p className="item-review-note">
+      {/* What saving this form actually does, including the part a reviewer
+          would not guess: it ratifies the item. Set to be read, not filed under
+          the form as a grey footnote. */}
+      <p className="p-truth">
         The citation and support score stay as measured — they describe the passage this item came
         from, not the wording. Saving also approves the item.
       </p>
@@ -169,6 +174,10 @@ function ItemCard({ item, busy, onDecide }) {
       {editing ? (
         <ReviseForm item={item} busy={busy} onCancel={() => setEditing(false)} onSubmit={decide} />
       ) : (
+        /* Three weights, not one. Approve is the affirmative act a named human
+           is accountable for, so it carries the accent; Revise is the neutral
+           middle; Withhold is deliberate and reversible and must not read as an
+           equal-and-opposite button sitting next to the approval. */
         <div className="p-btnrow item-review-actions">
           {item.status !== 'APPROVED' && (
             <button type="button" className="p-btn" disabled={busy} onClick={() => decide({ decision: 'APPROVE' }).catch(() => {})}>
@@ -179,7 +188,7 @@ function ItemCard({ item, busy, onDecide }) {
             Revise
           </button>
           {item.status !== 'REJECTED' && (
-            <button type="button" className="p-btn ghost" disabled={busy} onClick={() => decide({ decision: 'REJECT' }).catch(() => {})}>
+            <button type="button" className="p-btn quiet" disabled={busy} onClick={() => decide({ decision: 'REJECT' }).catch(() => {})}>
               Withhold
             </button>
           )}
@@ -274,7 +283,7 @@ export function CourseItemReview({ courseId, onChanged }) {
             ) : counts.PENDING > 0 ? (
               <>
                 <strong>{counts.PENDING}</strong> of {total} item{total === 1 ? '' : 's'} still
-                {' '}need review. A learner sees only the approved ones.
+                {' '}need review.
               </>
             ) : (
               <>
@@ -287,6 +296,13 @@ export function CourseItemReview({ courseId, onChanged }) {
           {counts.PENDING === 0 ? 'RELEASED' : `${counts.PENDING} PENDING`}
         </span>
       </div>
+
+      {/* The standing guarantee this whole screen exists to enforce. It was a
+          trailing clause on the count line and only appeared while something
+          was still pending; it is true of every release and it is the reason a
+          reviewer can leave an item alone without taking a risk, so it is said
+          plainly and it is always on screen. */}
+      <p className="p-truth">A learner sees only the approved ones.</p>
 
       {error && data && (
         <p className="s-shell-error" role="alert">{errText(error, 'That decision could not be saved.')}</p>

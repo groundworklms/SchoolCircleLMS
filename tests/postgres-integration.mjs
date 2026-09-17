@@ -253,9 +253,17 @@ try {
   const bothCourseView = await getCourse(firebaseInstructorAfterReconnect, {
     params: { id: crossOwnerCourse.id },
   });
-  assert.equal(bothCourseView.json.course.sections[0].lesson, 'Learner-safe lesson text.');
-  assert.equal(bothCourseView.json.course.sections[0].pre[0].answer, undefined);
-  assert.equal(bothCourseView.json.course.sections[0].pre[0].rationale, undefined);
+  // Same contract d6f265e pinned in test/learning-handlers.test.mjs, which this
+  // stage was missed by: a cross-owner reader is a learner here, and the learner
+  // projection does not redact the answer key out of a question it still ships --
+  // learnerSectionStructure deletes lesson, pre, post, scenario and questions
+  // outright. Course approval releases a shape; every sentence inside it stays a
+  // PENDING Item until a human ratifies it. Asserting a field inside pre[0] both
+  // passes for the wrong reason and then throws on the missing container, which
+  // is what turned this suite red.
+  assert.equal(bothCourseView.json.course.sections[0].lesson, undefined);
+  assert.equal(bothCourseView.json.course.sections[0].pre, undefined);
+  assert.equal(bothCourseView.json.course.sections[0].post, undefined);
 
   const crossOwnerSession = await db.learningRecord.create({
     data: {

@@ -178,8 +178,17 @@ function Dashboard({
             <p className="s-shell-error" role="alert">
               Unable to load courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
             </p>
+          ) : realCourses.length ? (
+            <p>
+              {realCourses.length} course{realCourses.length === 1 ? '' : 's'} available to you ·
+              {' '}everything marked Demo below is sample content.
+            </p>
           ) : (
-            <p>{realCourses.length} available course{realCourses.length === 1 ? '' : 's'}</p>
+            /* The count is the truth about courses an instructor has actually
+               published to this account, and it is often zero. Saying only
+               "0 available courses" over a screen of demo cards reads as a bug,
+               so the headline names what the rest of the page is instead. */
+            <p>No courses published to you yet — everything below is demo content.</p>
           )}
         </div>
 
@@ -207,7 +216,10 @@ function Dashboard({
             <RealCourseCard key={c.id} c={c} onOpen={onOpen} />
           ))}
           {!realCourses.length && !learningLoading && !learningError && (
-            <p className="s-cal-empty">No courses available.</p>
+            <p className="s-cal-empty">
+              Nothing published to you yet. A course appears here once an instructor approves it for
+              your account — the demo courses below are sample content, not enrolments.
+            </p>
           )}
         </div>
 
@@ -304,7 +316,10 @@ function Courses({
             </button>
           ))}
           {!realCourses.length && !learningLoading && !learningError && (
-            <p className="s-cal-empty">No courses available.</p>
+            <p className="s-cal-empty">
+              Nothing published to you yet. The demo courses and training below are sample content,
+              not enrolments.
+            </p>
           )}
         </div>
 
@@ -341,7 +356,10 @@ function Courses({
           </div>
         </details>
 
-        <h4 className="s-label">Required training</h4>
+        {/* Both lists below are fixtures, exactly like the dashboard's. They carry
+            the Demo tag for the same reason: a learner's own training record is
+            the last thing that should look authoritative when it is invented. */}
+        <h4 className="s-label">Required training · Demo</h4>
         <div className="s-courselist">
           {[
             ['Annual cyber awareness', 'CY training', 'Complete', 'var(--p-good)'],
@@ -359,7 +377,7 @@ function Courses({
           ))}
         </div>
 
-        <h4 className="s-label">Completed</h4>
+        <h4 className="s-label">Completed · Demo</h4>
         <div className="s-courselist">
           {[
             ['Marine Corps Institute — Math for Marines', 'MCI 1334', 'Jun 2026'],
@@ -573,17 +591,22 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
   const openLesson = (id, pg = null) => nav.go({ area: 'course', courseId, view: 'lessons', lessonId: id, page: pg, threadId: null });
   const openThread = (id, forLesson = null) => nav.go({ area: 'course', courseId, view: 'discussions', threadId: id, lessonId: forLesson, page: null });
 
-  const crumbs = [{ label: 'Dashboard', onClick: () => setArea('dashboard') }];
-  if (area === 'course' && course) {
-    crumbs.push({ label: course.name, onClick: () => setView('home') });
-    if (view !== 'home') crumbs.push({ label: (NAV.find((n) => n.id === view) || NAV[0]).label });
-  } else if (area === 'published') {
-    crumbs.push({ label: 'Courses', onClick: () => setArea('courses') });
-    crumbs.push({ label: `Published course${courseId ? ` · ${courseId}` : ''}` });
-  } else if (area === 'courses') crumbs.push({ label: 'Courses' });
-  else if (area === 'calendar') crumbs.push({ label: 'Calendar' });
-  else if (area === 'inbox') crumbs.push({ label: 'Inbox' });
-  else if (area === 'settings') crumbs.push({ label: 'Settings' });
+  /* The breadcrumb row is gone: the rail already names the course and marks the
+     section you are in, and a reading surface should not spend a row saying it
+     twice. It is NOT redundant at every width, though — below 900px the rail
+     collapses to icons and student.css hides .s-rail-sec and every .sub button,
+     which inside a course leaves no course name, no section name and no way
+     back up. This is that affordance, and only that: it is display:none until
+     the rail collapses (see .s-railcontext). Outside a course the top-level
+     rail icons survive the collapse and every screen states itself in its own
+     <h1>, so nothing there needs restoring. */
+  const railContext = area === 'course' && course
+    ? {
+        section: view !== 'home' ? (NAV.find((n) => n.id === view) || NAV[0]).label : null,
+        onUp: () => (view === 'home' ? setArea('dashboard') : setView('home')),
+        up: view === 'home' ? 'Dashboard' : course.name,
+      }
+    : null;
 
   let body;
   if (area === 'published') {
@@ -697,29 +720,23 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
         )}
 
         <div className="s-rail-spacer" />
+        {/* Same as the instructor rail: no planning-board button. It pointed at
+            the landing page rather than /plan anyway, so it was mislabelled as
+            well as internal. */}
         {onSwitchRole && (
           <RailButton icon={I.swap} label="View as instructor" onClick={onSwitchRole} />
         )}
-        <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/'; }} />
       </nav>
 
       <div className="s-content">
-        <div className="s-crumbs">
-          {crumbs.map((c, i) => (
-            <span key={c.label}>
-              {i > 0 && <span className="s-crumb-sep">/</span>}
-              {c.onClick && i < crumbs.length - 1 ? (
-                <button onClick={c.onClick}>{c.label}</button>
-              ) : (
-                <span className="s-crumb-cur">{c.label}</span>
-              )}
-            </span>
-          ))}
-          <span className="s-crumb-spacer" />
-          <span className="s-lastlogin">Last login 12 Sep 26 at 0742</span>
-        </div>
         <main className="s-main">
           <div className="s-container">
+            {railContext && (
+              <div className="s-railcontext">
+                <button className="s-crumbs-inline" onClick={railContext.onUp}>← {railContext.up}</button>
+                {railContext.section && <span className="s-railcontext-cur">{railContext.section}</span>}
+              </div>
+            )}
             {signOutError && (
               <div className="s-shell-error" role="alert">
                 {signOutError.error || signOutError.message || 'Unable to sign out. Please try again.'}

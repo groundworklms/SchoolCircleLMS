@@ -334,6 +334,11 @@ export function InstructorSettings({
   tab,
   onTab,
   courseScoped = false,
+  // The courses whose settings this tab is talking about, and how to open one.
+  // Optional: a course-scoped visit already has its course, and a caller that
+  // passes neither still gets the explanation on its own.
+  courses = [],
+  onOpenCourseSettings = null,
 }) {
   const prefs = usePrefs();
   // A course-scoped visit (…/:courseId/settings) lands on Course; otherwise the
@@ -443,6 +448,23 @@ export function InstructorSettings({
               Open a course from the library, then choose Settings to change what its students
               see. Nothing on this tab applies account-wide.
             </p>
+            {/* The tab described the trip and then left you to make it. The
+                courses it is describing are already known here, so it can be
+                the trip instead of a sign pointing at one. */}
+            {onOpenCourseSettings && courses.length > 0 && (
+              <div className="p-btnrow" style={{ marginTop: '0.8rem' }}>
+                {courses.map((entry) => (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className="p-btn quiet"
+                    onClick={() => onOpenCourseSettings(entry.id)}
+                  >
+                    {entry.name || entry.title || entry.id}
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
         )
       )}

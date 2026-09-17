@@ -41,7 +41,7 @@ artifact that proves it.
 | 1 | **Mission Impact** | 30% | Grounded training that can't lie, at the schoolhouse, edge-first; MarineNet as the front door via LTI 1.3 + grade passback. | The pitch + TRANSITION section (RANGE-CARD); SCORM export landing somewhere real. |
 | 2 | **Technical Innovation** | 25% | The **verification throughline** — say "proven, not asserted" out loud: Rubricon=grounding, Sourcerer=faithfulness, Whetstone=mastery, Sextant=learning gain, Understudy=fidelity. | The five soldiers + the live refusal + HHEM badge. |
 | 3 | **Usability & Design** | 20% | Role switch, cited answer with HHEM badge, the live refusal — the loop understood in one beat. The landing→login→app flow reads as a real product. | The live app; the Ask + QA widgets. |
-| 4 | **Security & Sustainability** | 15% | Apache-2.0 ×12 repos, 700+ tests, offline delivery with no ATO dependency, one swappable auth seam. **Name the auth seam as a known gap before a judge finds it.** | The org, the tests, the offline demo, `lib` auth seam. |
+| 4 | **Security & Sustainability** | 15% | Apache-2.0 ×**13** public repos (12 arsenal + SchoolCircle), **564 tests in this repo, 0 failures (5 skipped)**, offline delivery with no ATO dependency, one swappable auth seam. **Name the auth seam as a known gap before a judge finds it.** | The org, the tests, the offline demo, `lib` auth seam. |
 | 5 | **Team Collaboration** | 10% | Multiple lanes, multiple GitHub accounts in history, the issue board + QA-widget intake loop. **More than one teammate must speak in the 5 minutes.** | TEAM-PLAN, the commit history, the board. |
 
 **Bonus (0.05x each):**
@@ -107,7 +107,7 @@ only one thing gets finished, it's **#4** — it's what turns the UI into a *loo
 |---|---|---|
 | **A — write path not wired (#4)** | Mastery/approve don't persist; the loop is a slideshow | White owns it head-down; until done, demo the banked golden course + the live tutor (which already works). Live persistence is the goal, banked is the floor. |
 | **B — cloud grounding unset** | On the live link, the tutor shows "connect Anchor" instead of grounding | **Decide:** (1) tunnel the Orin's Anchor to Firebase (`DOCTRINE_BASE_URL` → a Funnel/Cloudflare tunnel) so the cloud link fully grounds, or (2) keep grounding **edge-only** and put a one-line banner on the cloud app. The *demo* runs on the offline rig regardless — the cloud link is for judges revisiting. **Decision owner: Jesse.** |
-| **C — proving offline** | The whole differentiator | Rehearse beat 6 cold. `ops/orin-check.sh` green before every run. If the tunnel drops mid-demo, FTS fallback still cites — degrade, don't crash. |
+| **C — proving offline** | The whole differentiator | Rehearse beat 6 cold. `ops/orin-check.sh` green before every run, and **Settings → Doctrine engine** green as well — that light is now a live probe, not a reading of the config. There is **no** FTS fallback in the code: if the link drops the tutor fails honestly, so recover the link rather than talking over it. |
 | **D — doc drift** | Teammates burn time on 404s / dead links | Fixed in this pass (see below). Keep `/prototype` as the working route until #8 renames to `/learn`. |
 | **E — single presenter** | Caps Team Collaboration at a low score | Assign speaking beats now (see run-of-show). |
 
