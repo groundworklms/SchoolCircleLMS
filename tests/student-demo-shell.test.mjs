@@ -149,6 +149,16 @@ function loadStudentShell() {
           }),
         };
       }
+      if (request === './walkthrough-context') {
+        // The guided tour is inert in this harness: no provider is mounted, so
+        // the shell reads a start-less context and simply omits the tour menu
+        // item. That is the correct behaviour for an account the tour cannot
+        // run for, which is exactly what this demo-content test asserts.
+        return { useWalkthrough: () => ({ start: null, running: false, scriptLabel: null }) };
+      }
+      if (request === './walkthrough-anchors') {
+        return { studentTourAnchor: () => null, instructorTourAnchor: () => null };
+      }
       throw new Error(`Unexpected StudentShell dependency: ${request}`);
     },
   };
