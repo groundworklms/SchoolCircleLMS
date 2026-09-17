@@ -21,7 +21,6 @@ function CourseRow({ course, onOpen }) {
       aria-label={`Open ${row.name} course home`}
     >
       <div className="f-course-info">
-        <span className="f-course-id">{row.id}</span>
         <span className="f-course-name">{row.name}</span>
       </div>
       <div className="f-course-prog">
