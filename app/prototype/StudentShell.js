@@ -178,8 +178,17 @@ function Dashboard({
             <p className="s-shell-error" role="alert">
               Unable to load courses: {learningError.error || learningError.message || 'the learning service is unavailable.'}
             </p>
+          ) : realCourses.length ? (
+            <p>
+              {realCourses.length} course{realCourses.length === 1 ? '' : 's'} available to you ·
+              {' '}everything marked Demo below is sample content.
+            </p>
           ) : (
-            <p>{realCourses.length} available course{realCourses.length === 1 ? '' : 's'}</p>
+            /* The count is the truth about courses an instructor has actually
+               published to this account, and it is often zero. Saying only
+               "0 available courses" over a screen of demo cards reads as a bug,
+               so the headline names what the rest of the page is instead. */
+            <p>No courses published to you yet — everything below is demo content.</p>
           )}
         </div>
 
@@ -207,7 +216,10 @@ function Dashboard({
             <RealCourseCard key={c.id} c={c} onOpen={onOpen} />
           ))}
           {!realCourses.length && !learningLoading && !learningError && (
-            <p className="s-cal-empty">No courses available.</p>
+            <p className="s-cal-empty">
+              Nothing published to you yet. A course appears here once an instructor approves it for
+              your account — the demo courses below are sample content, not enrolments.
+            </p>
           )}
         </div>
 
@@ -304,7 +316,10 @@ function Courses({
             </button>
           ))}
           {!realCourses.length && !learningLoading && !learningError && (
-            <p className="s-cal-empty">No courses available.</p>
+            <p className="s-cal-empty">
+              Nothing published to you yet. The demo courses and training below are sample content,
+              not enrolments.
+            </p>
           )}
         </div>
 
@@ -341,7 +356,10 @@ function Courses({
           </div>
         </details>
 
-        <h4 className="s-label">Required training</h4>
+        {/* Both lists below are fixtures, exactly like the dashboard's. They carry
+            the Demo tag for the same reason: a learner's own training record is
+            the last thing that should look authoritative when it is invented. */}
+        <h4 className="s-label">Required training · Demo</h4>
         <div className="s-courselist">
           {[
             ['Annual cyber awareness', 'CY training', 'Complete', 'var(--p-good)'],
@@ -359,7 +377,7 @@ function Courses({
           ))}
         </div>
 
-        <h4 className="s-label">Completed</h4>
+        <h4 className="s-label">Completed · Demo</h4>
         <div className="s-courselist">
           {[
             ['Marine Corps Institute — Math for Marines', 'MCI 1334', 'Jun 2026'],
@@ -697,10 +715,12 @@ export default function StudentShell({ nav, onSwitchRole, role: profileRole }) {
         )}
 
         <div className="s-rail-spacer" />
+        {/* Same as the instructor rail: no planning-board button. It pointed at
+            the landing page rather than /plan anyway, so it was mislabelled as
+            well as internal. */}
         {onSwitchRole && (
           <RailButton icon={I.swap} label="View as instructor" onClick={onSwitchRole} />
         )}
-        <RailButton icon={I.back} label="Planning board" onClick={() => { window.location.href = '/'; }} />
       </nav>
 
       <div className="s-content">

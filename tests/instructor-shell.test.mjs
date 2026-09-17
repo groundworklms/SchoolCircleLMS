@@ -165,6 +165,8 @@ test('the instructor rail exposes no sample or demo courses', () => {
   assert.match(markup, />Sources</);
   assert.match(markup, />Rubrics</);
   assert.match(markup, />Settings</);
+  // The rail footer is product only: /plan is our own hackathon board.
+  assert.doesNotMatch(markup, />Planning board</);
 });
 
 test('an unresolved instructor course id is an explicit not-found', () => {
