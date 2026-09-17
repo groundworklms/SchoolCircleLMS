@@ -1857,3 +1857,146 @@ test('a generation whose stream ended without an outcome says so instead of noth
   assert.doesNotMatch(failed, /ended before generation reported an outcome/);
   assert.match(failed, /Course generation failed/);
 });
+
+/* The doctrine engine status light.
+
+   This panel used to paint green from `active.ready`, which only ever meant
+   "DOCTRINE_BASE_URL is set". The deployed endpoint was dead for two days and
+   the panel stayed green throughout. It is the one control an operator checks
+   before walking on stage, so these pin the colour to the PROBE and nothing
+   else -- a probe that failed must render red, and must never render as
+   connected however healthy the configuration looks.
+
+   `stateValues` are consumed in hook order: settings, loading, loadError,
+   health, checking, baseUrl, manual, detected, busy, err, saved. */
+function doctrinePanel({ health, checking = false }) {
+  const { DoctrineSettings } = loadComponent('app/prototype/DoctrineSettings.js', {
+    stateValues: [
+      [{
+        configured: false,
+        baseUrl: '',
+        version: null,
+        envBaseUrl: 'http://192.168.55.1:8000',
+        active: { ready: true, source: 'env', baseUrl: 'http://192.168.55.1:8000' },
+      }, () => {}],
+      [false, () => {}],          // loading
+      [null, () => {}],           // loadError
+      [health, () => {}],
+      [checking, () => {}],
+    ],
+  });
+  return renderToStaticMarkup(React.createElement(DoctrineSettings));
+}
+
+test('a configured but dead doctrine engine renders red, never connected', () => {
+  const markup = doctrinePanel({
+    health: {
+      state: 'unreachable',
+      headline: 'Not answering',
+      baseUrl: 'http://192.168.55.1:8000',
+      problems: ['fetch failed: ECONNREFUSED'],
+    },
+  });
+  assert.match(markup, /Not answering/);
+  assert.match(markup, /ECONNREFUSED/);
+  assert.match(markup, /class="doctrine-status bad"/);
+  // The two ways this could regress: the old word, and the green class.
+  assert.doesNotMatch(markup, /Connected/);
+  assert.doesNotMatch(markup, /class="doctrine-status ok"/);
+  // The address is still on screen -- a dead engine is not an unknown one.
+  assert.match(markup, /http:\/\/192\.168\.55\.1:8000/);
+});
+
+test('green says what it means: answering, loaded, and serving the routes', () => {
+  const markup = doctrinePanel({
+    health: {
+      state: 'healthy',
+      headline: 'Answering',
+      baseUrl: 'http://192.168.55.1:8000',
+      problems: [],
+      corpus: {
+        publications: [{ pubId: 'MCDP 1', chunks: 241 }, { pubId: 'TC 3-22.9', chunks: 627 }],
+        totalChunks: 4731,
+      },
+      endpoints: { ask: true, verify: true, ground: true },
+      uptimeS: 29236.2,
+    },
+  });
+  assert.match(markup, /class="doctrine-status ok"/);
+  assert.match(markup, /Answering/);
+  // Pointed at a loaded board rather than an empty one, and how to tell.
+  assert.match(markup, /4,731 passages/);
+  assert.match(markup, /2 publications/);
+  assert.match(markup, /\/api\/ask/);
+  assert.match(markup, /\/api\/verify/);
+  assert.match(markup, /up 8h 7m/);
+});
+
+test('a degraded engine is amber with the reason, not green and not red', () => {
+  const markup = doctrinePanel({
+    health: {
+      state: 'degraded',
+      headline: 'Answering, but degraded',
+      baseUrl: 'http://192.168.55.1:8000',
+      problems: ['The reranker model is not loaded.', '/api/verify is missing — no measured support scores.'],
+      endpoints: { ask: true, verify: false, ground: true },
+    },
+  });
+  assert.match(markup, /class="doctrine-status warn"/);
+  assert.match(markup, /reranker model is not loaded/);
+  assert.match(markup, /missing \/api\/verify/);
+  assert.doesNotMatch(markup, /class="doctrine-status ok"/);
+});
+
+test('a check still in flight is neutral — not yet known must not look like fine', () => {
+  const markup = doctrinePanel({ health: null, checking: true });
+  assert.match(markup, /Checking…/);
+  assert.match(markup, /class="doctrine-status "/);
+  assert.doesNotMatch(markup, /class="doctrine-status ok"/);
+});
+
+test('only a healthy probe can reach the green class at all', () => {
+  const source = fs.readFileSync(
+    path.join(workspace, 'app/prototype/DoctrineSettings.js'), 'utf8',
+  );
+  // The green class comes from one lookup table keyed by probe state, so there
+  // is exactly one place this can go wrong -- and `healthy` is the only key
+  // that maps to it.
+  assert.match(source, /STATE_CLASS = \{\s*healthy: 'ok',/);
+  assert.doesNotMatch(source, /(degraded|unreachable|unconfigured): 'ok'/);
+  // The configuration read must never be what colours the dot again.
+  assert.doesNotMatch(source, /doctrine-status\$\{active/);
+});
+
+test('an unreachable engine reads as routine and names the way back', () => {
+  // The board moves between laptops and a restarted tunnel takes a new
+  // hostname, so a stale address is the ORDINARY demo-day state. Red must
+  // therefore explain and point at the recovery, not just condemn.
+  const markup = doctrinePanel({
+    health: {
+      state: 'unreachable',
+      headline: 'Not answering',
+      baseUrl: 'http://192.168.55.1:8000',
+      problems: ['fetch failed (ECONNREFUSED)'],
+    },
+  });
+  assert.match(markup, /Find the Orin/);
+  assert.match(markup, /Enter an address manually/);
+  assert.match(markup, /new hostname every time it restarts/);
+  // Calm, not a crash: it is a status line, never an alert.
+  assert.doesNotMatch(markup, /role="alert"/);
+});
+
+test('a healthy engine does not nag about addresses it does not need', () => {
+  const markup = doctrinePanel({
+    health: {
+      state: 'healthy',
+      headline: 'Answering',
+      baseUrl: 'http://192.168.55.1:8000',
+      problems: [],
+      corpus: { publications: [{ pubId: 'MCDP 1', chunks: 241 }], totalChunks: 241 },
+      endpoints: { ask: true, verify: true, ground: true },
+    },
+  });
+  assert.doesNotMatch(markup, /new hostname every time it restarts/);
+});
