@@ -34,11 +34,9 @@ function nextMilitarySelection(branch) {
 }
 
 function roleLabel(role) {
-  return role === 'INSTRUCTOR' || role === 'BOTH' ? (
-    <strong>After a successful save, instructor tools appear immediately; no separate approval step is required.</strong>
-  ) : (
-    'After a successful save, learner tools are available immediately.'
-  );
+  return role === 'INSTRUCTOR' || role === 'BOTH'
+    ? 'Switch between your learner and instructor spaces. Instructor access is granted by your administrator, not from this form.'
+    : 'After a successful save, learner tools are available immediately.';
 }
 
 /**
@@ -119,6 +117,12 @@ export function AccountProfileForm({ auth = {}, onboarding = false }) {
   );
   const legacyRankIsOption = rank && rankOptions.some((option) => option.value === rank);
   const militaryBranch = Boolean(branch && branch !== 'CIVILIAN');
+  // Only an account that already holds the instructor capability may change its
+  // role from this form. The server is the real gate (lib/account-profile.js
+  // refuses to grant instructor to an account that lacks it); this just keeps
+  // the form from offering a promotion path it knows will be clamped, so a
+  // learner is never shown a control that silently does nothing.
+  const instructorEntitled = profile?.role === 'INSTRUCTOR' || profile?.role === 'BOTH';
 
   const onBranchChange = (event) => {
     const nextBranch = event.target.value;
@@ -151,7 +155,10 @@ export function AccountProfileForm({ auth = {}, onboarding = false }) {
     setFormError(null);
     setSaved(false);
 
-    const validation = validateProfileFields({ name, role, branch, payGrade, rank });
+    // A member without instructor entitlement can only ever save as a learner;
+    // never submit a role the server would refuse and clamp.
+    const submittedRole = instructorEntitled ? role : 'LEARNER';
+    const validation = validateProfileFields({ name, role: submittedRole, branch, payGrade, rank });
     if (validation.error) {
       setFormError(validation.error);
       return;
@@ -258,24 +265,37 @@ export function AccountProfileForm({ auth = {}, onboarding = false }) {
 
         <label className="s-profile-field" htmlFor="account-profile-role">
           <span>Role</span>
-          <select
-            id="account-profile-role"
-            name="role"
-            value={role}
-            onChange={(event) => {
-              setRole(event.target.value);
-              setSaved(false);
-              setFormError(null);
-            }}
-            required
-          >
-            <option value="">Choose a role…</option>
-            {(PROFILE_ROLES || []).map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
+          {instructorEntitled ? (
+            <select
+              id="account-profile-role"
+              name="role"
+              value={role}
+              onChange={(event) => {
+                setRole(event.target.value);
+                setSaved(false);
+                setFormError(null);
+              }}
+              required
+            >
+              <option value="">Choose a role…</option>
+              {(PROFILE_ROLES || []).map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              id="account-profile-role"
+              name="role"
+              type="text"
+              value="Student"
+              readOnly
+              aria-describedby="account-profile-role-help"
+            />
+          )}
           <small id="account-profile-role-help">
-            {role ? roleLabel(role) : 'Choose learner, instructor, or both.'}
+            {instructorEntitled
+              ? (role ? roleLabel(role) : 'Choose learner, instructor, or both.')
+              : 'Your role is managed by your administrator.'}
           </small>
         </label>
 

@@ -85,7 +85,7 @@ test('profile handlers reject missing and invalid bearer tokens without touching
   assert.equal(updates, 0);
 });
 
-test('profile handlers use the verified owner, permit role, and reject id and externalId fields', async () => {
+test('profile handlers use the verified owner, refuse self-service instructor elevation, and reject id and externalId fields', async () => {
   const calls = [];
   const { PATCH } = makeProfileHandlers({
     identities: {
@@ -123,6 +123,9 @@ test('profile handlers use the verified owner, permit role, and reject id and ex
   assert.equal(ownershipAttempt.status, 400);
   assert.equal(calls.length, 0);
 
+  // user-a is a LEARNER. The profile fields save, but the submitted INSTRUCTOR
+  // role is clamped back to LEARNER: the endpoint never grants the instructor
+  // capability to an account that does not already hold it.
   const valid = await PATCH(request('Bearer user-a-token', {
     method: 'PATCH',
     body: {
@@ -139,12 +142,14 @@ test('profile handlers use the verified owner, permit role, and reject id and ex
   assert.deepEqual(calls[0].data, {
     name: 'Updated A',
     rank: 'Corporal',
-    role: 'INSTRUCTOR',
+    role: 'LEARNER',
     branch: 'ARMY',
     payGrade: 'E-4',
     profileCompletedAt: calls[0].data.profileCompletedAt,
   });
-  assert.equal((await valid.json()).user.id, 'user-a');
+  const validBody = await valid.json();
+  assert.equal(validBody.user.id, 'user-a');
+  assert.equal(validBody.user.role, 'LEARNER');
 
   const secondUser = await PATCH(request('Bearer user-b-token', {
     method: 'PATCH',
@@ -267,7 +272,7 @@ test('validation and storage failures return errors and never report a false sav
   assert.equal(updates, 1);
 });
 
-test('profile role changes are self-service, persist with the profile, and downgrade on the next read', async () => {
+test('self-service profile edits persist but a learner can never elevate its own role', async () => {
   const stored = profile('user-a', 'User A', 'LEARNER');
   const updates = [];
   const { GET, PATCH } = makeProfileHandlers({
@@ -281,6 +286,8 @@ test('profile role changes are self-service, persist with the profile, and downg
     },
   });
 
+  // A self-serve POST asking for INSTRUCTOR saves the other profile fields but
+  // is clamped back to LEARNER: this is the privilege-escalation hole, closed.
   const instructor = await PATCH(request('Bearer token', {
     method: 'PATCH',
     body: {
@@ -292,12 +299,14 @@ test('profile role changes are self-service, persist with the profile, and downg
     },
   }));
   assert.equal(instructor.status, 200);
-  assert.equal((await instructor.json()).user.role, 'INSTRUCTOR');
+  assert.equal((await instructor.json()).user.role, 'LEARNER');
   assert.equal(updates[0].where.id, 'user-a');
-  assert.equal(updates[0].data.role, 'INSTRUCTOR');
+  assert.equal(updates[0].data.role, 'LEARNER');
+  // The non-authorization fields still persist normally.
   assert.equal(updates[0].data.branch, 'MARINE_CORPS');
   assert.equal(updates[0].data.payGrade, 'E-3');
 
+  // BOTH is refused for the same reason: it carries the instructor capability.
   const both = await PATCH(request('Bearer token', {
     method: 'PATCH',
     body: {
@@ -309,33 +318,103 @@ test('profile role changes are self-service, persist with the profile, and downg
     },
   }));
   assert.equal(both.status, 200);
-  assert.equal((await both.json()).user.role, 'BOTH');
-
-  const learner = await PATCH(request('Bearer token', {
-    method: 'PATCH',
-    body: {
-      name: 'User A',
-      role: 'LEARNER',
-      branch: 'CIVILIAN',
-      payGrade: null,
-      rank: null,
-    },
-  }));
-  assert.equal(learner.status, 200);
-  assert.equal((await learner.json()).user.role, 'LEARNER');
+  assert.equal((await both.json()).user.role, 'LEARNER');
+  assert.equal(updates[1].data.role, 'LEARNER');
 
   const reloaded = await GET(request('Bearer token'));
   assert.equal(reloaded.status, 200);
   const reloadedUser = (await reloaded.json()).user;
   assert.equal(reloadedUser.id, stored.id);
-  assert.equal(reloadedUser.name, stored.name);
-  assert.equal(reloadedUser.role, stored.role);
-  assert.equal(reloadedUser.branch, stored.branch);
-  assert.equal(reloadedUser.payGrade, stored.payGrade);
-  assert.equal(reloadedUser.rank, stored.rank);
-  assert.equal(reloadedUser.profileCompletedAt, stored.profileCompletedAt.toISOString());
+  assert.equal(reloadedUser.role, 'LEARNER');
+  assert.equal(reloadedUser.branch, 'MARINE_CORPS');
   assert.equal(stored.role, 'LEARNER');
-  assert.equal(updates.length, 3);
+  assert.equal(updates.length, 2);
+});
+
+test('an account that already holds instructor keeps it and may adjust or step down', async () => {
+  const stored = profile('instructor-a', 'Instructor A', 'INSTRUCTOR');
+  const updates = [];
+  const { PATCH } = makeProfileHandlers({
+    identities: { token: stored },
+    users: {
+      update: async ({ data, where }) => {
+        updates.push({ data, where });
+        Object.assign(stored, data);
+        return { ...stored };
+      },
+    },
+  });
+
+  // Already an instructor -> may add the learner capability (BOTH).
+  const both = await PATCH(request('Bearer token', {
+    method: 'PATCH',
+    body: {
+      name: 'Instructor A', role: 'BOTH', branch: 'ARMY', payGrade: 'E-4', rank: 'Specialist',
+    },
+  }));
+  assert.equal(both.status, 200);
+  assert.equal((await both.json()).user.role, 'BOTH');
+
+  // And may step all the way down to LEARNER (reducing a role is always allowed).
+  const learner = await PATCH(request('Bearer token', {
+    method: 'PATCH',
+    body: {
+      name: 'Instructor A', role: 'LEARNER', branch: 'CIVILIAN', payGrade: null, rank: null,
+    },
+  }));
+  assert.equal(learner.status, 200);
+  assert.equal((await learner.json()).user.role, 'LEARNER');
+  // Having stepped down, the same account can no longer self-restore instructor.
+  const restore = await PATCH(request('Bearer token', {
+    method: 'PATCH',
+    body: {
+      name: 'Instructor A', role: 'INSTRUCTOR', branch: 'ARMY', payGrade: 'E-4', rank: 'Specialist',
+    },
+  }));
+  assert.equal(restore.status, 200);
+  assert.equal((await restore.json()).user.role, 'LEARNER');
+});
+
+test('an allowlisted email is the one sanctioned self-serve path to instructor', async () => {
+  const previous = process.env.INSTRUCTOR_EMAILS;
+  process.env.INSTRUCTOR_EMAILS = 'lead@example.test, presenter@example.test';
+  try {
+    const stored = { ...profile('presenter', 'Presenter', 'LEARNER'), email: 'presenter@example.test' };
+    const outsider = { ...profile('outsider', 'Outsider', 'LEARNER'), email: 'nobody@example.test' };
+    const updates = [];
+    const users = {
+      update: async ({ data, where }) => {
+        updates.push({ where, data });
+        return { ...(where.id === 'presenter' ? stored : outsider), ...data };
+      },
+    };
+    const { PATCH } = makeProfileHandlers({
+      identities: { 'presenter-token': stored, 'outsider-token': outsider },
+      users,
+    });
+
+    const promoted = await PATCH(request('Bearer presenter-token', {
+      method: 'PATCH',
+      body: {
+        name: 'Presenter', role: 'INSTRUCTOR', branch: 'ARMY', payGrade: 'E-4', rank: 'Specialist',
+      },
+    }));
+    assert.equal(promoted.status, 200);
+    assert.equal((await promoted.json()).user.role, 'INSTRUCTOR');
+
+    // Same request from an email that is NOT on the list is still clamped.
+    const blocked = await PATCH(request('Bearer outsider-token', {
+      method: 'PATCH',
+      body: {
+        name: 'Outsider', role: 'INSTRUCTOR', branch: 'ARMY', payGrade: 'E-4', rank: 'Specialist',
+      },
+    }));
+    assert.equal(blocked.status, 200);
+    assert.equal((await blocked.json()).user.role, 'LEARNER');
+  } finally {
+    if (previous === undefined) delete process.env.INSTRUCTOR_EMAILS;
+    else process.env.INSTRUCTOR_EMAILS = previous;
+  }
 });
 
 test('invalid profile combinations are rejected before storage and do not mutate prior data', async () => {
