@@ -6,7 +6,6 @@ import {
   canAccessRole,
   href,
   parse,
-  publishedCourseHref,
 } from './routes';
 
 export {
@@ -14,7 +13,6 @@ export {
   canAccessRole,
   href,
   parse,
-  publishedCourseHref,
 } from './routes';
 
 /* URL-backed navigation for the prototype.
@@ -24,8 +22,7 @@ export {
 
       /prototype                                   student dashboard
       /prototype/courses | calendar | inbox | settings
-      /prototype/published/:courseId               published student reader
-     /prototype/course/:courseId                  course home
+      /prototype/course/:courseId                  course home
      /prototype/course/:courseId/:view            lessons | path | materials | assignments | live | progress
      /prototype/course/:courseId/lessons/:lessonId/:page   page number inside the lesson (1-based)
      /prototype/course/:courseId/discussions/:threadId

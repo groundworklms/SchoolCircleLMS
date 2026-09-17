@@ -38,9 +38,9 @@ test('safe deep links preserve permitted role destinations', () => {
   assert.equal(getPostLoginDestination(instructor, '/prototype/instructor/M092721/settings'), '/prototype/instructor/M092721/settings');
   assert.equal(isSafeDeepLink('/prototype/instructor/M092721/settings', instructor), true);
   assert.equal(isSafeDeepLink('/prototype/course/M092721', learner), true);
-  assert.equal(isSafeDeepLink('/prototype/published/course-42', instructor), true);
+  assert.equal(isSafeDeepLink('/prototype/published/course-42', instructor), false);
   assert.equal(isSafeDeepLink('/prototype/courses', instructor), true);
-  assert.equal(getPostLoginDestination(instructor, '/prototype/published/course-42'), '/prototype/published/course-42');
+  assert.equal(getPostLoginDestination(instructor, '/prototype/published/course-42'), '/prototype/instructor');
   assert.equal(isSafeDeepLink('/prototype/course/M092721', both), true);
 });
 

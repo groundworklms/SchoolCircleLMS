@@ -144,8 +144,8 @@ function usePublicationName(sourceRecordId) {
 /**
  * A fresh idempotency key per (check, chosen option).
  *
- * The same rule the published reader uses (app/prototype/published/client.js
- * `createStableAttemptManager`): a failed request keeps its key, so retrying
+ * The same rule used by the learner attempt transport: a failed request keeps
+ * its key, so retrying
  * the SAME answer replays rather than banks a second attempt, while choosing a
  * different option is deliberately a new attempt and gets a new key.
  */
