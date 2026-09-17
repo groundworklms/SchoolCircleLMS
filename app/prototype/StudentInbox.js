@@ -1,139 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
 import { useAuth } from '../_auth/AuthProvider';
-import { COURSES } from './data';
-import { usePrefs, setPref } from './prefs';
 import './roster.css';
-
-const ME = 'Cpl Rivera';
-
-/* Student inbox. The hand-written entries below are explicitly local demo
-   messages. Authenticated students get the persisted roster messages from the
-   server instead; a failed live request never silently falls back to these. */
-
-export const MESSAGES = [
-  {
-    id: 1,
-    from: 'SSgt Okafor',
-    role: 'Instructor',
-    courseId: 'M092721',
-    kind: 'announcement',
-    subject: 'Block exam Friday — what to expect',
-    when: 'Today 0715',
-    unread: true,
-    body: `Marines,
-
-The Annex C block exam is Friday at 0730 in Room 114. 40 items, two hours, closed book. It covers Transmission Lines and Test Equipment — Fault Isolation is NOT on this one; it starts Monday.
-
-Class-wide, the practice sets are showing the same miss on SWR: you're using the raw power ratio instead of taking the square root first. If you have not done the SWR drill on your Study Materials, do it before Wednesday's lab.
-
-Bring a pencil and your calculator. No phones on the desk.
-
-SSgt Okafor`,
-    actions: [{ label: 'Open SWR drill', courseId: 'M092721', view: 'materials' }],
-  },
-  {
-    id: 2,
-    from: 'SchoolCircle',
-    role: 'Reminder',
-    courseId: null,
-    kind: 'reminder',
-    subject: 'FY safety standdown is overdue',
-    when: 'Today 0600',
-    unread: true,
-    body: `Your FY safety standdown was due 10 Sep and is not complete.
-
-This is an annual requirement auto-enrolled from your unit's training plan. It takes about 45 minutes. Your chain of command can see completion status.`,
-    actions: [{ label: 'View required training', area: 'courses' }],
-  },
-  {
-    id: 3,
-    from: 'SchoolCircle',
-    role: 'Study plan',
-    courseId: 'M092721',
-    kind: 'reminder',
-    subject: 'Tonight 1900 — Practice set, Fault Isolation (30 min)',
-    when: 'Today 0500',
-    unread: false,
-    body: `Your on-track plan has a 30-minute practice set tonight at 1900.
-
-Fault Isolation is your weakest topic at 48%. This set is 12 adaptive questions weighted toward the items you have missed before. Each answer comes with the reason it is right or wrong.
-
-Change your course of action on Learning Path if the plan is not working for your schedule.`,
-    actions: [{ label: 'Start practice set', courseId: 'M092721', view: 'materials' }],
-  },
-  {
-    id: 4,
-    from: 'GySgt Flores',
-    role: 'Chief Instructor',
-    courseId: 'M092721',
-    kind: 'announcement',
-    subject: 'Lab schedule change — Wednesday',
-    when: 'Yesterday 1540',
-    unread: false,
-    body: `All hands,
-
-Wednesday's SWR measurement lab moves from 0800 to 1300 due to equipment availability. Same room. The morning block will be classroom time on Test Equipment.
-
-Calendar has been updated.
-
-GySgt Flores`,
-    actions: [{ label: 'Open calendar', area: 'calendar' }],
-  },
-  {
-    id: 5,
-    from: 'Sgt Delgado',
-    role: 'Instructor',
-    courseId: 'M09CVS1',
-    kind: 'announcement',
-    subject: 'Radio net practical — grading sheet attached',
-    when: 'Thu 1105',
-    unread: false,
-    body: `Marines,
-
-The grading sheet for the 22 Sep radio net practical is attached to the course. Read it before you show up. You are graded on net entry procedure, proword usage, and authentication — in that order of weight.
-
-Net entry is the one people fumble under time pressure. The reading on your plan for Sunday covers it.
-
-Sgt Delgado`,
-    actions: [{ label: 'Open Network Administrator', courseId: 'M09CVS1', view: 'home' }],
-  },
-  {
-    id: 6,
-    from: 'SchoolCircle',
-    role: 'Progress',
-    courseId: 'M092721',
-    kind: 'reminder',
-    subject: 'Weekly progress — Basic Electronics',
-    when: 'Sun 1800',
-    unread: false,
-    body: `Week 5 summary.
-
-Overall mastery: 77% (+4 from last week).
-Strongest: Safety & PPE, 95%.
-Needs work: Fault Isolation, 48%. Transmission Lines, 62%.
-Practice sets completed: 3 of 3 planned.
-
-You are on track. Your plan for week 6 front-loads Fault Isolation ahead of Annex D.`,
-    actions: [{ label: 'View my progress', courseId: 'M092721', view: 'progress' }],
-  },
-  {
-    id: 7,
-    from: 'MCeLE',
-    role: 'System',
-    courseId: null,
-    kind: 'system',
-    subject: 'Enrollment confirmed — Sergeants Course (EPME)',
-    when: '2 Sep',
-    unread: false,
-    body: `You have been enrolled in the Sergeants Course distance education program based on your rank and time in grade.
-
-No action is required now. The course appears under Required training and will be added to your plan when you start it.`,
-    actions: [{ label: 'View required training', area: 'courses' }],
-  },
-];
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -161,30 +31,60 @@ function serverMessage(message) {
     kind: 'announcement',
     when: formatServerDate(message.createdAt),
     unread: !message.read,
-    localOnly: false,
   };
 }
 
-function useRosterInbox() {
-  const { ready, user } = useAuth();
-  const prefs = usePrefs();
+const EMPTY_INBOX = {
+  messages: [],
+  loading: false,
+  error: '',
+  live: false,
+  ready: true,
+  markRead: async () => false,
+  removeMessage: async () => false,
+};
+
+function actorIdFor(user) {
+  return user?.uid || user?.id || user?.email || user || null;
+}
+
+export function useRosterInbox(authState = null) {
+  const auth = useAuth();
+  const { ready, user } = authState || auth;
+  const actorId = actorIdFor(user);
+  const actorRef = useRef({ id: actorId, generation: 0 });
+  if (actorRef.current.id !== actorId) {
+    actorRef.current = {
+      id: actorId,
+      generation: actorRef.current.generation + 1,
+    };
+  }
+  const requestRef = useRef(0);
+  const accountGeneration = actorRef.current.generation;
   const [serverMessages, setServerMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [messagesFor, setMessagesFor] = useState(null);
+  const [loadingFor, setLoadingFor] = useState(null);
+  const [errorFor, setErrorFor] = useState(null);
   const [error, setError] = useState('');
-  const fromInstructors = useMemo(
-    () => (prefs.inboxMessages || []).filter((m) => (m.recipients || []).includes(ME)),
-    [prefs.inboxMessages]
-  );
-  const readIds = prefs.readMessageIds || [];
   useEffect(() => {
+    const requestId = ++requestRef.current;
+    const controller = ready && user ? new AbortController() : null;
+    const isCurrent = () => (
+      requestRef.current === requestId
+      && !controller?.signal.aborted
+      && actorRef.current.id === actorId
+      && actorRef.current.generation === accountGeneration
+    );
     if (!ready || !user) {
       setServerMessages([]);
-      setLoading(false);
+      setMessagesFor(null);
+      setLoadingFor(null);
+      setErrorFor(null);
       setError('');
       return undefined;
     }
-    const controller = new AbortController();
-    setLoading(true);
+    setLoadingFor(actorId);
+    setErrorFor(null);
     setError('');
     authFetch('/api/roster/messages', { signal: controller.signal })
       .then(async (response) => {
@@ -194,80 +94,100 @@ function useRosterInbox() {
         } catch {
           // readApiError below supplies a useful status for non-JSON errors.
         }
-        if (controller.signal.aborted) return;
+        if (!isCurrent()) return;
         if (!response.ok) throw new Error(body?.error || body?.message || `Unable to load inbox (${response.status})`);
         if (!Array.isArray(body?.messages)) throw new Error('Inbox service returned an invalid message list.');
         setServerMessages(body.messages.map(serverMessage));
+        setMessagesFor(actorId);
       })
       .catch((caught) => {
-        if (caught?.name === 'AbortError' || controller.signal.aborted) return;
+        if (caught?.name === 'AbortError' || !isCurrent()) return;
         setServerMessages([]);
+        setMessagesFor(actorId);
+        setErrorFor(actorId);
         setError(caught.message || 'Unable to load your inbox.');
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (isCurrent()) setLoadingFor(null);
       });
     return () => controller.abort();
-  }, [ready, user]);
+  }, [ready, actorId, accountGeneration]);
 
   const messages = useMemo(() => {
-    if (!ready) return [];
-    if (user) return serverMessages;
-    return [...fromInstructors, ...MESSAGES].map((message) => (
-      message.unread && readIds.includes(message.id) ? { ...message, unread: false } : { ...message, localOnly: true }
-    ));
-  }, [ready, user, serverMessages, fromInstructors, readIds]);
+    return ready && user && messagesFor === actorId ? serverMessages : [];
+  }, [ready, user, actorId, messagesFor, serverMessages]);
 
   const markRead = useCallback(async (message) => {
     if (!message.unread) return true;
-    if (!user) {
-      const current = prefs.readMessageIds || [];
-      if (!current.includes(message.id)) setPref('readMessageIds', [...current, message.id]);
+    try {
+      const mutationGeneration = actorRef.current.generation;
+      const mutationActor = actorRef.current.id;
+      const current = () => (
+        actorRef.current.id === mutationActor
+        && actorRef.current.generation === mutationGeneration
+      );
+      const response = await authFetch('/api/roster/messages', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: message.serverId, read: true }),
+      });
+      let body = null;
+      try {
+        body = await response.json();
+      } catch {
+        // Preserve the status in the explicit error below.
+      }
+      if (!current()) return false;
+      if (!response.ok) throw new Error(body?.error || body?.message || `Unable to mark message read (${response.status})`);
+      setServerMessages((currentMessages) => currentMessages.map((item) => item.id === message.id ? { ...item, unread: false, read: true } : item));
       return true;
+    } catch (caught) {
+      const currentActor = actorRef.current.id === actorId
+        && actorRef.current.generation === accountGeneration;
+      if (!currentActor) return false;
+      throw caught;
     }
-    const response = await authFetch('/api/roster/messages', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: message.serverId, read: true }),
-    });
-    let body = null;
-    try {
-      body = await response.json();
-    } catch {
-      // Preserve the status in the explicit error below.
-    }
-    if (!response.ok) throw new Error(body?.error || body?.message || `Unable to mark message read (${response.status})`);
-    setServerMessages((current) => current.map((item) => item.id === message.id ? { ...item, unread: false, read: true } : item));
-    return true;
-  }, [prefs.readMessageIds, user]);
+  }, [actorId, accountGeneration]);
 
-  // A recipient must be able to get rid of a message. The server scopes the delete
-  // to the caller's own User row, so this can only ever remove the learner's own
-  // copy. Locally-stored demo messages are simply dropped from this browser.
+  // A recipient must be able to get rid of a message. The server scopes the
+  // delete to the caller's own User row, so this can only remove that learner's
+  // own copy.
   const removeMessage = useCallback(async (message) => {
-    // Only a persisted roster message can be deleted. The hand-written demo
-    // messages have no server row, so the button is not offered for them.
-    if (!user || message.localOnly || !message.serverId) return false;
-    const response = await authFetch('/api/roster/messages', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: message.serverId }),
-    });
-    let body = null;
     try {
-      body = await response.json();
-    } catch {
-      // Preserve the status in the explicit error below.
+      if (!user || !message.serverId) return false;
+      const mutationGeneration = actorRef.current.generation;
+      const mutationActor = actorRef.current.id;
+      const current = () => (
+        actorRef.current.id === mutationActor
+        && actorRef.current.generation === mutationGeneration
+      );
+      const response = await authFetch('/api/roster/messages', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: message.serverId }),
+      });
+      let body = null;
+      try {
+        body = await response.json();
+      } catch {
+        // Preserve the status in the explicit error below.
+      }
+      if (!current()) return false;
+      if (!response.ok) throw new Error(body?.error || body?.message || `Unable to delete message (${response.status})`);
+      setServerMessages((currentMessages) => currentMessages.filter((item) => item.id !== message.id));
+      return true;
+    } catch (caught) {
+      const currentActor = actorRef.current.id === actorId
+        && actorRef.current.generation === accountGeneration;
+      if (!currentActor) return false;
+      throw caught;
     }
-    if (!response.ok) throw new Error(body?.error || body?.message || `Unable to delete message (${response.status})`);
-    setServerMessages((current) => current.filter((item) => item.id !== message.id));
-    return true;
-  }, [user]);
+  }, [actorId, accountGeneration, user]);
 
   return {
     messages,
-    loading: Boolean(user && loading),
-    error,
+    loading: Boolean(user && loadingFor === actorId),
+    error: errorFor === actorId ? error : '',
     live: Boolean(user),
     ready,
     markRead,
@@ -275,14 +195,8 @@ function useRosterInbox() {
   };
 }
 
-/* The rail uses this same source, so its unread badge follows the persisted
-   server read state rather than a separate local approximation. */
-export function useInboxMessages() {
-  return useRosterInbox().messages;
-}
-
-export default function StudentInbox({ onOpen, onArea }) {
-  const { messages: msgs, loading, error, live, ready, markRead, removeMessage } = useRosterInbox();
+export default function StudentInbox({ onOpen, onArea, inbox = EMPTY_INBOX }) {
+  const { messages: msgs, loading, error, live, ready, markRead, removeMessage } = inbox;
   const [filter, setFilter] = useState('all');
   const [selectedId, setSelectedId] = useState(null);
   const [reply, setReply] = useState('');
@@ -314,8 +228,8 @@ export default function StudentInbox({ onOpen, onArea }) {
   const removeMsg = (message) => {
     setReadError('');
     removeMessage(message)
-      .then(() => {
-        setSelectedId((current) => (current === message.id ? null : current));
+      .then((removed) => {
+        if (removed) setSelectedId((current) => (current === message.id ? null : current));
       })
       .catch((caught) => setReadError(caught.message || 'Unable to delete this message.'));
   };
@@ -339,7 +253,7 @@ export default function StudentInbox({ onOpen, onArea }) {
           ))}
         </div>
       </div>
-      {ready && !live && !loading && <div className="s-ro-demo" role="status"><strong>LOCAL DEMO ONLY</strong> These hand-written messages are stored in this browser. Live roster messages appear here after sign-in.</div>}
+      {ready && !live && !loading && <div className="s-ro-state" role="status"><strong>Sign in required.</strong> Sign in to view your instructor messages.</div>}
       {loading && <div className="s-ro-state" role="status">Loading your inbox…</div>}
       {error && <div className="s-ro-error" role="alert">{error}</div>}
       {readError && <div className="s-ro-error" role="alert">{readError}</div>}
@@ -359,7 +273,7 @@ export default function StudentInbox({ onOpen, onArea }) {
                 </span>
                 <span className="s-msg-subject">{m.subject}</span>
                 <span className="s-msg-meta">
-                  {m.courseId ? <code>{COURSES[m.courseId]?.id || m.courseId}</code> : m.courseName ? <span className="s-msg-kind">{m.courseName}</span> : <span className="s-msg-kind">{m.role}</span>}
+                  {m.courseName ? <span className="s-msg-kind">{m.courseName}</span> : <span className="s-msg-kind">{m.role}</span>}
                   {m.courseId && <span className="s-msg-kind"> · {m.role}</span>}
                 </span>
               </button>
@@ -380,9 +294,7 @@ export default function StudentInbox({ onOpen, onArea }) {
                   {(selected.courseId || selected.courseName) && (
                     <>
                       {' · '}
-                      {selected.courseId
-                        ? <><code>{COURSES[selected.courseId]?.id || selected.courseId}</code> {COURSES[selected.courseId]?.name}</>
-                        : selected.courseName}
+                       {selected.courseName}
                     </>
                   )}
                 </div>
@@ -401,14 +313,14 @@ export default function StudentInbox({ onOpen, onArea }) {
                 </p>
               ))}
             </div>
-            {(selected.actions?.length > 0 || (!selected.localOnly && selected.serverId)) && (
+            {(selected.actions?.length > 0 || selected.serverId) && (
             <div className="p-btnrow s-read-actions">
               {(selected.actions || []).map((a) => (
                 <button key={a.label} className="p-btn" onClick={() => act(a)}>
                   {a.label}
                 </button>
               ))}
-              {!selected.localOnly && selected.serverId && (
+              {selected.serverId && (
                 <button className="p-btn ghost" onClick={() => removeMsg(selected)}>
                   Delete
                 </button>
