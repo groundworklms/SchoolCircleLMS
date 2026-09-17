@@ -7,6 +7,7 @@ import { useApiQuery } from '../_learning/useLearning';
 import { unlockedLessonIds } from './Lessons';
 import { usePrefs } from './prefs';
 import { SourceViewer } from './SourceViewer';
+import { publicationName } from '../_course/provenance';
 
 /* The one chat. It answers only within a persisted course's server-selected,
    approved source set. The API derives both source selection and prior history
@@ -290,7 +291,10 @@ function SignedInCourseChat({ course, view }) {
                            title={c.citation}
                            onClick={() => setSelectedCitation(c)}
                          >
-                          <b>[{c.n}]</b> {c.pub_id || c.citation}{c.page ? ` · p.${c.page}` : ''}
+                          {/* pub_id is the publication; a file-backed source
+                              records it as a filename, which is a path, not a
+                              citation. The locator stays on `title`. */}
+                          <b>[{c.n}]</b> {publicationName(c.pub_id) || c.citation}{c.page ? ` · p.${c.page}` : ''}
                         </button>
                       ))}
                     </div>

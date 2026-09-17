@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { downloadAuthenticated, useApiQuery, useApiMutation } from '../_learning/useLearning';
 import CourseLesson from '../_course/CoursePresentation';
+import { pageOf, publicationName } from '../_course/provenance';
 import { SourceViewer } from './SourceViewer';
 
 /* Learner-side arsenal features for a real (LearningRecord) course: the
@@ -109,6 +110,30 @@ export function RealCourseHome({ course, go }) {
 
 /* ---------- reader ---------- */
 
+/**
+ * The publication a course's sections cite, by name.
+ *
+ * A section's `cite` is "<source record id> p.85" — the record id is the
+ * authenticated page-opening key (lib/learning/core.js `sourcePassages`), and
+ * it is a cuid. A learner must never be handed that as a citation, and unlike
+ * a materialised Item the section carries no `pubId` to use instead. The
+ * approved-source list is the id -> publication-name map the Sources screen
+ * already reads; it is the light projection (ids, titles, page counts — no
+ * document text), so naming the publication costs one small request rather
+ * than re-downloading the source.
+ *
+ * Returns '' until it resolves, and '' if the list cannot be read. The caller
+ * withholds the citation line in that window rather than printing the key.
+ */
+function usePublicationName(sourceRecordId) {
+  const { data } = useApiQuery('/sources', { enabled: Boolean(sourceRecordId) });
+  if (!sourceRecordId || !Array.isArray(data)) return '';
+  const record = data.find((source) => source?.id === sourceRecordId);
+  // `sourceId` is the Anchor publication label ("TC 3-22.9"); `title` is the
+  // document's own title, which is what a file upload records.
+  return publicationName(record?.sourceId || record?.title || '');
+}
+
 /* The approved course, one section at a time. The server has already
    removed answer keys and rationale for learners; the checks are here to
    think with, and Whetstone is where grading happens. */
@@ -116,16 +141,25 @@ export function CourseReader({ course }) {
   const { data: envelope, loading, error } = useApiQuery(`/courses/${course.id}`);
   const [i, setI] = useState(0);
   const sections = envelope?.course?.sections || [];
+  const publication = usePublicationName(envelope?.course?.sourceIds?.[0]);
   const cur = sections[i];
 
   if (loading) return <p>Loading course…</p>;
   if (error) return <Err msg={errText(error, 'Could not load this course.')} />;
   if (!sections.length) return <p className="p-src">This course has no sections yet.</p>;
 
+  const locator = typeof (cur.cite || cur.citation) === 'string' ? cur.cite || cur.citation : '';
+  /* No `title`: the section heading belongs to the reader (below), and passing
+     it here as well printed every section title twice, once small and once
+     large. The citation is handed over as the resolved shape -- publication
+     name, page, and the stored locator untouched -- so the learner is cited to
+     a publication and the key stays addressable but unread. Without a name
+     there is no line: a record id is not a citation. */
   const lesson = {
     id: String(cur.id || `section-${i + 1}`),
-    title: cur.title || `Section ${i + 1}`,
-    citation: cur.cite || cur.citation || '',
+    citation: locator && publication
+      ? { citation: locator, pubId: publication, page: pageOf(locator) }
+      : null,
     blocks: [
       ...(cur.lesson ? [{
         id: `${cur.id || `section-${i + 1}`}:lesson`,
@@ -170,7 +204,7 @@ export function CourseReader({ course }) {
       <article className="s-reader-body">
         <div className="s-reader-head">
           <span className="s-reader-kicker">Section {i + 1} of {sections.length}</span>
-          <h2>{cur.title || `Section ${i + 1}`}</h2>
+          <h1>{cur.title || `Section ${i + 1}`}</h1>
         </div>
         <CourseLesson content={lesson} />
 
@@ -222,6 +256,7 @@ export function MasterySession({ course }) {
     ? envelope.course.masteryPlan
     : envelope?.course?.masteryPlan || null;
   const sourceId = masteryPlan?.sourceId || envelope?.course?.sourceIds?.[0];
+  const publication = usePublicationName(sourceId);
   const { data: sessions, loading, refetch } = useApiQuery(`/mastery/sessions?courseId=${course.id}`);
   const startSession = useApiMutation('/mastery/sessions', 'POST');
   const [answer, setAnswer] = useState('');
@@ -310,7 +345,7 @@ export function MasterySession({ course }) {
         Whetstone asks about the approved source and grades what you say against it — in your own
         words, no multiple choice. Each answer is scored on a rubric your instructor approved.
       </p>
-      <div className="p-btnrow" style={{ marginBottom: '0.75rem' }}>
+      <div className="p-btnrow" style={{ marginBottom: '0.75rem', alignItems: 'flex-end' }}>
         <button
           type="button"
           className="p-btn ghost"
@@ -320,11 +355,10 @@ export function MasterySession({ course }) {
           {loading ? 'Reloading…' : 'Reload saved sessions'}
         </button>
         {sessions?.length > 0 && (
-          <label className="p-src" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-            Selected session
+          <label className="p-field s-mastery-pick">
+            <span>Selected session</span>
             <select
-              className="scw-ti"
-              aria-label="Selected saved mastery session"
+              className="p-input"
               value={selected?.id || ''}
               onChange={(event) => {
                 setLast(null);
@@ -333,7 +367,7 @@ export function MasterySession({ course }) {
             >
               {sessions.map((session) => (
                 <option key={session.id} value={session.id}>
-                  {session.id.slice(-6)} · {session.status}{session.masteryPlanRevision ? ` · ${session.masteryPlanRevision}` : ''}
+                  Session {session.id.slice(-6)} · {session.status}{session.masteryPlanRevision ? ` · ${session.masteryPlanRevision}` : ''}
                 </option>
               ))}
             </select>
@@ -348,7 +382,7 @@ export function MasterySession({ course }) {
         <div className="p-panel">
           <h3>Start a session</h3>
           <p className="p-src" style={{ marginBottom: '1rem' }}>
-            Grounded on <code>{sourceId || '—'}</code>. A session runs until every criterion is assessed or the turn limit is reached.
+            Grounded on {publication || 'the approved source'}. A session runs until every criterion is assessed or the turn limit is reached.
           </p>
           {masteryPlan?.status === 'PENDING' && (
             <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
@@ -431,22 +465,24 @@ export function MasterySession({ course }) {
             </div>
           )}
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <textarea
-              ref={inputRef}
-              className="scw-ti"
-              style={{ flex: 1, padding: '0.6rem', minHeight: '4.5rem' }}
-              placeholder="Answer in your own words…"
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleTurn();
-                }
-              }}
-            />
-            <button className="p-btn" onClick={handleTurn} disabled={turn.loading || !answer.trim() || sessionNeedsApprovedPlan} style={{ alignSelf: 'flex-end' }}>
+          <div className="s-mastery-answer">
+            <label className="p-field">
+              <span>Your answer</span>
+              <textarea
+                ref={inputRef}
+                className="p-input"
+                placeholder="Answer in your own words…"
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleTurn();
+                  }
+                }}
+              />
+            </label>
+            <button className="p-btn" onClick={handleTurn} disabled={turn.loading || !answer.trim() || sessionNeedsApprovedPlan}>
               {turn.loading ? 'Grading…' : 'Submit'}
             </button>
           </div>
@@ -578,10 +614,17 @@ export function StudyPlan({ course }) {
           <p className="p-src" style={{ marginBottom: '1rem' }}>
             Cadence needs the course syllabus (your instructor attaches it) and how much time you can give each day.
           </p>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <label>
-              Minutes per day
-              <input type="number" min="10" max="480" className="scw-ti" style={{ width: '90px', marginLeft: '0.5rem', padding: '0.3rem 0.5rem' }} value={availability} onChange={(e) => setAvailability(parseInt(e.target.value, 10) || 60)} />
+          <div className="s-plan-setup">
+            <label className="p-field">
+              <span>Minutes per day</span>
+              <input
+                type="number"
+                min="10"
+                max="480"
+                className="p-input"
+                value={availability}
+                onChange={(e) => setAvailability(parseInt(e.target.value, 10) || 60)}
+              />
             </label>
             <button className="p-btn" onClick={handleCreate} disabled={create.loading}>
               {create.loading ? 'Building…' : 'Build my plan'}

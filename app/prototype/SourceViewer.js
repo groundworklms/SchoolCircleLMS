@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useApiQuery } from '../_learning/useLearning';
+import { publicationName } from '../_course/provenance';
 
 export function citationPage(citation) {
   const directPage = [
@@ -99,7 +100,11 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
 
   if (loading || !sourceData) return <p>Loading source…</p>;
 
-  const title = sourceData.title || sourceId;
+  /* A file upload records the document under its filename, so this card said
+     "AY27_8670_..._Moodle.pdf" — one unbroken token, which ran out of the
+     20rem agenda column it sits in and took the page's horizontal scrollbar
+     with it. The name is the publication, not the path. */
+  const title = publicationName(sourceData.title || '') || sourceId;
   const extent = extentOf(sourceData);
   const selectedPage = citationPage(citation);
   const selectedPassage = citationPassage(citation);
@@ -179,7 +184,7 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
     return (
       <section className="s-box">
         <h4 className="s-label">Source</h4>
-        <p style={{ margin: '0 0 0.6rem', fontWeight: 600 }}>{title}</p>
+        <p className="p-srcname" title={sourceData.title || undefined}>{title}</p>
         <p className="p-src" style={{ margin: '0 0 0.8rem' }}>
           {extent || 'Approved'} · every item in this course cites it.
         </p>
@@ -192,7 +197,7 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
   return (
     <div className="p-panel" style={{ marginTop: '2rem' }}>
       <h3>Source document</h3>
-      <p style={{ margin: '0 0 0.2rem', fontWeight: 600 }}>{title}</p>
+      <p className="p-srcname" title={sourceData.title || undefined}>{title}</p>
       <p className="p-src" style={{ margin: '0 0 0.9rem' }}>{extent || 'Approved source'}</p>
       <button type="button" className="p-btn ghost" onClick={() => setOpen(true)}>Open document</button>
       {reader}

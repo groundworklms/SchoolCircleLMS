@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { provenanceOf } from './provenance';
 import './course.css';
 
 /*
@@ -286,6 +287,7 @@ export default function CourseLesson({
   const [locallyCompleted, setLocallyCompleted] = useState(new Set());
   const [results, setResults] = useState({});
   const title = lesson.title;
+  const provenance = provenanceOf(lesson.citation || lesson.cite);
 
   const handleResult = (blockId, value) => {
     setResults((current) => ({ ...current, [blockId]: value }));
@@ -303,11 +305,16 @@ export default function CourseLesson({
     <article className={`course-lesson ${preview ? 'course-preview' : ''}`}>
       {title ? <h1 className="course-lesson-title">{title}</h1> : null}
       {lesson.summary ? <Markdown className="course-lesson-summary">{lesson.summary}</Markdown> : null}
-      {lesson.citation || lesson.cite ? (
+      {provenance ? (
+        /* The reader is the person this citation exists FOR, so the line names
+           the publication and the page. The exact locator on record — the key
+           the source viewer and the SCORM export address a passage by — stays
+           on `title`, one hover away, and is not what anyone is asked to read. */
         <p className="course-citation">
-          <span>Source anchor</span> {typeof (lesson.citation || lesson.cite) === 'string'
-            ? (lesson.citation || lesson.cite)
-            : (lesson.citation || lesson.cite).citation || (lesson.citation || lesson.cite).label || ''}
+          <span>Grounded in</span>
+          <span className="course-citation-name" title={provenance.locator || undefined}>
+            {provenance.text}
+          </span>
         </p>
       ) : null}
       {lesson.objectives?.length ? (

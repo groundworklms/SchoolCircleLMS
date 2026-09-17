@@ -19,6 +19,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
+import { provenanceOf } from '../_course/provenance';
 import './item-review.css';
 
 function errText(e, fallback) {
@@ -39,57 +40,6 @@ function statusOf(item) {
 
 function optionsOf(item) {
   return Array.isArray(item.options) ? item.options : [];
-}
-
-/* "<locator> p.23" -> "<locator>". The page travels in its own field as well
-   as on the end of the locator, so a line built from both prints it twice. */
-function withoutPage(label) {
-  return label.replace(/\s*\bp\.\s*[0-9A-Za-z-]+\s*$/, '').trim();
-}
-
-/* A source uploaded as a file is often recorded under its filename, so the
-   provenance line came out as "MCWP_2-10.pdf" -- an instructor vouching for a
-   passage under a path. The extension comes off and the underscores that stood
-   in for spaces become spaces.
- *
- * Presentation only, and deliberately narrow: the extension has to be one of a
- * known set, so an identifier that merely ends in a dotted segment ("TC 3-22.9")
- * is left exactly as recorded, and so is anything with no extension at all
- * ("source-1"). Nothing is written back — `citation.pubId` and the locator on
- * `Item.citation` are what the source viewer and the SCORM export address. */
-const DOCUMENT_EXTENSION = /\.(pdf|docx?|txt|md|rtf|html?|epub)$/i;
-
-function publicationName(name) {
-  if (!DOCUMENT_EXTENSION.test(name)) return name;
-  return name.replace(DOCUMENT_EXTENSION, '').replace(/_+/g, ' ').trim() || name;
-}
-
-/**
- * The provenance line an instructor ratifies, in words rather than keys.
- *
- * `citation.citation` is the LOCATOR the rest of the system addresses passages
- * by — "<source record id> p.23", built in lib/learning/core.js so a citation
- * can open an authenticated page — and the source record id is a cuid. That is
- * a primary key, and a primary key is the one thing this line must never be:
- * it is the claim the instructor is putting their name to, and it has to name
- * the publication the way the Sources screen does. `citation.pubId` is exactly
- * that name ("TC 3-22.9"), stamped beside the locator at materialisation, and
- * `citation.page` is the page already parsed out of the locator.
- *
- * So the line is built from the name and the page, and the locator is kept as
- * the title so the exact string on record stays one hover away. Nothing is
- * rewritten in the database: this is presentation, and `Item.citation` keeps
- * the locator contract the SCORM export and the source viewer read.
- */
-function provenanceOf(citation) {
-  const locator = typeof citation?.citation === 'string' ? citation.citation.trim() : '';
-  const pubId = typeof citation?.pubId === 'string' ? citation.pubId.trim() : '';
-  const page = citation?.page === null || citation?.page === undefined ? '' : String(citation.page).trim();
-  // Take the page off the locator only when this line is about to print it;
-  // a row with no page field keeps whatever its label already says.
-  const name = publicationName(pubId || (page ? withoutPage(locator) : locator) || locator);
-  if (!name) return null;
-  return { text: page ? `${name} p.${page}` : name, locator: locator || null };
 }
 
 /* `support` is the HHEM score for the keyed answer. It is absent on items that
