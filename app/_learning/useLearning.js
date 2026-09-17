@@ -6,7 +6,7 @@
  * it to a SchoolCircle user and role. Nothing here decides authorization.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { authFetch } from '../../lib/firebase';
 
 const API_BASE = '/api/learning';
@@ -16,7 +16,23 @@ export function useApiQuery(path, options) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
-  const { enabled = true } = options || {};
+  const { enabled = true, refreshOnFocus = false } = options || {};
+  const mountedRef = useRef(false);
+  const requestIdRef = useRef(0);
+  const focusRequestRef = useRef(null);
+  const pathRef = useRef(path);
+  const enabledRef = useRef(enabled);
+  pathRef.current = path;
+  enabledRef.current = enabled;
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      requestIdRef.current += 1;
+      focusRequestRef.current = null;
+    };
+  }, []);
 
   // Clear stale data when the path changes.
   useEffect(() => {
@@ -26,7 +42,20 @@ export function useApiQuery(path, options) {
 
   const fetcher = useCallback(
     async (signal) => {
-      if (!enabled) return;
+      if (
+        !enabled
+        || !enabledRef.current
+        || pathRef.current !== path
+        || !mountedRef.current
+      ) return undefined;
+      const requestId = ++requestIdRef.current;
+      const isCurrent = () => (
+        mountedRef.current
+        && enabledRef.current
+        && pathRef.current === path
+        && requestIdRef.current === requestId
+        && !signal?.aborted
+      );
       setLoading(true);
       setError(null);
       try {
@@ -36,12 +65,15 @@ export function useApiQuery(path, options) {
         });
         const json = await res.json();
         if (!res.ok) throw json;
+        if (!isCurrent()) return undefined;
         setData(json);
+        return json;
       } catch (err) {
         if (err?.name === 'AbortError') return;
+        if (!isCurrent()) return;
         setError(err);
       } finally {
-        if (!signal?.aborted) setLoading(false);
+        if (isCurrent()) setLoading(false);
       }
     },
     [path, enabled],
@@ -49,11 +81,49 @@ export function useApiQuery(path, options) {
 
   useEffect(() => {
     const controller = new AbortController();
+    if (!enabled) {
+      setLoading(false);
+      return undefined;
+    }
     fetcher(controller.signal);
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      // Invalidate a response even when an authFetch implementation does not
+      // honor AbortSignal (some browser/test adapters do not).
+      requestIdRef.current += 1;
+    };
   }, [fetcher]);
 
-  return { data, error, loading, refetch: () => fetcher() };
+  useEffect(() => {
+    if (
+      !refreshOnFocus
+      || !enabled
+      || typeof window === 'undefined'
+      || typeof document === 'undefined'
+    ) return undefined;
+
+    const refresh = () => {
+      if (document.visibilityState === 'hidden' || focusRequestRef.current) return;
+      // Focus and visibilitychange/pageshow are often emitted together when a
+      // tab returns. Keep that one return trip to a single request.
+      const request = Promise.resolve(fetcher());
+      focusRequestRef.current = request;
+      request.finally(() => {
+        if (focusRequestRef.current === request) focusRequestRef.current = null;
+      });
+    };
+    window.addEventListener('focus', refresh);
+    window.addEventListener('pageshow', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('pageshow', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+      focusRequestRef.current = null;
+    };
+  }, [enabled, fetcher, refreshOnFocus]);
+
+  return { data, error, loading, refetch: useCallback(() => fetcher(), [fetcher]) };
 }
 
 /** POST/PUT/DELETE to `${API_BASE}${path}`; rejects with the JSON error body. */

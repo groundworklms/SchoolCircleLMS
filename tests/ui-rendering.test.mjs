@@ -1640,8 +1640,8 @@ test('the course hook refreshes the legacy list too, not just generated courses'
   const source = fs.readFileSync(path.join(workspace, 'app/prototype/learning.js'), 'utf8');
 
   // The manual list must expose a way to reload.
-  assert.match(source, /refetch:\s*\(\)\s*=>\s*setReload/, 'useManualCourses exposes no refetch');
-  assert.match(source, /\[enabled,\s*reload\]/, 'the manual effect does not depend on a reload trigger');
+  assert.match(source, /const refetch = useCallback\(\(\) =>/, 'useManualCourses exposes no refetch');
+  assert.match(source, /\[enabled,\s*fetchCourses,\s*reload\]/, 'the manual effect does not depend on a reload trigger');
 
   // And the hook's shared refetch must drive it.
   const returned = source.slice(source.indexOf('    manualEnabled,'));
