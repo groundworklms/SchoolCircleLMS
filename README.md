@@ -72,8 +72,9 @@ Orin's on-device model to make generation self-hosted too; see
 [Orin offline config](docs/orin-offline-config.md).
 
 Note on scope, because it is easy to overstate: *Anchor* runs offline and that is measured. *The
-app itself* is not yet offline-capable — sign-in still goes to Firebase Auth over the internet, and
-an offline auth path is in progress.
+app itself* is not offline-capable as configured today: sign-in calls Firebase Auth over the
+internet (measured 17 Sep 2026). Whether a given deployment can sign in without a Google
+endpoint is an auth-configuration question, and this one does not.
 
 An OpenRouter overlay exists for authorized development and testing only, and is selected solely
 by pointing `MODEL_BASE_URL` at that exact base URL alongside `OPENROUTER_API_KEY` — a key on its

@@ -49,7 +49,7 @@ flowchart TB
   class OR cloud;
 ```
 
-- **Edge (Anchor)** grounds every answer and runs fully offline on a ~$500 Jetson Orin Nano — proven with the network cable out. **Grounding** never needs the network; the app's **sign-in** still does (Firebase Authentication), so "Anchor is offline" is the claim, not "SchoolCircle is offline". An offline auth path is a separate, unfinished lane. See [04](04-grounding-and-anchor.md).
+- **Edge (Anchor)** grounds every answer and runs fully offline on a ~$500 Jetson Orin Nano — proven with the network cable out. **Grounding** never needs the network; the app's **sign-in**, as this deployment is configured today, still does (Firebase Authentication), so "Anchor is offline" is the claim, not "SchoolCircle is offline". Which auth mode a deployment runs is a configuration question, separate from the board. See [04](04-grounding-and-anchor.md).
 - **Host (SchoolCircleLMS)** is one Next.js app: the `/prototype` UI, `/api/*` route handlers, `lib/*` modules, and a Prisma DB. It orchestrates; Anchor grounds.
 - **Cloud (OpenRouter)** is reached **only** for authoring (drafting a course from a POI) and only behind the adapter. If it is blocked, late, or swapped, one file changes — delivery is unaffected.
 

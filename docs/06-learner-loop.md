@@ -49,9 +49,10 @@ get ahead (see [05 · Arsenal](05-arsenal-contracts.md) → cadence).
 Everything above runs **grounded**: lessons, tutor answers, and practice rationale all trace to a cited
 paragraph or are refused (see [04 · Grounding & Anchor](04-grounding-and-anchor.md)). On *offline*, be
 precise — **Anchor**, the grounding engine on the Orin, is proven to answer with the network cable out;
-**SchoolCircle itself is not offline yet**, because its sign-in still goes through Firebase
-Authentication over the internet. An offline auth path is being built in a separate lane and is not
-done. Cable out, Anchor keeps answering and the app cannot log a learner in.
+**SchoolCircle itself is not offline as configured today**, because its sign-in calls Firebase
+Authentication over the internet (measured 17 Sep 2026). Whether a deployment can sign in without
+a Google endpoint is an auth-configuration question; this one does not. Cable out, Anchor keeps
+answering and the app cannot log a new learner in.
 
 ---
 

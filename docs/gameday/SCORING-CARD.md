@@ -30,7 +30,7 @@ answer costs $0 in cloud spend. Beat 6 of the five-minute shot shows exactly
 this. **Scope it the way the measurement scopes it:** the *grounding engine* is
 what runs offline. SchoolCircle's sign-in still goes to Firebase
 Authentication, so be signed in before the cable comes out, and say so — an
-offline auth path is in progress and is not finished. "The whole product runs
+app's sign-in is a separate, configurable concern. "The whole product runs
 offline" is a claim a judge can disprove in one click; "the engine that can't be
 allowed to lie runs offline on a $500 board" is one we can prove on the table.
 

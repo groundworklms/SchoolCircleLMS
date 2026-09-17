@@ -16,9 +16,9 @@ by proving it live.
 **Scope the offline claim precisely, every time.** *Anchor* — the grounding engine on the Orin —
 is offline-proven: cable out, it still serves `/api/health`, `/api/corpus` and `/api/ask` with
 paragraph-level citations, and still refuses out-of-corpus questions. *SchoolCircle*, the web app
-around it, is **not** offline-capable yet: its sign-in still calls Firebase Authentication over the
+around it, is **not** offline-capable yet: as deployed today (measured 17 Sep 2026) its sign-in calls Firebase Authentication over the
 internet. So we say "the grounding engine runs offline," never "the product runs offline." The
-offline auth path is a known, named gap in progress — see criterion 4.
+sign-in path is a known, named boundary — see criterion 4.
 
 ---
 
@@ -57,7 +57,7 @@ artifact that proves it.
 | 1 | **Mission Impact** | 30% | Grounded training that can't lie, at the schoolhouse, edge-first; MarineNet as the front door via LTI 1.3 + grade passback. | The pitch + TRANSITION section (RANGE-CARD); SCORM export landing somewhere real. |
 | 2 | **Technical Innovation** | 25% | The **verification throughline** — say "proven, not asserted" out loud: Rubricon=grounding, Sourcerer=faithfulness, Whetstone=mastery, Sextant=learning gain, Understudy=fidelity. | The five soldiers + the live refusal + HHEM badge. |
 | 3 | **Usability & Design** | 20% | Role switch, cited answer with HHEM badge, the live refusal — the loop understood in one beat. The landing→login→app flow reads as a real product. | The live app; the Ask + QA widgets. |
-| 4 | **Security & Sustainability** | 15% | Apache-2.0 ×**13** public repos (12 arsenal + SchoolCircle), the test suite (**564 tests, 0 failures on the 17 Sep run; re-run 17 Sep 2026 confirmed 0 failures in every non-Postgres suite (the three DB suites need a local Postgres and were not run)**), **grounded answering with no cloud and no ATO dependency**, one swappable auth seam. **Name both gaps before a judge finds them: sign-in still needs Firebase Auth, so the app is not offline end-to-end yet, and the offline auth path is in progress.** | The org, the test run, the Anchor offline demo, `lib` auth seam. |
+| 4 | **Security & Sustainability** | 15% | Apache-2.0 ×**13** public repos (12 arsenal + SchoolCircle), the test suite (**564 tests, 0 failures on the 17 Sep run; re-run 17 Sep 2026 confirmed 0 failures in every non-Postgres suite (the three DB suites need a local Postgres and were not run)**), **grounded answering with no cloud and no ATO dependency**, one swappable auth seam. **Name both gaps before a judge finds them: sign-in still needs Firebase Auth, so the app is not offline end-to-end yet, and the sign-in path is a separate concern.** | The org, the test run, the Anchor offline demo, `lib` auth seam. |
 | 5 | **Team Collaboration** | 10% | Multiple lanes, multiple GitHub accounts in history, the issue board + QA-widget intake loop. **More than one teammate must speak in the 5 minutes.** | TEAM-PLAN, the commit history, the board. |
 
 **Bonus (0.05x each):**
@@ -65,7 +65,7 @@ artifact that proves it.
   Orin still serves health, corpus and `/api/ask`: cited answers with paragraph-level locators, and
   out-of-corpus questions still refused. Generation runs on the board, so an answer costs **$0**.
   Volunteer the boundary in the same breath — the app's *sign-in* still needs Firebase Auth, so what
-  is proven offline is the grounding engine, not the whole loop; offline auth is in progress.
+  is proven offline is the grounding engine, not the whole loop; sign-in is a separate concern.
 - **Reach the Enterprise** — *won.* SCORM export + LTI 1.3 path into MarineNet. Show the export landing, not a file on disk.
 - **Sanctioned and Approved** — *FREE POINTS, currently unclaimed.* Point the authoring call at
   **GenAI.mil (Gemini, CAC over CampusNet)** instead of a commercial cloud model. It's a
@@ -103,7 +103,7 @@ believes.
   **named** Cloudflare tunnel (Risk B).
 - **Landing + Firebase Auth** — in progress (this sprint).
 - **Offline auth** — SchoolCircle's sign-in still requires Firebase Authentication over the
-  internet. Another lane is building an offline auth path; it is **not done**. Until it lands, the
+  internet. Making sign-in work without a Google endpoint is a separate, configurable concern. Today the
   offline proof we show is Anchor's, and we say so.
 
 ---

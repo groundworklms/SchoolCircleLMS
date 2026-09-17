@@ -16,7 +16,7 @@ The shooter's reference for making the shot — the pitch, the live-demo runbook
 
 **Why it wins.** It isn't another chatbot. It's **grounded** (every claim cites the manual, or it refuses), **verified** (HHEM on-device, and grounding / rubrics / fidelity are all proven not asserted), **offline at the edge** (pull the network cable and the $500 board keeps serving cited answers and keeps refusing what it can't support — measured, not asserted), and **human-led** (nothing unreviewed reaches a student). And it's **open** — standalone Apache-2.0 products any command can adopt.
 
-**Say the boundary before a judge finds it.** What is offline-proven is **Anchor**, the grounding engine on the Orin. **SchoolCircle itself is not offline-capable yet** — its sign-in still calls Firebase Authentication over the internet, so with the cable out the board keeps answering but the app cannot log a new user in. An offline auth path is being built and is not finished. Never claim "the whole product runs offline"; claim what we measured, which is impressive on its own.
+**Say the boundary before a judge finds it.** What is offline-proven is **Anchor**, the grounding engine on the Orin. **SchoolCircle itself is not offline-capable yet** — as deployed today (measured 17 Sep 2026) its sign-in calls Firebase Authentication over the internet, so with the cable out the board keeps answering but the app cannot log a new user in. That is an auth-configuration property of the deployment, not of the board. Never claim "the whole product runs offline"; claim what we measured, which is impressive on its own.
 
 **The ask.** Adopt at the schoolhouse, edge-first, open-source. The pieces are already public, tested, and green.
 
@@ -331,7 +331,7 @@ The fields the use-case pages ask for, mapped to what we have.
 
 ## TRANSITION — Where it goes after the win
 
-- **Adopt at the schoolhouse, edge-first.** The grounding engine runs on a ~$500 Jetson at the schoolhouse or in the field — no cloud, no waiting on an ATO to *ground* an answer. Answers cost $0 because they are computed on the board, and the engine keeps serving with the plug pulled (measured). The remaining internet dependency in the host app is **sign-in**; closing it with an offline auth path is the next increment, and it is a configuration seam, not a re-architecture.
+- **Adopt at the schoolhouse, edge-first.** The grounding engine runs on a ~$500 Jetson at the schoolhouse or in the field — no cloud, no waiting on an ATO to *ground* an answer. Answers cost $0 because they are computed on the board, and the engine keeps serving with the plug pulled (measured). The remaining internet dependency in the host app is **sign-in**, which is a configuration seam rather than a re-architecture.
 - **Open-source, adopt a piece or the platform.** Standalone Apache-2.0 products. A program that only needs rubrics takes Rubricon; one that needs the whole loop takes them all. No lock-in, no license.
 - **MarineNet is the front door, not a rebuild.** LTI 1.3 launches the live enclave-hosted app with grade passback; SCORM export ships a static bundle from the same codebase. Auth sits behind one swappable seam (→ CAC / SSO).
 - **Grows with the corpus.** Swap the doctrine, regenerate — the platform is topic-agnostic. Proven on rifle marksmanship *and* the Marine Corps Planning Process; a MCCES or any MOS corpus is a drop-in.

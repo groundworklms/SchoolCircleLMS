@@ -26,7 +26,7 @@ ever appear in this repo.
 - **Other laptops** (White, McDonald) develop against a mock or against a URL the lead laptop shares
   over the venue network — they don't need the Orin to build screens and logic.
 - **What is offline and what is not:** Anchor answers with the network cable out — that is measured,
-  and it is the demo. SchoolCircle's *sign-in* still calls Firebase Authentication over the
+  and it is the demo. SchoolCircle's *sign-in*, as deployed today, calls Firebase Authentication over the
   internet, so sign in before you unplug anything, and never claim the whole app runs offline.
 
 ---

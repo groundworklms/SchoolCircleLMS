@@ -5,7 +5,7 @@ laptop the board is plugged into, with no SSH key, no tunnel and no network.
 
 **Scope.** This document is about making *Anchor* offline, which is done and verified (both levels
 below are applied). It is **not** a claim that SchoolCircle runs offline: the app's own sign-in
-still goes to Firebase Auth over the internet. Anchor offline is the provable result; keep the two
+as deployed today, goes to Firebase Auth over the internet. Anchor offline is the provable result; keep the two
 separate when describing this to anyone.
 
 ## Why this works
@@ -67,7 +67,7 @@ route to a USB address and has to be given a tunnel instead (see `apphosting.yam
 
 Pull the network cable at this point and **Anchor** still answers — health, corpus, citations and
 refusals, all from the board. That is the demo, and it is worth being precise about its edge:
-SchoolCircle's own sign-in still needs Firebase Auth, so "Anchor is offline" is the claim, not
+SchoolCircle's sign-in, as deployed today, needs Firebase Auth, so "Anchor is offline" is the claim, not
 "SchoolCircle is offline". See the note under Level 2.
 
 ## Moving the Orin to a different laptop
@@ -143,8 +143,9 @@ per call, for **a locally running SchoolCircle on the laptop the board is plugge
 from the board with the network cable out. That is a real, demonstrable result and it is the demo.
 
 It does **not** make *SchoolCircle* offline-capable, and the two must not be conflated.
-SchoolCircle's own loop still signs in through Firebase Authentication, which is a Google endpoint
-on the internet; an auth path that works without Google is being built separately and is not done.
+SchoolCircle's loop, as deployed today, signs in through Firebase Authentication, which is a Google endpoint
+on the internet as this deployment is configured. Signing in without a Google endpoint is an
+auth-configuration question, separate from anything on the board.
 So with the network pulled, Anchor keeps answering but SchoolCircle cannot get a user logged in.
 Claim the first, never the second. This is also why none of these addresses belongs in a hosted
 deployment's config: a cloud-hosted browser session cannot be made offline by pointing a

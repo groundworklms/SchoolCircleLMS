@@ -31,9 +31,10 @@ into the new repo on day one** so the knowledge travels with the code.
 2. **Verified** — HHEM entailment on-device checks the asserted specifics; proven, not asserted.
 3. **Offline (scoped)** — **Anchor**, the grounding engine, runs on a Jetson with the network cable
    pulled: retrieval, citations, refusal and on-device generation, at $0 per answer. **SchoolCircle
-   itself is not offline yet** — its sign-in still goes through Firebase Authentication over the
-   internet, so cable out, Anchor answers and the app cannot log a user in. An offline auth path is
-   being built in a separate lane and is not done. Claim Anchor’s offline proof, never the app’s.
+   itself is not offline yet** — as deployed today (measured 17 Sep 2026) its sign-in calls Firebase Authentication over the
+   internet, so cable out, Anchor answers and the app cannot log a new user in. That is an
+   auth-configuration property of the deployment, not of the board. Claim Anchor’s offline proof,
+   never the app’s.
 4. **Human-led** — AI drafts; an instructor ratifies. Nothing `PENDING` reaches a student.
 
 ## The arsenal

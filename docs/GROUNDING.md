@@ -106,9 +106,9 @@ that was a previous index. The index's own `index_meta.corpus_documents` counter
 13, but its `documents` array lists 14 and is authoritative — quote 14.)
 
 To be precise about what "fully offline" covers: **Anchor** runs offline, and that is measured.
-*SchoolCircle* does not yet — its sign-in still calls Firebase Auth over the internet, so with
-the cable out Anchor keeps answering but the app cannot log a user in. An offline auth path is
-in progress.
+*SchoolCircle* does not yet — as deployed today (measured 17 Sep 2026) its sign-in calls Firebase Auth over the internet, so with
+the cable out Anchor keeps answering but the app cannot log a user in. This is a property of the
+deployment's auth configuration, not of Anchor.
 
 Measured 25 Aug 2026 against a **233-question** eval set — 122 in-corpus, 95
 out-of-corpus, 16 answer-traps — grown deliberately hard: false-premise traps, quote
