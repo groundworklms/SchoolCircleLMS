@@ -206,6 +206,7 @@ function deliveredSection(section, index, delivery, publication) {
     id: String(section?.id || `section-${index + 1}`),
     title: section?.title || `Section ${index + 1}`,
     annex: section?.annex && typeof section.annex === 'object' ? section.annex : null,
+    code: typeof section?.code === 'string' ? section.code : '',
     lesson: released ? prose.text : '',
     withheld: Boolean(prose && !released),
     publication,
@@ -239,7 +240,7 @@ function modulesOf(lessons, courseName) {
       byKey.set(key, mod);
       modules.push(mod);
     }
-    byKey.get(key).lessons.push({ ...l, code: annex && /^[A-Z]+\.\d+$/.test(l.id) ? l.id : String(index + 1) });
+    byKey.get(key).lessons.push({ ...l, code: l.code || (annex && /^[A-Z]+\.\d+$/.test(l.id) ? l.id : String(index + 1)) });
   });
   return modules;
 }
@@ -301,7 +302,7 @@ function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = nu
     return (
       <LessonPlayer
         lessonId={`${course.id}:${lesson.id}`}
-        kicker={<>{lesson.annex ? `Annex ${lesson.annex.letter} · ${lesson.annex.title}` : `Lesson ${i + 1} of ${withStatus.length} · ${course.name}`}</>}
+        kicker={<>{lesson.annex ? `Annex ${lesson.annex.letter} · ${lesson.annex.title}` : `Lesson ${i + 1} of ${withStatus.length} · ${course.name}`}{lesson.code ? <> <code>{lesson.code}</code></> : null}</>}
         title={lesson.title}
         intro={lesson.intro}
         facts={[[`~${Math.max(5, lesson.items.length * 3)} min`, 'to read'], ['✓', 'cited to source']]}
@@ -423,6 +424,7 @@ export function CourseReader({ course, lessonId, page, onOpenLesson }) {
         title: delivered.title,
         cite: delivered.cite,
         annex: delivered.annex,
+        code: delivered.code,
         ...lessonPagesForSection(delivered, { id: delivered.id, sourceLabel: publication }),
       };
     });
