@@ -134,6 +134,9 @@ export const STEPS = [
     act: 'tutor',
     location: { role: 'student', area: 'course', courseId: COURSE_TOKEN, view: 'lessons' },
     target: '[data-tour="ask-tutor"]',
+    // The Ask button and the chat panel it opens both live bottom-right; dock the
+    // card far left so it covers neither.
+    dock: 'left',
     title: 'Ask it something the corpus can answer',
     body:
       'The answer arrives with the publication and paragraph it came from. '
@@ -145,6 +148,7 @@ export const STEPS = [
     act: 'tutor',
     location: { role: 'student', area: 'course', courseId: COURSE_TOKEN, view: 'lessons' },
     target: '[data-tour="ask-tutor"]',
+    dock: 'left',
     title: 'Now ask it something the corpus cannot answer',
     body:
       'It refuses and says why, rather than inventing doctrine. For professional '
