@@ -135,7 +135,7 @@ function SignedInCourseChat({ course, view }) {
     ? (providerError ? 'Provider unavailable' : grounded ? 'Course sources selected' : 'Waiting for sources')
     : 'Course scope required';
   const modeTitle = tutorMode
-    ? `Answers require Anchor, Sourcerer, and Understudy checks over ${sourceIds.length} approved source${sourceIds.length === 1 ? '' : 's'}. Service availability is checked when you ask.`
+    ? `Grounded in ${sourceIds.length} approved source${sourceIds.length === 1 ? '' : 's'}.`
     : 'Choose a persisted course to use the grounded tutor.';
 
   const ask = async (q) => {
@@ -221,8 +221,8 @@ function SignedInCourseChat({ course, view }) {
             <div className="s-chat-msg assistant">
               <div className="s-chat-bubble">
                 {tutorMode
-                  ? 'Answers come only from the approved sources behind this course, with a citation you can open. If they don\'t cover it, I\'ll say so rather than guess.'
-                  : 'Grounded chat is available only inside a persisted course with approved sources.'}
+                  ? 'Answers come only from this course\'s sources, with a citation to open. Not covered? I\'ll say so.'
+                  : 'Open a course to use grounded chat.'}
               </div>
             </div>
 
@@ -291,7 +291,7 @@ function SignedInCourseChat({ course, view }) {
             </button>
           </form>
           <div className="s-chat-foot">
-            Not available during exams. Your instructor sees what the class asks, in aggregate — never who asked.
+            Off during exams. Instructors see aggregate questions, never who asked.
           </div>
         </section>
       )}
