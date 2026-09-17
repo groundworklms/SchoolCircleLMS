@@ -728,7 +728,6 @@ test('course creation modal keeps ingestion, explicit approval, and approved-onl
     title: 'Generated course',
     objectives: ['Objective one', 'Objective two'],
     sourceIds: ['source-approved'],
-    diagrams: false,
   }]));
   assert.equal(drafted[0].id, 'course-created');
 });
