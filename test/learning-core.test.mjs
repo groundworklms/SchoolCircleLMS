@@ -2481,7 +2481,7 @@ test('de-duplication never empties a phase that has only one question', async ()
    one lesson per objective, and never the same objective twice
    ========================================================================== */
 
-test('an outline that restates a neighbouring objective is rejected', () => {
+test('an outline that restates a neighbouring objective is reported, not failed', () => {
   // A live course shipped four consecutive near-identical "Demand-Pull ..."
   // sections. Exact duplicates were already rejected; near-identical ones were
   // not, and they retrieve the same passages and repeat each other's questions.
@@ -2497,8 +2497,14 @@ test('an outline that restates a neighbouring objective is rejected', () => {
     },
     { documents },
   );
-  assert.equal(restated.valid, false);
-  assert.ok(restated.issues.some((issue) => /restates outline.objectives\[0\]/.test(issue)));
+  // Still caught -- the pair differs only in its verb.
+  assert.equal(restated.restatements.length, 1);
+  assert.equal(restated.restatements[0].at, 1);
+  assert.match(restated.restatements[0].reason, /restates outline.objectives\[0\]/);
+  // But no longer fatal. A duplicated teaching point costs a section; refusing
+  // to generate costs the instructor the whole course.
+  assert.equal(restated.valid, true);
+  assert.deepEqual(restated.issues, []);
 
   // A definition and the thing that validates it share a subject and are not
   // the same objective, so the rule must leave them alone.
@@ -2512,6 +2518,223 @@ test('an outline that restates a neighbouring objective is rejected', () => {
     { documents },
   );
   assert.deepEqual(distinct.issues, []);
+  assert.deepEqual(distinct.restatements, []);
+});
+
+/* The regression this rule nearly shipped a product-breaking version of.
+   These four objectives were typed by hand by an instructor against a joint
+   operations coursebook, and the old both-ways-0.75-containment rule refused
+   the whole generation: "outline.objectives[1] restates outline.objectives[0]".
+   They share four of five content tokens because they are written in parallel,
+   which is what every POI and every T&R standard looks like. */
+const JOINT_PRINCIPLES_OBJECTIVES = [
+  'Explain the principle of objective in joint operations.',
+  'Explain the principle of mass in joint operations.',
+  'Explain the principle of unity of command in joint operations.',
+  'Describe how confirmation bias can distort military planning.',
+];
+
+const JOINT_PRINCIPLES_DOCUMENT = {
+  text: [
+    'The principle of objective directs every military operation toward a clearly defined, decisive and attainable objective.',
+    'The principle of mass concentrates the effects of combat power at the most advantageous place and time.',
+    'The principle of unity of command ensures unity of effort under one responsible commander for every objective.',
+    'Confirmation bias can distort military planning when a planner weighs evidence that supports a preferred course of action.',
+  ].join('\n\n'),
+};
+
+test('parallel objectives that differ in their subject are not restatements', () => {
+  const validated = validateCourseOutline(
+    { objectives: JOINT_PRINCIPLES_OBJECTIVES },
+    { documents: [JOINT_PRINCIPLES_DOCUMENT] },
+  );
+  // All four survive: nothing is dropped and nothing is reported.
+  assert.deepEqual(validated.restatements, []);
+  assert.deepEqual(validated.issues, []);
+  assert.equal(validated.valid, true);
+  assert.equal(validated.objectives.length, 4);
+});
+
+/* The four objectives above, against a coursebook that teaches all four --
+   driven through the whole of draftCourse, because validateCourseOutline
+   returning no issue is only half the fix. The live failure was
+   COURSE_OBJECTIVE_INVALID thrown out of the explicit-objectives branch, which
+   is a different code path from the outline branch the unit test covers. */
+const JOINT_PRINCIPLES_PAGES = [
+  {
+    page: 1,
+    text: 'In joint operations the principle of objective directs every military operation toward a clearly defined, decisive and attainable objective that contributes to the purpose of the operation.',
+  },
+  {
+    page: 2,
+    text: 'In joint operations the principle of mass concentrates the effects of combat power at the most advantageous place and time to produce decisive results.',
+  },
+  {
+    page: 3,
+    text: 'In joint operations the principle of unity of command ensures unity of effort under one responsible commander for every objective the force pursues.',
+  },
+  {
+    page: 4,
+    text: 'Confirmation bias can distort military planning when a planner weighs evidence that supports a preferred course of action and discounts evidence that contradicts it.',
+  },
+];
+
+const JOINT_PRINCIPLES_RECORD = 'joint-principles-record';
+
+const JOINT_PRINCIPLES_DOCUMENTS = JOINT_PRINCIPLES_PAGES.map((page) => ({
+  source: `${JOINT_PRINCIPLES_RECORD} p.${page.page}`,
+  text: page.text,
+}));
+
+/* Teaches strictly from whatever passage it is handed, so every artifact clears
+   the grounding floor on its own merits and the test is measuring the objective
+   rule rather than the fixture's generosity. */
+function passageAsk() {
+  const calls = [];
+  const plain = (text) => String(text).trim().replace(/\s*\.$/, '');
+  const sourcePassage = (prompt) => {
+    const match = /Source passage:\n"([\s\S]*?)"\n/.exec(prompt);
+    return match ? match[1] : '';
+  };
+  const ask = async (model, system, prompt) => {
+    calls.push({ model, system, prompt });
+    if (system.includes('instructional designer')) {
+      return { title: 'Joint operations', objectives: JOINT_PRINCIPLES_OBJECTIVES };
+    }
+    if (system.includes('course title')) return { title: 'Principles of joint operations' };
+    if (LESSON_SYSTEM.test(system)) {
+      const numbered = [...prompt.matchAll(/\[(\d+)\] ([^\n]+)/g)].map((match) => ({
+        passage: Number(match[1]),
+        text: match[2],
+      }));
+      if (numbered.length === 0) return { refused: true, reason: 'no passages in the prompt' };
+      const [first] = numbered;
+      return {
+        refused: false,
+        elements: [
+          { kind: 'concept', passage: first.passage, text: first.text },
+          { kind: 'why', passage: first.passage, text: `This matters because ${plain(first.text)}.` },
+          { kind: 'summary', passage: first.passage, text: `In summary, ${plain(first.text)}.` },
+        ],
+      };
+    }
+    if (system.includes('"items"')) {
+      const passage = sourcePassage(prompt);
+      if (!passage) return { refused: true, reason: 'no passage' };
+      return {
+        refused: false,
+        items: [{
+          stem: `Which statement is correct: ${plain(passage)}?`,
+          options: ['Correct as stated', 'Not as stated'],
+          answerIndex: 0,
+          rationale: passage,
+        }],
+      };
+    }
+    if (system.includes('"cards"')) {
+      const passage = sourcePassage(prompt);
+      if (!passage) return { refused: true, reason: 'no passage' };
+      return { refused: false, cards: [{ front: 'What does the passage state?', back: passage }] };
+    }
+    return { refused: true, reason: 'not needed for this fixture' };
+  };
+  return { ask, calls };
+}
+
+test('four hand-typed parallel objectives generate four sections', async () => {
+  // The live refusal, verbatim: "Course objective validation failed:
+  // outline.objectives[1] restates outline.objectives[0]" -- thrown on four
+  // objectives an instructor typed on purpose, for four different principles of
+  // joint operations, because they share the words that frame all four.
+  const { ask } = passageAsk();
+  const course = await draftCourse(
+    {
+      objectives: JOINT_PRINCIPLES_OBJECTIVES,
+      documents: JOINT_PRINCIPLES_DOCUMENTS,
+      diagrams: false,
+    },
+    { load: upstream, ask },
+  );
+  assert.equal(course.sections.length, 4);
+  assert.equal(course.objectives.length, 4);
+  assert.deepEqual(course.skippedObjectives, undefined);
+  for (const section of course.sections) {
+    assert.equal(section.refused, undefined, section.reason);
+    assert.ok(section.lesson);
+  }
+});
+
+test('a genuine restatement costs its own section, never the whole draft', async () => {
+  // The rule still does its job on the input it was built for -- and does it by
+  // dropping one objective and naming it, which is how every other uncovered
+  // objective is already reported. Nothing here is fatal.
+  const { ask } = passageAsk();
+  const events = [];
+  const course = await draftCourse(
+    {
+      objectives: [
+        ...JOINT_PRINCIPLES_OBJECTIVES,
+        // Same teaching point as the first, in a different mood.
+        'Describe the principle of objective in joint operations.',
+      ],
+      documents: JOINT_PRINCIPLES_DOCUMENTS,
+      diagrams: false,
+    },
+    { load: upstream, ask, emit: (event) => events.push(event) },
+  );
+  assert.equal(course.sections.length, 4);
+  // Said live as well as saved: the progress modal folds this into the same
+  // "not covered by this course" list the retrieval skips feed.
+  const restated = events.filter((event) => event.step === 'restated');
+  assert.equal(restated.length, 1);
+  assert.equal(restated[0].section, 'Describe the principle of objective in joint operations.');
+  assert.match(restated[0].reason, /already teaches/);
+  assert.equal(course.skippedObjectives.length, 1);
+  assert.equal(
+    course.skippedObjectives[0].objective,
+    'Describe the principle of objective in joint operations.',
+  );
+  assert.match(course.skippedObjectives[0].reason, /restates "Explain the principle of objective/);
+});
+
+test('a restatement is the verb changing, not the subject', () => {
+  const documents = [{
+    text: [
+      'The six intelligence functions are support to force generation, support to situational understanding,',
+      'provide indications and warning, support to force protection, support to targeting, and support to',
+      'information operations. Each intelligence function is performed continuously.',
+    ].join(' '),
+  }];
+
+  // Same teaching point, different Bloom verb: caught.
+  const reworded = validateCourseOutline(
+    {
+      objectives: [
+        'Identify the six intelligence functions',
+        'List the six intelligence functions',
+      ],
+    },
+    { documents },
+  );
+  assert.equal(reworded.restatements.length, 1);
+  assert.equal(reworded.restatements[0].at, 1);
+  assert.equal(reworded.restatements[0].of, 'Identify the six intelligence functions');
+
+  // Same verb, different subject: left alone, however parallel the phrasing.
+  const parallel = validateCourseOutline(
+    {
+      objectives: [
+        'Identify the six intelligence functions',
+        'Identify the six warfighting functions',
+      ],
+    },
+    {
+      documents: [{
+        text: `${documents[0].text} The six warfighting functions are command and control, fires, manoeuvre, logistics, intelligence and force protection.`,
+      }],
+    },
+  );
+  assert.deepEqual(parallel.restatements, []);
 });
 
 test('a restatement is repaired with the rest of the outline, not failed outright', async () => {

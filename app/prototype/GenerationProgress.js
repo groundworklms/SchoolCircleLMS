@@ -73,6 +73,17 @@ export function generationView(events) {
       view.documents = event.documents || 0;
       view.characters = event.characters || 0;
     } else if (event.phase === 'outline') {
+      /* An objective taken out because an earlier one already says it. It is a
+         fourth way into the same list the retrieval skips and the generator
+         refusals feed -- the course does not cover this, and here is why -- and
+         the only one that is a judgement about the request rather than about
+         the sources, which is exactly what its reason says. */
+      if (event.step === 'restated') {
+        view.skipped.push({
+          objective: String(event.section || ''),
+          reason: String(event.reason || ''),
+        });
+      }
       if (event.status === 'start') view.outline = 'running';
       if (event.status === 'repair') {
         view.outline = 'repairing';

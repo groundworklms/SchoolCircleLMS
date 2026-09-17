@@ -1135,8 +1135,13 @@ test('a section the server dropped leaves the progress list and joins what is no
   // is how an instructor ends up not knowing the course is incomplete.
   const { generationView, GenerationProgress } = loadComponent('app/prototype/GenerationProgress.js');
   const reason = 'the passage identifies CI/HUMINT reporting categories but its counterintelligence discussion is incomplete';
+  const restated = 'restates "Identify the six intelligence functions", which this course already teaches';
   const events = [
     { phase: 'sections', total: 3, passages: 4 },
+    // A fourth way an objective leaves a course: it said what an earlier one
+    // already said. It used to fail the entire generation; now it joins the
+    // same list as everything else the course does not cover.
+    { phase: 'outline', step: 'restated', section: 'List the six intelligence functions', reason: restated },
     { phase: 'coursewright', step: 'skipped', section: 'Explain collection management', reason: 'no approved passage covers this objective' },
     { phase: 'coursewright', step: 'section', section: 'Identify the six intelligence functions' },
     { phase: 'coursewright', kind: 'lesson', ok: true, section: 'Identify the six intelligence functions' },
@@ -1152,6 +1157,7 @@ test('a section the server dropped leaves the progress list and joins what is no
   const view = JSON.parse(JSON.stringify(generationView(events)));
   assert.deepEqual(view.sections.map((section) => section.title), ['Identify the six intelligence functions']);
   assert.deepEqual(view.skipped, [
+    { objective: 'List the six intelligence functions', reason: restated },
     { objective: 'Explain collection management', reason: 'no approved passage covers this objective' },
     { objective: 'Explain how counterintelligence supports the MAGTF commander', reason },
   ]);
@@ -1379,6 +1385,68 @@ test('the generated-course preview states the answer key it asks an instructor t
   assert.match(markup, /2\. Intelligence is sent without a request/);
   // The rationale is the evidence for the key, so it travels with it.
   assert.match(markup, /Supply-push anticipates the requirement/);
+});
+
+test('a lost stream offers waiting as the primary action and regenerating as the quiet one', async () => {
+  // The notice says, correctly, that generating again is what produces two
+  // copies of the course. Next to it the crimson primary said "Try again".
+  // Copy loses that argument every time: the button is the instruction.
+  const generationCalls = [];
+  const refreshes = [];
+  const { DraftCourseModal } = loadComponent('app/prototype/Library.js', {
+    expose: ['DraftCourseModal'],
+    mutationStates: {
+      '/courses/draft/stream': {
+        start: async (payload) => {
+          generationCalls.push(payload);
+          return null;
+        },
+      },
+    },
+    stateValues: [
+      [true, () => {}],            // open
+      ['', () => {}],              // title
+      ['', () => {}],              // objectives
+      [['source-approved'], () => {}], // sourceIds
+      [null, () => {}],            // err
+      [[{ phase: 'accepted' }], () => {}], // events: the stream did report
+      [true, () => {}],            // lostStream: and then ended without an outcome
+    ],
+  });
+  const elements = collectReactElements(DraftCourseModal({
+    sources: [{ id: 'source-approved', title: 'Approved source', status: 'APPROVED' }],
+    sourcesLoading: false,
+    sourcesError: null,
+    onRetrySources: () => {},
+    onDrafted: () => refreshes.push(true),
+  }));
+  const buttons = elements.filter((element) => element.type === 'button');
+  const primary = buttons.filter((element) => element.props.className === 'p-btn');
+  assert.equal(primary.length, 1, 'exactly one primary action in this state');
+  // The primary is the action the paragraph asks for: wait, and go look.
+  assert.match(String(primary[0].props.children), /course list/);
+
+  // Regenerating is still available -- the instructor may have a reason -- but
+  // at ghost weight and named for what it really does.
+  const regenerate = buttons.find(
+    (element) => element.props.className === 'p-btn ghost'
+      && /second copy/.test(String(element.props.children)),
+  );
+  assert.ok(regenerate, 'regenerating stays reachable, as a secondary action');
+
+  // And the honest copy the buttons now agree with is still on screen.
+  const notice = elements.find(
+    (element) => element.props?.role === 'alert'
+      && /ended before generation reported an outcome/.test(
+        JSON.stringify(element.props.children),
+      ),
+  );
+  assert.ok(notice, 'the lost-stream explanation must not be replaced by the buttons');
+
+  // Pressing the primary refreshes the library rather than generating again.
+  await primary[0].props.onClick();
+  assert.deepEqual(generationCalls, []);
+  assert.equal(refreshes.length, 1);
 });
 
 test('a generation whose stream ended without an outcome says so instead of nothing', () => {

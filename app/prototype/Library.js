@@ -579,14 +579,40 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           )}
         </div>
 
-        <div className="p-modalfoot">
-          <button className="p-btn ghost" onClick={closeModal} disabled={draft.loading}>
-            {Array.isArray(events) && !draft.loading ? 'Close' : 'Cancel'}
-          </button>
-          <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
-            {draft.loading ? 'Generating…' : Array.isArray(events) ? 'Try again' : 'Generate course'}
-          </button>
-        </div>
+        {/* When the stream was lost, the notice above says in words that
+            generating again is what produces two copies of the course. The
+            buttons have to say the same thing, because on a modal footer the
+            buttons are what gets read: the crimson primary WAS "Try again",
+            which is the one action the paragraph beside it asks the instructor
+            not to take, and an affordance beats a sentence every time.
+
+            Keyed on the same condition the notice is, `events` included, so
+            the footer can never contradict a paragraph that is not there.
+
+            So the roles swap. Waiting is the correct action, so waiting gets
+            the primary; regenerating stays reachable, at ghost weight, named
+            for what it actually does rather than as a neutral retry. This is
+            the only state where the two differ -- a generation that failed
+            outright has nothing to duplicate, and "Try again" is right there. */}
+        {lostStream && Array.isArray(events) ? (
+          <div className="p-modalfoot">
+            <button className="p-btn ghost" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
+              Generate a second copy anyway
+            </button>
+            <button className="p-btn" onClick={closeModal} disabled={draft.loading}>
+              Close and check the course list
+            </button>
+          </div>
+        ) : (
+          <div className="p-modalfoot">
+            <button className="p-btn ghost" onClick={closeModal} disabled={draft.loading}>
+              {Array.isArray(events) && !draft.loading ? 'Close' : 'Cancel'}
+            </button>
+            <button className="p-btn" onClick={handleSubmit} disabled={draft.loading || sourceUnavailable || selectedIds.length === 0}>
+              {draft.loading ? 'Generating…' : Array.isArray(events) ? 'Try again' : 'Generate course'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
