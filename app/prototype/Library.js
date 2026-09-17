@@ -315,6 +315,8 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   // it, the stream reports every objective and artifact as it lands and the
   // modal shows the course being written.
   const [events, setEvents] = useState(null);
+  // The stream ended without reporting how it ended — see handleSubmit.
+  const [lostStream, setLostStream] = useState(false);
   const draft = useApiStream('/courses/draft/stream');
   const approvedSources = sources.filter((source) => source.status === 'APPROVED');
   const selectedIds = sourceIds.filter((id) => approvedSources.some((source) => source.id === id));
@@ -323,6 +325,11 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
     if (selectedIds.length === 0 || draft.loading) return;
     setErr(null);
     setEvents([]);
+    setLostStream(false);
+    // Whether the stream ever opened. A throw before the first event is a
+    // request that failed; a throw after one is a connection that died under a
+    // generation the server is still running, which is a different fact.
+    let reported = false;
     try {
       // Title and objectives are overrides, not requirements. Left empty they
       // are written from the selected sources; an empty string would read as an
@@ -334,11 +341,27 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
           sourceIds: selectedIds,
           diagrams: false,
         },
-        (event) => setEvents((current) => [...(current || []), event]),
+        (event) => {
+          reported = true;
+          setEvents((current) => [...(current || []), event]);
+        },
       );
       // The stream carries its own failure so the partial progress stays on
       // screen next to the reason, rather than collapsing to one error line.
-      if (last?.phase !== 'saved') return;
+      if (last?.phase === 'failed') return;
+      if (last?.phase !== 'saved') {
+        // draftCourseStream ends with 'saved' or 'failed'. Neither arrived, so
+        // the response body ended early — a proxy idle timeout, a dropped
+        // connection, a machine that slept — while the generation it was
+        // reporting on carried on server-side and saved minutes later. Falling
+        // through silently here is the whole defect: the instructor is shown a
+        // stalled list and no outcome, concludes it failed, and generates the
+        // same course a second time. Say what is actually known instead, and
+        // refresh the library now in case it has already landed.
+        setLostStream(true);
+        await onDrafted?.();
+        return;
+      }
       setOpen(false);
       setTitle('');
       setObjective('');
@@ -346,6 +369,15 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
       setEvents(null);
       onDrafted(last.record);
     } catch (e) {
+      // Once the stream had opened, the read that threw is the connection
+      // breaking, not the draft failing. "Failed to draft course" would be the
+      // client asserting an outcome it does not have — and the outcome it
+      // guesses is the one that gets the course generated twice.
+      if (reported) {
+        setLostStream(true);
+        await onDrafted?.();
+        return;
+      }
       setErr(errText(e, 'Failed to draft course'));
     }
   };
@@ -353,6 +385,12 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const closeModal = () => {
     setOpen(false);
     setEvents(null);
+    // A generation this modal lost the stream to may have finished saving while
+    // the notice was on screen, so leave the library showing what is there now.
+    if (lostStream) {
+      setLostStream(false);
+      onDrafted?.();
+    }
   };
 
   const sourceUnavailable = sourcesLoading || Boolean(sourcesError);
@@ -458,7 +496,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
               margin: '1rem 0',
             }}
           >
-            <GenerationProgress events={events} />
+            <GenerationProgress events={events} interrupted={lostStream} />
           </section>
         )}
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -681,12 +719,44 @@ function RevisionForm({
   );
 }
 
+/* Which choice is keyed correct, by position and by text.
+   `correctOptionId` is resolved in questionBlock above, from whichever of the
+   payload shapes this draft uses; an id that matches no option means the key
+   did not survive, and that has to be said rather than shown as "no key". */
+function keyedAnswer(question) {
+  const options = Array.isArray(question?.options) ? question.options : [];
+  const index = options.findIndex((option) => option?.id === question?.correctOptionId);
+  if (index < 0) return null;
+  return { position: index + 1, text: options[index]?.text || '' };
+}
+
 function QuestionRevisionControl({ question, version, onSubmit, busy }) {
+  const keyed = keyedAnswer(question);
   return (
     <div className="course-question-review">
       <div className="course-question-review-head">
         <span>Question review · {question.phase}</span>
         <code>{question.questionId}</code>
+      </div>
+      {/* The answer key, written out.
+
+          The preview above renders the choices as buttons a learner picks from:
+          nothing marks the key, and clicking one grades that click rather than
+          revealing the key. An instructor was therefore being asked to ratify
+          an answer key by guessing at it, under a banner promising the keys are
+          theirs to see. The rationale goes with it — it is the evidence for the
+          key, and it is otherwise only reachable by picking the right choice. */}
+      <div className="course-question-review-key">
+        {keyed ? (
+          <p>
+            <span>Keyed answer</span> {keyed.position}. {keyed.text}
+          </p>
+        ) : (
+          <p className="is-unkeyed">
+            No keyed answer on this question — it cannot be scored until a revision supplies one.
+          </p>
+        )}
+        {question.explanation ? <p className="is-rationale">{question.explanation}</p> : null}
       </div>
       <RevisionForm
         scope="question"

@@ -318,6 +318,12 @@
   font-size: 0.78rem;
 }
 .course-question-review-head code { color: var(--p-faint, #86868b); }
+/* The answer key is the thing this panel exists to have ratified, so it reads
+   as content rather than as another muted label. */
+.course-question-review-key p { margin: 0.4rem 0 0; font-size: 0.86rem; }
+.course-question-review-key p > span { color: var(--p-dim, #6e6e73); font-size: 0.78rem; }
+.course-question-review-key p.is-rationale { color: var(--p-dim, #6e6e73); font-size: 0.82rem; }
+.course-question-review-key p.is-unkeyed { color: var(--p-warning, #b0731a); }
 .course-revision-history ol { margin: 0; padding-left: 1.25rem; }
 .course-revision-history li {
   padding: 0.55rem 0 0.55rem 0.2rem;

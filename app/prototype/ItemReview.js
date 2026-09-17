@@ -41,15 +41,50 @@ function optionsOf(item) {
   return Array.isArray(item.options) ? item.options : [];
 }
 
+/* "<locator> p.23" -> "<locator>". The page travels in its own field as well
+   as on the end of the locator, so a line built from both prints it twice. */
+function withoutPage(label) {
+  return label.replace(/\s*\bp\.\s*[0-9A-Za-z-]+\s*$/, '').trim();
+}
+
+/**
+ * The provenance line an instructor ratifies, in words rather than keys.
+ *
+ * `citation.citation` is the LOCATOR the rest of the system addresses passages
+ * by — "<source record id> p.23", built in lib/learning/core.js so a citation
+ * can open an authenticated page — and the source record id is a cuid. That is
+ * a primary key, and a primary key is the one thing this line must never be:
+ * it is the claim the instructor is putting their name to, and it has to name
+ * the publication the way the Sources screen does. `citation.pubId` is exactly
+ * that name ("TC 3-22.9"), stamped beside the locator at materialisation, and
+ * `citation.page` is the page already parsed out of the locator.
+ *
+ * So the line is built from the name and the page, and the locator is kept as
+ * the title so the exact string on record stays one hover away. Nothing is
+ * rewritten in the database: this is presentation, and `Item.citation` keeps
+ * the locator contract the SCORM export and the source viewer read.
+ */
+function provenanceOf(citation) {
+  const locator = typeof citation?.citation === 'string' ? citation.citation.trim() : '';
+  const pubId = typeof citation?.pubId === 'string' ? citation.pubId.trim() : '';
+  const page = citation?.page === null || citation?.page === undefined ? '' : String(citation.page).trim();
+  // Take the page off the locator only when this line is about to print it;
+  // a row with no page field keeps whatever its label already says.
+  const name = pubId || (page ? withoutPage(locator) : locator) || locator;
+  if (!name) return null;
+  return { text: page ? `${name} p.${page}` : name, locator: locator || null };
+}
+
 /* `support` is the HHEM score for the keyed answer. It is absent on items that
    were never verified, and "absent" has to read differently from "scored low". */
 function Evidence({ item }) {
-  const citation = item.citation?.citation || item.citation?.pubId || null;
-  const page = item.citation?.page;
+  const provenance = provenanceOf(item.citation);
   const verified = typeof item.support === 'number';
   return (
     <p className={`item-review-evidence${verified ? '' : ' is-unverified'}`}>
-      {citation ? `Grounded in ${citation}${page ? ` p.${page}` : ''}` : 'No citation recorded'}
+      {provenance
+        ? <span title={provenance.locator || undefined}>Grounded in {provenance.text}</span>
+        : 'No citation recorded'}
       {' · '}
       {verified ? `support ${item.support.toFixed(2)}` : 'not verified'}
     </p>
