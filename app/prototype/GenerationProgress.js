@@ -32,6 +32,10 @@ export function generationView(events) {
     objectives: [],
     title: '',
     total: 0,
+    // How many source passages ground the whole course, summed over its
+    // sections. A section may be grounded in more than one, so this is not the
+    // section count and the screen must not imply it is.
+    passages: 0,
     sections: [],
     skipped: [],
     apply: {},
@@ -40,6 +44,16 @@ export function generationView(events) {
     failure: null,
   };
   const byTitle = new Map();
+  /* Grounding is reported before generation starts, so a section can be named
+     by a `grounded` event before its `section` event arrives. */
+  const sectionFor = (title) => {
+    if (!byTitle.has(title)) {
+      const section = { title, passages: 0, artifacts: {} };
+      byTitle.set(title, section);
+      view.sections.push(section);
+    }
+    return byTitle.get(title);
+  };
   for (const event of Array.isArray(events) ? events : []) {
     if (event.phase === 'sources') {
       view.documents = event.documents || 0;
@@ -58,15 +72,14 @@ export function generationView(events) {
       view.title = event.title || '';
     } else if (event.phase === 'sections') {
       view.total = event.total || 0;
+      view.passages = event.passages || 0;
     } else if (event.phase === 'coursewright') {
       if (event.step === 'skipped') {
         view.skipped.push(event.section);
+      } else if (event.step === 'grounded') {
+        sectionFor(event.section).passages = event.passages || 0;
       } else if (event.step === 'section') {
-        if (!byTitle.has(event.section)) {
-          const section = { title: event.section, artifacts: {} };
-          byTitle.set(event.section, section);
-          view.sections.push(section);
-        }
+        sectionFor(event.section);
       } else if (event.step === 'done') {
         view.done = true;
       } else if (event.kind && event.section) {
@@ -146,7 +159,14 @@ export function GenerationProgress({ events }) {
       {view.title && <Step label={`Titled "${view.title}"`} state="done" />}
       {view.total > 0 && (
         <Step
-          label="Writing each section from its cited passage"
+          /* Say what actually happened. A section is grounded in the union of
+             the passages that cover its objective, so once any section drew on
+             more than one, "its cited passage" is no longer true. */
+          label={
+            view.passages > view.total
+              ? 'Writing each section from its cited passages'
+              : 'Writing each section from its cited passage'
+          }
           state={view.done ? 'done' : 'running'}
           detail={`${built}/${view.total}`}
         />
@@ -157,6 +177,11 @@ export function GenerationProgress({ events }) {
           {view.sections.map((section) => (
             <li key={section.title} style={{ borderTop: '1px solid var(--p-border)', padding: '0.55rem 0' }}>
               <div style={{ minWidth: 0 }}>{section.title}</div>
+              {section.passages > 1 && (
+                <div className="p-src" style={{ marginTop: '0.2rem' }}>
+                  grounded in {section.passages} cited passages
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
                 {ARTIFACTS
                   .filter((artifact) => artifact.kind !== 'diagram' || section.artifacts.diagram !== undefined)

@@ -15,6 +15,7 @@ import {
   validateCourseDraft,
   draftRubricTask,
   looksLikeFrontMatter,
+  matchTopK,
   validateCourseOutline,
   validateMasteryPlan,
 } from '../lib/arsenal-core.js';
@@ -1113,6 +1114,321 @@ test('a document that is all front matter is used unfiltered rather than left wi
   assert.equal(course.sections[0].cite, 'poi-1 p.2');
 });
 
+/* ---------- an objective is grounded in every passage that covers it ---------- */
+
+/* Two pages of the same publication. One says how many steps there are, the
+   other names them; neither carries the objective on its own. This is the
+   shape that refused nearly every section of a live MCDP 2 run and of a live
+   Basic Electronics POI run, both with the same signature: "the passage
+   supports X, but does not ..." */
+const STEPS_COUNTED = {
+  source: 'ipb-1 p.4',
+  text: 'Intelligence preparation of the battlespace is a systematic process. The process has four steps.',
+};
+const STEPS_NAMED = {
+  source: 'ipb-1 p.5',
+  text: 'The four steps are define the battlespace environment, describe the battlespace effects, evaluate the adversary, and determine adversary courses of action.',
+};
+/* A page of the same publication about something else entirely: it shares no
+   content word with the objective, so it can never clear Coursewright's floor. */
+const STEPS_UNRELATED = {
+  source: 'ipb-1 p.9',
+  text: 'Logistics convoys refuel at the forward arming point before dawn, and drivers rotate every six hours.',
+};
+const STEPS_OBJECTIVE = 'Identify the four steps of intelligence preparation of the battlespace';
+const STEPS_LESSON =
+  'The four steps of intelligence preparation of the battlespace are define the battlespace ' +
+  'environment, describe the battlespace effects, evaluate the adversary, and determine ' +
+  'adversary courses of action.';
+
+// The section fixture for the two-page objective. Coursewright's own grounding
+// check decides whether any of it survives; nothing here bypasses it.
+function stepsAsk() {
+  const calls = [];
+  const ask = async (model, system, prompt) => {
+    calls.push({ model, system, prompt });
+    if (system.includes('micro-lesson')) return { lesson: STEPS_LESSON };
+    if (system.includes('"items"') && system.includes('answerIndex')) {
+      return {
+        items: [
+          {
+            stem: 'How many steps does intelligence preparation of the battlespace have?',
+            options: ['Four', 'Two'],
+            answerIndex: 0,
+            rationale: 'The process has four steps.',
+          },
+          {
+            stem: 'Which step evaluates the adversary?',
+            options: ['Evaluate the adversary', 'Describe the battlespace effects'],
+            answerIndex: 0,
+            rationale: 'The four steps are define the battlespace environment, describe the battlespace effects, evaluate the adversary, and determine adversary courses of action.',
+          },
+        ],
+      };
+    }
+    if (system.includes('"cards"')) {
+      return { cards: [{ front: 'How many steps?', back: 'The process has four steps.' }] };
+    }
+    return { refused: true, reason: 'not needed for this fixture' };
+  };
+  return { ask, calls };
+}
+
+test('one passage covers part of an objective; the section is grounded in all of them', async () => {
+  const coursewright = await upstream('coursewright');
+  const cited = [STEPS_COUNTED, STEPS_NAMED, STEPS_UNRELATED];
+
+  // Before: the architecture offered exactly one passage per objective, and the
+  // one it offers here carries the count but not the names. Coursewright then
+  // measures the lesson against that passage and refuses the whole section --
+  // this is the refusal, reproduced rather than described.
+  const single = coursewright.match(STEPS_OBJECTIVE, cited);
+  assert.equal(single.source, 'ipb-1 p.4');
+  assert.equal(coursewright.verifyGrounding(STEPS_LESSON, single.text).grounded, false);
+
+  // After: retrieval offers the union, and the same lesson clears the same floor.
+  const hits = matchTopK(coursewright.match, STEPS_OBJECTIVE, cited);
+  assert.deepEqual(hits.map((hit) => hit.source), ['ipb-1 p.4', 'ipb-1 p.5']);
+  assert.equal(
+    coursewright.verifyGrounding(STEPS_LESSON, hits.map((hit) => hit.text).join('\n\n')).grounded,
+    true,
+  );
+
+  const { ask } = stepsAsk();
+  const course = await draftCourse(
+    {
+      title: 'Intelligence preparation of the battlespace',
+      objectives: [STEPS_OBJECTIVE],
+      documents: cited,
+      diagrams: false,
+    },
+    { load: upstream, ask },
+  );
+
+  assert.equal(course.sections.length, 1);
+  const [section] = course.sections;
+  assert.equal(section.refused, undefined, section.reason);
+  assert.equal(section.lesson, STEPS_LESSON);
+  // `cite` stays a single string naming the primary -- project-course.js writes
+  // it to every materialised Item's citation column.
+  assert.equal(typeof section.cite, 'string');
+  assert.equal(section.cite, 'ipb-1 p.4');
+  assert.deepEqual(section.cites, ['ipb-1 p.4', 'ipb-1 p.5']);
+});
+
+test('the section prompt carries the union, in score order', async () => {
+  const { ask, calls } = stepsAsk();
+  await draftCourse(
+    {
+      title: 'Intelligence preparation of the battlespace',
+      objectives: [STEPS_OBJECTIVE],
+      documents: [STEPS_COUNTED, STEPS_NAMED, STEPS_UNRELATED],
+      diagrams: false,
+    },
+    { load: upstream, ask },
+  );
+  const lesson = calls.find((call) => call.system.includes('micro-lesson'));
+  assert.ok(lesson.prompt.includes(`${STEPS_COUNTED.text}\n\n${STEPS_NAMED.text}`));
+  // The passage that cleared no floor is not smuggled in alongside them.
+  assert.equal(lesson.prompt.includes('Logistics convoys'), false);
+});
+
+test('top-K is a ceiling, never a quota', async () => {
+  const coursewright = await upstream('coursewright');
+  const covering = [
+    { source: 'a', text: 'A safety check is required before operation.' },
+    { source: 'b', text: 'The safety check is required before every operation.' },
+    { source: 'c', text: 'Operation requires a completed safety check.' },
+    { source: 'd', text: 'Before operation the safety check is required.' },
+    { source: 'e', text: 'A required safety check precedes operation.' },
+    { source: 'f', text: 'The operation begins after the required safety check.' },
+  ];
+  const objective = 'The safety check required before operation';
+
+  // Six passages clear the floor; four is the cap.
+  assert.equal(matchTopK(coursewright.match, objective, covering).length, 4);
+
+  // Add a passage that shares no content word with the objective, and it is
+  // still four -- the extra slot is left empty rather than filled.
+  const withNoise = [
+    ...covering.slice(0, 2),
+    { source: 'noise', text: 'Logistics convoys refuel at the forward arming point before dawn.' },
+  ];
+  const hits = matchTopK(coursewright.match, objective, withNoise);
+  assert.deepEqual(hits.map((hit) => hit.source), ['a', 'b']);
+  // And Coursewright itself agrees there was nothing else to take.
+  assert.equal(coursewright.match(objective, [withNoise[2]]), null);
+});
+
+test('the grounding union is bounded by characters as well as by count', async () => {
+  const coursewright = await upstream('coursewright');
+  const objective = 'The safety check required before operation';
+  const sentence = 'The safety check is required before operation and the operator confirms it. ';
+  const bulk = (label) => ({
+    source: label,
+    text: `Passage ${label}. ${sentence.repeat(80)}`.slice(0, 5000),
+  });
+
+  // 12000 characters is the budget, and passages are separated by a blank line:
+  // 5000 + 2 + 5000 fits, a third 5000 does not.
+  const hits = matchTopK(coursewright.match, objective, [bulk('a'), bulk('b'), bulk('c'), bulk('d')]);
+  assert.equal(hits.length, 2);
+  assert.ok(hits.map((hit) => hit.text).join('\n\n').length <= 12000);
+
+  // The primary is kept whatever it costs. Dropping it would ground the section
+  // in less text than single-passage retrieval already grounds it in.
+  const huge = { source: 'huge', text: `Huge. ${sentence.repeat(400)}` };
+  assert.ok(huge.text.length > 12000);
+  const single = matchTopK(coursewright.match, objective, [huge, bulk('b')]);
+  assert.equal(single.length, 1);
+  assert.equal(single[0].source, 'huge');
+});
+
+test('buildCourse does not carry unknown objective fields onto its sections', async () => {
+  // Why the list has to be re-attached after generation rather than passed
+  // through: Coursewright builds each section object from scratch.
+  const coursewright = await upstream('coursewright');
+  const { ask } = stepsAsk();
+  const built = await coursewright.buildCourse(
+    {
+      title: 'Passthrough probe',
+      diagrams: false,
+      objectives: [{
+        objective: STEPS_OBJECTIVE,
+        title: STEPS_OBJECTIVE,
+        passage: `${STEPS_COUNTED.text}\n\n${STEPS_NAMED.text}`,
+        cite: 'ipb-1 p.4',
+        cites: ['ipb-1 p.4', 'ipb-1 p.5'],
+      }],
+    },
+    undefined,
+    { ask },
+  );
+  assert.equal(built.sections[0].cite, 'ipb-1 p.4');
+  assert.equal(built.sections[0].cites, undefined);
+});
+
+test('the instructor is told how many passages ground each section', async () => {
+  const events = [];
+  const { ask } = stepsAsk();
+  await draftCourse(
+    {
+      title: 'Intelligence preparation of the battlespace',
+      objectives: [STEPS_OBJECTIVE],
+      documents: [STEPS_COUNTED, STEPS_NAMED, STEPS_UNRELATED],
+      diagrams: false,
+    },
+    { load: upstream, ask, emit: (event) => events.push(event) },
+  );
+  const grounded = events.find((event) => event.step === 'grounded');
+  assert.equal(grounded.passages, 2);
+  assert.deepEqual(grounded.cites, ['ipb-1 p.4', 'ipb-1 p.5']);
+  const sections = events.find((event) => event.phase === 'sections');
+  assert.equal(sections.total, 1);
+  assert.equal(sections.passages, 2);
+});
+
+/* ---------- validation widens to the union, and only to the union ---------- */
+
+// Two pages of one persisted source. The lesson below is grounded in the
+// second, not in the one `cite` names.
+const TWO_PAGE_SOURCE = {
+  id: 'record-2',
+  status: 'APPROVED',
+  payload: {
+    title: 'Battlespace preparation',
+    sourceId: 'ipb-1',
+    text: `${STEPS_COUNTED.text}\n\n${STEPS_NAMED.text}`,
+    pages: [
+      { page: 4, text: STEPS_COUNTED.text },
+      { page: 5, text: STEPS_NAMED.text },
+    ],
+  },
+};
+
+function unionCourse(overrides = {}) {
+  return {
+    title: 'Battlespace preparation',
+    sections: [
+      {
+        title: 'The four steps',
+        cite: 'record-2 p.4',
+        lesson: STEPS_NAMED.text,
+        pre: [{
+          stem: 'Which step evaluates the adversary?',
+          options: ['Evaluate the adversary', 'Describe the battlespace effects'],
+          answer: 0,
+          rationale: STEPS_NAMED.text,
+        }],
+        post: [{
+          stem: 'Which step determines adversary courses of action?',
+          options: ['Determine adversary courses of action', 'Define the battlespace environment'],
+          answer: 0,
+          rationale: STEPS_NAMED.text,
+        }],
+        ...overrides,
+      },
+    ],
+  };
+}
+
+test('a lesson grounded in the second cited passage validates against the union', () => {
+  // Without the list, the validator resolves only p.4 and rejects a lesson that
+  // is plainly grounded -- in p.5, which the section was also written from.
+  const single = validateCourseDraft(unionCourse(), { sources: [TWO_PAGE_SOURCE] });
+  assert.equal(single.valid, false);
+  assert.ok(single.issues.includes('section 0 lesson is not grounded in its cited source'));
+
+  const union = validateCourseDraft(
+    unionCourse({ cites: ['record-2 p.4', 'record-2 p.5'] }),
+    { sources: [TWO_PAGE_SOURCE] },
+  );
+  assert.deepEqual(union.issues, []);
+  assert.equal(union.valid, true);
+});
+
+test('every label in the list has to resolve, and cite has to head it', () => {
+  // A second label naming nothing persisted is an unverifiable citation, and is
+  // named rather than ignored.
+  const dangling = validateCourseDraft(
+    unionCourse({ cites: ['record-2 p.4', 'record-2 p.99'] }),
+    { sources: [TWO_PAGE_SOURCE] },
+  );
+  assert.ok(
+    dangling.issues.includes('section 0 citation "record-2 p.99" does not resolve to a persisted source'),
+  );
+
+  // `cite` is what a learner is shown and what the Item row carries, so it must
+  // be the head of the list it came from.
+  const mismatched = validateCourseDraft(
+    unionCourse({ cites: ['record-2 p.5', 'record-2 p.4'] }),
+    { sources: [TWO_PAGE_SOURCE] },
+  );
+  assert.ok(mismatched.issues.includes('section 0 cite is not the primary of its cites list'));
+});
+
+test('a section with no cites list validates exactly as it always did', () => {
+  // The widening must never loosen the single-citation path.
+  assert.equal(validateCourseDraft(groundedCourse(), { sources: [groundedSource] }).valid, true);
+
+  const unresolvable = groundedCourse();
+  unresolvable.sections[0].cite = 'not-a-source';
+  assert.deepEqual(
+    validateCourseDraft(unresolvable, { sources: [groundedSource] }).issues,
+    ['section 0 citation does not resolve to a persisted source'],
+  );
+
+  const uncited = groundedCourse();
+  delete uncited.sections[0].cite;
+  assert.deepEqual(
+    validateCourseDraft(uncited, { sources: [groundedSource] }).issues,
+    [
+      'section 0 requires a citation',
+      'section 0 citation does not resolve to a persisted source',
+    ],
+  );
+});
+
 test('the outline repair pass is bounded at one retry', async () => {
   const { ask, calls } = coursewrightAsk(() => ({ objectives: [] }));
   await assert.rejects(
@@ -1375,7 +1691,9 @@ test('generation reports each phase and artifact as it lands', async () => {
   assert.equal(events.find((e) => e.phase === 'sources')?.documents, 2);
   assert.deepEqual(
     events.filter((e) => e.phase === 'sections')[0],
-    { phase: 'sections', status: 'start', total: 1 },
+    // `passages` is how many source passages ground the whole course, which is
+    // not the section count: a section may be grounded in several.
+    { phase: 'sections', status: 'start', total: 1, passages: 1 },
   );
   const landed = events.filter((e) => e.phase === 'coursewright' && e.ok === true).map((e) => e.kind);
   assert.deepEqual(landed.sort(), ['flashcards', 'lesson', 'post-test', 'pre-test']);
