@@ -487,7 +487,6 @@ export function CoursesLibrary({ courses, loading, error, onOpen, onDrafted }) {
                     {c.sections} sections · <strong>{c.hasPendingRevision || c.record?.hasPendingRevision ? `${c.status === 'APPROVED' ? 'Published' : 'Draft'} · revision needs review` : c.status === 'APPROVED' ? 'Published' : 'Needs review'}</strong>
                   </div>
                 </div>
-                <span className="s-quick-arrow">→</span>
               </button>
               <RowActions
                 label="course"
