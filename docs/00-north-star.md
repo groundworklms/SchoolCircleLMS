@@ -8,7 +8,7 @@ This document is the top of a build-spec stack. A fresh engineer (or a fresh Cla
 
 ## The one-sentence pitch
 
-AI-native training that **won't make things up**: every claim traces to the manual, is verified on-device, or is refused — and the instructor ratifies everything before a Marine sees it. It runs offline on a $500 Jetson.
+AI-native training that **won't make things up**: every claim traces to the manual, is verified on-device, or is refused — and the instructor ratifies everything before a Marine sees it. The grounding engine runs offline on a $500 Jetson, network cable out.
 
 ## Four principles (non-negotiable)
 
@@ -16,7 +16,7 @@ AI-native training that **won't make things up**: every claim traces to the manu
 |---|---|
 | **Grounded** | Cite-or-refuse. Answers come from retrieved paragraphs with a page-level citation, or the system abstains. Never invent doctrine, pub numbers, or standards. |
 | **Verified** | Proven, not asserted. On-device HHEM entailment checks each answer's support; grounding / rubric reliability / doctrinal fidelity are *measured*. |
-| **Offline** | Edge-first. The whole delivery loop runs on a Jetson Orin with the network pulled. Delivery costs $0. One schema runs Postgres (enterprise) or SQLite (edge) on a connection-string swap. |
+| **Offline** | Edge-first, and scoped honestly. **Anchor** — retrieval, cite-or-refuse and on-device generation — answers on a Jetson Orin with the network cable out; that is measured, not asserted, and it costs $0 per answer. **SchoolCircle itself is not offline yet:** its sign-in still goes through Firebase Authentication over the internet, so with the cable out Anchor keeps answering and the app cannot log a user in. An offline auth path is being built in a separate lane and is not done. One Prisma schema on the `postgresql` provider serves both cloud (Cloud SQL) and edge (local Postgres); a SQLite edge target is a real goal but needs more than a connection string. |
 | **Human-led** | AI drafts; a human ratifies. Nothing `PENDING` reaches a student. The boundary is a feature, stated in the demo. |
 
 ## Guardrails (from the schoolhouse brief — state them out loud)

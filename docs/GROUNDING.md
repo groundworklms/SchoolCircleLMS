@@ -2,7 +2,7 @@
 
 ## What this adds
 
-An adapter for an external service (Anchor -- https://github.com/jeranaias/anchor, an
+An adapter for an external service (Anchor -- https://github.com/groundworklms/anchor, an
 offline, open-source doctrine tutor) that answers questions from indexed doctrine with
 paragraph-level citations, and refuses when the corpus does not support an answer.
 
@@ -92,13 +92,23 @@ Error codes map to status: `NO_DOCTRINE_SERVICE` → 503, `DOCTRINE_UNREACHABLE`
 ## The service behind it
 
 `DOCTRINE_BASE_URL` is a URL — anything returning that shape works. I have one running —
-**Anchor** ([github.com/jeranaias/anchor](https://github.com/jeranaias/anchor), open-source,
+**Anchor** ([github.com/groundworklms/anchor](https://github.com/groundworklms/anchor), open-source,
 Apache-2.0) — and am offering it as the backend, which is why the seam is thin and the
 backend replaceable.
 
-It runs fully offline on a Jetson Orin Nano, holds 13 publications and 4,230 paragraphs
+It runs fully offline on a Jetson Orin Nano, holds **14 publications and 4,731 paragraphs**
 (all publicly releasable, screened before ingest), and puts every model-written practice
 question behind human approval before a student sees it.
+
+The corpus figure is what `GET /api/corpus` returns today — verified 16 Sep 2026 with the
+network cable out. (An earlier revision of this file said 13 publications / 4,230 paragraphs;
+that was a previous index. The index's own `index_meta.corpus_documents` counter still reads
+13, but its `documents` array lists 14 and is authoritative — quote 14.)
+
+To be precise about what "fully offline" covers: **Anchor** runs offline, and that is measured.
+*SchoolCircle* does not yet — its sign-in still calls Firebase Auth over the internet, so with
+the cable out Anchor keeps answering but the app cannot log a user in. An offline auth path is
+in progress.
 
 Measured 25 Aug 2026 against a **233-question** eval set — 122 in-corpus, 95
 out-of-corpus, 16 answer-traps — grown deliberately hard: false-premise traps, quote
