@@ -428,6 +428,7 @@ mock.module('../lib/arsenal-core.js', {
     restoreMasterySession: async () => null,
     reviseCourseContent,
     serialiseMasterySession: () => null,
+    sourcePassageIndex: realArsenal.sourcePassageIndex,
     startMasterySession: async () => null,
     tutorAnswer: async () => null,
     validateCourseDraft: realArsenal.validateCourseDraft,
