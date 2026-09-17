@@ -615,11 +615,20 @@ function DraftCourseModal({ courses = [], sources, sourcesLoading, sourcesError,
    *
    * The stream is the REPORTING; the generation is a server-side job that
    * carries on without it. So a dropped connection -- a deploy rolling the
-   * instance, a proxy idle timeout, a laptop sleeping -- leaves a course that
-   * finishes and saves minutes later with nobody watching. Telling the
-   * instructor to go and look in a few minutes was honest and it was work this
-   * screen can do itself: a course whose id was not here when we started is
-   * the one this run produced. */
+   * proxy idle timeout, a laptop sleeping -- leaves a course that finishes and
+   * saves minutes later with nobody watching. Telling the instructor to go and
+   * look in a few minutes was honest and it was work this screen can do
+   * itself: a course whose id was not here when we started is the one this run
+   * produced.
+   *
+   * ONE CASE THIS CANNOT RESCUE, observed on 2026-09-17: when the connection
+   * drops because the SERVER was replaced -- a deploy rolling the instance
+   * mid-generation -- the job died with it, and there is no course coming. The
+   * watch below is indistinguishable from the other cases while it runs, so it
+   * waits out its window and then stops. That is the right behaviour, and it
+   * is worth knowing that a deploy during a generation costs that generation:
+   * the only real fix is generation that survives its process, which is a
+   * queue and a job record rather than a request. */
   const knownCourseIds = useRef(null);
   /* A course the snapshot did not have is the one this run produced.
    * Derived rather than held in state: it is a fact about the props this
