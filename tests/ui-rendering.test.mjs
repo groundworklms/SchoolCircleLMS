@@ -780,8 +780,11 @@ test('course chat citation locators select the matching approved source record',
   const markup = renderToStaticMarkup(React.createElement(CourseChat, {
     course: { id: 'course-1', name: 'Two-source course', record: { id: 'course-1' } },
   }));
-  assert.match(markup, /Source Document: Second source/);
-  assert.doesNotMatch(markup, /Source Document: source-1/);
+  // The source panel names the document it resolved to. Its heading is the
+  // section label and the publication title is the line under it, so the pair
+  // is what identifies the record on screen.
+  assert.match(markup, /<h3>Source document<\/h3><p[^>]*>Second source</);
+  assert.doesNotMatch(markup, /<h3>Source document<\/h3><p[^>]*>source-1</);
 });
 
 test('instructor fidelity renders a non-empty run report', () => {

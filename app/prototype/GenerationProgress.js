@@ -160,7 +160,10 @@ function Chip({ label, state, reason }) {
    route: by then the modal is closed, so it is named rather than pointed at. */
 export function ThinCoverageNotice({ inModal = false }) {
   return (
-    <p className="p-src" style={{ marginTop: '0.5rem' }}>
+    /* A limit on what was generated, set at reading size: .p-src is the faint
+       0.78em incidental style, which is not where a statement about what the
+       course does not cover belongs. */
+    <p style={{ marginTop: '0.6rem', fontSize: '0.9em', lineHeight: 1.5, color: 'var(--p-dim)' }}>
       This course covers part of the selected sources. To aim it at one topic, type the
       objectives you want{' '}
       {inModal ? 'in the objectives box above' : 'into the objectives box in the Create course modal'}
@@ -260,13 +263,17 @@ export function GenerationProgress({ events, interrupted = false }) {
       )}
 
       {view.skipped.length > 0 && (
-        <div className="p-src" style={{ marginTop: '0.75rem' }}>
+        <div style={{ marginTop: '0.9rem' }}>
           {/* Not "not covered by the sources": one of the three stages feeding
               this list is a topic the sources DO cover and the course simply
               did not take. Naming the course rather than the sources is the
-              only heading true of all three. */}
-          <p style={{ margin: 0 }}>Not covered by this course. The rest of it was saved:</p>
-          <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
+              only heading true of all three.
+
+              Set at reading size and weight: a gap in what a course teaches is
+              the one thing on this panel an instructor has to act on, and it
+              was in the same faint 0.78em as every incidental note. */}
+          <p style={{ margin: 0, fontSize: '0.9em', fontWeight: 600 }}>Not covered by this course. The rest of it was saved:</p>
+          <ul style={{ margin: '0.35rem 0 0', paddingLeft: '1.1rem', fontSize: '0.9em', lineHeight: 1.5, color: 'var(--p-dim)' }}>
             {view.skipped.map((entry) => (
               <li key={entry.objective}>
                 {entry.objective}

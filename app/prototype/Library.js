@@ -15,12 +15,6 @@ import { RowActions } from './RowActions';
    drafts they feed (Coursewright). Every approval here is a human click; the
    server never self-approves, and a learner never sees anything PENDING. */
 
-const MODAL_BACKDROP = {
-  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-  background: 'rgba(0,0,0,0.5)', zIndex: 100,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-};
-
 function StatusTag({ status }) {
   return (
     <strong style={{ color: status === 'APPROVED' ? 'var(--p-good)' : 'var(--p-warning)' }}>{status}</strong>
@@ -101,7 +95,11 @@ function SourceCard({ source, onApproved }) {
   );
 }
 
-function IngestSourceModal({ onIngested }) {
+/* `variant` is the weight of the trigger, not of the dialog. On the Sources
+   screen adding a source IS the page's action and the trigger is the primary;
+   inside Create course it sits next to Generate course, and two accent buttons
+   in one dialog is the same defect this pass removed from inside it. */
+function IngestSourceModal({ onIngested, variant = 'primary' }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -151,67 +149,115 @@ function IngestSourceModal({ onIngested }) {
     }
   };
 
-  if (!open) return <button className="p-btn" onClick={() => setOpen(true)}>Add source</button>;
+  if (!open) {
+    return (
+      <button className={variant === 'ghost' ? 'p-btn ghost' : 'p-btn'} onClick={() => setOpen(true)}>
+        Add source
+      </button>
+    );
+  }
 
+  const busy = ingest.loading || pdfUpload.loading;
+
+  /* A PDF and pasted text are two doors into the same library, so they get the
+     same box and each carries its own action. The dialog itself therefore has
+     no primary button to compete with them: the footer holds only Cancel. The
+     previous layout put "Upload PDF" inside a nested panel and "Save text
+     source" in the footer, two accent buttons of equal weight with no way to
+     tell which one was the dialog's action. */
   return (
-    <div style={MODAL_BACKDROP}>
-      <div className="p-panel" role="dialog" aria-modal="true" aria-label="Add source" style={{ width: '440px', maxWidth: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
-        <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Add source</h3>
-        <p className="p-src">Saved to your reusable source library. Review and explicitly approve it before generating a course.</p>
-        <input
-          className="scw-ti"
-          placeholder="Source title (optional for PDF)"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-        />
-        <input
-          className="scw-ti"
-          aria-label="Source identifier"
-          placeholder="Source identifier (optional)"
-          value={sourceId}
-          onChange={(e) => setSourceId(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem' }}
-        />
-        <div style={{ padding: '0.75rem', background: 'var(--p-surface-2)', borderRadius: '8px', marginBottom: '0.75rem' }}>
-          <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Upload a PDF</strong>
-          <p className="p-src" style={{ margin: '0 0 0.5rem' }}>
-            Pages are preserved so instructors and learners can inspect a cited passage.
-          </p>
-          <input
-            type="file"
-            accept="application/pdf,.pdf"
-            aria-label="PDF source file"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-          />
-          {file && <p className="p-src" style={{ margin: '0.5rem 0 0' }}>Selected: {file.name}</p>}
-          <button
-            type="button"
-            className="p-btn"
-            onClick={handlePdfUpload}
-            disabled={pdfUpload.loading || ingest.loading || !file}
-            style={{ marginTop: '0.75rem' }}
-          >
-            {pdfUpload.loading ? 'Uploading…' : 'Upload PDF'}
-          </button>
+    <div className="p-modalback">
+      <div className="p-panel p-modal p-modal-lg" role="dialog" aria-modal="true" aria-label="Add source">
+        <div className="p-modalhead">
+          <h3>Add source</h3>
+          <p>Saved to your reusable source library. Review and explicitly approve it before generating a course.</p>
         </div>
-        <div style={{ borderTop: '1px solid var(--p-border)', paddingTop: '0.75rem' }}>
-          <p className="p-src" style={{ margin: '0 0 0.5rem' }}>Or add a text source</p>
-        <textarea
-          className="scw-ti"
-          placeholder="Paste source text here…"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          rows={6}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
-        />
+
+        <div className="p-modalbody">
+          <div className="p-fieldset p-fieldrow">
+            <label className="p-field">
+              <span>Source title</span>
+              <input
+                className="p-input"
+                placeholder="Scouting and Patrolling"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+              <small>Optional for a PDF — the uploaded document supplies its own.</small>
+            </label>
+            <label className="p-field">
+              <span>Source identifier</span>
+              <input
+                className="p-input"
+                aria-label="Source identifier"
+                placeholder="MCWP 2-10"
+                value={sourceId}
+                onChange={(e) => setSourceId(e.target.value)}
+              />
+              <small>Optional. The publication name citations are printed under.</small>
+            </label>
+          </div>
+
+          <div>
+            <p className="p-sectionlab">Add the material</p>
+            <div className="p-choices">
+              <section className="p-choice">
+                <h4>Upload a PDF</h4>
+                <p>Pages are preserved so instructors and learners can inspect a cited passage.</p>
+                <div className="p-filepick">
+                  <label className="p-btn ghost p-filebtn">
+                    <input
+                      type="file"
+                      accept="application/pdf,.pdf"
+                      aria-label="PDF source file"
+                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    />
+                    {file ? 'Choose a different file' : 'Choose a PDF'}
+                  </label>
+                  <span className="p-filename">{file ? file.name : 'No file chosen'}</span>
+                </div>
+                <button
+                  type="button"
+                  className="p-btn"
+                  onClick={handlePdfUpload}
+                  disabled={busy || !file}
+                >
+                  {pdfUpload.loading ? 'Uploading…' : 'Upload PDF'}
+                </button>
+              </section>
+
+              <section className="p-choice">
+                <h4>Paste text</h4>
+                <p>For an extract, or a document you already hold as text. A title is required.</p>
+                <label className="p-field">
+                  <span>Source text</span>
+                  <textarea
+                    className="p-input"
+                    aria-label="Source text"
+                    placeholder="Paste source text here…"
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={3}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="p-btn"
+                  onClick={handleSubmit}
+                  disabled={busy || !title.trim() || !text.trim()}
+                >
+                  {ingest.loading ? 'Saving…' : 'Save text source'}
+                </button>
+              </section>
+            </div>
+          </div>
+
+          {err && <p className="s-shell-error" role="alert">{err}</p>}
         </div>
-        {err && <p className="s-shell-error" role="alert">{err}</p>}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-          <button className="p-btn ghost" onClick={() => setOpen(false)} disabled={ingest.loading || pdfUpload.loading}>Cancel</button>
-          <button className="p-btn" onClick={handleSubmit} disabled={ingest.loading || pdfUpload.loading || !title.trim() || !text.trim()}>
-            {ingest.loading ? 'Saving…' : 'Save text source'}
-          </button>
+
+        <div className="p-modalfoot">
+          <span className="p-footnote">A new source is PENDING until you approve it.</span>
+          <button className="p-btn ghost" onClick={() => setOpen(false)} disabled={busy}>Cancel</button>
         </div>
       </div>
     </div>
@@ -405,101 +451,135 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
     );
   }
 
-  return (
-    <div style={MODAL_BACKDROP}>
-      <div className="p-panel" role="dialog" aria-modal="true" aria-label="Create course" style={{ width: '640px', maxWidth: '90%', maxHeight: '85vh', overflowY: 'auto' }}>
-        <h3 style={{ fontSize: '1.1em', marginBottom: '1rem' }}>Create course</h3>
-        <p className="p-src">1. Sources → 2. Generate → 3. Review → 4. Approve and publish</p>
-        <p>Add a PDF or paste text, review and approve it below, then select it for this course. Existing approved sources can be reused.</p>
-        <IngestSourceModal onIngested={onRetrySources} />
-        {sources.filter((source) => source.status === 'PENDING').map((source) => (
-          <details key={source.id} style={{ margin: '0.75rem 0' }}>
-            <summary>{source.title} · Review and approve source</summary>
-            <SourceCard source={source} onApproved={onRetrySources} />
-          </details>
+  /* Once the stream is running, the work is the content. The setup folds into
+     a disclosure so live progress sits at the top of the body rather than
+     below a form nobody is editing any more — at 1440x675 it was under the
+     fold. A <details> rather than another piece of state: the instructor can
+     still open it to check what they asked for, and nothing here has to
+     remember that they did. */
+  const generating = draft.loading || Array.isArray(events);
+
+  /* The form, lifted out so it can be shown two ways: plainly while the
+     instructor is filling it in, and folded into a disclosure once the
+     stream starts, when the work is what they came to watch. */
+  const setup = (
+    <>
+    <div>
+      <p className="p-sectionlab">Sources</p>
+      <div className="p-btnrow">
+        <IngestSourceModal onIngested={onRetrySources} variant="ghost" />
+      </div>
+      {sources.filter((source) => source.status === 'PENDING').map((source) => (
+        <details className="p-disclose" key={source.id} style={{ margin: '0.75rem 0' }}>
+          <summary>{source.title} · Review and approve source</summary>
+          <SourceCard source={source} onApproved={onRetrySources} />
+        </details>
+      ))}
+      <fieldset
+        disabled={sourceUnavailable}
+        style={{
+          border: '1px solid var(--p-border-strong)',
+          borderRadius: '12px',
+          padding: '0.65rem 0.8rem',
+          margin: '0.75rem 0 0',
+        }}
+      >
+        <legend style={{ padding: '0 0.35rem', fontSize: '0.82em', fontWeight: 600, color: 'var(--p-dim)' }}>
+          Approved sources
+        </legend>
+        {approvedSources.map((s) => (
+          <label key={s.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.35rem 0', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              value={s.id}
+              checked={selectedIds.includes(s.id)}
+              onChange={(e) => setSourceIds((current) => e.target.checked
+                ? [...current, s.id]
+                : current.filter((id) => id !== s.id))}
+            />
+            <span>
+              <strong>{s.title}</strong>
+              <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages · {s.id}</small>
+            </span>
+          </label>
         ))}
-        <h4>Generate from selected sources</h4>
-        <p className="p-src">
-          The title and objectives are written from the sources you select. Fill either in only to
-          override what the model would choose.
-        </p>
-        <input
-          className="scw-ti"
-          placeholder="Course title (optional — written from the sources)"
-          aria-label="Course title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-        />
-        <textarea
-          className="scw-ti"
-          aria-label="Course objectives"
-          placeholder="Objectives, one per line (optional — written from the sources)"
-          value={objective}
-          onChange={(e) => setObjective(e.target.value)}
-          rows={4}
-          style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem' }}
-        />
-        <fieldset
-          disabled={sourceUnavailable}
-          style={{
-            border: '1px solid var(--p-border)',
-            borderRadius: '10px',
-            padding: '0.65rem 0.8rem',
-            margin: '0 0 1rem',
-          }}
-        >
-          <legend style={{ padding: '0 0.3rem', fontSize: '0.84em', color: 'var(--p-dim)' }}>
-            Approved sources
-          </legend>
-          {approvedSources.map((s) => (
-            <label key={s.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.25rem 0', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                value={s.id}
-                checked={selectedIds.includes(s.id)}
-                onChange={(e) => setSourceIds((current) => e.target.checked
-                  ? [...current, s.id]
-                  : current.filter((id) => id !== s.id))}
-              />
-              <span>
-                <strong>{s.title}</strong>
-                <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages · {s.id}</small>
-              </span>
-            </label>
-          ))}
-          {approvedSources.length > 0 && (
-            <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--p-faint)' }}>
-              {selectedIds.length} source{selectedIds.length === 1 ? '' : 's'} selected
-            </small>
+        {approvedSources.length > 0 && (
+          <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--p-faint)' }}>
+            {selectedIds.length} source{selectedIds.length === 1 ? '' : 's'} selected
+          </small>
+        )}
+      </fieldset>
+      {sourcesError && (
+        <div className="s-shell-error" role="alert" style={{ marginTop: '0.75rem' }}>
+          <p style={{ margin: '0 0 0.5rem' }}>{errText(sourcesError, 'Could not load approved sources.')}</p>
+          <button type="button" className="p-btn ghost" onClick={onRetrySources}>Retry loading sources</button>
+        </div>
+      )}
+      {sourcesLoading && <p role="status" style={{ marginTop: '0.75rem' }}>Loading sources…</p>}
+      {!sourcesLoading && !sourcesError && approvedSources.length === 0 && (
+        <p className="p-src" style={{ margin: '0.75rem 0 0' }}>No approved sources yet. Add a source above, then open its review and approve it.</p>
+      )}
+    </div>
+
+    <div>
+      <p className="p-sectionlab">Generate from selected sources</p>
+      <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
+        The title and objectives are written from the sources you select. Fill either in only to
+        override what the model would choose.
+      </p>
+      <div className="p-fieldset">
+        <label className="p-field">
+          <span>Course title</span>
+          <input
+            className="p-input"
+            aria-label="Course title"
+            placeholder="Written from the sources"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+        </label>
+        <label className="p-field">
+          <span>Objectives</span>
+          <textarea
+            className="p-input"
+            aria-label="Course objectives"
+            placeholder="One per line"
+            value={objective}
+            onChange={(e) => setObjective(e.target.value)}
+            rows={4}
+          />
+          <small>Typed objectives are grounded exactly as written and skip outline generation.</small>
+        </label>
+      </div>
+    </div>
+    </>
+  );
+
+  return (
+    <div className="p-modalback">
+      <div className="p-panel p-modal p-modal-lg" role="dialog" aria-modal="true" aria-label="Create course">
+        <div className="p-modalhead">
+          <h3>Create course</h3>
+          <p>Add a PDF or paste text, review and approve it, then select it for this course. Existing approved sources can be reused.</p>
+        </div>
+
+        <div className="p-modalbody">
+          {generating ? (
+            <details className="p-setup">
+              <summary>Sources and generation settings</summary>
+              {setup}
+            </details>
+          ) : setup}
+
+          {err && <p className="s-shell-error" role="alert">{err}</p>}
+          {Array.isArray(events) && (
+            <section className="p-progress" aria-label="Course generation progress" aria-live="polite">
+              <GenerationProgress events={events} interrupted={lostStream} />
+            </section>
           )}
-        </fieldset>
-        {sourcesError && (
-          <div className="s-shell-error" role="alert">
-            <p style={{ margin: '0 0 0.5rem' }}>{errText(sourcesError, 'Could not load approved sources.')}</p>
-            <button type="button" className="p-btn ghost" onClick={onRetrySources}>Retry loading sources</button>
-          </div>
-        )}
-        {sourcesLoading && <p role="status">Loading sources…</p>}
-        {!sourcesLoading && !sourcesError && approvedSources.length === 0 && (
-          <p className="p-src" style={{ marginBottom: '1rem' }}>No approved sources yet. Add a source above, then open its review and approve it.</p>
-        )}
-        {err && <p className="s-shell-error" role="alert">{err}</p>}
-        {Array.isArray(events) && (
-          <section
-            aria-label="Course generation progress"
-            aria-live="polite"
-            style={{
-              border: '1px solid var(--p-border)',
-              borderRadius: '10px',
-              padding: '0.75rem 0.9rem',
-              margin: '1rem 0',
-            }}
-          >
-            <GenerationProgress events={events} interrupted={lostStream} />
-          </section>
-        )}
-        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+        </div>
+
+        <div className="p-modalfoot">
           <button className="p-btn ghost" onClick={closeModal} disabled={draft.loading}>
             {Array.isArray(events) && !draft.loading ? 'Close' : 'Cancel'}
           </button>
@@ -919,14 +999,14 @@ export function CourseDraft({ course, onChanged }) {
           its reason says so. */}
       {notCovered.length > 0 && (
         <div className="p-panel" style={{ marginBottom: '1rem' }}>
-          <p className="p-src" style={{ margin: 0 }}>
-            Not covered by this course:
-          </p>
-          <ul style={{ margin: '0.3rem 0 0', paddingLeft: '1.1rem' }}>
+          {/* A gap in what the course teaches is a fact the approver needs at
+              full size, not at footnote size in the faint grey. */}
+          <p className="p-sectionlab">Not covered by this course</p>
+          <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem', fontSize: '0.9em', lineHeight: 1.5 }}>
             {notCovered.map((entry) => (
-              <li key={entry.objective} className="p-src">
+              <li key={entry.objective} style={{ marginBottom: '0.25rem' }}>
                 {entry.objective}
-                {entry.reason ? <> &mdash; {entry.reason}</> : null}
+                {entry.reason ? <span style={{ color: 'var(--p-dim)' }}> &mdash; {entry.reason}</span> : null}
               </li>
             ))}
           </ul>
@@ -1000,7 +1080,7 @@ export function CourseDraft({ course, onChanged }) {
       {status === 'PENDING' && sections.length === 0 && (
         <p className="p-src">Still generating. Refresh when the course is ready.</p>
       )}
-      <details className="p-panel">
+      <details className="p-panel p-disclose">
         <summary>Optional learning tools · syllabus and mastery plan</summary>
         <p className="p-src">These tools do not block course publication. Rubrics and fidelity evaluation are available under Advanced tools.</p>
         {status === 'PENDING' && <InstructorSyllabus courseId={course.id} />}
