@@ -512,7 +512,7 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
   const [lostStream, setLostStream] = useState(false);
   const draft = useApiStream('/courses/draft/stream');
   const approvedSources = sources.filter((source) => source.status === 'APPROVED');
-  const approvedGroups = groupSourcesByCollection(approvedSources).length;
+  const approvedGroups = groupSourcesByCollection(approvedSources);
   const selectedIds = sourceIds.filter((id) => approvedSources.some((source) => source.id === id));
 
   const handleSubmit = async () => {
@@ -635,22 +635,50 @@ function DraftCourseModal({ sources, sourcesLoading, sourcesError, onRetrySource
         <legend style={{ padding: '0 0.35rem', fontSize: '0.82em', fontWeight: 600, color: 'var(--p-dim)' }}>
           Approved sources
         </legend>
-        {approvedSources.map((s) => (
-          <label key={s.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.35rem 0', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              value={s.id}
-              checked={selectedIds.includes(s.id)}
-              onChange={(e) => setSourceIds((current) => e.target.checked
-                ? [...current, s.id]
-                : current.filter((id) => id !== s.id))}
-            />
-            <span>
-              <strong>{s.title}</strong>
-              <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages · {s.id}</small>
-            </span>
-          </label>
-        ))}
+        {approvedGroups.map((group) => {
+          const groupIds = group.sources.map((source) => source.id);
+          const allSelected = groupIds.every((id) => selectedIds.includes(id));
+          /* A collection is usually a whole zip -- fifty lesson plans -- and a
+             course is usually built from all of it, so the group toggles as one.
+             The heading is skipped when the list is short and ungrouped: a
+             single document does not need a "Select all 1". */
+          const showHeading = approvedGroups.length > 1 || groupIds.length > 1;
+          return (
+            <div key={group.name} className="source-pick-group">
+              {showHeading && (
+                <div className="source-pick-heading">
+                  <strong>{group.name}</strong>
+                  <button
+                    type="button"
+                    className="p-btn ghost"
+                    aria-label={allSelected ? `Clear ${group.name}` : `Select all ${groupIds.length} in ${group.name}`}
+                    onClick={() => setSourceIds((current) => allSelected
+                      ? current.filter((id) => !groupIds.includes(id))
+                      : [...current, ...groupIds.filter((id) => !current.includes(id))])}
+                  >
+                    {allSelected ? 'Clear' : `Select all ${groupIds.length}`}
+                  </button>
+                </div>
+              )}
+              {group.sources.map((s) => (
+                <label key={s.id} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', padding: '0.35rem 0', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    value={s.id}
+                    checked={selectedIds.includes(s.id)}
+                    onChange={(e) => setSourceIds((current) => e.target.checked
+                      ? [...current, s.id]
+                      : current.filter((id) => id !== s.id))}
+                  />
+                  <span>
+                    <strong>{s.title}</strong>
+                    <small style={{ display: 'block', color: 'var(--p-faint)' }}>{s.pages || 0} pages · {s.id}</small>
+                  </span>
+                </label>
+              ))}
+            </div>
+          );
+        })}
         {approvedSources.length > 0 && (
           <small style={{ display: 'block', marginTop: '0.35rem', color: 'var(--p-faint)' }}>
             {selectedIds.length} source{selectedIds.length === 1 ? '' : 's'} selected
