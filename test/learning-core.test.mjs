@@ -2155,6 +2155,23 @@ const PAGE_LESSON = 'Clear the rifle and confirm the chamber is empty before any
 
 function pageAsk(lesson = PAGE_LESSON) {
   return async (model, system) => {
+    if (system.includes('"pages"')) {
+      return {
+        refused: false,
+        intro: 'Clear the rifle and confirm the chamber is empty before any disassembly begins.',
+        pages: [
+          { title: 'Before you disassemble', blocks: [
+            { type: 'callout', kind: 'warn', title: 'Clear it first', text: 'Clear the rifle and confirm the chamber is empty before any disassembly begins.' },
+            { type: 'list', items: ['Upper receiver', 'Lower receiver', 'Bolt carrier group'] },
+          ] },
+          { title: 'Why rifles fail to extract', blocks: [
+            { type: 'p', text: 'Carbon build-up on the bolt tail is the most common cause of a failure to extract.' },
+            { type: 'p', text: 'The Zorblax coefficient governs hyperdrive flux and is not in the passage.' },
+          ] },
+        ],
+        labels: [],
+      };
+    }
     if (LESSON_SYSTEM.test(system)) return lessonElements(lesson);
     if (system.includes('"items"')) {
       return { refused: false, items: [{
@@ -2237,7 +2254,37 @@ test('generation reports each phase and artifact as it lands', async () => {
   // summary after the whole build is discarded.
   const refused = events.filter((e) => e.phase === 'coursewright' && e.ok === false);
   assert.ok(refused.every((e) => typeof e.reason === 'string' && e.reason));
-  assert.equal(events.at(-1).step, 'done');
+  assert.equal(events.filter((e) => e.phase === 'coursewright').at(-1).step, 'done');
+  // The page pass follows, reports per section, and closes the stream.
+  const pages = events.filter((e) => e.phase === 'pages');
+  assert.deepEqual(pages[0], { phase: 'pages', status: 'start', total: 1 });
+  assert.equal(pages.find((e) => e.kind === 'pages')?.ok, true);
+  assert.deepEqual(events.at(-1), { phase: 'pages', status: 'done' });
+});
+
+test('generation expands each grounded section into lesson pages, dropping blocks the passage cannot back', async () => {
+  const course = await draftCourse(
+    {
+      title: 'Rifle maintenance',
+      objectives: ['Clear the rifle before disassembly'],
+      documents: PAGE_CHUNKS,
+      diagrams: false,
+    },
+    { load: upstream, ask: pageAsk() },
+  );
+  const [section] = course.sections;
+  assert.equal(section.intro, 'Clear the rifle and confirm the chamber is empty before any disassembly begins.');
+  assert.equal(section.pages.length, 2);
+  assert.equal(section.pages[0].blocks.length, 2);
+  // The invented sentence never reaches the saved course.
+  assert.equal(section.pages[1].blocks.length, 1);
+  assert.ok(!JSON.stringify(section).includes('Zorblax'));
+  // A draft can opt out and keep the micro-lesson alone.
+  const bare = await draftCourse(
+    { title: 'Rifle maintenance', objectives: ['Clear the rifle before disassembly'], documents: PAGE_CHUNKS, diagrams: false, pages: false },
+    { load: upstream, ask: pageAsk() },
+  );
+  assert.equal(bare.sections[0].pages, undefined);
 });
 
 test('a throwing progress listener never aborts a generation that is going fine', async () => {

@@ -355,218 +355,185 @@ function learnerReaderFixture(overrides = {}) {
   };
 }
 
-test('learning course reader reuses shared lesson blocks without exposing answer keys', () => {
+/* The learner reader is the authored-lesson player (LessonPlayer) fed by the
+   ratified set. The open lesson and page come from the URL, so a test renders
+   one screen by passing `lessonId` (the section id) and `page` (1 = overview,
+   2 = the first item). */
+function renderReader(fixtureOverrides, { lessonId = 'section-1', page = 1 } = {}) {
   const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture(),
+    queryData: learnerReaderFixture(fixtureOverrides),
   });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
+  return renderToStaticMarkup(React.createElement(CourseReader, {
+    course: { id: 'course-1', name: 'Movement' },
+    lessonId,
+    page,
+    onOpenLesson: () => {},
   }));
-  assert.match(markup, /Movement fundamentals/);
-  assert.match(markup, /Read the approved movement guidance/);
-  assert.match(markup, /Which principle applies/);
-  assert.match(markup, /course-option/);
-  assert.doesNotMatch(markup, /answer key must stay server-side/);
+}
+
+test('learning course reader reuses shared lesson blocks without exposing answer keys', () => {
+  // Page 2 is the ratified pre-check; page 3 is the ratified prose.
+  const check = renderReader({}, { page: 2 });
+  assert.match(check, /Which principle applies/);
+  assert.match(check, /class="p-ans"/);
+  assert.doesNotMatch(check, /answer key must stay server-side/);
+  const prose = renderReader({}, { page: 3 });
+  assert.match(prose, /Movement fundamentals/);
+  assert.match(prose, /Read the approved movement guidance/);
   // The prose on screen is the ratified ROW's, not the draft's. These two
   // strings differ, so this fails the moment the reader reads the draft again.
-  assert.doesNotMatch(markup, /Draft prose no instructor has ratified/);
+  assert.doesNotMatch(prose, /Draft prose no instructor has ratified/);
+  assert.doesNotMatch(check, /Draft prose no instructor has ratified/);
 });
 
 test('a learner can actually answer a check in a generated course', () => {
-  // The defect this pins: the reader rendered <CourseLesson content={lesson} />
-  // with no onAnswer, and the shared presentation disables every choice when
-  // it has nowhere to send the answer. The click did nothing and no request
-  // was ever made, so no attempt existed for any instructor surface to read.
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture(),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
-  assert.doesNotMatch(markup, /class="course-option[^"]*"\s+disabled/);
-  // The block id is the materialised Item id, so the answer is attributable to
-  // the exact row an instructor ratified.
-  assert.match(markup, /data-block-id="course-1:s1:pre1"/);
+  // Every choice is a live button: the player grades through the attempts
+  // route, so nothing is disabled for want of somewhere to send the answer.
+  const markup = renderReader({}, { page: 2 });
+  assert.doesNotMatch(markup, /class="p-ans"[^>]*disabled/);
+  // The check carries the materialised Item id, so the answer is attributable
+  // to the exact row an instructor ratified.
+  assert.match(markup, /data-item-id="course-1:s1:pre1"/);
 });
 
 test('a check a human has not ratified is not rendered at all', () => {
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture(),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
+  const markup = renderReader({}, { page: 1 });
   assert.doesNotMatch(markup, /still awaiting review/);
-  assert.equal(markup.match(/course-check/g).length, 1);
+  // The lesson map lists exactly one check: the ratified pre-check.
+  assert.equal(markup.match(/s-map-kind">Check/g).length, 1);
 });
 
 test('nothing is shown until the ratified set is known', () => {
   // A failed or still-loading ratified set must not fall back to the draft's
   // own content: that is precisely the unreviewed material the gate exists to
-  // withhold. This used to except the PROSE, which was read from the draft and
-  // so was the one thing on the screen that had never passed the gate.
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture({ '/courses/course-1/attempts': null }),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
+  // withhold. The section list (released by course approval) is all there is.
+  const markup = renderReader({ '/courses/course-1/attempts': null }, { page: 3 });
   assert.doesNotMatch(markup, /Draft prose no instructor has ratified/);
-  assert.doesNotMatch(markup, /course-check/);
+  assert.doesNotMatch(markup, /s-chk/);
   assert.doesNotMatch(markup, /Which principle applies/);
-  // The section itself is still there and still legible as a section.
   assert.match(markup, /Movement fundamentals/);
+  assert.match(markup, /Loading what your instructor has released/);
 });
 
 test('an answer recorded earlier comes back with its grade and its reason', () => {
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture({
-      '/courses/course-1/attempts': {
-        ...learnerReaderFixture()['/courses/course-1/attempts'],
-        answers: {
-          'course-1:s1:pre1': {
-            optionId: '0',
-            correct: true,
-            feedback: 'Cover is what the source names first.',
-          },
+  const markup = renderReader({
+    '/courses/course-1/attempts': {
+      ...learnerReaderFixture()['/courses/course-1/attempts'],
+      answers: {
+        'course-1:s1:pre1': {
+          optionId: '0',
+          correct: true,
+          feedback: 'Cover is what the source names first.',
         },
       },
-    }),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
-  assert.match(markup, /course-feedback is-correct/);
+    },
+  }, { page: 2 });
+  assert.match(markup, /Correct — here is why/);
   assert.match(markup, /Cover is what the source names first/);
-  // The choice they made is still the selected one after a reload.
-  assert.match(markup, /course-option is-selected/);
+  // The choice they made is still the marked one after a reload.
+  assert.match(markup, /class="p-ans correct"/);
 });
 
 test('a learner is cited to a publication and a page, never to a record id', () => {
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture(),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
+  const markup = renderReader({}, { page: 1 });
   // The publication, named the way the Sources screen names it: the upload's
   // extension off and its underscores back to spaces.
-  assert.match(markup, /Grounded in/);
+  assert.match(markup, /Written from and checked against/);
   assert.match(markup, /AY27 8670 Prerequisite Coursebook Instructor-Led Moodle p\.135/);
-  // The stored locator is unchanged and still reachable -- on the title, which
-  // is the only place the record id may appear.
-  assert.match(markup, /title="cmu4xdph30016s6014fn9n9y8 p\.135"/);
-  assert.doesNotMatch(markup, />[^<]*cmu4xdph30016s6014fn9n9y8/);
-  // One heading per section. The title used to be printed by the reader head
-  // and again as the lesson title inside the shared presentation.
-  assert.equal(markup.match(/Movement fundamentals/g).length, 2); // TOC row + heading
-  assert.doesNotMatch(markup, /course-lesson-title/);
-});
-
-test('a section with no nameable publication says nothing rather than showing the key', () => {
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture({ '/sources': [] }),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
-  assert.doesNotMatch(markup, /course-citation/);
   assert.doesNotMatch(markup, /cmu4xdph30016s6014fn9n9y8/);
 });
 
-test('a lesson a human has not ratified never reaches the page', () => {
-  // The defect: the reader's section text came from the authoring draft, so a
-  // PENDING LESSON row changed nothing a learner saw. `released: false` is the
-  // whole of what the projection says about a withheld lesson -- it carries no
-  // text and no citation to leak -- and the draft's copy must not stand in.
+test('a section with no nameable publication says nothing rather than showing the key', () => {
+  const markup = renderReader({ '/sources': [] }, { page: 1 });
+  assert.doesNotMatch(markup, /Written from and checked against/);
+  assert.doesNotMatch(markup, /cmu4xdph30016s6014fn9n9y8/);
+});
+
+function withheldLesson(overrides = {}) {
   const base = learnerReaderFixture();
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture({
-      '/courses/course-1/attempts': {
-        ...base['/courses/course-1/attempts'],
-        lessons: [{
-          sectionIndex: 0,
-          sectionTitle: 'Movement fundamentals',
-          id: 'course-1:s1:lesson',
-          released: false,
-          text: '',
-          citation: null,
-        }],
-      },
-    }),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
+  return {
+    '/courses/course-1/attempts': {
+      ...base['/courses/course-1/attempts'],
+      lessons: [{
+        sectionIndex: 0,
+        sectionTitle: 'Movement fundamentals',
+        id: 'course-1:s1:lesson',
+        released: false,
+        text: '',
+        citation: null,
+        content: null,
+      }],
+      ...overrides,
+    },
+  };
+}
+
+test('a lesson a human has not ratified never reaches the page', () => {
+  // `released: false` is the whole of what the projection says about a
+  // withheld lesson -- it carries no text, no citation and no pages -- and the
+  // draft's copy must not stand in.
+  const markup = renderReader(withheldLesson(), { page: 3 });
   assert.doesNotMatch(markup, /Read the approved movement guidance/);
   assert.doesNotMatch(markup, /Draft prose no instructor has ratified/);
   // No prose means no provenance line either: a citation with nothing under it
   // vouches for text the learner cannot see.
-  assert.doesNotMatch(markup, /course-citation/);
+  assert.doesNotMatch(markup, /Written from and checked against/);
+  assert.doesNotMatch(markup, /p\.135/);
 });
 
 test('a withheld lesson leaves an explanation, not an unreadable gap', () => {
-  // The other wrong answer. A learner who is shown nothing cannot tell a
-  // withheld lesson from a broken page, so the notice names what SchoolCircle
-  // did (drafted this from the source) and what it has not (had it approved),
-  // and points at the approved checks that are still theirs to answer.
-  const base = learnerReaderFixture();
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture({
-      '/courses/course-1/attempts': {
-        ...base['/courses/course-1/attempts'],
-        lessons: [{
-          sectionIndex: 0,
-          sectionTitle: 'Movement fundamentals',
-          id: 'course-1:s1:lesson',
-          released: false,
-          text: '',
-          citation: null,
-        }],
-      },
-    }),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
+  // A learner who is shown nothing cannot tell a withheld lesson from a broken
+  // page, so the notice names what SchoolCircle did (drafted this from the
+  // source) and what it has not (had it approved), and points at the approved
+  // checks that are still theirs to answer.
+  const markup = renderReader(withheldLesson(), { page: 3 });
   assert.match(markup, /Lesson text not released/);
   assert.match(markup, /instructor has not approved the text/);
   assert.match(markup, /Nothing unreviewed reaches a student/);
-  // It names the publication the section was drafted from rather than saying
-  // nothing specific at all.
   assert.match(markup, /AY27 8670 Prerequisite Coursebook Instructor-Led Moodle/);
-  // The section keeps its place in the course and its approved check.
-  assert.match(markup, /Section 1 of 1/);
-  assert.match(markup, /Which principle applies/);
-  assert.match(markup, /The checks below were approved separately/);
+  assert.match(markup, /The checks in this lesson were approved separately/);
+  // The section keeps its place in the course and its approved check, which
+  // is still on the lesson map and answerable on its own screen.
+  assert.match(markup, /Lesson 1 of 1/);
+  assert.match(markup, /s-map-kind">Check/);
+  assert.match(renderReader(withheldLesson(), { page: 2 }), /Which principle applies/);
 });
 
 test('a withheld lesson with nothing else approved says so instead of showing an empty lesson', () => {
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture({
-      '/courses/course-1/attempts': {
-        id: 'course-1',
-        releaseId: 'course-1',
-        lessons: [{
-          sectionIndex: 0,
-          sectionTitle: 'Movement fundamentals',
-          id: 'course-1:s1:lesson',
-          released: false,
-          text: '',
-          citation: null,
-        }],
-        items: [],
-        answers: {},
-      },
-    }),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
+  const markup = renderReader(withheldLesson({ items: [], answers: {} }), { page: 2 });
   assert.match(markup, /Nothing else in this section has been approved yet/);
-  // Two explanations for one empty section is one too many; the notice is the
-  // answer, so the presentation's generic empty state does not follow it.
-  assert.doesNotMatch(markup, /This lesson has no content yet/);
+});
+
+test('the structured teaching content a learner reads through comes from the ratified row', () => {
+  // Pages, diagram and cards ride on the LESSON row (`content`); a release
+  // materialised without them reads as the paragraph alone, and the draft's
+  // own pages are never consulted.
+  const base = learnerReaderFixture();
+  const withPages = {
+    '/courses/course-1/attempts': {
+      ...base['/courses/course-1/attempts'],
+      lessons: [{
+        ...base['/courses/course-1/attempts'].lessons[0],
+        content: {
+          intro: 'Why movement matters.',
+          pages: [{ title: 'Use of cover', blocks: [{ type: 'callout', kind: 'warn', title: 'Stay low', text: 'Cover before concealment.' }] }],
+          flashcards: [{ front: 'Cover', back: 'Stops rounds.' }],
+        },
+      }],
+    },
+  };
+  const overview = renderReader(withPages, { page: 1 });
+  assert.match(overview, /Why movement matters/);
+  assert.match(overview, /Use of cover/);
+  assert.match(overview, /Flashcards: terms to know cold/);
+  const page = renderReader(withPages, { page: 3 });
+  assert.match(page, /Stay low/);
+  assert.match(page, /Cover before concealment/);
+  // Without content the row reads as its paragraph, and the draft's pages
+  // (which do not exist in this fixture) cannot appear.
+  const bare = renderReader({}, { page: 1 });
+  assert.doesNotMatch(bare, /Flashcards/);
+  assert.match(bare, /Movement fundamentals/);
 });
 
 test('the citation a learner reads comes from the same row as the prose', () => {
@@ -575,32 +542,25 @@ test('the citation a learner reads comes from the same row as the prose', () => 
   // row and the citation from the section would put one passage's page number
   // under another passage's words.
   const base = learnerReaderFixture();
-  const { CourseReader } = loadComponent('app/prototype/LearnerFeatures.js', {
-    queryData: learnerReaderFixture({
-      '/courses/course-1/attempts': {
-        ...base['/courses/course-1/attempts'],
-        lessons: [{
-          ...base['/courses/course-1/attempts'].lessons[0],
-          citation: {
-            citation: 'cmu4xdph30016s6014fn9n9y8 p.208',
-            pubId: 'TC 3-22.9',
-            page: '208',
-          },
-        }],
-      },
-    }),
-  });
-  const markup = renderToStaticMarkup(React.createElement(CourseReader, {
-    course: { id: 'course-1' },
-  }));
+  const markup = renderReader({
+    '/courses/course-1/attempts': {
+      ...base['/courses/course-1/attempts'],
+      lessons: [{
+        ...base['/courses/course-1/attempts'].lessons[0],
+        citation: {
+          citation: 'cmu4xdph30016s6014fn9n9y8 p.208',
+          pubId: 'TC 3-22.9',
+          page: '208',
+        },
+      }],
+    },
+  }, { page: 1 });
   // The row's publication and the row's page, not the section `cite`'s p.135
   // and not the publication named by the approved-source list.
   assert.match(markup, /TC 3-22\.9 p\.208/);
   assert.doesNotMatch(markup, /p\.135/);
   assert.doesNotMatch(markup, /AY27 8670 Prerequisite Coursebook Instructor-Led Moodle p\./);
-  // The locator on record is still the only place the source record id appears.
-  assert.match(markup, /title="cmu4xdph30016s6014fn9n9y8 p\.208"/);
-  assert.doesNotMatch(markup, />[^<]*cmu4xdph30016s6014fn9n9y8/);
+  assert.doesNotMatch(markup, /cmu4xdph30016s6014fn9n9y8/);
 });
 
 test('source viewer renders chunk content from non-empty source data', () => {

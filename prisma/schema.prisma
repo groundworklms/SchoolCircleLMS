@@ -78,7 +78,9 @@ model Item {
   sectionId String
   kind      ItemKind
   stem      String                        // the claim / question stem / scenario prompt
-  options   Json?                         // MC options, when kind = QUESTION
+  options   Json?                         // MC options, when kind = QUESTION; structured teaching content
+                                          // (intro, pages, labels, diagram, flashcards) when kind = LESSON --
+                                          // ratified with the prose, see lib/learning/project-course.js
   answer    Json?                         // keyed answer
   rationale String?
   // Paragraph-level citation from Anchor: { citation, pubId, section, para, page }.

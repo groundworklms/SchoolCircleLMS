@@ -14,6 +14,7 @@ const ARTIFACTS = [
   { kind: 'pre-test', label: 'Pre-check' },
   { kind: 'post-test', label: 'Post-check' },
   { kind: 'flashcards', label: 'Cards' },
+  { kind: 'pages', label: 'Pages' },
 ];
 
 const APPLY = [
@@ -44,6 +45,7 @@ export function generationView(events) {
     thinCoverage: false,
     apply: {},
     done: false,
+    pages: 'waiting',
     saved: null,
     failure: null,
   };
@@ -125,6 +127,15 @@ export function generationView(events) {
         if (section) section.artifacts[event.kind] = { ok: event.ok, reason: event.reason };
       } else if (event.kind) {
         view.apply[event.kind] = { ok: event.ok, reason: event.reason };
+      }
+    } else if (event.phase === 'pages') {
+      // The page pass runs after Coursewright, one section at a time, and
+      // reports the same way: an ok per section, or the reason it refused.
+      if (event.status === 'start') view.pages = 'running';
+      if (event.status === 'done') view.pages = 'done';
+      if (event.kind && event.section) {
+        const section = byTitle.get(event.section);
+        if (section) section.artifacts.pages = { ok: event.ok, reason: event.reason };
       }
     } else if (event.phase === 'saved') {
       view.saved = event.record || null;
@@ -238,6 +249,14 @@ export function GenerationProgress({ events, interrupted = false }) {
           }
           state={view.done ? 'done' : 'running'}
           detail={`${built}/${view.total}`}
+        />
+      )}
+
+      {view.pages !== 'waiting' && (
+        <Step
+          label="Expanding each section into lesson pages"
+          state={view.pages === 'done' ? 'done' : 'running'}
+          detail={`${view.sections.filter((section) => section.artifacts.pages !== undefined).length}/${view.sections.length}`}
         />
       )}
 
