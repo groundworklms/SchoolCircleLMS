@@ -101,3 +101,49 @@ for (const [index, palette] of appThemes.entries()) {
     assert.ok(contrast >= 4.5, `Text contrast ${contrast.toFixed(2)}:1 is below WCAG AA 4.5:1`);
   });
 }
+
+/* The selector list above catches a rule whose own background and colour fight
+   each other. It cannot catch a *token* that was never given a dark value: the
+   dark palettes lightened --p-accent-tint and --p-accent-border and left
+   --p-accent at the colour chosen for white, so every accent-coloured element
+   in dark mode sat at 2.47:1 on the page and 1.56:1 on its own tint -- the
+   active rail item, section headings, the publish action. Assert the tokens
+   themselves against the surfaces they are actually painted on. */
+// Only the pairs the design actually paints. --p-dim and --p-faint are not
+// used as body text on --p-surface-2, and asserting that cross product fails
+// in the light theme too -- a promise the palette never made.
+const PAIRS = [
+  ['--p-accent', '--p-surface'], ['--p-accent', '--p-bg'], ['--p-accent', '--p-surface-2'],
+  ['--p-text', '--p-surface'], ['--p-text', '--p-bg'],
+  ['--p-dim', '--p-surface'], ['--p-dim', '--p-bg'],
+  ['--p-faint', '--p-surface'], ['--p-faint', '--p-bg'],
+];
+for (const [token, surface] of PAIRS) {
+  for (const [index, palette] of appThemes.entries()) {
+    const theme = ['light', 'dark', 'system dark'][index];
+    {
+      test(`${token} on ${surface} is readable in the ${theme} theme`, () => {
+        assert.ok(palette[token], `${token} is undefined in the ${theme} palette`);
+        assert.ok(palette[surface], `${surface} is undefined in the ${theme} palette`);
+        const backdrop = palette[surface];
+        const foreground = luminance(resolve(palette[token], palette), backdrop);
+        const background = luminance(resolve(palette[surface], palette), backdrop);
+        const contrast = (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+        assert.ok(contrast >= 4.5, `Text contrast ${contrast.toFixed(2)}:1 is below WCAG AA 4.5:1`);
+      });
+    }
+  }
+}
+
+// The accent painted on its own tint is the selected-control pattern
+// (.s-rail-btn.on and friends) and was the worst pair measured at 1.56:1.
+for (const [index, palette] of appThemes.entries()) {
+  const theme = ['light', 'dark', 'system dark'][index];
+  test(`--p-accent on its own tint is readable in the ${theme} theme`, () => {
+    const backdrop = palette['--p-surface'];
+    const foreground = luminance(resolve(palette['--p-accent'], palette), backdrop);
+    const background = luminance(resolve(palette['--p-accent-tint'], palette), backdrop);
+    const contrast = (Math.max(foreground, background) + 0.05) / (Math.min(foreground, background) + 0.05);
+    assert.ok(contrast >= 4.5, `Text contrast ${contrast.toFixed(2)}:1 is below WCAG AA 4.5:1`);
+  });
+}

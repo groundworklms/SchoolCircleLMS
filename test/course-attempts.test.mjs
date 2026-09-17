@@ -166,7 +166,29 @@ test('the ratified set carries the lesson prose a learner may read', async () =>
     released: true,
     text: 'Read this.',
     citation: null,
+    content: null,
   }]);
+});
+
+test('the structured teaching content on a lesson row is released with its prose and withheld with it', async () => {
+  // Pages, diagram and flashcards ride on the LESSON row's `options` (see
+  // project-course.js `lessonContent`), so one ratification decision governs
+  // the words a learner reads AND the pages they read them through.
+  const content = { intro: 'Why this matters.', pages: [{ title: 'One idea', blocks: [{ type: 'p', text: 'Read this.' }] }] };
+  const lessonRow = (status) => ({
+    id: `${COURSE_ID}:s1:lesson`, kind: 'LESSON', stem: 'Read this.', options: content, answer: null, citation: null, status,
+  });
+  const section = (status) => ({ id: `${COURSE_ID}:s1`, title: 'Movement fundamentals', order: 0, items: [lessonRow(status)] });
+
+  const released = fixture({ sections: [section('APPROVED')] });
+  const { json: shown } = await released.handlers.getCourseAttempts(LEARNER, { params: { id: COURSE_ID }, query: {} });
+  assert.deepEqual(shown.lessons[0].content, content);
+
+  const withheld = fixture({ sections: [section('PENDING')] });
+  const { json: hidden } = await withheld.handlers.getCourseAttempts(LEARNER, { params: { id: COURSE_ID }, query: {} });
+  assert.equal(hidden.lessons[0].released, false);
+  assert.equal(hidden.lessons[0].content, null);
+  assert.doesNotMatch(JSON.stringify(hidden.lessons), /Why this matters|One idea/);
 });
 
 test('a lesson a human has not ratified is withheld exactly as a question is', async () => {
