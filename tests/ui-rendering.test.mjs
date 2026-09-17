@@ -582,6 +582,128 @@ test('rubric generation distinguishes source failures from a successful empty so
   assert.doesNotMatch(emptyMarkup, /Retry loading sources/);
 });
 
+// RubricsView state order: sourceId, taskCode, taskTitle, taskCondition,
+// taskStandard, taskSteps, err, approved, generatedRubricId.
+function reviewedRubricMarkup(rubric, { status = 'PENDING', traceability, validation } = {}) {
+  const { RubricsView } = loadComponent('app/prototype/InstructorFeatures.js', {
+    queryData: {
+      '/sources': [{ id: 'source-1', title: 'MCWP 2-10', status: 'APPROVED' }],
+      '/rubrics': [],
+      '/rubrics/rubric-1': {
+        id: 'rubric-1',
+        status,
+        validation: validation ?? { valid: true, issues: [] },
+        traceability: traceability ?? { grounded: true, coverage: 1, ungrounded: [] },
+        rubric,
+      },
+    },
+    stateValues: [
+      ['source-1', () => {}],
+      ['SC-CONDUCT-MARINE-AIR-01', () => {}],
+      ['Conduct MAGTF Intelligence Operations', () => {}],
+      ['', () => {}],
+      ['', () => {}],
+      ['', () => {}],
+      [null, () => {}],
+      [false, () => {}],
+      ['rubric-1', () => {}],
+    ],
+  });
+  return renderToStaticMarkup(React.createElement(RubricsView));
+}
+
+test('a flagged rubric reads as the SME referral it is, never as its payload', () => {
+  const markup = reviewedRubricMarkup({
+    flagged: true,
+    reason: 'The standard does not define how an evaluator judges intelligence as timely.',
+    needsSME: 'Define observable evidence for acceptable accuracy and mission relevance.',
+    task: { code: 'SC-CONDUCT-MARINE-AIR-01', title: 'Conduct MAGTF Intelligence Operations' },
+  });
+  assert.match(markup, /Flagged for a subject-matter expert/);
+  assert.match(markup, /The standard does not define how an evaluator judges intelligence as timely/);
+  assert.match(markup, /What an SME must define/);
+  assert.match(markup, /Define observable evidence for acceptable accuracy and mission relevance/);
+  assert.match(markup, /SC-CONDUCT-MARINE-AIR-01/);
+  // The payload's own key names are the tell that a JSON dump leaked through.
+  assert.doesNotMatch(markup, /needsSME|flagged&quot;|<pre/);
+
+  // Approval stays the instructor's, and the refusal it will meet is stated.
+  assert.match(markup, /<button[^>]*>Approve rubric<\/button>/);
+  assert.doesNotMatch(markup, /disabled[^>]*>Approve rubric/);
+  assert.match(markup, /the server will refuse this/);
+  // verifyTraceability saw no dimensions, so its 100% is the empty case.
+  assert.match(markup, /Nothing to trace yet/);
+  assert.doesNotMatch(markup, /100% coverage/);
+});
+
+test('a generated BARS rubric renders its dimensions and three anchors', () => {
+  const markup = reviewedRubricMarkup({
+    flagged: false,
+    dimensions: [{
+      name: 'Collection tasking',
+      source: 'issues collection requirements to subordinate units',
+      anchors: {
+        unsatisfactory: 'Issues no requirement to any subordinate unit.',
+        satisfactory: 'Issues a written requirement to every named unit.',
+        proficient: 'Issues and reprioritises requirements as the situation changes.',
+      },
+    }],
+    notes: ['Two of the six phases carry no measurable wording.'],
+    task: { code: 'SC-CONDUCT-MARINE-AIR-01', title: 'Conduct MAGTF Intelligence Operations' },
+  });
+  assert.match(markup, /Collection tasking/);
+  assert.match(markup, /<th>Unsatisfactory<\/th>/);
+  assert.match(markup, /<th>Satisfactory<\/th>/);
+  assert.match(markup, /<th>Proficient<\/th>/);
+  assert.match(markup, /Issues no requirement to any subordinate unit/);
+  assert.match(markup, /Issues a written requirement to every named unit/);
+  assert.match(markup, /Issues and reprioritises requirements as the situation changes/);
+  // The verbatim phrase verifyTraceability checked has to sit beside the anchors.
+  assert.match(markup, /issues collection requirements to subordinate units/);
+  assert.match(markup, /Two of the six phases carry no measurable wording/);
+  assert.doesNotMatch(markup, /<pre|anchors&quot;/);
+  // Nothing about a rubric that was written should read as flagged.
+  assert.doesNotMatch(markup, /Flagged for a subject-matter expert|the server will refuse this/);
+  assert.match(markup, /100% coverage/);
+});
+
+test('a filled form field hands the wheel back to the page once its own scroll is spent', () => {
+  const { wheelFallthrough } = loadComponent('app/prototype/InstructorFeatures.js', {
+    expose: ['wheelFallthrough'],
+  });
+  const scroller = { scrollTop: 0 };
+  // A textarea showing 4 of 12 lines, scrolled to its own bottom.
+  const field = { scrollTop: 160, clientHeight: 80, scrollHeight: 240 };
+  const wheelEvent = (delta, extra = {}) => {
+    const event = { deltaY: delta, deltaMode: 0, prevented: false, preventDefault() { this.prevented = true; }, ...extra };
+    return event;
+  };
+
+  const spent = wheelEvent(120);
+  wheelFallthrough(field, () => scroller)(spent);
+  assert.equal(spent.prevented, true, 'the page must take the gesture the field cannot use');
+  assert.equal(scroller.scrollTop, 120);
+
+  // Scrolling back up is still the field's own -- its scrolling is untouched.
+  const ownScroll = wheelEvent(-120);
+  wheelFallthrough(field, () => scroller)(ownScroll);
+  assert.equal(ownScroll.prevented, false);
+  assert.equal(scroller.scrollTop, 120);
+
+  // Line-mode deltas (Firefox) reach the page as pixels, not as 3.
+  const lines = wheelEvent(3, { deltaMode: 1 });
+  wheelFallthrough(field, () => scroller)(lines);
+  assert.equal(scroller.scrollTop, 168);
+
+  // Ctrl+wheel is zoom, and a field with nowhere to hand the gesture is inert.
+  const zoom = wheelEvent(120, { ctrlKey: true });
+  wheelFallthrough(field, () => scroller)(zoom);
+  assert.equal(zoom.prevented, false);
+  const orphan = wheelEvent(120);
+  wheelFallthrough(field, () => null)(orphan);
+  assert.equal(orphan.prevented, false);
+});
+
 test('course chat renders Sourcerer and Anchor citations in one shape', () => {
   const { normaliseCitation } = loadComponent('app/prototype/CourseChat.js');
   const sourcerer = normaliseCitation({ label: 'Aiming', source: 'Field manual', page: 4 }, 0);
