@@ -8,6 +8,7 @@ import {
   coverageSummary,
   objectiveCoverage,
 } from './rubric-coverage';
+import { groupSourcesByCollection, cleanSourceLabel } from './source-groups';
 
 /* Instructor-side optional tools for a real (LearningRecord) course:
    syllabus (Cadence), doctrinal fidelity (Understudy), the after-action
@@ -147,11 +148,9 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
 
   return (
     <div className="p-panel" data-testid="instructor-mastery-plan" style={{ marginTop: '1rem' }}>
-      <h3>Optional advanced tool: Shared mastery plan</h3>
+      <h3>Shared mastery plan</h3>
       <p className="p-src" style={{ margin: '0 0 0.75rem' }}>
-        One reviewed set of criteria keeps learner outcomes comparable across the cohort.
-        This optional plan does not block course review or publish. Once approved, this revision
-        is locked for the course.
+        One reviewed set of criteria for the whole cohort. Optional — doesn&apos;t block review or publish.
       </p>
 
       {mutationError && <Err msg={`Mastery plan update failed: ${errorText}`} />}
@@ -478,8 +477,7 @@ export function InstructorFidelity({ courseId }) {
         <div className="p-panel">
           <h3>Benchmark cases</h3>
           <p className="p-src" style={{ marginBottom: '0.75rem' }}>
-            Optional advanced tool.{' '}
-            Situations a learner might raise, and what doctrine says should come back. Understudy runs each through the tutor and grades the answer against the approved sources.
+            Optional. Situations a learner might raise and the doctrine that should come back, each graded against the approved sources.
           </p>
           <div className="p-fieldset" style={{ marginBottom: '0.75rem' }}>
             <label className="p-field">
@@ -516,7 +514,7 @@ export function InstructorFidelity({ courseId }) {
       <div className="p-panel">
         <h3>Fidelity report</h3>
         <p className="p-src" style={{ marginBottom: '0.75rem' }}>
-          Optional advanced tool; this report informs review but does not block course approval or publish.
+          Informs review; does not block approval or publish.
         </p>
         <Err msg={err} />
         {hasReport ? (
@@ -1051,9 +1049,8 @@ function RubricReview({ rubricId, approved, onApproved, onRewrite }) {
           {data.status === 'PENDING' && (rubric?.flagged ? (
             <div style={{ marginTop: '1rem' }}>
               <p className="p-src" style={{ margin: 0 }}>
-                There is nothing to approve yet — no criteria were written, which is the
-                intended outcome. The next step is a human one: rewrite the standard so it says
-                how performance is judged, then generate again.
+                Nothing to approve yet — no criteria were written, which is the intended outcome.
+                Rewrite the standard so it says how performance is judged, then generate again.
               </p>
               {onRewrite && (
                 <button
@@ -1091,6 +1088,7 @@ export function RubricsView() {
   const sourcesPending = sourcesLoading || (sources == null && !sourcesError);
   const sourcesUnavailable = sourcesPending || Boolean(sourcesError);
   const approvedSources = Array.isArray(sources) ? sources.filter((s) => s.status === 'APPROVED') : [];
+  const approvedGroups = groupSourcesByCollection(approvedSources);
 
   const [sourceId, setSourceId] = useState('');
   const [taskCode, setTaskCode] = useState('');
@@ -1216,8 +1214,7 @@ export function RubricsView() {
       <div className="p-panel">
         <h3>Generate a rubric</h3>
         <p className="p-src">
-          Pick an approved source and the task fields fill themselves from it. Edit anything that
-          needs it, then generate.
+          Pick a source — the task fields fill from it. Edit as needed, then generate.
         </p>
         {sourcesPending && <p className="p-src">Loading approved sources…</p>}
         {sourcesError && (
@@ -1234,8 +1231,12 @@ export function RubricsView() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <select className="scw-ti" aria-label="Approved source for this rubric" value={sourceId} onChange={(e) => setSourceId(e.target.value)} disabled={sourcesUnavailable}>
             <option value="">Select an approved source…</option>
-            {approvedSources.map((s) => (
-              <option key={s.id} value={s.id}>{s.title}</option>
+            {approvedGroups.map((group) => (
+              <optgroup key={group.name} label={group.name}>
+                {group.sources.map((s) => (
+                  <option key={s.id} value={s.id}>{cleanSourceLabel(s.title)}</option>
+                ))}
+              </optgroup>
             ))}
           </select>
           {suggesting && <p className="p-src" role="status">{suggestingText(suggestElapsed)}</p>}
@@ -1248,8 +1249,7 @@ export function RubricsView() {
           )}
           {suggestionOrigin === 'model' && (
             <p className="p-src">
-              This source has no task block, so the fields below are a draft written from its text.
-              Check them before generating.
+              No task block in this source — the fields below are a draft. Check before generating.
             </p>
           )}
           {suggestions.length > 1 && (
@@ -1277,8 +1277,7 @@ export function RubricsView() {
           </label>
           {suggestions[suggestionIndex]?.codeGenerated && taskCode === suggestions[suggestionIndex]?.code && (
             <small style={{ color: 'var(--p-faint)', marginTop: '-0.25rem' }}>
-              This source carries no task code, so one was derived from the title. Replace it with
-              the real code if the task has one.
+              No task code in this source; one was derived from the title. Replace it with the real code if there is one.
             </small>
           )}
           <label className="p-field">
@@ -1457,8 +1456,7 @@ function ObjectiveRubricForm({ courseId, objective, sourceOptions, existingRubri
         )}
         {suggestionOrigin === 'model' && (
           <p className="p-src">
-            This source has no task block, so the condition and standard below are a draft written
-            from its text. Check them before generating.
+            No task block in this source — the condition and standard below are a draft. Check before generating.
           </p>
         )}
         {suggestionError && (
@@ -1551,7 +1549,7 @@ export function CourseRubrics({ courseId }) {
   if (rows.length === 0) {
     return (
       <p className="p-src">
-        This course draft carries no objectives yet, so there is nothing to write a rubric against.
+        No objectives in this draft yet — nothing to write a rubric against.
       </p>
     );
   }
@@ -1597,8 +1595,7 @@ export function CourseRubrics({ courseId }) {
       </div>
       {sourceOptions.length === 0 ? (
         <p className="p-src">
-          None of this course&rsquo;s sources is approved any more, so no rubric can be grounded in
-          one. Approve a source under Sources first.
+          None of this course&rsquo;s sources is approved. Approve one under Sources first.
         </p>
       ) : (
         rows

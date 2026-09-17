@@ -10,8 +10,7 @@ function AAR({ course }) {
       <>
         <h2 className="p-h">Course AAR</h2>
         <p className="p-sub">
-          Built by Hotwash from the critiques recorded for this course. The thing being assessed is
-          the course, not the student — and nothing is asserted without a critique behind it.
+          Built by Hotwash from recorded critiques. Assesses the course, not the student.
         </p>
         <InstructorAAR courseId={course.id} />
       </>
@@ -45,8 +44,8 @@ function AAR({ course }) {
     <>
       <h2 className="p-h">Course AAR — auto-drafted</h2>
       <p className="p-sub">
-        Assembled from instructor critiques, student surveys, and assessment data across class
-        iterations. The thing being assessed here is the course, not the student.
+        From instructor critiques, student surveys, and assessment data across classes. Assesses the
+        course, not the student.
       </p>
 
       <div className="p-grid2">
@@ -82,8 +81,7 @@ function AAR({ course }) {
             <span>Current — {course.trend[course.trend.length - 1]}%</span>
           </div>
           <p className="p-src">
-            Flat or declining across iterations is the signal that the block needs redesign, not
-            another remediation cycle.
+            Flat or declining means the block needs redesign, not another remediation cycle.
           </p>
         </div>
 
@@ -101,8 +99,7 @@ function AAR({ course }) {
             </table>
           </div>
           <p className="p-src">
-            Every finding above links back to its sources. Nothing is asserted without something
-            behind it.
+            Every finding links back to its sources.
           </p>
         </div>
       </div>

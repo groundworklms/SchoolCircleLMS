@@ -60,8 +60,7 @@ function LiveControl({ course }) {
     <>
       <h2 className="p-h">Run Live Session</h2>
       <p className="p-sub">
-        The instructor side of the classroom game. Push a question to the room, watch responses land,
-        and see whether the block landed — before the end-of-course test says so.
+        Push a question to the room, watch responses land, and see whether the block landed.
       </p>
 
       <div className="p-tiles">
@@ -163,8 +162,7 @@ function LiveControl({ course }) {
               {pctCorrect}% correct on {q.topic} — below the 65% threshold
             </div>
             <p className="p-findbody">
-              A 10-minute review of this topic is drafted and waiting in your queue. You decide whether
-              to run it.
+              A 10-minute review is drafted and waiting in your queue.
             </p>
           </div>
           <div className="p-btnrow">

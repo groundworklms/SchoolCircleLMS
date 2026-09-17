@@ -380,13 +380,9 @@ export function GenerationProgress({ events, interrupted = false }) {
       {interrupted && !view.saved && !view.failure && (
         <div className="s-shell-error" role="alert" style={{ marginTop: '1rem' }}>
           <p style={{ margin: 0 }}>
-            The connection carrying this progress ended before generation reported an outcome.
-            That stopped the reporting, not the generation: the server keeps writing, and a
-            course it finishes is saved and appears in the course list on its own.
-          </p>
-          <p style={{ margin: '0.5rem 0 0' }}>
-            Close this and check the course list — give it a few minutes for a long course.
-            Generating again before it appears is what produces two copies of it.
+            The connection ended before generation reported an outcome — the reporting stopped, not
+            the generation. Check the course list in a few minutes; generating again before it
+            appears makes a duplicate.
           </p>
         </div>
       )}
