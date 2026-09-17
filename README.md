@@ -2,9 +2,9 @@
 
 # SchoolCircle
 
-### A grounded, offline, human-led learning platform.
+### A grounded, human-led learning platform with an offline doctrine engine.
 
-**Grounded · Verified · Offline · Human-led**
+**Grounded · Verified · Offline grounding · Human-led**
 
 Every answer cites the manual — or the system refuses. Nothing unreviewed reaches a student.
 
@@ -64,7 +64,17 @@ Those two variables are only the bootstrap. The generation model is also chosen 
 them and changes without a redeploy. See
 [the generation provider](docs/generation-provider.md).
 
-The product is offline and grounded **by default**: generation runs against self-hosted compute.
+Grounding is offline by default and self-hosted: the doctrine engine (Anchor) runs on the Orin
+and serves cited answers and refusals with the network cable out. **Generation is a separate
+choice, and the hosted deployment currently defaults to a hosted API** — `apphosting.yaml` sets
+`MODEL_BASE_URL` to `https://api.openai.com/v1`. Point it (or Settings → Generation model) at the
+Orin's on-device model to make generation self-hosted too; see
+[Orin offline config](docs/orin-offline-config.md).
+
+Note on scope, because it is easy to overstate: *Anchor* runs offline and that is measured. *The
+app itself* is not yet offline-capable — sign-in still goes to Firebase Auth over the internet, and
+an offline auth path is in progress.
+
 An OpenRouter overlay exists for authorized development and testing only, and is selected solely
 by pointing `MODEL_BASE_URL` at that exact base URL alongside `OPENROUTER_API_KEY` — a key on its
 own never selects a cloud provider. Do not enable it for production or offline deployments. See
@@ -123,8 +133,8 @@ set `RUN_DB_TESTS=1` with a `DATABASE_URL` to include the Postgres round-trip te
 
 ## The one rule that never bends
 
-Grounded, verified, offline, human-led. Every claim cites the source or the system refuses;
-nothing `PENDING` reaches a learner.
+Grounded, verified, human-led, with grounding that runs offline. Every claim cites the source or
+the system refuses; nothing `PENDING` reaches a learner.
 
 ## License
 

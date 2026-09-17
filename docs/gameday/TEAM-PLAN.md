@@ -36,14 +36,19 @@ context auto-captured, it lands as a GitHub issue, triage routes it, the right l
 
 ## Morgan (Jesse) — Lead · grounding, integration & corpus
 **Owns:** Anchor + the Orin, the doctrine adapter (`lib/doctrine.js` / `DOCTRINE_BASE_URL`), the
-grounded pipeline (Author/Deliver/Improve), env/secrets, offline verification, the final
+grounded pipeline (Author/Deliver/Improve), env/secrets, the Anchor offline verification, the final
 architecture call with White — **and** the corpus + the human-in-the-loop guardrail that keeps
 the platform honest.
 **Gameday tasks (engineering):**
-- Bring Anchor up + tunnel; run `ops/orin-check.sh` each morning (all green before anyone demos).
+- Bring Anchor up; run `ops/orin-check.sh` each morning (all green before anyone demos). Anchor
+  binds the USB interface directly at `http://192.168.55.1:8000`, so `ops/tunnel.sh` is optional —
+  it is only for reaching Anchor from a laptop that is *not* cabled to the Orin.
 - Wire the four integration sequences (see RANGE-CARD.md) — Studio→Quarry+Coursewright+Anchor; Ask→Sourcerer+Anchor+Understudy; Mastery→Whetstone; Improve→Sextant/Hotwash.
 - Consume the 12 soldiers (`npm i github:groundworklms/<repo>`), keep the cite-or-refuse guarantee enforced.
-- Prove offline (pull the network; tutor still answers; refusal still fires).
+- Prove **Anchor** offline: sign in first, then pull the network cable — the tutor still answers
+  from the board with citations, and the refusal still fires. Scope the claim to the grounding
+  engine when you present it: SchoolCircle's sign-in still needs Firebase Auth, so the app is not
+  offline end-to-end until the offline-auth lane lands.
 **Gameday tasks (content & SME — the guardrail):**
 - Source and **screen for releasability** the 28xx / 06xx doctrine (POIs, outlines, sample assessments); run ingest (`quarry`) → the Anchor corpus. Track it on the corpus board (COLD-BORE.md).
 - Curate the golden course so the demo always has a banked artifact.
