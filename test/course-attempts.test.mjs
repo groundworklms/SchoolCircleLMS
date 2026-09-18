@@ -416,3 +416,72 @@ test('the recorded row is what the evidence store filters for and Sextant grades
   });
   assert.equal(cohort.gaps[0].objective, 'Movement fundamentals');
 });
+
+/* --------------------------- stated confidence ---------------------------- */
+
+/* The rule the calibration rests on, enforced at the write. An attempt either
+   carries a confidence the learner actually stated, or carries none -- because
+   0 on this scale means "guessing", and storing it for a learner who said
+   nothing would fabricate the exact claim the measurement exists to make. */
+
+test('a stated confidence is recorded beside the grade', async () => {
+  const { handlers, saved } = fixture();
+  const response = await handlers.recordCourseAttempt(LEARNER, {
+    params: { id: COURSE_ID },
+    body: answerBody({ confidence: 3 }),
+  });
+  assert.equal(response.json.result.confidence, 3);
+  assert.equal(saved[0].payload.confidence, 3);
+  assert.equal(saved[0].payload.result.confidence, 3);
+});
+
+test('an answer with no confidence records none, rather than recording a guess', async () => {
+  const { handlers, saved } = fixture();
+  const response = await handlers.recordCourseAttempt(LEARNER, {
+    params: { id: COURSE_ID },
+    body: answerBody(),
+  });
+  assert.equal(Object.prototype.hasOwnProperty.call(saved[0].payload, 'confidence'), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(response.json.result, 'confidence'), false);
+});
+
+test('a confidence off the scale is dropped, and the answer is still recorded', async () => {
+  for (const [index, confidence] of [-1, 4, 2.5, '3', null, true].entries()) {
+    const { handlers, saved } = fixture();
+    // eslint-disable-next-line no-await-in-loop
+    const response = await handlers.recordCourseAttempt(LEARNER, {
+      params: { id: COURSE_ID },
+      body: answerBody({ confidence, attemptId: `attempt-${index}` }),
+    });
+    assert.equal(response.json.recorded, true, `${confidence} still grades`);
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(saved[0].payload, 'confidence'),
+      false,
+      `${confidence} is not a rating a learner made`,
+    );
+  }
+});
+
+test('zero is a real rating and survives, unlike an absent one', async () => {
+  const { handlers, saved } = fixture();
+  await handlers.recordCourseAttempt(LEARNER, {
+    params: { id: COURSE_ID },
+    body: answerBody({ confidence: 0 }),
+  });
+  assert.equal(saved[0].payload.confidence, 0, 'a learner who says they guessed has said something');
+});
+
+test('a learner reading back their own answers can tell a rating from its absence', async () => {
+  const { handlers } = fixture();
+  await handlers.recordCourseAttempt(LEARNER, {
+    params: { id: COURSE_ID },
+    body: answerBody({ confidence: 2 }),
+  });
+  const mine = await handlers.getCourseAttempts(LEARNER, { params: { id: COURSE_ID }, query: {} });
+  assert.deepEqual(mine.json.answers[`${COURSE_ID}:s1:pre1`], {
+    optionId: '0',
+    correct: true,
+    feedback: 'Cover is what the source names first.',
+    confidence: 2,
+  });
+});

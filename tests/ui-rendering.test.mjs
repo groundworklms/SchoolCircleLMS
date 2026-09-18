@@ -2512,3 +2512,116 @@ test('the rubric step stays out of the way until the pass starts', () => {
   assert.equal(view.rubricCounts, null);
   assert.equal(view.sections[0].artifacts.rubric, undefined);
 });
+
+/* Confidence is only worth anything if it is stated BEFORE the reveal, so the
+   whole feature is the ordering: choose, rate, then grade. If an option graded
+   on click and the rating were collected afterwards, every answer would be a
+   memory of a feeling rather than a measurement. */
+const CHECK_ITEM = {
+  itemId: 'item-1',
+  q: 'What does orders reconciliation ensure?',
+  answers: [{ text: 'The order and its annexes agree' }, { text: 'The commander has signed it' }],
+};
+
+test('choosing an option does not grade it until the learner has rated their confidence', () => {
+  const { CheckItem } = loadComponent('app/prototype/lesson-blocks.js');
+  const picks = [];
+  const elements = collectReactElements(
+    React.createElement(CheckItem, {
+      item: CHECK_ITEM,
+      result: null,
+      askConfidence: true,
+      onPick: (...args) => picks.push(args),
+    }),
+  );
+  const options = elements.filter((el) => el.type === 'button' && /p-ans/.test(el.props.className || ''));
+  assert.equal(options.length, 2);
+  options[0].props.onClick();
+  assert.deepEqual(picks, [], 'nothing is graded on the option click');
+  // And the question has not been answered on screen either.
+  assert.equal(elements.some((el) => /s-chk-conf-lab/.test(el.props?.className || '')), false);
+});
+
+test('rating the confidence is what sends the answer, and the rating goes with it', () => {
+  // The component holds the chosen option in state while the rating is up;
+  // the harness supplies that state so the prompt renders.
+  const { CheckItem } = loadComponent('app/prototype/lesson-blocks.js', {
+    stateValues: [[1, () => {}]],
+  });
+  const picks = [];
+  const elements = collectReactElements(
+    React.createElement(CheckItem, {
+      item: CHECK_ITEM,
+      result: null,
+      askConfidence: true,
+      onPick: (...args) => picks.push(args),
+    }),
+  );
+  const prompt = elements.find((el) => /s-chk-conf-lab/.test(el.props?.className || ''));
+  assert.ok(prompt, 'the confidence question is asked');
+  assert.match(String(prompt.props.children), /before you see the answer/i);
+
+  const rate = elements.filter((el) => el.type === 'button' && /s-chk-conf-btn/.test(el.props.className || ''));
+  assert.deepEqual(rate.map((el) => el.props.children), ['Guessing', 'Unsure', 'Fairly sure', 'Certain']);
+  rate[3].props.onClick();
+  assert.deepEqual(picks, [[1, 3]], 'the chosen option and the stated confidence arrive together');
+});
+
+test('a learner who declines to rate is still graded, and states nothing', () => {
+  const { CheckItem } = loadComponent('app/prototype/lesson-blocks.js', {
+    stateValues: [[0, () => {}]],
+  });
+  const picks = [];
+  const elements = collectReactElements(
+    React.createElement(CheckItem, {
+      item: CHECK_ITEM,
+      result: null,
+      askConfidence: true,
+      onPick: (...args) => picks.push(args),
+    }),
+  );
+  const skip = elements.find((el) => el.type === 'button' && /s-chk-conf-skip/.test(el.props.className || ''));
+  assert.ok(skip, 'skipping is a plain control, not a dismissal hidden in a corner');
+  skip.props.onClick();
+  // null, not 0. Zero on this scale means "guessing", and recording it for a
+  // learner who said nothing would fabricate the exact claim the calibration
+  // exists to measure.
+  assert.deepEqual(picks, [[0, null]]);
+});
+
+test('the chosen option is marked as chosen without being marked right or wrong', () => {
+  const { CheckItem } = loadComponent('app/prototype/lesson-blocks.js', {
+    stateValues: [[1, () => {}]],
+  });
+  const elements = collectReactElements(
+    React.createElement(CheckItem, { item: CHECK_ITEM, result: null, askConfidence: true, onPick: () => {} }),
+  );
+  const options = elements.filter((el) => el.type === 'button' && /p-ans/.test(el.props.className || ''));
+  assert.match(options[1].props.className, /picked/);
+  assert.doesNotMatch(options[1].props.className, /correct|wrong/, 'the reveal has not happened yet');
+  assert.equal(options[1].props['aria-pressed'], true);
+  assert.equal(options[0].props['aria-pressed'], false);
+});
+
+test('a screen whose answers are not recorded grades on the click, as it always did', () => {
+  // Authored mock lessons and the instructor's own preview grade locally
+  // against the key on the item. Nothing would ever read a rating there, so
+  // asking for one would be a question with no consequence.
+  const { CheckItem } = loadComponent('app/prototype/lesson-blocks.js');
+  const picks = [];
+  const elements = collectReactElements(
+    React.createElement(CheckItem, { item: CHECK_ITEM, result: null, onPick: (...args) => picks.push(args) }),
+  );
+  const options = elements.filter((el) => el.type === 'button' && /p-ans/.test(el.props.className || ''));
+  options[1].props.onClick();
+  assert.deepEqual(picks, [[1]]);
+  assert.equal(elements.some((el) => /s-chk-conf/.test(el.props?.className || '')), false);
+});
+
+test('the reader asks for confidence and the instructor preview does not', () => {
+  const source = fs.readFileSync(path.join(workspace, 'app/prototype/LearnerFeatures.js'), 'utf8');
+  const reader = source.slice(source.indexOf('export function CourseReader'), source.indexOf('export function CoursePreview'));
+  assert.match(reader, /askConfidence/);
+  const preview = source.slice(source.indexOf('export function CoursePreview'), source.indexOf('export function selectMasterySession'));
+  assert.doesNotMatch(preview, /askConfidence/);
+});
