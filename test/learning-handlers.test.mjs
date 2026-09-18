@@ -95,6 +95,10 @@ test(
           title: 'Source text',
           cite: `${approvedSource.id} p.1`,
           lesson: 'Approved fixture source text.',
+          // approveCourse refuses a section with no lesson page. This fixture
+          // predates that gate and was never run, because the Postgres cases in
+          // this file had no CI job until the rubric pass needed one.
+          pages: [{ title: 'Source text', blocks: [{ type: 'text', text: 'Approved fixture source text.' }] }],
           pre: [{ stem: 'Which approved fixture source text applies?', options: ['Approved fixture source text.', 'Unapproved reference.'], answer: 0 }],
           post: [{ stem: 'Identify the approved fixture source text.', options: ['Approved fixture source text.', 'Unapproved reference.'], answer: 0 }],
         }],
@@ -673,6 +677,12 @@ test(
           title: 'Aiming',
           cite: `${source.id} p.1`,
           lesson: 'Sight alignment is the relationship between the post and the aperture.',
+          // Same gate, same reason as the fixture above: approveCourse refuses
+          // a section with no lesson page.
+          pages: [{
+            title: 'Aiming',
+            blocks: [{ type: 'text', text: 'Sight alignment is the relationship between the post and the aperture.' }],
+          }],
           pre: [{
             stem: 'Sight alignment describes the relationship between the post and what?',
             options: ['The stock', 'The aperture'],
