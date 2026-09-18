@@ -688,6 +688,8 @@ function DraftCourseModal({ courses = [], sources, sourcesLoading, sourcesError,
       }
       // The job carries its own failure so the partial progress stays on
       // screen next to the reason, rather than collapsing to one error line.
+      // `follow` emits it as an event too, which is what puts the reason in
+      // front of the instructor rather than only in this variable.
       if (last?.phase === 'failed') return;
       if (last?.phase !== 'saved') {
         // draftCourseStream ends with 'saved' or 'failed'. Neither arrived, so

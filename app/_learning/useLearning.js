@@ -370,7 +370,18 @@ export function useCourseJob(path = '/courses/draft/job') {
         return { phase: 'saved', status: 'PENDING', record: json.record || null, jobId: id };
       }
       if (json?.status === 'FAILED') {
-        return { phase: 'failed', error: json.error, code: json.code, jobId: id };
+        /* Emitted as well as returned.
+         *
+         * The stream this replaced carried its failure as an EVENT, so the
+         * progress reducer saw it and rendered the reason beside the partial
+         * work. Returning it without emitting looked equivalent and is not:
+         * the caller returns early on a failure, so nothing ever put it in
+         * front of anyone. A live generation ended with a complete-looking
+         * list of eight sections, a "Try again" button and no explanation
+         * anywhere on the screen. */
+        const failure = { phase: 'failed', error: json.error, code: json.code, jobId: id };
+        onEvent(failure);
+        return failure;
       }
       if (json?.stale) {
         // RUNNING, but nothing has touched the row in minutes. The instance
