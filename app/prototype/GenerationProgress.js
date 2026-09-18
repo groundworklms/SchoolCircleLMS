@@ -118,6 +118,20 @@ export function generationView(events) {
         view.titleNotTaught = event.notTaught;
       }
     } else if (event.phase === 'sections') {
+      // Two different facts, and the difference is who decided the order. A
+      // course we resequenced now reads with its publication; one we left
+      // alone reads the way an instructor or a POI asked for, and the jump is
+      // reported so they can see it rather than silently corrected.
+      // `continue`, not `return`: this is a plain loop over the events, so a
+      // return here would abandon every event after it.
+      if (event.step === 'resequenced') {
+        view.resequenced = event.pages || [];
+        continue;
+      }
+      if (event.step === 'out-of-order') {
+        view.outOfOrder = event.pages || [];
+        continue;
+      }
       view.total = event.total || 0;
       view.passages = event.passages || 0;
     } else if (event.phase === 'coursewright') {
@@ -273,6 +287,20 @@ export function GenerationProgress({ events, interrupted = false, watching = fal
         </p>
       )}
       {view.title && <Step label={`Titled "${view.title}"`} state="done" />}
+      {view.resequenced?.length > 1 && (
+        <p className="p-src" style={{ margin: '0 0 0.4rem 1.5rem' }}>
+          Ordered to follow the source: pages {view.resequenced.join(', ')}.
+        </p>
+      )}
+      {/* Not reordered, because someone else decided the order -- an
+          instructor who typed objectives, or a program of instruction. Saying
+          so is the most useful thing available, since changing it is not. */}
+      {view.outOfOrder?.length > 1 && (
+        <p className="p-src" style={{ margin: '0 0 0.4rem 1.5rem', color: 'var(--p-warning)' }}>
+          These sections move back and forth through the source: pages{' '}
+          {view.outOfOrder.join(', ')}. The order you asked for was kept.
+        </p>
+      )}
       {view.titleNotTaught?.length > 0 && (
         <p className="p-src" style={{ margin: '0 0 0.4rem 1.5rem', color: 'var(--p-warning)' }}>
           No section covers {view.titleNotTaught.map((word) => `"${word}"`).join(', ')}. Rename the
