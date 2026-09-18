@@ -5,7 +5,6 @@ import './student.css';
 
 import { I, RailButton, UserMenu } from './shell';
 import { InstructorSettings } from './Settings';
-import LiveControl from './LiveControl';
 import Mastery from './Mastery';
 import AAR from './AAR';
 import Roster from './Roster';
@@ -104,7 +103,6 @@ export function courseHeaderStatus(course) {
 
 const SCREENS = {
   roster: Roster,
-  control: LiveControl,
   mastery: Mastery,
   aar: AAR,
   settings: InstructorSettings,
