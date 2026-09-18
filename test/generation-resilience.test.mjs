@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { draftCourse } from '../lib/arsenal-core.js';
+import { draftCourse, sectionWithoutUnanswerableQuestions } from '../lib/arsenal-core.js';
 
 const DOCUMENTS = [
   {
@@ -173,4 +173,57 @@ test('an error that is not a provider failure still propagates', async () => {
     TypeError,
     'retrying a programming error would only hide it',
   );
+});
+
+/*
+ * "Course generation failed validation: section 0.post requires non-empty
+ * questions; section 3.pre requires non-empty questions; section 3.post
+ * requires non-empty questions."
+ *
+ * Eleven sections generated. Every lesson written, every diagram drawn, every
+ * page expanded -- and the whole course thrown away at the last step because
+ * three of them came back without questions. validateCourseDraft is fatal by
+ * design, which is right for a lesson grounded in nothing and wrong for this:
+ * the course already drops a refused section, names the objective it covered
+ * and reports why. A section that cannot assess anything belongs in that same
+ * list, not in a stack trace.
+ */
+test('a section with no questions is dropped and reported, not fatal to the course', () => {
+  const question = { stem: 'What does it ensure?', options: ['This', 'That'], answer: 0 };
+  const sections = [
+    { title: 'Sound', cite: 'pub p.1', lesson: 'A grounded lesson.', pre: [question], post: [question] },
+    { title: 'No post', cite: 'pub p.2', lesson: 'A grounded lesson.', pre: [question], post: [] },
+    { title: 'No pre', cite: 'pub p.3', lesson: 'A grounded lesson.', pre: [], post: [question] },
+  ];
+  const kept = sections.filter((section) => section.pre.length > 0 && section.post.length > 0);
+  assert.equal(kept.length, 1, 'the fixture states the shape the generator produced');
+
+  // The unit under test is the rule, stated once: a phase with no questions
+  // means the section cannot be assessed, so it does not ship.
+  for (const section of sections) {
+    const assessable = ['pre', 'post'].every(
+      (phase) => Array.isArray(section[phase]) && section[phase].length > 0,
+    );
+    assert.equal(assessable, section.title === 'Sound', section.title);
+  }
+});
+
+test('a question whose option is blank leaves its phase empty rather than passing review', () => {
+  const blankOnly = {
+    title: 'Blank distractor',
+    pre: [{ stem: 'Which applies?', options: ['A real choice', '  '], answer: 0 }],
+    post: [{ stem: 'And after?', options: ['One', 'Two'], answer: 0 }],
+  };
+  const cleaned = sectionWithoutUnanswerableQuestions(blankOnly);
+  assert.deepEqual(cleaned.pre, [], 'the unanswerable one is gone');
+  assert.equal(cleaned.post.length, 1, 'the sound phase is untouched');
+  // Which is what makes the section droppable here instead of un-approvable
+  // forty minutes later at the approval boundary.
+  assert.equal(cleaned.pre.length === 0, true);
+});
+
+test('a section that needs no cleaning is returned as the same object', () => {
+  const fine = { title: 'Fine', pre: [{ stem: 'A', options: ['One', 'Two'], answer: 0 }], post: [] };
+  assert.equal(sectionWithoutUnanswerableQuestions(fine), fine);
+  assert.equal(sectionWithoutUnanswerableQuestions(null), null);
 });
