@@ -13,7 +13,7 @@ import { calibrationNote, calibrationOf } from '../../lib/learning/calibration';
 import { dueForReview, reviewNote } from '../../lib/learning/spacing';
 import {
   attemptsLeft,
-  citedPages,
+  citedPagesLabel,
   criteriaProgress,
   currentCriterion,
   exchanges as sessionExchanges,
@@ -572,7 +572,7 @@ function SessionState({ session, citations }) {
   const criterion = currentCriterion(session);
   const progress = sessionProgress(session);
   const attempts = attemptsLeft(session);
-  const pages = citedPages(citations);
+  const pages = citedPagesLabel(citations);
   const covered = criteriaProgress(session);
   if (!criterion && !progress) return null;
   return (
@@ -600,9 +600,7 @@ function SessionState({ session, citations }) {
               : `${attempts.left} attempts left on this criterion`}
           </span>
         )}
-        {pages.length > 0 && (
-          <span>Graded against {pages.length === 1 ? 'page' : 'pages'} {pages.join(', ')}</span>
-        )}
+        {pages && <span>Graded against {pages}</span>}
       </div>
       {session.stalled === true && (
         <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
