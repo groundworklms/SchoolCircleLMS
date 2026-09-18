@@ -73,3 +73,26 @@ test('nothing to rejoin is not an error', () => {
   assert.match(runningFn, /return \[\];/, 'an unreachable list reads as no jobs');
   assert.doesNotMatch(runningFn, /throw/, 'a page load must not fail because this could not be asked');
 });
+
+/*
+ * The failure has to be EMITTED, not only returned.
+ *
+ * The stream this replaced carried its failure as an event, so the progress
+ * reducer saw it and rendered the reason beside the partial work. Returning it
+ * without emitting looks equivalent and is not: handleSubmit returns early on
+ * a failure, so nothing ever puts it in front of anyone. A live generation
+ * ended with a complete-looking list of eight sections, a "Try again" button,
+ * and no explanation anywhere on the screen.
+ */
+test('a failed job is emitted as an event, so the reason reaches the screen', () => {
+  const failed = follow.slice(follow.indexOf("=== 'FAILED'"));
+  const block = failed.slice(0, failed.indexOf('if (json?.stale)'));
+  assert.match(block, /onEvent\(/, 'the reducer only renders what it is given');
+  assert.match(block, /return failure/, 'and the caller still gets it back');
+});
+
+test('the reducer renders a failed phase, which is why emitting it is enough', () => {
+  const progress = readFileSync(new URL('../app/prototype/GenerationProgress.js', import.meta.url), 'utf8');
+  assert.match(progress, /event\.phase === 'failed'/);
+  assert.match(progress, /view\.failure = event/);
+});
