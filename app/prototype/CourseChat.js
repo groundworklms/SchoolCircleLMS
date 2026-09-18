@@ -296,9 +296,15 @@ function SignedInCourseChat({ course, view }) {
         </section>
       )}
       {tutorMode && citationSourceId && selectedCitation && (
+        /* Opened as the document, not as a panel. The panel form mounted at
+           shell level beside the lesson and nothing ever cleared the selected
+           citation, so checking one source left a second sidebar there for the
+           rest of the session. Closing the reader clears the selection. */
         <SourceViewer
           sourceId={citationSourceId}
           citation={selectedCitation}
+          asReader
+          onClose={() => setSelectedCitation(null)}
         />
       )}
     </>
