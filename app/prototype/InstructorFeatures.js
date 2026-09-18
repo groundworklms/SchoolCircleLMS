@@ -1338,6 +1338,58 @@ const OBJECTIVE_STATE_COLOUR = {
  * the standard is exactly what an instructor has to rewrite when Rubricon
  * flags it.
  */
+const RUBRIC_PATH = (id) => `/rubrics/${id}`;
+
+/*
+ * Removing a rubric from the screen that shows it.
+ *
+ * Two-step rather than a confirm dialog, for the reason the rest of this
+ * product avoids them: a browser dialog blocks everything and a second click on
+ * a button that has changed its own label is just as deliberate.
+ *
+ * The server refuses while a mastery session grades against the rubric -- a
+ * completed session would otherwise become unexplainable after the fact -- and
+ * that refusal is shown rather than swallowed, because it is the one case where
+ * an instructor needs to know why the thing did not go.
+ */
+function DiscardRubric({ rubricId, onDiscarded }) {
+  const [armed, setArmed] = useState(false);
+  const [err, setErr] = useState(null);
+  const discard = useApiMutation(RUBRIC_PATH(rubricId), 'DELETE');
+
+  const run = async () => {
+    if (!armed) {
+      setArmed(true);
+      return;
+    }
+    setErr(null);
+    try {
+      await discard.mutate();
+      setArmed(false);
+      await onDiscarded?.();
+    } catch (error) {
+      setArmed(false);
+      setErr(error?.error || error?.message || 'That rubric could not be discarded.');
+    }
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        className="p-btn ghost"
+        onClick={run}
+        onBlur={() => setArmed(false)}
+        disabled={discard.loading}
+        style={armed ? { color: 'var(--p-critical)', borderColor: 'var(--p-critical)' } : undefined}
+      >
+        {discard.loading ? 'Discarding…' : armed ? 'Discard — confirm' : 'Discard'}
+      </button>
+      {err && <span className="p-src" role="alert" style={{ color: 'var(--p-warning)' }}>{err}</span>}
+    </>
+  );
+}
+
 function ObjectiveRubricForm({ courseId, objective, sourceOptions, existingRubricId, onGenerated }) {
   const [sourceId, setSourceId] = useState(sourceOptions[0]?.id || '');
   const [taskCode, setTaskCode] = useState('');
@@ -1581,15 +1633,25 @@ export function CourseRubrics({ courseId }) {
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              className="p-btn ghost"
-              onClick={() => setOpenObjective(openObjective === row.objective ? null : row.objective)}
-            >
-              {openObjective === row.objective
-                ? 'Close'
-                : row.state === 'none' ? 'Write a rubric' : 'Open rubric'}
-            </button>
+            <div className="p-btnrow">
+              <button
+                type="button"
+                className="p-btn ghost"
+                onClick={() => setOpenObjective(openObjective === row.objective ? null : row.objective)}
+              >
+                {openObjective === row.objective
+                  ? 'Close'
+                  : row.state === 'none' ? 'Write a rubric' : 'Open rubric'}
+              </button>
+              {/* A generated rubric could be opened and regenerated but never
+                  removed from the screen an instructor reads it on. The DELETE
+                  endpoint has always existed; nothing reached it from here, so
+                  a rubric that came back wrong or a duplicate left by two
+                  passes was permanent as far as this screen was concerned. */}
+              {row.rubric?.id && (
+                <DiscardRubric rubricId={row.rubric.id} onDiscarded={refetchRubrics} />
+              )}
+            </div>
           </div>
         ))}
       </div>
