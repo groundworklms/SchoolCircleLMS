@@ -2787,3 +2787,49 @@ test('a pending plan still blocks a second session, as it blocks the first', () 
     .filter((el) => el.type === 'button' && /Start another session/.test(String(el.props.children)));
   assert.equal(buttons[0].props.disabled, true, 'the server refuses this one too');
 });
+
+/* A generated rubric could be opened and regenerated but never removed from
+   the screen an instructor reads it on. The DELETE endpoint has always
+   existed; nothing reached it from here, so a rubric that came back wrong --
+   or a duplicate left behind by two overlapping passes -- was permanent as far
+   as this screen was concerned. */
+test('a rubric on the objective coverage list can be discarded from the row', () => {
+  const { CourseRubrics } = loadComponent('app/prototype/InstructorFeatures.js', {
+    queryData: {
+      '/courses/c1': {
+        course: {
+          id: 'c1',
+          sourceIds: ['src-1'],
+          objectives: ['Frame the problem', 'Wargame the course of action'],
+        },
+      },
+      '/rubrics': [
+        { id: 'rub-1', courseId: 'c1', objective: 'Frame the problem', dimensions: 4, flagged: false, status: 'PENDING' },
+      ],
+      '/sources': [{ id: 'src-1', title: 'MCWP 5-10', status: 'APPROVED' }],
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseRubrics, { courseId: 'c1' }));
+  assert.match(markup, /Discard/);
+  // The objective with no rubric has nothing to discard, and must not offer it.
+  assert.equal((markup.match(/Discard/g) || []).length, 1);
+});
+
+test('discarding is two deliberate clicks, not a blocking dialog', () => {
+  const { CourseRubrics } = loadComponent('app/prototype/InstructorFeatures.js', {
+    queryData: {
+      '/courses/c1': { course: { id: 'c1', sourceIds: ['src-1'], objectives: ['Frame the problem'] } },
+      '/rubrics': [
+        { id: 'rub-1', courseId: 'c1', objective: 'Frame the problem', dimensions: 4, flagged: false, status: 'PENDING' },
+      ],
+      '/sources': [{ id: 'src-1', title: 'MCWP 5-10', status: 'APPROVED' }],
+    },
+    // The armed state, supplied so the confirming label renders.
+    stateValues: [[null, () => {}], [true, () => {}]],
+  });
+  const markup = renderToStaticMarkup(React.createElement(CourseRubrics, { courseId: 'c1' }));
+  // A browser confirm() blocks everything; a second click on a button that has
+  // changed its own label is just as deliberate.
+  assert.match(markup, /Discard — confirm/);
+  assert.doesNotMatch(markup, /window\.confirm/);
+});
