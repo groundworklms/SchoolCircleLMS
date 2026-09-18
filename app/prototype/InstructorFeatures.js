@@ -95,9 +95,65 @@ function useWheelFallthrough() {
  * approve it.  There is no "replace" action after approval; a new course
  * revision is the boundary for changing the contract.
  */
+/*
+ * Which objectives a mastery plan covers.
+ *
+ * A plan was always scoped to a whole course, and on a real one that cannot
+ * work: the MCWP 5-10 course has sixteen objectives whose approved BARS rubrics
+ * carry fifty dimensions between them, and a plan may hold twelve criteria
+ * because Whetstone spends a turn on each against a twelve-exchange session.
+ * Fifty was refused -- correctly -- and there was no way to ask for fewer, so
+ * every rubric the instructor had approved was unreachable.
+ *
+ * A plan is the scope of a SESSION, not of a course. A learner sits a
+ * conversation about a handful of related objectives. So a long course becomes
+ * several plans, and this is where that choice is made. Choosing none keeps the
+ * old behaviour: the whole course, which is still right for a short one.
+ */
+function PlanObjectives({ course, chosen, onChange }) {
+  const objectives = (Array.isArray(course?.objectives) ? course.objectives : [])
+    .map((entry) => (typeof entry === 'string' ? entry.trim() : String(entry?.objective || '').trim()))
+    .filter(Boolean);
+  if (objectives.length < 2) return null;
+  const toggle = (objective) => {
+    onChange(
+      chosen.includes(objective)
+        ? chosen.filter((entry) => entry !== objective)
+        : [...chosen, objective],
+    );
+  };
+  return (
+    <div className="p-field" style={{ margin: '0.75rem 0' }}>
+      <span>
+        Objectives in this plan · {chosen.length === 0 ? `all ${objectives.length}` : `${chosen.length} of ${objectives.length}`}
+      </span>
+      <p className="p-src" style={{ margin: '0.2rem 0 0.4rem' }}>
+        A session spends one exchange per criterion, so a plan covers a handful of related
+        objectives rather than a whole course. Choose none to try the lot.
+      </p>
+      <div style={{ maxHeight: '11rem', overflow: 'auto', border: '1px solid var(--p-border)', borderRadius: 10, padding: '0.4rem 0.6rem' }}>
+        {objectives.map((objective) => (
+          <label key={objective} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start', padding: '0.2rem 0', fontSize: '0.9em' }}>
+            <input
+              type="checkbox"
+              checked={chosen.includes(objective)}
+              onChange={() => toggle(objective)}
+              style={{ marginTop: '0.25em' }}
+            />
+            <span>{objective}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function InstructorMasteryPlan({ courseId, course, approvedSources = [], onUpdated }) {
   const sourceIds = Array.isArray(course?.sourceIds) ? course.sourceIds : [];
   const [selectedSourceId, setSelectedSourceId] = useState(sourceIds[0] || '');
+  // Which objectives this plan covers. Empty means the whole course, which is
+  // what this screen did before and is still right for a short one.
+  const [chosen, setChosen] = useState([]);
   const [plan, setPlan] = useState(course?.masteryPlan || null);
   const generatePlan = useApiMutation(`/courses/${courseId}/mastery-plan`, 'POST');
   const approvePlan = useApiMutation(`/courses/${courseId}/mastery-plan/approve`, 'POST');
@@ -125,7 +181,10 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
   const handleGenerate = async () => {
     if (!selectedSourceId) return;
     try {
-      const response = await generatePlan.mutate({ sourceId: selectedSourceId });
+      const response = await generatePlan.mutate({
+        sourceId: selectedSourceId,
+        ...(chosen.length > 0 ? { objectives: chosen } : {}),
+      });
       const nextPlan = response?.masteryPlan || response?.plan || (response?.revision ? response : null);
       if (nextPlan) setPlan(nextPlan);
       await onUpdated?.();
@@ -176,6 +235,7 @@ export function InstructorMasteryPlan({ courseId, course, approvedSources = [], 
               )}
             </select>
           </label>
+          <PlanObjectives course={course} chosen={chosen} onChange={setChosen} />
           <button
             className="p-btn"
             onClick={handleGenerate}

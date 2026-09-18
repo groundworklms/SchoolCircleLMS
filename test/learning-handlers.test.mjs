@@ -1708,3 +1708,135 @@ test(
     }
   },
 );
+
+/*
+ * A mastery plan was scoped to a whole course, and on a real one that cannot
+ * work: the MCWP 5-10 course has sixteen objectives whose approved BARS rubrics
+ * carry fifty dimensions between them, and a plan may hold twelve criteria
+ * because Whetstone spends one turn on each against a twelve-exchange session.
+ * Fifty was refused -- correctly -- and there was no way to ask for fewer, so
+ * every rubric the instructor had approved was unreachable by any learner.
+ *
+ * A plan is the scope of a SESSION, not of a course.
+ */
+test(
+  'a plan can cover the objectives an instructor chooses, not only all of them',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `plan-scope-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Scope Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `plan-scope-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+    const clearing = 'Clear and handle the weapon safely';
+    const feeding = 'Feed the weapon without inducing a stoppage';
+
+    const source = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Scope source ${suffix}`,
+        sourceId: `plan-scope-source-${suffix}`,
+        text: RUBRIC_SOURCE_TEXT,
+        pages: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+        chunks: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      payload: { title: `Scope course ${suffix}`, sourceIds: [source.id], objectives: [clearing, feeding] },
+    });
+    records.push(source, course);
+    for (const objective of [clearing, feeding]) {
+      // eslint-disable-next-line no-await-in-loop
+      records.push(await createLearningRecord({
+        ownerId: instructor.id,
+        type: 'RUBRIC',
+        status: 'APPROVED',
+        payload: {
+          sourceId: source.id,
+          courseId: course.id,
+          objective,
+          ...rubricEvidence({ flagged: false, dimensions: clearingDimensions() }),
+        },
+      }));
+    }
+
+    try {
+      const scoped = await generateMasteryPlan(instructor, {
+        params: { id: course.id },
+        body: { sourceId: source.id, objectives: [feeding] },
+      });
+      assert.equal(scoped.status, 201);
+      assert.equal(scoped.json.provenance.origin, 'RATIFIED');
+      // Only the chosen objective's rubric became criteria. The other approved
+      // rubric is untouched and available to a second plan.
+      assert.deepEqual(scoped.json.provenance.objectives, [feeding]);
+      assert.equal(
+        scoped.json.masteryPlan.criteria.length,
+        clearingDimensions().length,
+        'one criterion per dimension of the one chosen rubric',
+      );
+    } finally {
+      await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
+      await db.user.deleteMany({ where: { id: instructorRow.id } });
+    }
+  },
+);
+
+test(
+  'a plan cannot name an objective the course does not teach',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `plan-scope-bad-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Scope Guard ${suffix}`, role: 'INSTRUCTOR', externalId: `plan-scope-bad-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+    const clearing = 'Clear and handle the weapon safely';
+
+    const source = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Guard source ${suffix}`,
+        sourceId: `plan-scope-bad-source-${suffix}`,
+        text: RUBRIC_SOURCE_TEXT,
+        pages: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      payload: { title: `Guard course ${suffix}`, sourceIds: [source.id], objectives: [clearing] },
+    });
+    records.push(source, course);
+
+    try {
+      // A competency label on a learner's record that no lesson ever taught is
+      // exactly what the allowlist exists to prevent.
+      assert.equal(
+        await status(generateMasteryPlan(instructor, {
+          params: { id: course.id },
+          body: { sourceId: source.id, objectives: ['Something this course never taught'] },
+        })),
+        422,
+      );
+      assert.equal(
+        await status(generateMasteryPlan(instructor, {
+          params: { id: course.id },
+          body: { sourceId: source.id, objectives: 'not an array' },
+        })),
+        400,
+      );
+    } finally {
+      await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
+      await db.user.deleteMany({ where: { id: instructorRow.id } });
+    }
+  },
+);
