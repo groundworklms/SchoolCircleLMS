@@ -1491,3 +1491,130 @@ test(
     }
   },
 );
+
+/*
+ * Every course the whole-course planner built before it pinned each lesson's
+ * objective onto its section has the objectives on the course and none on the
+ * sections. The twenty-one-lesson MCWP 5-10 course generated on 2026-09-18 is
+ * one of them: sixteen sections, sixteen objectives, no link between them. A
+ * rubric pass that only read section.objective would find nothing to write a
+ * standard from and report "0 written" on a complete course.
+ */
+test(
+  'a course whose objectives live only on the course still gets its rubrics',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `rubric-fallback-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Fallback Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `rubric-fallback-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+    const first = 'Clear and handle the weapon safely';
+    const second = 'Feed the weapon without inducing a stoppage';
+
+    const source = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Fallback source ${suffix}`,
+        sourceId: `rubric-fallback-source-${suffix}`,
+        text: RUBRIC_SOURCE_TEXT,
+        pages: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      payload: {
+        title: `Fallback course ${suffix}`,
+        sourceIds: [source.id],
+        objectives: [first, second],
+        // Exactly what the planner produced: no objective on either section.
+        sections: [
+          { title: 'Clearing', cite: 'Gunnery p.1', lesson: RUBRIC_SOURCE_TEXT },
+          { title: 'Feeding', cite: 'Gunnery p.1', lesson: RUBRIC_SOURCE_TEXT },
+          // A third section with no objective behind it must stay empty rather
+          // than borrowing its neighbour's.
+          { title: 'Unclaimed', cite: 'Gunnery p.2', lesson: RUBRIC_SOURCE_TEXT },
+        ],
+      },
+    });
+    records.push(source, course);
+
+    try {
+      const result = await buildCourseRubricsRecord(
+        instructor,
+        { params: { id: course.id } },
+        { ask: async () => ({ flagged: false, dimensions: clearingDimensions() }) },
+      );
+      assert.equal(result.json.written, 2, 'one per course objective, and nothing for the third section');
+      const written = (await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' }))
+        .filter((row) => row.payload?.courseId === course.id);
+      assert.deepEqual(written.map((row) => row.payload.objective).sort(), [first, second].sort());
+    } finally {
+      const all = await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' });
+      await db.learningRecord.deleteMany({
+        where: { id: { in: [...records.map((record) => record.id), ...all.map((row) => row.id)] } },
+      });
+      await db.user.deleteMany({ where: { id: instructorRow.id } });
+    }
+  },
+);
+
+test(
+  'a section that states its own objective is believed over the course list',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `rubric-own-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Own Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `rubric-own-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+    const stated = 'Feed the weapon without inducing a stoppage';
+
+    const source = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Own source ${suffix}`,
+        sourceId: `rubric-own-source-${suffix}`,
+        text: RUBRIC_SOURCE_TEXT,
+        pages: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      payload: {
+        title: `Own course ${suffix}`,
+        sourceIds: [source.id],
+        objectives: ['Clear and handle the weapon safely', stated],
+        // First position on the course list says "clearing"; the section says
+        // otherwise, and the section wins.
+        sections: [{ title: 'Feeding', objective: stated, cite: 'Gunnery p.1', lesson: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    records.push(source, course);
+
+    try {
+      await buildCourseRubricsRecord(
+        instructor,
+        { params: { id: course.id } },
+        { ask: async () => ({ flagged: false, dimensions: clearingDimensions() }) },
+      );
+      const written = (await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' }))
+        .filter((row) => row.payload?.courseId === course.id);
+      assert.deepEqual(written.map((row) => row.payload.objective), [stated]);
+    } finally {
+      const all = await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' });
+      await db.learningRecord.deleteMany({
+        where: { id: { in: [...records.map((record) => record.id), ...all.map((row) => row.id)] } },
+      });
+      await db.user.deleteMany({ where: { id: instructorRow.id } });
+    }
+  },
+);
