@@ -15,8 +15,14 @@ import {
 } from '../../lib/offline-session';
 import { createProfileCoordinator } from './profile-coordinator';
 
+/* Long enough that a slow network or a cold IndexedDB read is never cut
+   short, short enough that a wedged SDK does not read as a hung app. The
+   SDK answers in tens of milliseconds when it is healthy. */
+const AUTH_STATE_DEADLINE_MS = 8000;
+
 const AuthCtx = createContext({
   user: null,
+  authStalled: false,
   profile: null,
   profileLoading: false,
   profileError: null,
@@ -55,6 +61,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   // Only "loading" when we actually have Firebase to wait on.
   const [loading, setLoading] = useState(firebaseReady);
+  /* True when the SDK never answered. Surfaced rather than swallowed: a
+     visitor who is quietly treated as signed out while their session is fine
+     deserves to know why, and "sign in again" is the one action that fixes
+     it. */
+  const [authStalled, setAuthStalled] = useState(false);
   const [profileState, setProfileState] = useState({ profile: null, loading: firebaseReady, error: null });
   const [signOutError, setSignOutError] = useState(null);
   const coordinatorRef = useRef(null);
@@ -101,7 +112,36 @@ export function AuthProvider({ children }) {
       if (!offlineEnabled) setProfileState({ profile: null, loading: false, error: null });
       return undefined;
     }
+    /* A deadline on hearing from the SDK at all.
+     *
+     * `setLoading(false)` used to live only inside this callback, so anything
+     * that stopped it firing left the app on "Checking your session..." with
+     * no path forward, no explanation and nothing to click. That is not
+     * hypothetical: the Firebase SDK can wedge -- "INTERNAL ASSERTION FAILED:
+     * Pending promise was never set", thrown from its own onAuthEvent when a
+     * popup sign-in is interrupted -- and once it does, this callback never
+     * runs again for that page load. Observed on 2026-09-18 after a popup was
+     * orphaned mid-flight; every route behind the guard was a dead page until
+     * the browser's IndexedDB was cleared by hand.
+     *
+     * Falling through to "signed out" is the right answer rather than a
+     * guess. It is what an unauthenticated visitor gets anyway, it routes to
+     * sign-in, and signing in is exactly the action that clears a wedged SDK.
+     * A real session that arrives later still wins: the callback below sets
+     * the user whenever it does eventually fire.
+     */
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setLoading(false);
+      setAuthStalled(true);
+    }, AUTH_STATE_DEADLINE_MS);
+
     const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+      settled = true;
+      clearTimeout(timer);
+      setAuthStalled(false);
       // The coordinator clears its account synchronously before this state
       // publication, closing the old-profile/new-token render window.
       coordinator.onAuthStateChanged(nextUser);
@@ -109,7 +149,10 @@ export function AuthProvider({ children }) {
       setLoading(false);
       setSignOutError(null);
     });
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, [coordinator, offlineEnabled]);
 
   // Restore a stored operator session on load. Declared after the Firebase
@@ -170,6 +213,7 @@ export function AuthProvider({ children }) {
         refreshProfile,
         updateProfile,
         loading,
+        authStalled,
         // `ready` means "this deployment has a way to sign in". Offline mode is
         // such a way, so AuthGuard must gate rather than pass everyone through.
         ready: firebaseReady || offlineEnabled,

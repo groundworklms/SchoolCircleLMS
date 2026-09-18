@@ -27,6 +27,7 @@ export default function LoginPage() {
     ready,
     offlineEnabled,
     signInOffline,
+    authStalled,
   } = useAuth();
   const [mode, setMode] = useState('signin'); // 'signin' | 'signup'
   const [email, setEmail] = useState('');
@@ -203,6 +204,17 @@ export default function LoginPage() {
 
           {firebaseReady && (
             <>
+              {/* The SDK never answered, so the app treated this visit as
+                  signed out. Said plainly, because the alternative is a
+                  visitor with a perfectly good session being silently bounced
+                  to a login screen and concluding the product is broken --
+                  and because signing in again is the thing that clears it. */}
+              {authStalled && !err && (
+                <div className="scl-err" role="status">
+                  We could not read your sign-in state, so we have brought you here. Signing in again
+                  will sort it out.
+                </div>
+              )}
               {err && <div className="scl-err">{err}</div>}
 
               <button className="scl-btn scl-btn-google" onClick={google} disabled={busy}>
