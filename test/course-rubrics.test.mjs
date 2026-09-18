@@ -225,13 +225,13 @@ test('a standard spans the whole section rather than stopping partway through it
 });
 
 test('an over-long section is sampled across its whole span, keeping both ends', () => {
-  const many = Array.from({ length: 60 }, (_, i) => `This is sentence number ${i} of the section.`);
+  const many = Array.from({ length: 200 }, (_, i) => `This is sentence number ${i} of the section.`);
   const kept = spanning(many, 24);
   assert.equal(kept.length, 24);
   assert.equal(kept[0], many[0], 'the framing sentence is kept');
   assert.equal(kept[kept.length - 1], many[many.length - 1], 'and the conclusion');
   // The point of sampling rather than truncating: the tail is represented.
-  assert.ok(kept.some((sentence) => many.indexOf(sentence) > 40));
+  assert.ok(kept.some((sentence) => many.indexOf(sentence) > 150));
 });
 
 test('a section that fits under the cap is not resampled', () => {
@@ -239,4 +239,34 @@ test('a section that fits under the cap is not resampled', () => {
   assert.deepEqual(spanning(few, 24), few);
   assert.deepEqual(spanning([], 24), []);
   assert.deepEqual(spanning(null, 24), []);
+});
+
+/*
+ * Measured on the real MCWP 5-10 course after the cap was raised to 24: the
+ * sampler dropped the ONE sentence enumerating the six steps of the planning
+ * process, and with it the only mention of the war game, of orders development
+ * and of transition. Each appears exactly once in that section. Even sampling
+ * preserves the span and destroys the specifics, which is the opposite of what
+ * a standard needs.
+ */
+test('a sentence that appears once in the section is not sampled away', () => {
+  const sentences = Array.from(
+    { length: 42 },
+    (_, i) => `Sentence number ${i} carries some real content about planning here.`,
+  );
+  sentences[1] = 'It is a six-step process comprised of problem framing, COA development, '
+    + 'COA war game, COA comparison and decision, orders development, and transition.';
+  const steps = performanceSteps({ lesson: sentences.join(' ') });
+  assert.equal(steps.length, 42, 'a real section goes to the model whole');
+  assert.ok(steps.some((step) => /six-step process/.test(step)), 'including the sentence that names them');
+});
+
+test('the sampler is the overflow guard, not the normal path', () => {
+  const huge = Array.from({ length: 200 }, (_, i) => `Sentence number ${i} of a very long document indeed.`);
+  const steps = performanceSteps({ lesson: huge.join(' ') });
+  assert.ok(steps.length <= 48);
+  assert.ok(steps.length > 40, 'and it still carries a standard worth of material');
+  // Both ends survive: the framing and the conclusion.
+  assert.ok(/number 0 /.test(steps[0]));
+  assert.ok(/number 199 /.test(steps[steps.length - 1]));
 });
