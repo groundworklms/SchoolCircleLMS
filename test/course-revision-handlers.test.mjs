@@ -428,6 +428,14 @@ const dbMock = {
 };
 
 mock.module('../lib/db.js', { namedExports: dbMock });
+/* Generation runs through runChunkedDraft now, so that is what this stubs.
+   Mocking arsenal-core alone stopped covering it: draftCourseRecord no longer
+   calls draftCourse, and listing every function the chunked runner imports
+   would be a list whose only job is to be kept up to date. */
+mock.module('../lib/learning/chunked-draft.js', {
+  namedExports: { runChunkedDraft: async () => null },
+});
+
 mock.module('../lib/arsenal-core.js', {
   namedExports: {
     answerMasterySession: async () => null,
