@@ -71,12 +71,13 @@ test('instructor secondary and legacy course tools retain canonical deep links',
   }
 
   // The review/publish path stays the canonical builder URL, while existing
-  // roster and live-learning links remain addressable for saved bookmarks.
+  // roster links remain addressable for saved bookmarks. `control` is gone:
+  // the live-session screen it addressed simulated a class and is removed.
   assert.equal(href(parse('/prototype/instructor/M092721')), '/prototype/instructor/M092721/builder');
   // `rubrics` is both a library view and a course view. The library one wins
   // at /instructor/rubrics (asserted above); under a course id it is that
   // course's own objective coverage.
-  for (const view of ['roster', 'control', 'fidelity', 'rubrics', 'mastery', 'aar', 'settings']) {
+  for (const view of ['roster', 'fidelity', 'rubrics', 'mastery', 'aar', 'settings']) {
     const path = `/prototype/instructor/M092721/${view}`;
     assert.equal(parse(path).area, 'course', path);
     assert.equal(href(parse(path)), path);
