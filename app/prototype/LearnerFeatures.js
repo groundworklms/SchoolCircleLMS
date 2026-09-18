@@ -10,6 +10,7 @@ import { usePrefs, setPref } from './prefs';
 import { lessonPagesForCourse, lessonPagesForSection } from '../../lib/learning/lesson-pages';
 import { masteryStart, startLabel } from '../../lib/learning/mastery-gate';
 import { calibrationNote, calibrationOf } from '../../lib/learning/calibration';
+import { dueForReview, reviewNote } from '../../lib/learning/spacing';
 
 /* Learner-side arsenal features for a real (LearningRecord) course: the
    approved course as a reader, Whetstone mastery sessions, the Cadence study
@@ -843,6 +844,9 @@ export function MasterySession({ course }) {
 
 /* ---------- learning path (Cadence) ---------- */
 
+const ATTEMPTS_PATH = (id) => `/courses/${id}/attempts`;
+
+
 const COA_META = {
   catch_up: { icon: '▼', color: 'var(--p-critical)', blurb: 'Catch-up. More per day, due first.' },
   maintain: { icon: '●', color: 'var(--p-good)', blurb: 'Maintenance. Keeps pace with the syllabus.' },
@@ -852,6 +856,56 @@ const COA_META = {
 function fmtDate(iso) {
   const d = new Date(`${iso}T00:00:00`);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+/*
+ * What this learner should be asked again, and when.
+ *
+ * The learner loop runs practice into spaced review and review back into the
+ * path; the review node was never built, so every answer a learner gave stopped
+ * being used the moment it was graded. Cadence plans the syllabus across a
+ * calendar, which is a different job -- when to study a lesson, not when a
+ * specific thing you got wrong has decayed far enough to be worth asking again.
+ *
+ * It lives on the Learning Path because that is the screen a learner opens to
+ * find out what to do next, and "the four things you are still carrying" is a
+ * better answer to that question than any plan.
+ */
+function DueForReview({ course, onOpen }) {
+  const { data } = useApiQuery(ATTEMPTS_PATH(course.id));
+  const due = useMemo(() => dueForReview(data?.history || [], { limit: 8 }), [data]);
+  const note = reviewNote(due);
+  if (!note) return null;
+  return (
+    <div className="p-panel">
+      <h3>Due for review</h3>
+      <p className="p-src">{note}</p>
+      <ul className="s-due">
+        {due.map((entry) => {
+          const carried = entry.lastCorrect === false && entry.lastConfidence >= 2;
+          return (
+            <li key={entry.itemId} className={carried ? 's-due-row carried' : 's-due-row'}>
+              <span className="s-due-obj">{entry.objective || 'This course'}</span>
+              <span className="s-due-why">
+                {carried
+                  ? 'you were sure, and it was wrong'
+                  : entry.lastCorrect === false
+                    ? 'missed'
+                    : entry.lastConfidence === null || entry.lastConfidence < 2
+                      ? 'right, but you were not sure'
+                      : 'time to check it is still there'}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {onOpen && (
+        <button type="button" className="p-btn" onClick={onOpen} style={{ marginTop: '0.75rem' }}>
+          Go to the lessons
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function StudyPlan({ course }) {
@@ -887,6 +941,8 @@ export function StudyPlan({ course }) {
     <>
       <h2 className="p-h">My Learning Path</h2>
       <p className="p-sub">Three plans from your syllabus and available time.</p>
+
+      <DueForReview course={course} />
 
       <Err msg={err} />
       {loading && <p>Loading plan…</p>}
