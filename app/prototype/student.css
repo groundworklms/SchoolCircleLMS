@@ -1189,6 +1189,14 @@ details[open] > summary.s-label::before { content: '▾'; }
 .s-cal-lab { font-size: 0.78em; font-weight: 600; color: var(--p-accent); margin-bottom: 0.3rem; }
 .s-cal-note { font-size: 0.92em; line-height: 1.45; }
 .s-cal-figs { display: flex; gap: 1.2rem; flex-wrap: wrap; margin-top: 0.55rem; font-size: 0.82em; color: var(--p-dim); }
+.s-due { list-style: none; margin: 0.6rem 0 0; padding: 0; }
+.s-due-row { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; padding: 0.45rem 0; border-top: 0.5px solid var(--p-border); }
+.s-due-row:first-child { border-top: 0; }
+.s-due-obj { font-size: 0.93em; min-width: 0; }
+.s-due-why { font-size: 0.8em; color: var(--p-dim); white-space: nowrap; }
+/* The one row a learner should start with. Warning rather than critical: it is
+   a thing to go and fix, not a failure being reported at them. */
+.s-due-row.carried .s-due-why { color: var(--p-warning); font-weight: 600; }
 
 .s-ls-attach { padding-top: 0.5rem; border-top: 0.5px solid var(--p-border); }
 .s-ls-done { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.5rem 0 1.4rem; }

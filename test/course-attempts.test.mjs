@@ -485,3 +485,38 @@ test('a learner reading back their own answers can tell a rating from its absenc
     confidence: 2,
   });
 });
+
+/* --------------------------- history for spacing -------------------------- */
+
+test('the history carries every answer in order, for the review schedule', async () => {
+  const { handlers } = fixture();
+  await handlers.recordCourseAttempt(LEARNER, {
+    params: { id: COURSE_ID },
+    body: answerBody({ confidence: 3 }),
+  });
+  const { json } = await handlers.getCourseAttempts(LEARNER, { params: { id: COURSE_ID }, query: {} });
+  assert.equal(json.history.length, 1);
+  const [entry] = json.history;
+  assert.equal(entry.itemId, `${COURSE_ID}:s1:pre1`);
+  assert.equal(entry.correct, true);
+  assert.equal(entry.confidence, 3);
+  // An item's place on the ladder is a running count, so the schedule needs
+  // when each answer happened -- and that timestamp comes off the record, not
+  // out of the request. A learner able to backdate an answer could clear their
+  // own review queue.
+  assert.ok(entry.answeredAt === null || !Number.isNaN(Date.parse(entry.answeredAt)));
+});
+
+test('an answer with no stated confidence appears in the history without one', async () => {
+  const { handlers } = fixture();
+  await handlers.recordCourseAttempt(LEARNER, { params: { id: COURSE_ID }, body: answerBody() });
+  const { json } = await handlers.getCourseAttempts(LEARNER, { params: { id: COURSE_ID }, query: {} });
+  assert.equal(Object.prototype.hasOwnProperty.call(json.history[0], 'confidence'), false);
+});
+
+test('another learner’s answers are not in this one’s history', async () => {
+  const { handlers } = fixture();
+  await handlers.recordCourseAttempt(LEARNER, { params: { id: COURSE_ID }, body: answerBody() });
+  const theirs = await handlers.getCourseAttempts(OTHER, { params: { id: COURSE_ID }, query: {} });
+  assert.deepEqual(theirs.json.history, []);
+});

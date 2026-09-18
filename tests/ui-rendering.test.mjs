@@ -2625,3 +2625,44 @@ test('the reader asks for confidence and the instructor preview does not', () =>
   const preview = source.slice(source.indexOf('export function CoursePreview'), source.indexOf('export function selectMasterySession'));
   assert.doesNotMatch(preview, /askConfidence/);
 });
+
+/* The review queue is the learner-loop node that was never built: every answer
+   a learner gave stopped being used the moment it was graded. */
+test('the review queue leads with what the learner was sure about and wrong', () => {
+  const day = 86400000;
+  const ago = (days) => new Date(Date.now() - days * day).toISOString();
+  const { StudyPlan } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: {
+      '/study-plan?courseId=c1': null,
+      '/courses/c1/attempts': {
+        history: [
+          { itemId: 'a', correct: true, confidence: 0, objective: 'Read the map', answeredAt: ago(40) },
+          { itemId: 'b', correct: false, confidence: 3, objective: 'Frame the problem', answeredAt: ago(3) },
+          { itemId: 'c', correct: false, confidence: 0, objective: 'Wargame it', answeredAt: ago(9) },
+        ],
+      },
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(StudyPlan, { course: { id: 'c1' } }));
+  assert.match(markup, /3 due/);
+  assert.match(markup, /sure about and got wrong/);
+  // Ordering: the carried item first, then the ordinary miss, then the one
+  // that was merely right-while-guessing.
+  const order = ['Frame the problem', 'Wargame it', 'Read the map'].map((name) => markup.indexOf(name));
+  assert.deepEqual(order, [...order].sort((a, b) => a - b), order.join(','));
+  assert.match(markup, /you were sure, and it was wrong/);
+  assert.match(markup, /right, but you were not sure/);
+});
+
+test('nothing due renders nothing, rather than an empty panel', () => {
+  const { StudyPlan } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: {
+      '/study-plan?courseId=c1': null,
+      '/courses/c1/attempts': {
+        history: [{ itemId: 'a', correct: true, confidence: 3, answeredAt: new Date().toISOString() }],
+      },
+    },
+  });
+  const markup = renderToStaticMarkup(React.createElement(StudyPlan, { course: { id: 'c1' } }));
+  assert.doesNotMatch(markup, /Due for review/, 'a panel that always has something to say stops being read');
+});
