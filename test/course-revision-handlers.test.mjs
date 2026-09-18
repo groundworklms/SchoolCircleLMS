@@ -438,6 +438,9 @@ mock.module('../lib/learning/chunked-draft.js', {
 
 mock.module('../lib/arsenal-core.js', {
   namedExports: {
+    // Generation drops a question with a blank option before validation can
+    // fail the whole course over it; here it is a pass-through.
+    withoutUnanswerableQuestions: (course) => course,
     answerMasterySession: async () => null,
     deriveMasteryPlan: async () => null,
     draftCourse: async () => null,

@@ -101,12 +101,18 @@ test('progress is saved after the plan and after every section', async () => {
 
   const counts = saves.map((s) => s.sections.length);
   assert.deepEqual(counts, [...counts].sort((a, b) => a - b), 'sections only ever accumulate');
-  assert.equal(counts[counts.length - 1], course.sections.length + countRefused(saves));
+  // Every section that reached a checkpoint is either in the course or was not
+  // kept -- refused by the generator, or dropped during assembly because it had
+  // no questions to assess with. Counted by what survived rather than by the
+  // taxonomy of why, so a new reason for dropping one does not silently make
+  // this assertion vacuous.
+  assert.equal(counts[counts.length - 1], course.sections.length + countNotKept(saves, course));
 });
 
-function countRefused(saves) {
+function countNotKept(saves, course) {
+  const kept = new Set((course.sections || []).map((section) => section.title));
   const last = saves[saves.length - 1];
-  return last.sections.filter((section) => section?.refused === true || !section).length;
+  return last.sections.filter((section) => !section || !kept.has(section.title)).length;
 }
 
 // The property the whole change rests on.
