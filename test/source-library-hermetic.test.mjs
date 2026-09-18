@@ -131,6 +131,25 @@ mock.module('../lib/auth.js', {
     },
   },
 });
+/* Generation is driven through runChunkedDraft now, so that is what this
+   stubs and gates. Mocking draftCourse alone stopped reaching the code under
+   test -- draftCourseRecord no longer calls it -- and mocking arsenal-core
+   harder would mean listing every function the chunked runner imports, which
+   is a list that exists only to be kept up to date. */
+mock.module('../lib/learning/chunked-draft.js', {
+  namedExports: {
+    runChunkedDraft: async () => {
+      if (draftGate) {
+        const gate = draftGate;
+        gate.started();
+        await gate.promise;
+        draftGate = null;
+      }
+      return { title: 'Generated course', objectives: [], sections: [] };
+    },
+  },
+});
+
 mock.module('../lib/arsenal-core.js', {
   namedExports: {
     answerMasterySession: async () => null,
