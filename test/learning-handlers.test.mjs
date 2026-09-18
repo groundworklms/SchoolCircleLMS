@@ -1618,3 +1618,93 @@ test(
     }
   },
 );
+
+/*
+ * One course ended up with twenty-seven rubrics for sixteen objectives. Each
+ * rubric is a model call of twenty or thirty seconds, and the set of what
+ * already exists was read once before the loop -- so two overlapping passes
+ * both read the same empty set and both wrote. Re-reading immediately before
+ * the create narrows the window from a model call to a database round trip.
+ */
+test(
+  'a rubric written for an objective while this pass was thinking is not written again',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `rubric-race-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Race Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `rubric-race-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+    const first = 'Clear and handle the weapon safely';
+    const second = 'Feed the weapon without inducing a stoppage';
+
+    const source = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Race source ${suffix}`,
+        sourceId: `rubric-race-source-${suffix}`,
+        text: RUBRIC_SOURCE_TEXT,
+        pages: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      payload: {
+        title: `Race course ${suffix}`,
+        sourceIds: [source.id],
+        objectives: [first, second],
+        sections: [
+          { title: 'Clearing', objective: first, cite: 'Gunnery p.1', lesson: RUBRIC_SOURCE_TEXT },
+          { title: 'Feeding', objective: second, cite: 'Gunnery p.1', lesson: RUBRIC_SOURCE_TEXT },
+        ],
+      },
+    });
+    records.push(source, course);
+
+    try {
+      // The other pass lands while this one is mid-call on the first objective.
+      let asked = 0;
+      const ask = async () => {
+        asked += 1;
+        if (asked === 1) {
+          const sneaked = await createLearningRecord({
+            ownerId: instructor.id,
+            type: 'RUBRIC',
+            status: 'PENDING',
+            payload: {
+              sourceId: source.id,
+              courseId: course.id,
+              objective: second,
+              ...rubricEvidence({ flagged: false, dimensions: clearingDimensions() }),
+            },
+          });
+          records.push(sneaked);
+        }
+        return { flagged: false, dimensions: clearingDimensions() };
+      };
+
+      const result = await buildCourseRubricsRecord(instructor, { params: { id: course.id } }, { ask });
+      assert.equal(result.json.written, 1, 'only the objective nobody else had written');
+      assert.equal(asked, 1, 'and the second was not even sent to a model');
+
+      const written = (await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' }))
+        .filter((row) => row.payload?.courseId === course.id);
+      assert.equal(written.length, 2);
+      assert.equal(
+        new Set(written.map((row) => row.payload.objective)).size,
+        2,
+        'one rubric per objective, not two for the same one',
+      );
+    } finally {
+      const all = await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' });
+      await db.learningRecord.deleteMany({
+        where: { id: { in: [...records.map((record) => record.id), ...all.map((row) => row.id)] } },
+      });
+      await db.user.deleteMany({ where: { id: instructorRow.id } });
+    }
+  },
+);
