@@ -123,7 +123,10 @@ export function SourceViewer({
     onClose?.();
   };
 
-  if (loading || !sourceData) return <p>Loading source…</p>;
+  // As a reader there is no card to put a loading line in, and a bare one would
+  // be a stray paragraph beside the lesson -- the same shell-level litter this
+  // mode exists to remove. The document appears when it is there.
+  if (loading || !sourceData) return asReader ? null : <p>Loading source…</p>;
 
   /* A file upload records the document under its filename, so this card said
      "AY27_8670_..._Moodle.pdf" — one unbroken token, which ran out of the
