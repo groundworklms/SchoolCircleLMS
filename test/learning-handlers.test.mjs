@@ -6,6 +6,7 @@ import {
   createLearningEvidenceStore,
   db,
   getLearningRecord,
+  listLearningRecords,
   updateLearningRecord,
   updateLearningRecordIfVersion,
 } from '../lib/db.js';
@@ -13,6 +14,7 @@ import {
   approveCourse,
   approveMasteryPlan,
   approveRubric,
+  buildCourseRubricsRecord,
   generateMasteryPlan,
   getMasterySession,
   getCourse,
@@ -93,6 +95,10 @@ test(
           title: 'Source text',
           cite: `${approvedSource.id} p.1`,
           lesson: 'Approved fixture source text.',
+          // approveCourse refuses a section with no lesson page. This fixture
+          // predates that gate and was never run, because the Postgres cases in
+          // this file had no CI job until the rubric pass needed one.
+          pages: [{ title: 'Source text', blocks: [{ type: 'text', text: 'Approved fixture source text.' }] }],
           pre: [{ stem: 'Which approved fixture source text applies?', options: ['Approved fixture source text.', 'Unapproved reference.'], answer: 0 }],
           post: [{ stem: 'Identify the approved fixture source text.', options: ['Approved fixture source text.', 'Unapproved reference.'], answer: 0 }],
         }],
@@ -671,6 +677,12 @@ test(
           title: 'Aiming',
           cite: `${source.id} p.1`,
           lesson: 'Sight alignment is the relationship between the post and the aperture.',
+          // Same gate, same reason as the fixture above: approveCourse refuses
+          // a section with no lesson page.
+          pages: [{
+            title: 'Aiming',
+            blocks: [{ type: 'text', text: 'Sight alignment is the relationship between the post and the aperture.' }],
+          }],
           pre: [{
             stem: 'Sight alignment describes the relationship between the post and what?',
             options: ['The stock', 'The aperture'],
@@ -1077,6 +1089,226 @@ test(
       assert.equal(approvedPlan.json.masteryPlan.criteria[0].provenance.objective, clearing);
     } finally {
       await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
+      await db.user.deleteMany({ where: { id: instructorRow.id } });
+    }
+  },
+);
+
+/*
+ * The rubric pass, called the way the route calls it.
+ *
+ * This is deliberately an end-to-end handler test rather than another test of
+ * the pure module beside it. A route in this repo is one line that forwards to
+ * a handler, so a handler referring to something it never imported passes every
+ * unit test underneath it and throws the first time anyone presses the button
+ * -- which is exactly how requireAnyRole reached main. The only test that
+ * catches that class is one that actually runs the function.
+ */
+test(
+  'a generated course gets one BARS rubric per taught objective, pending approval',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `course-rubrics-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Rubric Pass Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `rubric-pass-${suffix}` },
+    });
+    const otherRow = await db.user.create({
+      data: { name: `Other Instructor ${suffix}`, role: 'INSTRUCTOR', externalId: `rubric-pass-other-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const stranger = { id: otherRow.id, name: otherRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+
+    const clearing = 'Clear and handle the weapon safely';
+    const feeding = 'Feed the weapon without inducing a stoppage';
+    const lessonFor = (line) => `${line} ${RUBRIC_SOURCE_TEXT}`;
+
+    const source = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Rubric pass source ${suffix}`,
+        sourceId: `rubric-pass-source-${suffix}`,
+        text: RUBRIC_SOURCE_TEXT,
+        pages: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+        chunks: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    records.push(source);
+
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      payload: {
+        title: `Rubric pass course ${suffix}`,
+        sourceIds: [source.id],
+        objectives: [clearing, feeding],
+        sections: [
+          {
+            title: 'Clearing',
+            objective: clearing,
+            cite: 'Gunnery p.1',
+            lesson: lessonFor('Clearing precedes every other action.'),
+          },
+          {
+            title: 'Feeding',
+            objective: feeding,
+            cite: 'Gunnery p.1',
+            lesson: lessonFor('Feeding is the assistant gunner responsibility.'),
+          },
+          // Too little prose to state a standard from. It must be skipped
+          // rather than producing a rubric built out of one sentence.
+          { title: 'Stub', objective: 'Something barely taught', cite: 'Gunnery p.2', lesson: 'Short.' },
+        ],
+      },
+    });
+    records.push(course);
+
+    // Rubricon's own reply shape. The handler is what is under test, so the
+    // model is answered here and every validator downstream of it is real.
+    const asked = [];
+    const ask = async (task, sourceTextForRubric) => {
+      asked.push({ task, sourceTextForRubric });
+      return { flagged: false, dimensions: clearingDimensions() };
+    };
+
+    try {
+      const events = [];
+      const first = await buildCourseRubricsRecord(
+        instructor,
+        { params: { id: course.id } },
+        { ask, emit: (event) => events.push(event) },
+      );
+      assert.equal(first.json.written, 2, 'one per taught objective, and not for the stub section');
+      assert.equal(first.json.approvable, 2);
+      assert.equal(first.json.flagged, 0);
+
+      const written = await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' });
+      const mine = written.filter((row) => row.payload?.courseId === course.id);
+      assert.equal(mine.length, 2);
+      // Nothing here approves anything. A rubric a learner is graded against
+      // has to have passed through a person, and this pass fills the queue.
+      assert.deepEqual([...new Set(mine.map((row) => row.status))], ['PENDING']);
+      assert.deepEqual(
+        mine.map((row) => row.payload.objective).sort(),
+        [clearing, feeding].sort(),
+        'each rubric claims the course objective it judges',
+      );
+      assert.deepEqual([...new Set(mine.map((row) => row.payload.sourceId))], [source.id]);
+
+      // The standard the model saw is the section's, not the publication's.
+      assert.equal(asked.length, 2);
+      for (const call of asked) {
+        assert.ok(call.task.performanceSteps.length >= 2);
+        assert.ok(
+          call.sourceTextForRubric.length < RUBRIC_SOURCE_TEXT.length * 3,
+          'traceability is checked against the section, not the whole document',
+        );
+      }
+
+      assert.ok(events.some((event) => event.phase === 'rubrics' && event.status === 'start'));
+      const done = events.find((event) => event.phase === 'rubrics' && event.status === 'done');
+      assert.equal(done.written, 2);
+      assert.deepEqual(
+        events.filter((event) => event.kind === 'rubric').map((event) => event.ok),
+        [true, true],
+      );
+
+      // Resumability. A second pass over the same course writes nothing, which
+      // is what makes this safe to re-run after a deploy killed the first.
+      const again = await buildCourseRubricsRecord(
+        instructor,
+        { params: { id: course.id } },
+        { ask: async () => { throw new Error('the model must not be asked again'); } },
+      );
+      assert.equal(again.json.written, 0);
+      assert.equal(again.json.skipped, 3);
+
+      // And it is the owner's course, like everything else here.
+      assert.equal(
+        await status(buildCourseRubricsRecord(stranger, { params: { id: course.id } }, { ask })),
+        404,
+      );
+    } finally {
+      const all = await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' });
+      await db.learningRecord.deleteMany({
+        where: { id: { in: [...records.map((record) => record.id), ...all.map((row) => row.id)] } },
+      });
+      await db.user.deleteMany({ where: { id: { in: [instructorRow.id, otherRow.id] } } });
+    }
+  },
+);
+
+/* Rubricon refusing to invent measurable criteria is a result, not a failure.
+   It must be recorded as a rubric an SME has to look at, and it must not be
+   counted as one an instructor can approve. */
+test(
+  'a flagged standard is stored with its reason and reported as needing an SME',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `course-rubrics-flag-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Flag Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `rubric-flag-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+    const objective = 'Display sound judgement under pressure';
+
+    const source = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'SOURCE',
+      status: 'APPROVED',
+      payload: {
+        title: `Flag source ${suffix}`,
+        sourceId: `rubric-flag-source-${suffix}`,
+        text: RUBRIC_SOURCE_TEXT,
+        pages: [{ page: 1, text: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      payload: {
+        title: `Flag course ${suffix}`,
+        sourceIds: [source.id],
+        objectives: [objective],
+        sections: [{ title: 'Judgement', objective, cite: 'Gunnery p.1', lesson: RUBRIC_SOURCE_TEXT }],
+      },
+    });
+    records.push(source, course);
+
+    try {
+      const events = [];
+      const result = await buildCourseRubricsRecord(
+        instructor,
+        { params: { id: course.id } },
+        {
+          emit: (event) => events.push(event),
+          ask: async () => ({
+            flagged: true,
+            reason: 'sound judgement is not observable from the sidelines',
+            needsSME: 'define what a correct decision looks like at each tier',
+          }),
+        },
+      );
+      assert.equal(result.json.written, 1, 'the refusal is recorded rather than dropped');
+      assert.equal(result.json.flagged, 1);
+      assert.equal(result.json.approvable, 0, 'and it is not offered as ready to approve');
+
+      const stored = (await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' }))
+        .find((row) => row.payload?.courseId === course.id);
+      assert.equal(stored.payload.rubric.flagged, true);
+      assert.match(stored.payload.rubric.needsSME, /each tier/);
+
+      const chip = events.find((event) => event.kind === 'rubric');
+      assert.equal(chip.ok, false);
+      assert.match(chip.reason, /SME/i, 'the screen says what a human has to do');
+    } finally {
+      const all = await listLearningRecords({ ownerId: instructor.id, type: 'RUBRIC' });
+      await db.learningRecord.deleteMany({
+        where: { id: { in: [...records.map((record) => record.id), ...all.map((row) => row.id)] } },
+      });
       await db.user.deleteMany({ where: { id: instructorRow.id } });
     }
   },

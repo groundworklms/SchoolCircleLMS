@@ -138,6 +138,29 @@ jobs:
       - name: Roster persistence
         run: npm run test:roster-db
 
+      # The learning handlers against a real database.
+      #
+      # test/learning-handlers.test.mjs gates its Postgres cases on
+      # RUN_DB_TESTS=1 plus a DATABASE_URL, and no job had ever set either --
+      # the build job runs the file with both unset, so every one of those
+      # cases printed SKIP and none of them had gated a merge. They are the
+      # only tests that exercise a handler end to end, which is the class of
+      # mistake a route cannot catch: a route here is one line, so a handler
+      # referring to something it never imported passes every unit test
+      # beneath it. Boot a database and run them.
+      - name: Learning handlers on PostgreSQL
+        env:
+          PGDATA: ${{ runner.temp }}/pg-handlers
+          RUN_DB_TESTS: "1"
+          DATABASE_URL: postgresql://ci@localhost:5498/handlers?schema=public
+        run: |
+          initdb -D "$PGDATA" -U ci --auth=trust > /dev/null
+          pg_ctl -D "$PGDATA" -o "-p 5498 -k /tmp" -w start > /dev/null
+          createdb -h localhost -p 5498 -U ci handlers
+          npx prisma migrate deploy
+          node --test test/learning-handlers.test.mjs
+          pg_ctl -D "$PGDATA" -w stop > /dev/null
+
       # Deliberately NOT wired as steps yet -- do not add them without evidence:
       #
       #   npm run test:cohort-privacy-db  (test/cohort-privacy-postgres.mjs)

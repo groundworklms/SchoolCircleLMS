@@ -15,11 +15,12 @@ const ARTIFACTS = [
   { kind: 'post-test', label: 'Post-check' },
   { kind: 'flashcards', label: 'Cards' },
   { kind: 'pages', label: 'Pages' },
+  { kind: 'rubric', label: 'Rubric' },
 ];
 
 // Artifacts whose chip appears only once that pass has reported on this
 // section. See the note where they are filtered.
-const DEFERRED_ARTIFACTS = new Set(['diagram', 'pages']);
+const DEFERRED_ARTIFACTS = new Set(['diagram', 'pages', 'rubric']);
 
 const APPLY = [
   { kind: 'scenario', label: 'Applied scenario' },
@@ -50,6 +51,11 @@ export function generationView(events) {
     apply: {},
     done: false,
     pages: 'waiting',
+    rubrics: 'waiting',
+    // What the rubric pass produced, once it has finished: how many BARS
+    // scales were written, how many would survive approval as written, and how
+    // many Rubricon flagged for an SME rather than inventing criteria for.
+    rubricCounts: null,
     saved: null,
     failure: null,
   };
@@ -170,6 +176,27 @@ export function generationView(events) {
             ...(event.items ? { items: event.items } : {}),
           };
         }
+      }
+    } else if (event.phase === 'rubrics') {
+      // The rubric pass runs last, one taught objective at a time, and reports
+      // the same shape the page pass does. `ok` means Rubricon produced a BARS
+      // scale that would survive approveRubric; a flagged one is a refusal to
+      // invent measurable criteria and carries its reason, which is a result
+      // worth reading rather than a failure.
+      if (event.status === 'start') view.rubrics = 'running';
+      if (event.status === 'done') {
+        view.rubrics = 'done';
+        if (Number.isInteger(event.written)) {
+          view.rubricCounts = {
+            written: event.written,
+            approvable: event.approvable || 0,
+            flagged: event.flagged || 0,
+          };
+        }
+      }
+      if (event.kind && event.section) {
+        const section = byTitle.get(event.section);
+        if (section) section.artifacts[event.kind] = { ok: event.ok, reason: event.reason };
       }
     } else if (event.phase === 'saved') {
       view.saved = event.record || null;
@@ -327,6 +354,23 @@ export function GenerationProgress({ events, interrupted = false, watching = fal
           label="Expanding each section into lesson pages"
           state={view.pages === 'done' ? 'done' : 'running'}
           detail={`${view.sections.filter((section) => section.artifacts.pages !== undefined).length}/${view.sections.length}`}
+        />
+      )}
+
+      {view.rubrics !== 'waiting' && (
+        <Step
+          label="Writing a BARS rubric for each objective"
+          state={view.rubrics === 'done' ? 'done' : 'running'}
+          /* Once it is finished, the count that matters is not how many were
+             written but how many are usable as written -- an instructor's next
+             action is approving those, and a flagged one is Rubricon asking
+             for an SME rather than inventing a criterion. */
+          detail={
+            view.rubricCounts
+              ? `${view.rubricCounts.approvable}/${view.rubricCounts.written} ready to approve`
+                + (view.rubricCounts.flagged ? ` · ${view.rubricCounts.flagged} need an SME` : '')
+              : `${view.sections.filter((section) => section.artifacts.rubric !== undefined).length}/${view.sections.length}`
+          }
         />
       )}
 
