@@ -35,10 +35,11 @@ const STAGE_LABEL = {
   outline: 'Outlining annexes and lessons',
   map: 'Mapping sources to lessons',
   build: 'Building lessons',
+  rubrics: 'Writing a BARS rubric per objective',
   complete: 'Complete',
 };
-const STAGE_ORDER = ['survey', 'outline', 'map', 'build', 'complete'];
-const STEP_PATH = { survey: 'survey', outline: 'outline', map: 'map', build: 'build' };
+const STAGE_ORDER = ['survey', 'outline', 'map', 'build', 'rubrics', 'complete'];
+const STEP_PATH = { survey: 'survey', outline: 'outline', map: 'map', build: 'build', rubrics: 'rubrics' };
 
 /* ---------- create ---------- */
 
