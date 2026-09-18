@@ -2461,3 +2461,54 @@ test('a chip appears when there is something to say about it', () => {
   );
   assert.match(refused, /Pages - skipped/);
 });
+
+test('the rubric pass reports what an instructor can approve, not what was produced', () => {
+  // The count that matters after generation is how many BARS scales would
+  // survive approveRubric as written -- that is the instructor's next action.
+  // A flagged one is Rubricon declining to invent measurable criteria for a
+  // standard that has none, which needs an SME and is a result rather than a
+  // failure, so it is named separately instead of being folded into a failure
+  // count.
+  const { generationView, GenerationProgress } = loadComponent('app/prototype/GenerationProgress.js');
+  const events = [
+    { phase: 'sections', total: 2, passages: 3 },
+    { phase: 'coursewright', step: 'section', section: 'Orders reconciliation' },
+    { phase: 'coursewright', step: 'section', section: 'Command judgement' },
+    { phase: 'coursewright', step: 'done' },
+    { phase: 'rubrics', status: 'start', total: 2, existing: 0 },
+    { phase: 'rubrics', kind: 'rubric', section: 'Orders reconciliation', ok: true },
+    {
+      phase: 'rubrics',
+      kind: 'rubric',
+      section: 'Command judgement',
+      ok: false,
+      reason: 'needs an SME: sound judgement is not observable from the sidelines',
+    },
+    { phase: 'rubrics', status: 'done', written: 2, approvable: 1, flagged: 1 },
+  ];
+
+  const view = JSON.parse(JSON.stringify(generationView(events)));
+  assert.equal(view.rubrics, 'done');
+  assert.deepEqual(view.rubricCounts, { written: 2, approvable: 1, flagged: 1 });
+  assert.equal(view.sections[0].artifacts.rubric.ok, true);
+  assert.equal(view.sections[1].artifacts.rubric.ok, false);
+  assert.match(view.sections[1].artifacts.rubric.reason, /SME/);
+
+  const markup = renderToStaticMarkup(React.createElement(GenerationProgress, { events }));
+  assert.match(markup, /1\/2 ready to approve/);
+  assert.match(markup, /1 need an SME/);
+});
+
+test('the rubric step stays out of the way until the pass starts', () => {
+  // Same reason the Pages chip is deferred: the rubric pass runs after every
+  // section is written, and a grey row beside finished ones reads as a
+  // failure of work that has not begun.
+  const { generationView } = loadComponent('app/prototype/GenerationProgress.js');
+  const view = generationView([
+    { phase: 'sections', total: 1, passages: 1 },
+    { phase: 'coursewright', step: 'section', section: 'Orders reconciliation' },
+  ]);
+  assert.equal(view.rubrics, 'waiting');
+  assert.equal(view.rubricCounts, null);
+  assert.equal(view.sections[0].artifacts.rubric, undefined);
+});
