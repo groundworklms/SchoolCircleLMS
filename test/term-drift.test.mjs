@@ -61,3 +61,45 @@ test('drifted terms never reach a learner', () => {
   );
   assert.doesNotMatch(wire, /driftedTerms/);
 });
+
+/*
+ * Every pair below was reported as drift by the live generation on
+ * 2026-09-17, seven of them in one section, and every one is a single word in
+ * two verb forms. A check that fires on every section teaches a reviewer to
+ * skip its warnings, which costs more than the check saves.
+ */
+const LIVE =
+  'Joint forces achieve objectives by exploiting tactical successes, preserving freedom of ' +
+  'action, reducing vulnerability and securing positional advantage. The combatant commanders ' +
+  'integrate across domains, necessitating changes that minimize human error and provide ' +
+  'mobility. This includes operations at the operational level of war.';
+
+test('two verb forms of one word are not drift', () => {
+  for (const text of [
+    'Joint forces achieving objectives.',
+    'Successes preserve freedom of action.',
+    'The force exploits tactical successes.',
+    'Commanders minimizing human error.',
+    'Necessitate changes across the force.',
+    'It provides mobility and secures positional advantage.',
+    'This including operations across domains.',
+  ]) {
+    assert.deepEqual(driftedTerms(text, LIVE), [], text);
+  }
+});
+
+// The endings that change what a word means are still drift, which is the
+// whole reason the check exists.
+test('an ending that makes a different word is still reported', () => {
+  assert.deepEqual(driftedTerms('The combat commanders integrate across domains.', LIVE), [
+    { used: 'combat commanders', source: 'combatant commanders' },
+  ]);
+  assert.deepEqual(driftedTerms('At the operation level of war.', LIVE), [
+    { used: 'operation level', source: 'operational level' },
+  ]);
+});
+
+test('stemming cannot collapse short words into each other', () => {
+  const source = 'The ship sails at dawn. The sale closes at noon.';
+  assert.deepEqual(driftedTerms('The ships sail at dawn.', source), []);
+});
