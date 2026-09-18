@@ -2666,3 +2666,124 @@ test('nothing due renders nothing, rather than an empty panel', () => {
   const markup = renderToStaticMarkup(React.createElement(StudyPlan, { course: { id: 'c1' } }));
   assert.doesNotMatch(markup, /Due for review/, 'a panel that always has something to say stops being read');
 });
+
+/* A mastery session showed a question, a box and a verdict. Whetstone tracks
+   which criterion the question is aimed at, how much budget is left and how
+   many attempts remain on that criterion, and all of it was dropped between
+   the record and the screen. */
+const LIVE_SESSION = {
+  id: 'session-1',
+  status: 'ACTIVE',
+  courseId: 'c1',
+  currentQuestion: 'What does orders reconciliation ensure?',
+  eloIndex: 1,
+  exchanges: 4,
+  maxTurns: 12,
+  maxAttemptsPerCriterion: 3,
+  attempts: [3, 2, 0],
+  criteria: [
+    { elo: 'Frame the problem', verdict: 'mastered' },
+    { elo: 'Design the course of action', verdict: null },
+    { elo: 'Wargame the course of action', verdict: null },
+  ],
+  citations: [{ page: 56 }, { page: 12 }, { page: 56 }],
+  transcript: [],
+};
+
+function masteryMarkup(sessions, masteryPlan = null) {
+  const { MasterySession } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: {
+      '/courses/c1': { course: { id: 'c1', sourceIds: ['src-1'], ...(masteryPlan ? { masteryPlan } : {}) } },
+      '/mastery/sessions?courseId=c1': sessions,
+    },
+  });
+  return renderToStaticMarkup(React.createElement(MasterySession, { course: { id: 'c1' } }));
+}
+
+test('a live session says what it is assessing and how much of it is left', () => {
+  const markup = masteryMarkup([LIVE_SESSION]);
+  assert.match(markup, /Assessing/);
+  assert.match(markup, /Design the course of action/);
+  assert.match(markup, /1 of 3 criteria decided/);
+  assert.match(markup, /8 of 12 exchanges left/);
+  // The learner gets three attempts at a criterion; not knowing which one is
+  // the last is how someone spends two warming up.
+  assert.match(markup, /Last attempt on this criterion/);
+  // Grounded, and it says where: deduplicated and ordered.
+  assert.match(markup, /Graded against pages 12, 56/);
+});
+
+test('the rubric a verdict is decided by never reaches the learner', () => {
+  const withRubric = {
+    ...LIVE_SESSION,
+    rubric: [{ elo: 'Design the course of action', indicators: { mastered: 'A SECRET INDICATOR' } }],
+  };
+  const markup = masteryMarkup([withRubric]);
+  // The criterion's name is fine -- it is a course objective they were taught
+  // from. The indicators are not: a learner shown them writes to them.
+  assert.match(markup, /Design the course of action/);
+  assert.doesNotMatch(markup, /SECRET INDICATOR/);
+});
+
+test('a finished session reports what was decided and what was never reached', () => {
+  const done = {
+    ...LIVE_SESSION,
+    status: 'COMPLETE',
+    currentQuestion: null,
+    criteria: [
+      { elo: 'Frame the problem', verdict: 'mastered' },
+      { elo: 'Design the course of action', verdict: 'developing' },
+      { elo: 'Wargame the course of action', verdict: null },
+    ],
+    transcript: ['What does reconciliation ensure?', 'That the annexes agree.'],
+  };
+  const markup = masteryMarkup([done]);
+  assert.match(markup, /2<\/strong> of 3 decided/);
+  // A criterion the session ran out of time before reaching is not one the
+  // learner failed, and is not folded into the score as though it were.
+  assert.match(markup, /1 never reached/);
+  assert.match(markup, /not reached/);
+});
+
+test('a saved transcript reads as a conversation, not a column', () => {
+  const done = {
+    ...LIVE_SESSION,
+    status: 'COMPLETE',
+    currentQuestion: null,
+    transcript: ['What does reconciliation ensure?', 'That the annexes agree.'],
+  };
+  const markup = masteryMarkup([done]);
+  assert.match(markup, /s-tx-row/);
+  assert.match(markup, /Asked<\/span><span class="s-tx-text">What does reconciliation ensure\?/);
+  assert.match(markup, /answer[^>]*><span class="s-tx-who">You/);
+});
+
+/* #195 removed a dead end where a course with no shared rubric could never
+   start a session. The same gate existed twice and the second copy was missed,
+   so a learner who finished one session could not start another. */
+test('a second session can be started on a course with no shared rubric', () => {
+  const done = { ...LIVE_SESSION, status: 'COMPLETE', currentQuestion: null };
+  const { MasterySession } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: {
+      '/courses/c1': { course: { id: 'c1', sourceIds: ['src-1'] } },
+      '/mastery/sessions?courseId=c1': [done],
+    },
+  });
+  const buttons = collectReactElements(React.createElement(MasterySession, { course: { id: 'c1' } }))
+    .filter((el) => el.type === 'button' && /Start another session/.test(String(el.props.children)));
+  assert.equal(buttons.length, 1);
+  assert.equal(buttons[0].props.disabled, false, 'no plan is not a reason to refuse a second session');
+});
+
+test('a pending plan still blocks a second session, as it blocks the first', () => {
+  const done = { ...LIVE_SESSION, status: 'COMPLETE', currentQuestion: null };
+  const { MasterySession } = loadComponent('app/prototype/LearnerFeatures.js', {
+    queryData: {
+      '/courses/c1': { course: { id: 'c1', sourceIds: ['src-1'], masteryPlan: { status: 'PENDING', sourceId: 'src-1' } } },
+      '/mastery/sessions?courseId=c1': [done],
+    },
+  });
+  const buttons = collectReactElements(React.createElement(MasterySession, { course: { id: 'c1' } }))
+    .filter((el) => el.type === 'button' && /Start another session/.test(String(el.props.children)));
+  assert.equal(buttons[0].props.disabled, true, 'the server refuses this one too');
+});
