@@ -37,7 +37,7 @@ function highlightText(text, phrase) {
   return (
     <>
       {text.slice(0, start)}
-      <mark style={{ background: 'var(--p-highlight, #f3d98b)', color: 'inherit' }}>
+      <mark className="p-hl">
         {text.slice(start, start + phrase.length)}
       </mark>
       {text.slice(start + phrase.length)}
@@ -70,11 +70,30 @@ function extentOf(sourceData) {
  * put their name to an item, so it gets the whole screen, real page framing
  * and a fixed measure, and it leaves the layout behind it untouched.
  */
-export function SourceViewer({ sourceId, compact = false, citation = null }) {
+/*
+ * `asReader` opens the document straight away and renders nothing else.
+ *
+ * Clicking a citation in the grounded chat used to mount the full panel form of
+ * this component at shell level -- a "Source document" card sitting in its own
+ * column beside the lesson, with no way to dismiss it, because nothing ever
+ * cleared the selected citation. A learner who checked one source got a second
+ * sidebar for the rest of the session.
+ *
+ * Checking a citation is a look, not a mode. So that path opens the reader --
+ * which already has Close and already honours Escape -- and closing it tells
+ * the caller, so the selection goes with it.
+ */
+export function SourceViewer({
+  sourceId,
+  compact = false,
+  citation = null,
+  asReader = false,
+  onClose = null,
+}) {
   const { data: sourceData, loading, error } = useApiQuery(`/sources/${sourceId}`);
   // Kept first: the rendering tests drive this component by supplying the
   // first useState, and `open` is the state they are driving.
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(asReader);
   const targetRef = useRef(null);
 
   useEffect(() => {
@@ -89,7 +108,7 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
   // Escape is what a reader that covers the screen has to answer to.
   useEffect(() => {
     if (!open || typeof document === 'undefined') return undefined;
-    const onKey = (event) => { if (event.key === 'Escape') setOpen(false); };
+    const onKey = (event) => { if (event.key === 'Escape') close(); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
@@ -97,6 +116,12 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
   if (error) {
     return <p className="s-shell-error" role="alert">{error?.error || 'Error loading source'}</p>;
   }
+
+  /* One way to close, so the button, Escape and the caller cannot disagree. */
+  const close = () => {
+    setOpen(false);
+    onClose?.();
+  };
 
   if (loading || !sourceData) return <p>Loading source…</p>;
 
@@ -165,7 +190,7 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
           <h2>{title}</h2>
           <p>{extent ? `${extent} · ` : ''}Approved source</p>
         </div>
-        <button type="button" className="p-btn ghost" onClick={() => setOpen(false)}>Close</button>
+        <button type="button" className="p-btn ghost" onClick={close}>Close</button>
       </header>
       <div className="p-readerscroll">
         <div className="p-readerdoc">
@@ -179,6 +204,9 @@ export function SourceViewer({ sourceId, compact = false, citation = null }) {
       </div>
     </div>
   ) : null;
+
+  // No card, no column: the document itself, already open.
+  if (asReader) return reader;
 
   if (compact) {
     return (

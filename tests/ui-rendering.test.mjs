@@ -1281,8 +1281,18 @@ test('course chat citation locators select the matching approved source record',
   // The source panel names the document it resolved to. Its heading is the
   // section label and the publication title is the line under it, so the pair
   // is what identifies the record on screen.
-  assert.match(markup, /<h3>Source document<\/h3><p[^>]*>Second source</);
-  assert.doesNotMatch(markup, /<h3>Source document<\/h3><p[^>]*>source-1</);
+  /* Clicking a citation opens the DOCUMENT, not a panel.
+   *
+   * It used to mount the card form of the source viewer at shell level, beside
+   * the lesson, and nothing ever cleared the selected citation -- so a learner
+   * who checked one source carried a second, undismissable sidebar for the rest
+   * of the session. Checking a citation is a look, not a mode. */
+  assert.match(markup, /class="p-reader" role="dialog"[^>]*aria-label="Source document: Second source"/);
+  assert.doesNotMatch(markup, /aria-label="Source document: source-1"/);
+  // And it opens where the citation points, with a way out.
+  assert.match(markup, /Opened citation on page 2/);
+  assert.match(markup, /is-cited" data-source-page="2"/);
+  assert.match(markup, />Close</);
 });
 
 test('instructor fidelity renders a non-empty run report', () => {
