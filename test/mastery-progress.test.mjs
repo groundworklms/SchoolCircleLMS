@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   attemptsLeft,
   citedPages,
+  citedPagesLabel,
   criteriaProgress,
   currentCriterion,
   exchanges,
@@ -137,4 +138,30 @@ test('cited pages are deduplicated and ordered', () => {
   );
   assert.deepEqual(citedPages([{ page: 'not a page' }, {}, null]), []);
   assert.deepEqual(citedPages(null), []);
+});
+
+/*
+ * citedPages is honest and, on a real session, unreadable. A mastery session
+ * grounded on the whole of MCWP 5-10 cites every page, so the screen printed
+ * "Graded against pages 1, 2, 3, 4, 5 ..." across four lines and ended at 205.
+ * Every number correct; the sentence worthless.
+ */
+test('a handful of pages are named, because that tells a learner where to re-read', () => {
+  assert.equal(citedPagesLabel([{ page: 56 }]), 'page 56');
+  assert.equal(citedPagesLabel([{ page: 12 }, { page: 56 }, { page: 12 }]), 'pages 12, 56');
+});
+
+test('a whole publication is stated as a span, not enumerated', () => {
+  const everything = Array.from({ length: 205 }, (_, i) => ({ page: i + 1 }));
+  assert.equal(citedPagesLabel(everything), 'pages 1-205');
+});
+
+test('a selection within a span says how much of it, because that is the useful fact', () => {
+  const sparse = [3, 9, 20, 44, 61, 78, 99].map((page) => ({ page }));
+  assert.equal(citedPagesLabel(sparse), '7 pages between 3 and 99');
+});
+
+test('no citations is no line at all, rather than an empty one', () => {
+  assert.equal(citedPagesLabel([]), null);
+  assert.equal(citedPagesLabel(null), null);
 });
