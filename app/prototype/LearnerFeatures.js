@@ -8,6 +8,7 @@ import LessonPlayer from './LessonPlayer';
 import { localGrade } from './lesson-blocks';
 import { usePrefs, setPref } from './prefs';
 import { lessonPagesForCourse, lessonPagesForSection } from '../../lib/learning/lesson-pages';
+import { masteryStart, startLabel } from '../../lib/learning/mastery-gate';
 
 /* Learner-side arsenal features for a real (LearningRecord) course: the
    approved course as a reader, Whetstone mastery sessions, the Cadence study
@@ -550,6 +551,7 @@ export function MasterySession({ course }) {
   const active = selected?.status === 'ACTIVE' ? selected : null;
   const done = (sessions || []).filter((s) => s.status === 'COMPLETE');
   const turn = useApiMutation(`/mastery/sessions/${active?.id}/turn`, 'POST');
+  const gate = masteryStart(masteryPlan, sourceId);
 
   useEffect(() => {
     if (pendingSessionId) {
@@ -574,10 +576,7 @@ export function MasterySession({ course }) {
   const handleStart = async () => {
     setErr(null);
     setLast(null);
-    if (masteryPlan?.status !== 'APPROVED') {
-      return setErr('Mastery plan not approved yet.');
-    }
-    if (!sourceId) return setErr('This course has no source document to grade against.');
+    if (!gate.allowed) return setErr(gate.reason);
     try {
       const result = await startSession.mutate({ sourceId, courseId: course.id });
       if (result?.id) setPendingSessionId(result.id);
@@ -661,18 +660,17 @@ export function MasterySession({ course }) {
           <p className="p-src" style={{ marginBottom: '1rem' }}>
             Grounded on {publication || 'the approved source'}.
           </p>
-          {masteryPlan?.status === 'PENDING' && (
-            <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
-              Mastery plan pending instructor approval.
+          {gate.reason && (
+            <p
+              className="p-src"
+              role="status"
+              style={{ color: gate.tone === 'warning' ? 'var(--p-warning)' : 'var(--p-dim)' }}
+            >
+              {gate.reason}
             </p>
           )}
-          {!masteryPlan && (
-            <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
-              No approved mastery plan yet.
-            </p>
-          )}
-          <button className="p-btn" onClick={handleStart} disabled={startSession.loading || !sourceId || masteryPlan?.status !== 'APPROVED'}>
-            {startSession.loading ? 'Starting…' : masteryPlan?.status === 'APPROVED' ? 'Start session with approved plan' : 'Start mastery session'}
+          <button className="p-btn" onClick={handleStart} disabled={startSession.loading || !gate.allowed}>
+            {startSession.loading ? 'Starting…' : startLabel(masteryPlan)}
           </button>
         </div>
       )}
