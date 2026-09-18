@@ -161,3 +161,30 @@ test('a well-formed BARS scale over this standard validates', () => {
   assert.equal(validateRubric(rubric).valid, true);
   assert.equal(verifyTraceability(rubric, rubricSourceText(SECTION)).grounded, true);
 });
+
+/*
+ * A section's cite is "<source record id> p.145", and the reader resolves the
+ * id to a publication name before drawing it. Nothing resolved it here, so a
+ * rubric's task code -- printed verbatim on the rubrics screen -- read
+ * "cmu67789l002ms6013zw026ls p.145". Not a citation anybody can check, on the
+ * one artifact whose entire claim is that it is traceable.
+ */
+test('the task cites a publication a person can look up, not a record id', () => {
+  const section = { ...SECTION, cite: 'cmu67789l002ms6013zw026ls p.145' };
+  const task = rubricTaskFor(section, { publication: 'mcwp 5-10.pdf' });
+  assert.equal(task.code, 'MCWP 5-10 p.145'.replace('MCWP 5-10', 'mcwp 5-10'));
+  assert.match(task.condition, /mcwp 5-10 p\.145/);
+  assert.equal(task.references, task.code);
+});
+
+test('an unknown publication leaves the locator alone rather than inventing a name', () => {
+  const section = { ...SECTION, cite: 'cmu67789l002ms6013zw026ls p.145' };
+  const task = rubricTaskFor(section, {});
+  assert.equal(task.code, 'cmu67789l002ms6013zw026ls p.145');
+  assert.equal(rubricTaskFor(section, { publication: '   ' }).code, 'cmu67789l002ms6013zw026ls p.145');
+});
+
+test('a locator with no page keeps the publication name alone', () => {
+  const task = rubricTaskFor({ ...SECTION, cite: 'some-record-id' }, { publication: 'MCWP 5-10.pdf' });
+  assert.equal(task.code, 'MCWP 5-10');
+});

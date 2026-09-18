@@ -11,6 +11,14 @@ import { lessonPagesForCourse, lessonPagesForSection } from '../../lib/learning/
 import { masteryStart, startLabel } from '../../lib/learning/mastery-gate';
 import { calibrationNote, calibrationOf } from '../../lib/learning/calibration';
 import { dueForReview, reviewNote } from '../../lib/learning/spacing';
+import {
+  attemptsLeft,
+  citedPages,
+  criteriaProgress,
+  currentCriterion,
+  exchanges as sessionExchanges,
+  sessionProgress,
+} from '../../lib/learning/mastery-progress';
 
 /* Learner-side arsenal features for a real (LearningRecord) course: the
    approved course as a reader, Whetstone mastery sessions, the Cadence study
@@ -545,6 +553,110 @@ export function selectMasterySession(sessions, masteryPlan, selectedId = null) {
   return sessions.find((session) => session.status === 'ACTIVE') || sessions[0];
 }
 
+/*
+ * What a learner in the middle of a mastery session can see about it.
+ *
+ * Before this, nothing: a question, a box, and a verdict afterwards. Whetstone
+ * tracks which criterion the question is aimed at, how many exchanges the
+ * session has left and how many attempts remain on the criterion being
+ * assessed, and every one of those was dropped between the record and the
+ * screen. A learner could tell they were being graded and nothing else about
+ * how -- which is a worse experience than a quiz, and a quiz at least shows a
+ * question count.
+ *
+ * The criterion is named. The rubric behind it is not, and stays off the view
+ * entirely: a learner shown the indicators a verdict is decided by writes to
+ * them, and the session stops measuring whether they understand the material.
+ */
+function SessionState({ session, citations }) {
+  const criterion = currentCriterion(session);
+  const progress = sessionProgress(session);
+  const attempts = attemptsLeft(session);
+  const pages = citedPages(citations);
+  const covered = criteriaProgress(session);
+  if (!criterion && !progress) return null;
+  return (
+    <div className="s-mstate">
+      {criterion && (
+        <p className="s-mstate-now">
+          Assessing <strong>{criterion.name}</strong>
+          {covered.total > 0 && (
+            <span className="p-src"> · {covered.assessed} of {covered.total} criteria decided</span>
+          )}
+        </p>
+      )}
+      <div className="s-mstate-figs">
+        {progress && (
+          <span className={progress.nearlyDone ? 'warn' : undefined}>
+            {progress.left === 0
+              ? 'No exchanges left'
+              : `${progress.left} of ${progress.total} exchanges left`}
+          </span>
+        )}
+        {attempts && attempts.left > 0 && (
+          <span className={attempts.left === 1 ? 'warn' : undefined}>
+            {attempts.left === 1
+              ? 'Last attempt on this criterion'
+              : `${attempts.left} attempts left on this criterion`}
+          </span>
+        )}
+        {pages.length > 0 && (
+          <span>Graded against {pages.length === 1 ? 'page' : 'pages'} {pages.join(', ')}</span>
+        )}
+      </div>
+      {session.stalled === true && (
+        <p className="p-src" role="status" style={{ color: 'var(--p-warning)' }}>
+          This session has stopped making progress. Anything still undecided will be
+          scored as it stands.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/* A finished session, as a result rather than a status line. */
+function SessionOutcome({ session }) {
+  const covered = criteriaProgress(session);
+  if (!covered.total) return null;
+  const undecided = covered.total - covered.assessed;
+  return (
+    <div className="s-mout">
+      <div className="s-mout-figs">
+        <span><strong>{covered.mastered}</strong> mastered</span>
+        <span><strong>{covered.assessed}</strong> of {covered.total} decided</span>
+        {/* Named rather than quietly folded into the score. A criterion the
+            session never reached is not a criterion the learner failed. */}
+        {undecided > 0 && <span className="warn">{undecided} never reached</span>}
+      </div>
+      <ul className="p-req" style={{ marginTop: '0.5rem' }}>
+        {(session.criteria || []).map((criterion, i) => {
+          const name = criterion.elo || criterion.competency || `Criterion ${i + 1}`;
+          const verdict = criterion.verdict || null;
+          return (
+            <li className="p-reqrow" key={name + i}>
+              <span style={{ color: verdictColour(verdict), fontSize: '0.8em' }}>●</span>
+              <span className="p-reqname">{name}</span>
+              <span style={{ color: verdictColour(verdict), fontSize: '0.82em' }}>
+                {verdict || 'not reached'}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function verdictColour(v) {
+  return v === 'mastered'
+    ? 'var(--p-good)'
+    : v === 'competent'
+      ? 'var(--p-accent)'
+      : v === 'developing'
+        ? 'var(--p-warning)'
+        : 'var(--p-dim)';
+}
+
 export function MasterySession({ course }) {
   const { data: envelope } = useApiQuery(`/courses/${course.id}`);
   const masteryPlan = envelope?.course?.masteryPlan?.status === 'APPROVED'
@@ -706,20 +818,35 @@ export function MasterySession({ course }) {
               This session predates the current plan. Start a new one for the current revision.
             </p>
           )}
+          <SessionOutcome session={selected} />
           {selected.transcript?.length > 0 && (
             <details style={{ marginTop: '0.75rem' }}>
-              <summary className="p-src" style={{ cursor: 'pointer' }}>Saved transcript ({selected.transcript.length} messages)</summary>
-              <ol className="s-obj">
-                {selected.transcript.map((t, i) => (
-                  <li key={i} style={{ whiteSpace: 'pre-wrap' }}>{typeof t === 'string' ? t : t.text || JSON.stringify(t)}</li>
+              <summary className="p-src" style={{ cursor: 'pointer' }}>
+                Saved transcript ({sessionExchanges(selected.transcript).length} messages)
+              </summary>
+              {/* Paired into questions and answers. It was one list item per
+                  entry with a JSON.stringify fallback, so a learner reviewing
+                  a finished session read the questions and their own answers
+                  as one undifferentiated column. */}
+              <ol className="s-tx">
+                {sessionExchanges(selected.transcript).map((turn, i) => (
+                  <li key={i} className={turn.role === 'answer' ? 's-tx-row answer' : 's-tx-row'}>
+                    <span className="s-tx-who">{turn.role === 'answer' ? 'You' : 'Asked'}</span>
+                    <span className="s-tx-text">{turn.text}</span>
+                  </li>
                 ))}
               </ol>
             </details>
           )}
+          {/* The same rule as the first Start button. This copy kept the old
+              APPROVED-plan requirement, so a learner who finished one session
+              on a course with no shared rubric could not start a second --
+              the exact dead end masteryStart was written to remove, surviving
+              one screen further down. */}
           <button
             className="p-btn ghost"
             onClick={handleStart}
-            disabled={startSession.loading || !sourceId || masteryPlan?.status !== 'APPROVED'}
+            disabled={startSession.loading || !gate.allowed}
             style={{ marginTop: '0.8rem' }}
           >
             {startSession.loading ? 'Starting…' : 'Start another session'}
@@ -730,6 +857,7 @@ export function MasterySession({ course }) {
       {active && (
         <div className="p-panel s-mastery">
           <h3>Question</h3>
+          <SessionState session={active} citations={selected?.citations} />
           {active.masteryPlanRevision && (
             <p className="p-src">
               Shared-plan revision: <code>{active.masteryPlanRevision}</code>

@@ -1198,6 +1198,23 @@ details[open] > summary.s-label::before { content: '▾'; }
    a thing to go and fix, not a failure being reported at them. */
 .s-due-row.carried .s-due-why { color: var(--p-warning); font-weight: 600; }
 
+/* What a mastery session is doing right now: the criterion being assessed, the
+   budget left, and the pages it is graded against. */
+.s-mstate { margin: 0 0 1rem; padding: 0.7rem 0.9rem; border-radius: var(--p-radius); background: var(--p-surface-2); }
+.s-mstate-now { margin: 0 0 0.35rem; font-size: 0.95em; }
+.s-mstate-figs { display: flex; gap: 1rem; flex-wrap: wrap; font-size: 0.8em; color: var(--p-dim); }
+.s-mstate-figs .warn { color: var(--p-warning); font-weight: 600; }
+.s-mout-figs { display: flex; gap: 1.1rem; flex-wrap: wrap; font-size: 0.85em; margin-top: 0.5rem; }
+.s-mout-figs .warn { color: var(--p-warning); }
+/* A saved transcript, paired into questions and answers rather than printed as
+   one undifferentiated column. */
+.s-tx { list-style: none; margin: 0.5rem 0 0; padding: 0; }
+.s-tx-row { display: grid; grid-template-columns: 4.2rem 1fr; gap: 0.6rem; padding: 0.4rem 0; border-top: 0.5px solid var(--p-border); }
+.s-tx-row:first-child { border-top: 0; }
+.s-tx-who { font-size: 0.74em; font-weight: 600; color: var(--p-dim); text-transform: uppercase; letter-spacing: 0.04em; padding-top: 0.15em; }
+.s-tx-row.answer .s-tx-who { color: var(--p-accent); }
+.s-tx-text { white-space: pre-wrap; font-size: 0.93em; line-height: 1.45; }
+
 .s-ls-attach { padding-top: 0.5rem; border-top: 0.5px solid var(--p-border); }
 .s-ls-done { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.5rem 0 1.4rem; }
 
