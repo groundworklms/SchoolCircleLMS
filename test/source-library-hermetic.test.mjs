@@ -154,6 +154,9 @@ mock.module('../lib/arsenal-core.js', {
   namedExports: {
     answerMasterySession: async () => null,
     validateKeyDistribution: () => ({ valid: true, issues: [], total: 0 }),
+    // Generation drops a question with a blank option before validation can
+    // fail the whole course over it; here it is a pass-through.
+    withoutUnanswerableQuestions: (course) => course,
     sourcePassageIndex: () => null,
     masteryPlanProvenance: () => null,
     deriveMasteryPlan: async () => null,
