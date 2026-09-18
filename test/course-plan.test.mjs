@@ -180,6 +180,34 @@ mock.module('../lib/source/library.js', {
 mock.module('../lib/arsenal-core.js', {
   namedExports: {
     ...realArsenal,
+    // The rubric stage runs on the configured provider in production. Here it
+    // is answered directly, so what is under test is the stage's own loop --
+    // one rubric per call, and where the plan goes next -- rather than
+    // Rubricon, which has its own tests.
+    learningModelStatus: () => ({ model: { ready: true } }),
+    async generateRubric({ task, sourceText }) {
+      modelCalls.push('rubric');
+      const phrase = String(sourceText || '').split(/(?<=\.)\s+/)[0] || 'the standard';
+      const rubric = {
+        flagged: false,
+        dimensions: [{
+          name: (task?.title || 'Dimension').slice(0, 40),
+          source: phrase.trim(),
+          anchors: {
+            unsatisfactory: 'Does not do it.',
+            satisfactory: 'Does it.',
+            proficient: 'Does it and explains why.',
+          },
+        }],
+      };
+      return {
+        rubric,
+        validation: realArsenal.validateRubricShape
+          ? { valid: true, flagged: false, issues: [] }
+          : { valid: true, flagged: false, issues: [] },
+        traceability: { grounded: true, coverage: 1, ungrounded: [], dimensions: [{ name: rubric.dimensions[0].name, grounded: true }] },
+      };
+    },
     async surveySourceBatch({ samples }) {
       modelCalls.push('survey');
       return samples.map((s) => ({
@@ -210,7 +238,7 @@ mock.module('../lib/arsenal-core.js', {
     async draftCourse({ title, objectives, documents }) {
       modelCalls.push(`build:${title}`);
       if (/turns ratio/.test(objectives[0]) && documents.some((d) => /transformer/i.test(d.text))) {
-        return { title, sections: [{ title, cite: documents[0].source, lesson: 'The turns ratio sets the voltage ratio.', pre: [], post: [], pages: [{ title: 'Ratio', blocks: [{ type: 'p', text: 'x' }] }] }] };
+        return { title, sections: [{ title, cite: documents[0].source, lesson: 'A transformer moves electrical energy between circuits through a shared magnetic field. The turns ratio sets the voltage ratio. A step-down transformer has fewer turns on its secondary winding.', pre: [], post: [], pages: [{ title: 'Ratio', blocks: [{ type: 'p', text: 'x' }] }] }] };
       }
       return { title, sections: [], skippedObjectives: [{ objective: objectives[0], reason: 'no approved passage covers this objective' }] };
     },
@@ -276,7 +304,9 @@ test('a plan surveys in batches, outlines, maps by retrieval, and builds one les
   assert.equal(second.built.ok, false);
   assert.match(second.built.reason, /no approved passage/);
   // Only the planned lessons were sent to the model; the ungrounded one was not.
-  assert.equal(second.status, 'complete');
+  // The lessons being finished is not the plan being finished any more: a BARS
+  // rubric per objective is written next, one per step.
+  assert.equal(second.status, 'rubrics');
   assert.equal(second.counts.drafted, 1);
   assert.equal(second.counts.failed, 1);
   assert.equal(second.counts.ungrounded, 1);
@@ -362,7 +392,7 @@ test('a coded corpus is outlined from its lesson codes; the model writes only ob
   assert.equal(section.code, 'BE0204');
   await plan.buildPlanStep(OWNER, { params: { id: created.id } });
   const done = (await plan.buildPlanStep(OWNER, { params: { id: created.id } })).json;
-  assert.equal(done.status, 'complete');
+  assert.equal(done.status, 'rubrics', 'lessons done, rubrics next');
   assert.equal(done.counts.skipped, 1);
   assert.ok(!modelCalls.some((c) => /WX/.test(c)));
 
@@ -374,4 +404,62 @@ test('a coded corpus is outlined from its lesson codes; the model writes only ob
   await plan.mapPlanStep(OWNER, { params: { id: created.id } });
   const rebuilt = (await plan.buildPlanStep(OWNER, { params: { id: created.id } })).json;
   assert.ok(rebuilt.courseId && rebuilt.courseId !== built.courseId);
+});
+
+/*
+ * A BARS rubric per objective is what a mastery session grades against, and the
+ * planner is the path a real course is built by. Generation through "Create
+ * course" writes them inside its own job; the planner cannot, because it is
+ * driven by a client repeating a bounded request -- which is exactly why it
+ * survives a twenty-one-lesson course. So rubrics are a stage, written one per
+ * call, and these are the transitions that loop depends on.
+ */
+test('a finished plan writes one rubric per step before it reports complete', async () => {
+  records.clear(); modelCalls.length = 0; nextId = 1;
+  seedSources();
+  const created = (await plan.createPlan(OWNER, { body: { sourceIds: ['poi', 's-elec', 's-net'] } })).json;
+  await runUntil(plan.surveyPlanStep, created.id, (v) => v.status === 'outline');
+  await plan.outlinePlanStep(OWNER, { params: { id: created.id }, body: {} });
+  await plan.mapPlanStep(OWNER, { params: { id: created.id } });
+
+  // Lessons first. The last build step hands over to rubrics rather than
+  // declaring the plan finished, which is the whole change.
+  const built = await runUntil(plan.buildPlanStep, created.id, (v) => v.status !== 'build');
+  assert.equal(built.status, 'rubrics');
+  assert.ok(built.courseId);
+
+  const before = modelCalls.filter((call) => call === 'rubric').length;
+  assert.equal(before, 0, 'no rubric is written during the lesson stage');
+
+  const one = (await plan.rubricPlanStep(OWNER, { params: { id: created.id } })).json;
+  assert.equal(modelCalls.filter((call) => call === 'rubric').length, 1, 'one per call, not all of them');
+
+  const done = await runUntil(plan.rubricPlanStep, created.id, (v) => v.status === 'complete');
+  assert.equal(done.status, 'complete');
+  const written = [...records.values()].filter((record) => record.type === 'RUBRIC');
+  assert.ok(written.length >= 1);
+  // Never approved here. approveRubric is the only gate, and an instructor is
+  // the only one who can press it.
+  assert.deepEqual([...new Set(written.map((record) => record.status))], ['PENDING']);
+  for (const record of written) {
+    assert.equal(record.payload.courseId, built.courseId);
+    assert.ok(record.payload.objective, 'each rubric names the objective it judges');
+  }
+  assert.ok(one.status === 'rubrics' || one.status === 'complete');
+});
+
+test('a plan whose every lesson refused has no course, and finishes without rubrics', async () => {
+  records.clear(); modelCalls.length = 0; nextId = 1;
+  seedSources();
+  const created = (await plan.createPlan(OWNER, { body: { sourceIds: ['poi', 's-elec', 's-net'] } })).json;
+  await runUntil(plan.surveyPlanStep, created.id, (v) => v.status === 'outline');
+  await plan.outlinePlanStep(OWNER, { params: { id: created.id }, body: {} });
+  await plan.mapPlanStep(OWNER, { params: { id: created.id } });
+  // Force the plan into the rubric stage with no draft behind it -- the shape a
+  // plan lands in when nothing could be grounded.
+  const record = records.get(created.id);
+  record.payload = { ...record.payload, status: 'rubrics', courseId: null };
+  const view = (await plan.rubricPlanStep(OWNER, { params: { id: created.id } })).json;
+  assert.equal(view.status, 'complete');
+  assert.equal(modelCalls.filter((call) => call === 'rubric').length, 0);
 });
