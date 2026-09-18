@@ -1174,6 +1174,22 @@ details[open] > summary.s-label::before { content: '▾'; }
 .s-chk-a { display: flex; flex-direction: column; gap: 0.5rem; }
 .s-chk .p-ans { font-size: 0.95em; padding: 0.7rem 0.9rem; }
 
+/* The chosen-but-not-yet-graded option, while the confidence question is up.
+   Deliberately neither of the two result colours: the learner has not been
+   told anything yet, and a green or red tint here would answer the question
+   the rating is supposed to be taken before. */
+.s-chk .p-ans.picked { box-shadow: 0 0 0 1.5px var(--p-accent); background: var(--p-accent-tint); }
+.s-chk-conf { margin-top: 0.9rem; padding-top: 0.85rem; border-top: 0.5px solid var(--p-border); }
+.s-chk-conf-lab { font-size: 0.82em; font-weight: 600; margin-bottom: 0.55rem; }
+.s-chk-conf-row { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+.s-chk-conf-btn { font-size: 0.84em; padding: 0.35rem 0.75rem; }
+.s-chk-conf-skip { font-size: 0.8em; background: none; border: 0; color: var(--p-dim); text-decoration: underline; cursor: pointer; padding: 0.35rem 0.4rem; }
+.s-chk-conf-skip:disabled { opacity: 0.5; cursor: default; }
+.s-cal { margin-top: 1rem; padding: 0.85rem 1rem; border-radius: var(--p-radius); background: var(--p-surface-2); }
+.s-cal-lab { font-size: 0.78em; font-weight: 600; color: var(--p-accent); margin-bottom: 0.3rem; }
+.s-cal-note { font-size: 0.92em; line-height: 1.45; }
+.s-cal-figs { display: flex; gap: 1.2rem; flex-wrap: wrap; margin-top: 0.55rem; font-size: 0.82em; color: var(--p-dim); }
+
 .s-ls-attach { padding-top: 0.5rem; border-top: 0.5px solid var(--p-border); }
 .s-ls-done { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.5rem 0 1.4rem; }
 

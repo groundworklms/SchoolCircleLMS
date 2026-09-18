@@ -9,6 +9,7 @@ import { localGrade } from './lesson-blocks';
 import { usePrefs, setPref } from './prefs';
 import { lessonPagesForCourse, lessonPagesForSection } from '../../lib/learning/lesson-pages';
 import { masteryStart, startLabel } from '../../lib/learning/mastery-gate';
+import { calibrationNote, calibrationOf } from '../../lib/learning/calibration';
 
 /* Learner-side arsenal features for a real (LearningRecord) course: the
    approved course as a reader, Whetstone mastery sessions, the Cadence study
@@ -250,7 +251,7 @@ function modulesOf(lessons, courseName) {
 /* The lesson list and player, shared by the learner reader and the instructor
    preview. `lessons` is what lessonPagesForCourse built; `grade` resolves a
    check; `serverAnswers` are answers already on record for this learner. */
-function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = null, lessonId, page, onOpenLesson, pending = false }) {
+function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = null, lessonId, page, onOpenLesson, pending = false, askConfidence = false }) {
   const prefs = usePrefs();
   // The open lesson and page live in the URL when the shell provides them
   // (deep links, back button); the instructor preview keeps them locally.
@@ -313,7 +314,8 @@ function CourseLessons({ course, lessons, grade, serverAnswers = {}, notice = nu
         onPage={setPage}
         progress={progOf(lesson)}
         onProgress={(nextProg) => setPref(progressKey(course.id, lesson.id), nextProg)}
-        grade={(item, k) => grade(item, k, lesson)}
+        grade={(item, k, confidence) => grade(item, k, lesson, confidence)}
+        askConfidence={askConfidence}
         onBack={() => open(null)}
         prev={prev}
         next={next}
@@ -437,10 +439,18 @@ export function CourseReader({ course, lessonId, page, onOpenLesson }) {
   /* A check resolves through the attempts route: the same idempotency key
      rule as before -- a retry of the same choice replays, a different choice
      is a new attempt -- and the reply is the only place rationale appears. */
-  const grade = async (item, k) => {
+  const grade = async (item, k, _lesson, confidence) => {
     const optionId = String(k);
     const attemptId = attemptKeyFor(attemptKeys.current, item.itemId, optionId);
-    const response = await record.mutate({ itemId: item.itemId, optionId, attemptId, releaseId: delivery?.releaseId });
+    const response = await record.mutate({
+      itemId: item.itemId,
+      optionId,
+      attemptId,
+      releaseId: delivery?.releaseId,
+      // Only when the learner stated one. Sending null would be sending a
+      // claim they declined to make; the field is simply absent instead.
+      ...(Number.isInteger(confidence) ? { confidence } : {}),
+    });
     const result = response?.result;
     if (!result || typeof result.correct !== 'boolean') throw new Error('That answer was not recorded. Choose it again to retry.');
     return { picked: k, correct: result.correct, answer: result.correct ? k : null, rationale: result.feedback || '' };
@@ -456,6 +466,9 @@ export function CourseReader({ course, lessonId, page, onOpenLesson }) {
       course={course}
       lessons={lessons}
       grade={grade}
+      /* The reader is the only surface whose answers are recorded, so it is
+         the only one that asks. */
+      askConfidence
       serverAnswers={delivery?.answers || {}}
       pending={!delivery}
       lessonId={lessonId}
@@ -981,6 +994,40 @@ export function StudyPlan({ course }) {
 
 /* ---------- progress (Sextant) ---------- */
 
+/*
+ * What the learner gets back for having answered "how sure are you?".
+ *
+ * A calibration figure nobody is shown is a figure nobody has a reason to
+ * supply honestly, so this is not an instructor-only statistic. It is also the
+ * one panel on this screen that can name a specific, useful next action -- the
+ * questions this learner was certain about and wrong on are exactly the ones
+ * they would never have chosen to revisit.
+ *
+ * Rendered only when there is something honest to say: calibrationNote returns
+ * null below the evidence floor, and this renders nothing rather than a hedge.
+ */
+function Calibration({ courseId }) {
+  const { data } = useApiQuery(courseId ? `/courses/${courseId}/attempts` : null, { enabled: Boolean(courseId) });
+  const summary = useMemo(
+    () => calibrationOf(Object.values(data?.answers || {})),
+    [data],
+  );
+  const note = calibrationNote(summary);
+  if (!note) return null;
+  return (
+    <div className="s-cal">
+      <div className="s-cal-lab">How well you know what you know</div>
+      <div className="s-cal-note">{note}</div>
+      <div className="s-cal-figs">
+        <span>{summary.rated} rated {summary.rated === 1 ? 'answer' : 'answers'}</span>
+        <span>{pct(summary.accuracy)} correct</span>
+        <span>{pct(summary.confidence)} average confidence</span>
+        {summary.guessedRight > 0 && <span>{summary.guessedRight} right without being sure</span>}
+      </div>
+    </div>
+  );
+}
+
 export function LearnerProgress({ courseId }) {
   const { data: analytics, loading, error } = useApiQuery(courseId ? `/analytics?courseId=${courseId}` : '/analytics');
 
@@ -996,6 +1043,8 @@ export function LearnerProgress({ courseId }) {
     <>
       <h2 className="p-h">My Progress</h2>
       <p className="p-sub">By competency, from your saved sessions. Yours only.</p>
+
+      <Calibration courseId={courseId} />
 
       <div className="p-tiles">
         <div className="p-tile">

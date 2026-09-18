@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CONFIDENCE } from '../../lib/learning/calibration';
 
 /* The screens a lesson is made of, shared by the authored mock lessons
    (lessonContent.js) and the live generated courses (lib/learning/lesson-pages.js).
@@ -240,9 +241,67 @@ function keyLetter(index) {
   return Number.isInteger(index) && index >= 0 ? String.fromCharCode(65 + index) : null;
 }
 
-export function CheckItem({ item, result, onPick, busy = false, error = null }) {
+/*
+ * How sure the learner is, asked between choosing and seeing.
+ *
+ * It has to be here rather than on a results screen, because after the reveal
+ * the question is worthless -- nobody can un-know a keyed answer, and an
+ * answer to "how sure were you?" given afterwards is a memory of a feeling.
+ * The one useful reading is the one taken while the answer is still unknown.
+ *
+ * Skippable on purpose. A learner who does not want to rate every question
+ * still gets graded, and their attempt is simply not part of a calibration --
+ * see lib/learning/calibration.js on why an absent rating must never become a
+ * zero. Skipping is a plain control, not a dismissal tucked in a corner.
+ */
+function ConfidencePrompt({ onAnswer, busy }) {
+  return (
+    <div className="s-chk-conf" role="group" aria-label="How sure are you?">
+      <div className="s-chk-conf-lab">Before you see the answer — how sure are you?</div>
+      <div className="s-chk-conf-row">
+        {CONFIDENCE.map((point) => (
+          <button
+            key={point.value}
+            type="button"
+            className="p-btn ghost s-chk-conf-btn"
+            disabled={busy}
+            onClick={() => onAnswer(point.value)}
+          >
+            {point.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className="s-chk-conf-skip"
+          disabled={busy}
+          onClick={() => onAnswer(null)}
+        >
+          Skip
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function CheckItem({ item, result, onPick, busy = false, error = null, askConfidence = false }) {
   const picked = result?.picked ?? null;
   const key = picked !== null ? keyLetter(result.answer) : null;
+  // The option the learner chose but has not been graded on yet, held here
+  // while the confidence question is up. Nothing is sent until they answer it
+  // or skip, so the grade and the rating arrive together.
+  const [pending, setPending] = useState(null);
+  const awaiting = askConfidence && pending !== null && picked === null;
+
+  const choose = (index) => {
+    if (!askConfidence) return onPick(index);
+    return setPending(index);
+  };
+  const answerConfidence = (confidence) => {
+    const index = pending;
+    setPending(null);
+    return onPick(index, confidence);
+  };
+
   return (
     <div className="s-chk" data-item-id={item.itemId || undefined}>
       <div className="s-chk-lab">Check your understanding</div>
@@ -253,15 +312,24 @@ export function CheckItem({ item, result, onPick, busy = false, error = null }) 
           if (picked !== null) {
             if (i === result.answer) cls = ' correct';
             else if (i === picked) cls = ' wrong';
+          } else if (awaiting && i === pending) {
+            cls = ' picked';
           }
           return (
-            <button key={a.text} className={`p-ans${cls}`} disabled={picked !== null || busy} onClick={() => onPick(i)}>
+            <button
+              key={a.text}
+              className={`p-ans${cls}`}
+              aria-pressed={awaiting ? i === pending : undefined}
+              disabled={picked !== null || busy}
+              onClick={() => choose(i)}
+            >
               <span className="p-anskey">{String.fromCharCode(65 + i)}</span>
               <span>{a.text}</span>
             </button>
           );
         })}
       </div>
+      {awaiting && <ConfidencePrompt onAnswer={answerConfidence} busy={busy} />}
       {busy && <div className="p-src" style={{ marginTop: '0.6rem' }}>Checking…</div>}
       {error && <div className="s-ls-callout warn" style={{ marginTop: '0.6rem' }}><div className="s-ls-callout-t">Could not check that answer</div><div>{error}</div></div>}
       {picked !== null && (

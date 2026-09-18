@@ -40,6 +40,7 @@ export default function LessonPlayer({
   progress,
   onProgress,
   grade,
+  askConfidence = false,
   onBack,
   backLabel = '← All lessons',
   prev = null,
@@ -97,11 +98,11 @@ export default function LessonPlayer({
   const goTo = (k) => onPage(Math.min(Math.max(k, 0), screens.length - 1) + 1);
   const finish = () => save({ complete: true });
 
-  const pick = async (item, k) => {
+  const pick = async (item, k, confidence) => {
     setCheckError(null);
     setChecking(item.id);
     try {
-      const result = await grade(item, k);
+      const result = await grade(item, k, confidence);
       save({ answers: { ...prog.answers, [item.id]: result } });
     } catch (error) {
       setCheckError(error?.message || 'The course service did not grade this answer.');
@@ -168,7 +169,12 @@ export default function LessonPlayer({
               result={answerFor(cur)}
               busy={checking === cur.id}
               error={checkError}
-              onPick={(k) => pick(cur, k)}
+              /* Only where the answer is recorded. An authored mock lesson and
+                 the instructor's own preview grade locally against the key on
+                 the item, so nothing would ever read the rating and asking for
+                 it would be a question with no consequence. */
+              askConfidence={askConfidence}
+              onPick={(k, confidence) => pick(cur, k, confidence)}
             />
           )}
 
