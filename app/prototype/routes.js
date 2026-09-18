@@ -19,7 +19,6 @@ const STUDENT_COURSE_VIEWS = new Set([
   'assignments',
   'grades',
   'discussions',
-  'live',
   'progress',
   // Approved LearningRecords expose this in place of the mock course tools.
   'mastery',
@@ -28,7 +27,6 @@ const INSTRUCTOR_LIBRARY_VIEWS = new Set(['courses', 'sources', 'rubrics', 'sett
 const INSTRUCTOR_COURSE_VIEWS = new Set([
   'builder',
   'roster',
-  'control',
   'fidelity',
   // Rubrics exist at two addresses on purpose. The library one is the whole
   // owner's collection; this one is a single course's objectives and the

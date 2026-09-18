@@ -9,7 +9,7 @@ const TASK_KINDS = new Set(['Practice', 'Reading', 'Task', 'Assignment']);
  * Convert an agenda item into the destination used by the focused dashboard.
  *
  * Course work preserves its explicit destination, with study materials as a
- * fallback; live sessions and exams retain their own tools. Requirements without a
+ * fallback; exams retain their own tool. Requirements without a
  * course are calendar records, not course records, so they open Calendar.
  */
 export function focusedItemDestination(item = {}) {
@@ -20,7 +20,12 @@ export function focusedItemDestination(item = {}) {
     return { type: 'course', courseId: item.courseId, view: 'assignments' };
   }
   if (item.view === 'live' || item.kind === 'Live' || /live session/i.test(item.title || '')) {
-    return { type: 'course', courseId: item.courseId, view: 'live' };
+    // The live-session screen simulated a class -- a hardcoded response
+    // distribution, a counter ticking on a timer, and two sentences claiming
+    // results had been written and a remediation lesson drafted, neither of
+    // which happened. It was removed rather than left to be disproved, so a
+    // row that named one opens the course itself.
+    return { type: 'course', courseId: item.courseId, view: 'home' };
   }
   if (item.view) {
     return { type: 'course', courseId: item.courseId, view: item.view };

@@ -11,7 +11,7 @@ import {
 } from '../app/prototype/focused-dashboard-data.js';
 import { href } from '../app/prototype/routes.js';
 
-test('focused agenda destinations preserve task, live, exam, and calendar semantics', () => {
+test('focused agenda destinations preserve task, exam, and calendar semantics', () => {
   assert.deepEqual(
     focusedItemDestination({
       title: 'Practice set',
@@ -22,6 +22,10 @@ test('focused agenda destinations preserve task, live, exam, and calendar semant
     }),
     { type: 'course', courseId: 'new-course', view: 'lessons' },
   );
+  // A live session is no longer a destination. The screen behind it simulated
+  // a class -- a hardcoded response distribution and a counter on a timer --
+  // and claimed results had been written and a lesson drafted, neither of
+  // which happened. A row that names one opens the course instead.
   assert.deepEqual(
     focusedItemDestination({
       title: 'Live session',
@@ -29,7 +33,7 @@ test('focused agenda destinations preserve task, live, exam, and calendar semant
       courseId: 'new-course',
       view: 'live',
     }),
-    { type: 'course', courseId: 'new-course', view: 'live' },
+    { type: 'course', courseId: 'new-course', view: 'home' },
   );
   assert.deepEqual(
     focusedItemDestination({
