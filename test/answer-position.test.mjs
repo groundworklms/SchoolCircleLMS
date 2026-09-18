@@ -14,6 +14,7 @@ import {
   shuffleCourseAnswers,
   shuffleQuestionOptions,
   validateKeyDistribution,
+  withoutUnanswerableQuestions,
 } from '../lib/arsenal-core.js';
 
 /** A course shaped the way the generator emits one today: every key at index 0. */
@@ -102,4 +103,64 @@ test('a course too small to have a distribution is not judged on one', () => {
   // a short course for a property it cannot have.
   const tiny = { sections: [{ title: 's', pre: [{ stem: 'q', options: ['a', 'b', 'c', 'd'], answer: 0, rationale: 'r' }], post: [] }] };
   assert.equal(validateKeyDistribution(tiny).valid, true);
+});
+
+/*
+ * The defect that cost the MCWP 5-10 course.
+ *
+ * validQuestion checked the COUNT of options and never the options, so a
+ * question keyed on a real answer beside a blank string was valid at
+ * generation and invalid at approval, where cleanOptions demands "at least two
+ * non-empty strings". The two validators disagreed about what a question is,
+ * and the disagreement surfaced only when an instructor pressed approve -- on
+ * a sixteen-section course, after all of it had been generated. The course was
+ * deleted rather than published.
+ */
+test('a question with a blank option is not a valid question', () => {
+  const sound = {
+    stem: 'What does orders reconciliation ensure?',
+    options: ['The order and its annexes agree', 'The commander has signed it'],
+    answer: 0,
+  };
+  const course = { sections: [{ title: 'S', pre: [sound], post: [] }] };
+  // Shuffling is a no-op on an invalid question, which is how this surfaces
+  // through the public surface: a blank-option question comes back untouched.
+  const blank = { ...sound, options: ['The order and its annexes agree', '   '] };
+  assert.equal(shuffleQuestionOptions(blank), blank, 'left alone because it is not valid');
+  assert.notEqual(shuffleCourseAnswers(course), null);
+});
+
+test('a question with a blank option is dropped rather than failing the whole course', () => {
+  const good = {
+    stem: 'What does orders reconciliation ensure?',
+    options: ['The order and its annexes agree', 'The commander has signed it'],
+    answer: 0,
+  };
+  const blank = { stem: 'Which applies?', options: ['A real choice', ''], answer: 0 };
+  const course = {
+    title: 'A course',
+    sections: [
+      { title: 'One', pre: [good, blank], post: [good] },
+      { title: 'Two', pre: [good], post: [good] },
+    ],
+  };
+  const cleaned = withoutUnanswerableQuestions(course);
+  assert.equal(cleaned.sections[0].pre.length, 1, 'the blank one is gone');
+  assert.equal(cleaned.sections[0].pre[0].stem, good.stem, 'the sound one is kept');
+  assert.equal(cleaned.sections[0].post.length, 1);
+  assert.equal(cleaned.sections[1].pre.length, 1, 'untouched sections are untouched');
+});
+
+test('a course with nothing to drop is returned unchanged, not rebuilt', () => {
+  const good = { stem: 'A stem here', options: ['One', 'Two'], answer: 0 };
+  const course = { sections: [{ title: 'One', pre: [good], post: [good] }] };
+  assert.equal(withoutUnanswerableQuestions(course), course, 'same instance, so a caller can tell');
+  assert.equal(withoutUnanswerableQuestions(null), null);
+  assert.deepEqual(withoutUnanswerableQuestions({ sections: [] }).sections, []);
+});
+
+test('an emptied phase still fails validation, because a section that assesses nothing is not a section', () => {
+  const blank = { stem: 'Which applies?', options: ['A real choice', ''], answer: 0 };
+  const cleaned = withoutUnanswerableQuestions({ sections: [{ title: 'One', pre: [blank], post: [] }] });
+  assert.deepEqual(cleaned.sections[0].pre, [], 'dropped to empty rather than kept');
 });
