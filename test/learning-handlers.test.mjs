@@ -15,6 +15,7 @@ import {
   approveMasteryPlan,
   approveRubric,
   buildCourseRubricsRecord,
+  courseReliability,
   generateMasteryPlan,
   getMasterySession,
   getCourse,
@@ -24,6 +25,7 @@ import {
   listMasterySessions,
   listSources,
   masteryTurn,
+  rateMasterySession,
   reviewCourseItem,
 } from '../lib/learning/core.js';
 import { createEvidenceHandlers } from '../lib/learning/evidence.js';
@@ -1309,6 +1311,182 @@ test(
       await db.learningRecord.deleteMany({
         where: { id: { in: [...records.map((record) => record.id), ...all.map((row) => row.id)] } },
       });
+      await db.user.deleteMany({ where: { id: instructorRow.id } });
+    }
+  },
+);
+
+/* ------------------------- grader agreement (Rubricon) -------------------- */
+
+/*
+ * "Rubric reliability is measured" is one of the four claims this platform
+ * makes, and until this landed nothing in the repository called a single one of
+ * Rubricon's reliability functions. These run the handlers for real, because a
+ * route here is one line and a handler referring to something it never imported
+ * passes every unit test beneath it.
+ */
+test(
+  'an instructor rating their own session measures agreement with the grader',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `reliability-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Reliability Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `reliability-${suffix}` },
+    });
+    const otherRow = await db.user.create({
+      data: { name: `Reliability Other ${suffix}`, role: 'INSTRUCTOR', externalId: `reliability-other-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const stranger = { id: otherRow.id, name: otherRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      status: 'APPROVED',
+      payload: { title: `Reliability course ${suffix}`, sourceIds: [], objectives: [] },
+    });
+    const session = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'MASTERY_SESSION',
+      status: 'COMPLETE',
+      payload: {
+        courseId: course.id,
+        complete: true,
+        report: {
+          complete: true,
+          criteria: [
+            { competency: 'Frame the problem', verdict: 'mastered' },
+            { competency: 'Design the course of action', verdict: 'competent' },
+            { competency: 'Wargame the course of action', verdict: 'developing' },
+            { competency: 'Compare courses of action', verdict: 'competent' },
+          ],
+        },
+      },
+    });
+    // Finished, but on a different course: it must not be pooled into this
+    // course's figure.
+    const elsewhere = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'MASTERY_SESSION',
+      status: 'COMPLETE',
+      payload: {
+        courseId: 'a-different-course',
+        complete: true,
+        report: { complete: true, criteria: [{ competency: 'Something else', verdict: 'mastered' }] },
+      },
+    });
+    records.push(course, session, elsewhere);
+
+    try {
+      const before = await courseReliability(instructor, { params: { id: course.id } });
+      assert.equal(before.json.rated, 0);
+      assert.equal(before.json.unrated, 1, 'one finished session on this course is waiting');
+      assert.match(before.json.reliability.reason, /no session has been rated/);
+
+      const rated = await rateMasterySession(instructor, {
+        params: { id: session.id },
+        body: {
+          criteria: [
+            { competency: 'Frame the problem', verdict: 'mastered' },
+            { competency: 'Design the course of action', verdict: 'competent' },
+            // Two disagreements, one of them two tiers wide.
+            { competency: 'Wargame the course of action', verdict: 'competent' },
+            { competency: 'Compare courses of action', verdict: 'mastered' },
+          ],
+        },
+      });
+      assert.equal(rated.json.reliability.n, 4);
+      assert.equal(rated.json.reliability.agreement, 0.5);
+      assert.equal(typeof rated.json.reliability.kappa, 'number');
+      assert.equal(typeof rated.json.reliability.interpretation, 'string');
+
+      // The grader's own verdicts survive the rating. They are half the
+      // comparison; overwriting them would destroy it on the next read.
+      const stored = await getLearningRecord(session.id);
+      assert.deepEqual(
+        stored.payload.report.criteria.map((criterion) => criterion.verdict),
+        ['mastered', 'competent', 'developing', 'competent'],
+      );
+      assert.equal(stored.payload.raterVerdicts.length, 4);
+
+      const after = await courseReliability(instructor, { params: { id: course.id } });
+      assert.equal(after.json.rated, 1);
+      assert.equal(after.json.unrated, 0);
+      assert.equal(after.json.reliability.n, 4, 'the session on another course is not pooled in');
+
+      // A session belongs to whoever sat it, and rating is a read of its
+      // contents. ownedSession is the same gate every other session read uses.
+      assert.equal(
+        await status(rateMasterySession(stranger, { params: { id: session.id }, body: { criteria: [] } })),
+        404,
+      );
+      assert.equal(await status(courseReliability(stranger, { params: { id: course.id } })), 404);
+    } finally {
+      await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
+      await db.user.deleteMany({ where: { id: { in: [instructorRow.id, otherRow.id] } } });
+    }
+  },
+);
+
+test(
+  'a session that was never graded cannot be rated, and an empty rating is refused',
+  { skip: !databaseReady },
+  async () => {
+    const suffix = `reliability-guard-${Date.now()}-${process.pid}`;
+    const instructorRow = await db.user.create({
+      data: { name: `Guard Owner ${suffix}`, role: 'INSTRUCTOR', externalId: `reliability-guard-${suffix}` },
+    });
+    const instructor = { id: instructorRow.id, name: instructorRow.name, role: 'INSTRUCTOR' };
+    const records = [];
+
+    const course = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'COURSE_DRAFT',
+      status: 'APPROVED',
+      payload: { title: `Guard course ${suffix}`, sourceIds: [], objectives: [] },
+    });
+    const running = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'MASTERY_SESSION',
+      status: 'ACTIVE',
+      payload: { courseId: course.id, currentQuestion: 'Still going.' },
+    });
+    const graded = await createLearningRecord({
+      ownerId: instructor.id,
+      type: 'MASTERY_SESSION',
+      status: 'COMPLETE',
+      payload: {
+        courseId: course.id,
+        complete: true,
+        report: { complete: true, criteria: [{ competency: 'Frame the problem', verdict: 'mastered' }] },
+      },
+    });
+    records.push(course, running, graded);
+
+    try {
+      assert.equal(
+        await status(rateMasterySession(instructor, {
+          params: { id: running.id },
+          body: { criteria: [{ competency: 'Frame the problem', verdict: 'mastered' }] },
+        })),
+        409,
+      );
+      // Nothing the session assessed, so nothing to compare: refused rather
+      // than stored as a rating of zero criteria.
+      assert.equal(
+        await status(rateMasterySession(instructor, {
+          params: { id: graded.id },
+          body: { criteria: [{ competency: 'A criterion this session never had', verdict: 'mastered' }] },
+        })),
+        422,
+      );
+      assert.equal(
+        await status(rateMasterySession(instructor, { params: { id: graded.id }, body: {} })),
+        422,
+      );
+    } finally {
+      await db.learningRecord.deleteMany({ where: { id: { in: records.map((record) => record.id) } } });
       await db.user.deleteMany({ where: { id: instructorRow.id } });
     }
   },
