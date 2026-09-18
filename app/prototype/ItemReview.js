@@ -73,12 +73,45 @@ function Evidence({ item }) {
 }
 
 /** The edit half of a revision. Only authored fields are editable. */
-function ReviseForm({ item, busy, onCancel, onSubmit }) {
+function ReviseForm({ item, busy, onCancel, onSubmit, onSuggest }) {
   const keyed = item.kind === 'QUESTION' && optionsOf(item).length > 0;
   const [stem, setStem] = useState(item.stem || '');
   const [options, setOptions] = useState(optionsOf(item));
   const [answer, setAnswer] = useState(Number.isInteger(item.answer) ? item.answer : 0);
   const [rationale, setRationale] = useState(item.rationale || '');
+  const [asking, setAsking] = useState(false);
+  const [suggestError, setSuggestError] = useState(null);
+  const [suggested, setSuggested] = useState(false);
+
+  /* The model writes into the form; the human saves.
+   *
+   * This screen ratifies items on a course that is already published and may
+   * already have learners in it, so a rewrite that applied itself would be
+   * changing the course out from under them. The suggestion lands in the
+   * fields, where it can be read, edited or abandoned, and the save below is
+   * the same one a hand-typed edit uses -- which is also what ratifies the
+   * item and records who did it.
+   *
+   * The citation and support score are untouched. They measure the item as it
+   * stands, and a suggestion is not the item until someone saves it.
+   */
+  const askForRewrite = async () => {
+    if (asking || busy) return;
+    setAsking(true);
+    setSuggestError(null);
+    try {
+      const next = await onSuggest(item.id);
+      setStem(next.stem);
+      if (Array.isArray(next.options) && next.options.length) setOptions(next.options);
+      if (Number.isInteger(next.answer)) setAnswer(next.answer);
+      setRationale(next.rationale || '');
+      setSuggested(true);
+    } catch (error) {
+      setSuggestError(errText(error, 'The model could not suggest a rewrite for this item.'));
+    } finally {
+      setAsking(false);
+    }
+  };
 
   const submit = (event) => {
     event.preventDefault();
@@ -132,6 +165,28 @@ function ReviseForm({ item, busy, onCancel, onSubmit }) {
         <textarea rows={2} value={rationale} onChange={(event) => setRationale(event.target.value)} />
       </label>
 
+      {item.kind === 'QUESTION' && typeof onSuggest === 'function' && (
+        <div className="item-review-suggest">
+          <button type="button" className="p-btn ghost" onClick={askForRewrite} disabled={asking || busy}>
+            {asking ? 'Asking the model…' : 'Ask AI to rewrite'}
+          </button>
+          {/* Said before it is pressed, not after. A reviewer deciding whether
+              to press it needs to know the rewrite is bounded by the same
+              source the item is cited to. */}
+          <span className="p-src">
+            Written from this item&rsquo;s cited passage, into the fields above. Nothing is saved
+            until you save it.
+          </span>
+        </div>
+      )}
+      {suggested && (
+        <p className="p-check ok" role="status">
+          <strong>The fields above are the model&rsquo;s suggestion.</strong> Read it, change what you
+          want, and save when it is right.
+        </p>
+      )}
+      {suggestError && <p className="s-shell-error" role="alert">{suggestError}</p>}
+
       {/* What saving this form actually does, including the part a reviewer
           would not guess: it ratifies the item. Set to be read, not filed under
           the form as a grey footnote. */}
@@ -150,7 +205,7 @@ function ReviseForm({ item, busy, onCancel, onSubmit }) {
   );
 }
 
-function ItemCard({ item, busy, onDecide }) {
+function ItemCard({ item, busy, onDecide, onSuggest }) {
   const [editing, setEditing] = useState(false);
   const state = statusOf(item);
 
@@ -199,7 +254,13 @@ function ItemCard({ item, busy, onDecide }) {
       <Evidence item={item} />
 
       {editing ? (
-        <ReviseForm item={item} busy={busy} onCancel={() => setEditing(false)} onSubmit={decide} />
+        <ReviseForm
+          item={item}
+          busy={busy}
+          onCancel={() => setEditing(false)}
+          onSubmit={decide}
+          onSuggest={onSuggest}
+        />
       ) : (
         /* Three weights, not one. Approve is the affirmative act a named human
            is accountable for, so it carries the accent; Revise is the neutral
@@ -287,6 +348,27 @@ export function CourseItemReview({ courseId, onChanged }) {
 
   /* One deliberate click for everything still pending. The count is on the
      button, the confirmation restates it, and withheld items are untouched. */
+  /* Ask for a rewrite. Returns it; saves nothing.
+   *
+   * Deliberately not routed through `decide`: that path persists and ratifies,
+   * and this one must do neither. The suggestion goes back to the form and
+   * stops there until a human saves it. An error is thrown rather than
+   * swallowed so the form can say what went wrong -- "the passage this item
+   * cites could not be resolved" is a fact a reviewer can act on, and a
+   * silently unchanged form is not.
+   */
+  const suggest = async (itemId) => {
+    const res = await authFetch(`/api/learning/courses/${courseId}/items/${itemId}/suggest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) throw json || new Error(`Status ${res.status}`);
+    if (!json?.suggestion) throw new Error('The model returned no suggestion.');
+    return json.suggestion;
+  };
+
   const [approvingAll, setApprovingAll] = useState(false);
   const approveAll = async () => {
     const pendingCount = data?.counts?.PENDING || 0;
@@ -376,7 +458,13 @@ export function CourseItemReview({ courseId, onChanged }) {
             </summary>
             <ul className="item-review-list">
               {section.items.map((item) => (
-                <ItemCard key={item.id} item={item} busy={busyItem === item.id} onDecide={decide} />
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  busy={busyItem === item.id}
+                  onDecide={decide}
+                  onSuggest={suggest}
+                />
               ))}
             </ul>
           </details>
