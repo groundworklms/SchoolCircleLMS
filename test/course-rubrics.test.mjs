@@ -6,6 +6,7 @@ import {
   rubricSourceText,
   rubricTaskFor,
   sectionsNeedingRubrics,
+  spanning,
 } from '../lib/learning/course-rubrics.js';
 import { verifyTraceability, validateRubric, taskToText } from 'rubricon';
 
@@ -187,4 +188,55 @@ test('an unknown publication leaves the locator alone rather than inventing a na
 test('a locator with no page keeps the publication name alone', () => {
   const task = rubricTaskFor({ ...SECTION, cite: 'some-record-id' }, { publication: 'MCWP 5-10.pdf' });
   assert.equal(task.code, 'MCWP 5-10');
+});
+
+/*
+ * The defect that produced the first flagged rubric on the MCWP 5-10 course.
+ *
+ * That section's lesson alone is twenty usable sentences and its pages another
+ * twenty-three. Taking the first twelve handed Rubricon a standard that stopped
+ * partway through the six steps of the planning process, and it refused --
+ * correctly -- because the outputs of the later steps were not in the text it
+ * was given. The flag was right; the input was wrong.
+ */
+test('a standard spans the whole section rather than stopping partway through it', () => {
+  const sentences = [
+    'The process has six steps and begins with problem framing.',
+    'Problem framing produces the commander battlespace area evaluation.',
+    'Course of action development produces feasible alternatives for comparison.',
+    'The war game tests each course of action against enemy actions.',
+    'Comparison and decision produces the commander selected course of action.',
+    'Orders development turns the selected course of action into an order.',
+    'Transition delivers the order to the units that will execute it.',
+  ];
+  const section = {
+    title: 'The Marine Corps Planning Process',
+    objective: 'Identify the six steps and explain how their outputs support decision-making',
+    cite: 'pub p.6',
+    lesson: sentences.join(' '),
+  };
+  const task = rubricTaskFor(section);
+  const joined = task.performanceSteps.join(' ');
+  // Every step of the process reaches the model, not just the ones that
+  // happened to come first.
+  for (const term of ['problem framing', 'war game', 'Orders development', 'Transition']) {
+    assert.match(joined, new RegExp(term, 'i'), term);
+  }
+});
+
+test('an over-long section is sampled across its whole span, keeping both ends', () => {
+  const many = Array.from({ length: 60 }, (_, i) => `This is sentence number ${i} of the section.`);
+  const kept = spanning(many, 24);
+  assert.equal(kept.length, 24);
+  assert.equal(kept[0], many[0], 'the framing sentence is kept');
+  assert.equal(kept[kept.length - 1], many[many.length - 1], 'and the conclusion');
+  // The point of sampling rather than truncating: the tail is represented.
+  assert.ok(kept.some((sentence) => many.indexOf(sentence) > 40));
+});
+
+test('a section that fits under the cap is not resampled', () => {
+  const few = ['One sentence here.', 'And a second one here.'];
+  assert.deepEqual(spanning(few, 24), few);
+  assert.deepEqual(spanning([], 24), []);
+  assert.deepEqual(spanning(null, 24), []);
 });
