@@ -9,6 +9,7 @@ import { askJSON, askText } from '../lib/model.js';
 import {
   OPENROUTER_BASE_URL,
   OPENROUTER_MODEL_ID,
+  openRouterReasoningModel,
   textProvider,
 } from '../lib/providers.js';
 
@@ -544,4 +545,79 @@ test('a too-low token limit is not mistaken for an unsupported parameter', async
   assert.equal(pattern.test(tooLow), false, 'a too-low limit must not trigger a parameter swap');
   assert.equal(pattern.test(unsupported), true, 'a genuinely unsupported parameter must');
   assert.equal(typeof openAICompatRequestProbe, 'undefined');
+});
+
+test('low, excluded reasoning is asked of the families that reason by default, and only those', () => {
+  // Thinking tokens bill as output. The structured prompts here need little of
+  // it, so every reasoning family is asked for low effort with the trace kept
+  // out of the content -- not just one pinned model id.
+  for (const id of [
+    OPENROUTER_MODEL_ID,
+    'google/gemini-3.1-pro-preview',
+    'google/gemini-2.5-flash',
+    'openai/gpt-5-mini',
+    'openai/gpt-5.6-luna',
+    'openai/gpt-oss-120b',
+    'openai/o3',
+    'anthropic/claude-haiku-4.5',
+    'anthropic/claude-sonnet-5',
+    'deepseek/deepseek-v4-flash',
+    'deepseek/deepseek-r1',
+    'qwen/qwen3.5-9b',
+    'z-ai/glm-5.3-flash',
+    'x-ai/grok-4',
+    '~anthropic/claude-haiku-latest',
+  ]) {
+    assert.equal(openRouterReasoningModel(id), true, id);
+  }
+  // Models with no reasoning parameter must not be sent one: the JSON path
+  // pins `provider.require_parameters`, so an unsupported parameter could
+  // leave OpenRouter with no eligible provider at all.
+  for (const id of [
+    'openai/gpt-4.1-mini',
+    'openai/gpt-4o-mini',
+    'openai/gpt-4o',
+    'meta-llama/llama-4-scout',
+    'mistralai/mistral-nemo',
+    'google/gemma-3-27b-it',
+    'deepseek/deepseek-chat',
+    'house-model-alpha',
+    '',
+    undefined,
+  ]) {
+    assert.equal(openRouterReasoningModel(id), false, String(id));
+  }
+});
+
+test('a non-reasoning model on OpenRouter is sent no reasoning parameter', async () => {
+  let request;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    request = { url, body: JSON.parse(options.body) };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        model: 'openai/gpt-4.1-mini',
+        choices: [{ message: { content: 'plain prose' } }],
+        usage: { prompt_tokens: 1, completion_tokens: 1 },
+      }),
+    };
+  };
+  try {
+    const result = await withEnvironment(
+      {
+        MODEL_BASE_URL: OPENROUTER_BASE_URL,
+        MODEL_ID: 'openai/gpt-4.1-mini',
+        MODEL_API_KEY: undefined,
+        OPENROUTER_API_KEY: 'synthetic-openrouter-key',
+      },
+      () => askText({ system: 'Say something.', prompt: 'Synthetic.', maxTokens: 16 }),
+    );
+    assert.equal(result.data, 'plain prose');
+    assert.equal(request.body.model, 'openai/gpt-4.1-mini');
+    assert.equal('reasoning' in request.body, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

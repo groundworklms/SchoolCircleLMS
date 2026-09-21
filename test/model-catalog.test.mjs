@@ -87,6 +87,56 @@ test('the catalogue keeps chat models and drops the rest', async () => {
   assert.ok(labels.some((l) => l.includes('mini')));
 });
 
+test('an aggregator catalogue is classified past its vendor prefix and carries prices', async () => {
+  // OpenRouter names models `vendor/model` and prices them per token. Before
+  // the prefix was stripped for classification, nothing matched the chat
+  // patterns and the picker fell back to the whole catalogue -- music and
+  // audio models included -- with the alphabetically-first vendor on top.
+  stubFetch(() => respond({
+    data: [
+      { id: 'google/gemini-3.1-flash-lite', pricing: { prompt: '0.00000025', completion: '0.0000015' } },
+      { id: 'google/lyria-3-pro-preview', pricing: { prompt: '0', completion: '0' } },   // music
+      { id: 'openai/gpt-5-mini', pricing: { prompt: '0.00000025', completion: '0.000002' } },
+      { id: 'openai/gpt-5-mini:batch', pricing: { prompt: '0.000000125', completion: '0.000001' } },
+      { id: 'openai/gpt-4o-mini-tts', pricing: { prompt: '0.0000006', completion: '0.000012' } },
+      { id: 'openai/gpt-5.4-pro', pricing: { prompt: '0.00003', completion: '0.00018' } },
+      { id: 'openai/gpt-5.4', pricing: { prompt: '0.0000025', completion: '0.000015' } },
+      { id: 'openai/text-embedding-3-large', pricing: { prompt: '0.00000013', completion: '0' } },
+      { id: '01-ai/yi-large', pricing: { prompt: '0.000003', completion: '0.000003' } },
+      { id: 'anthropic/claude-haiku-4.5', pricing: { prompt: '0.000001', completion: '0.000005' } },
+    ],
+  }));
+
+  const result = await listModels();
+  assert.deepEqual(result.models.map((m) => m.id), [
+    '01-ai/yi-large',
+    'anthropic/claude-haiku-4.5',
+    'google/gemini-3.1-flash-lite',
+    'openai/gpt-5-mini',
+    'openai/gpt-5.4',
+    'openai/gpt-5.4-pro',
+  ]);
+  const flashLite = result.models.find((m) => m.id === 'google/gemini-3.1-flash-lite');
+  assert.deepEqual(flashLite.pricing, { input: 0.25, output: 1.5 }, 'dollars per million tokens');
+  const pro = result.models.find((m) => m.id === 'openai/gpt-5.4-pro');
+  assert.deepEqual(pro.pricing, { input: 30, output: 180 });
+  assert.ok(result.models.find((m) => m.id === 'openai/gpt-5.4').label.includes('GPT-5.4'));
+
+  // The shortlist still reads GPT families through the prefix, and is priced.
+  assert.deepEqual(
+    result.recommended.map((m) => [m.id, m.tier]),
+    [['openai/gpt-5.4', 'flagship'], ['openai/gpt-5-mini', 'mini'], ['openai/gpt-5.4-pro', 'pro']],
+  );
+  assert.deepEqual(result.recommended[1].pricing, { input: 0.25, output: 2 });
+});
+
+test('a catalogue with no prices reports none rather than zeros', async () => {
+  stubFetch(() => respond({ data: [{ id: 'gpt-4o' }, { id: 'gpt-4o', pricing: {} }] }));
+  const result = await listModels();
+  assert.equal(result.models.length, 1);
+  assert.equal('pricing' in result.models[0], false);
+});
+
 test('an unfamiliar naming scheme falls back to the full list instead of an empty picker', async () => {
   stubFetch(() => respond({
     data: [{ id: 'house-model-alpha' }, { id: 'house-model-beta' }],
