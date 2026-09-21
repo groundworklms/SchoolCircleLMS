@@ -13,7 +13,10 @@
  * is an ordinary instructor action. Changing the endpoint or supplying an API
  * key can, so those live behind "Advanced" and require the operator passphrase.
  * The server enforces this independently (changeNeedsOperator); the UI only
- * reflects it.
+ * reflects it. One exception the server also reports
+ * (`modelChoiceNeedsOperator`): on a deployment with open sign-in, "instructor"
+ * is self-declared, so the model choice takes the passphrase too and the simple
+ * path asks for it.
  *
  * The panel never receives a stored API key, only a masked hint -- so "leave
  * blank to keep" is the real behaviour, not a convenience.
@@ -44,12 +47,26 @@ const TIER_HINTS = {
 
 function hintFor(model) {
   if (model.tier && TIER_HINTS[model.tier]) return TIER_HINTS[model.tier];
-  const name = model.id.toLowerCase();
+  const name = model.id.toLowerCase().replace(/^~?[^/]+\//, '');
   if (name.includes('nano')) return 'Fastest and cheapest. Fine for rough drafts.';
   if (name.includes('mini')) return 'Quick and inexpensive. A sensible default.';
   if (/^o[1-9]/.test(name)) return 'Slower, stronger at hard reasoning.';
   if (name.includes('turbo')) return 'Older generation, still capable.';
+  if (model.pricing) return '';
   return 'Full-size model. Best writing, higher cost.';
+}
+
+/**
+ * "$0.25 in / $1.50 out per 1M tokens" when the catalogue priced the model
+ * (an aggregator does; a self-hosted server does not). A course generation is
+ * mostly input -- the approved sources -- so the input price leads.
+ */
+function priceFor(model) {
+  const p = model.pricing;
+  if (!p) return null;
+  if (p.input === 0 && p.output === 0) return 'Free';
+  const dollars = (n) => (n < 0.01 ? '<$0.01' : `$${n.toFixed(2)}`);
+  return `${dollars(p.input)} in / ${dollars(p.output)} out per 1M tokens`;
 }
 
 export function ModelProviderSettings() {
@@ -152,8 +169,9 @@ export function ModelProviderSettings() {
       const json = await request('PUT', {
         modelId: chosen,
         ...(Number.isInteger(settings?.version) ? { expectedVersion: settings.version } : {}),
-      });
+      }, { withPassphrase: Boolean(settings?.modelChoiceNeedsOperator) });
       adopt(json.settings);
+      if (settings?.modelChoiceNeedsOperator) setPassphrase('');
       setSaved('Saved. New course generation uses this model.');
     } catch (error) {
       setErr(errText(error, 'That model could not be selected.'));
@@ -250,6 +268,7 @@ export function ModelProviderSettings() {
   const active = settings?.active;
   const activeModel = active?.ready ? active.model : null;
   const changed = Boolean(chosen) && chosen !== activeModel;
+  const modelGated = Boolean(settings?.modelChoiceNeedsOperator);
 
   return (
     <div className="model-provider">
@@ -294,7 +313,12 @@ export function ModelProviderSettings() {
                     />
                     <span className="model-provider-choice-body">
                       <span className="model-provider-choice-name">{model.label}</span>
-                      <span className="model-provider-choice-hint">{hintFor(model)}</span>
+                      {priceFor(model) && (
+                        <span className="model-provider-choice-price">{priceFor(model)}</span>
+                      )}
+                      {hintFor(model) && (
+                        <span className="model-provider-choice-hint">{hintFor(model)}</span>
+                      )}
                     </span>
                   </label>
                 ))}
@@ -339,12 +363,40 @@ export function ModelProviderSettings() {
         )}
         {!models && !modelsError && <p className="model-provider-note">Loading available models…</p>}
 
+        {/* Open sign-in: the model is the bill, so choosing one is an operator action. */}
+        {modelGated && (settings?.needsPassphraseClaim ? (
+          <p className="model-provider-note">
+            Sign-in is open on this deployment, so changing the model needs the operator
+            passphrase — and none is set yet. Set one under Advanced settings first.
+          </p>
+        ) : (
+          <label>
+            <span>Operator passphrase</span>
+            <input
+              type="password"
+              value={passphrase}
+              onChange={(event) => setPassphrase(event.target.value)}
+              autoComplete="off"
+              disabled={busy}
+              aria-describedby="model-choice-gate-note"
+            />
+            <small id="model-choice-gate-note" className="model-provider-note">
+              Sign-in is open on this deployment, so the model choice is held to the operator
+              passphrase: it decides what every generation costs.
+            </small>
+          </label>
+        ))}
+
         {err && <p className="s-shell-error" role="alert">{err}</p>}
         {saved && <p className="p-check ok" role="status">{saved}</p>}
         {probe && <p className="p-check ok" role="status">{probe}</p>}
 
         <div className="p-btnrow">
-          <button type="submit" className="p-btn" disabled={busy || !chosen || !changed}>
+          <button
+            type="submit"
+            className="p-btn"
+            disabled={busy || !chosen || !changed || (modelGated && (!passphrase || settings?.needsPassphraseClaim))}
+          >
             {busy ? 'Saving…' : 'Use this model'}
           </button>
           <button type="button" className="p-btn ghost" onClick={test} disabled={busy || !chosen}>
@@ -366,7 +418,9 @@ export function ModelProviderSettings() {
         <form className="model-provider-form" onSubmit={claimPassphrase}>
           <p className="model-provider-note">
             Changing the endpoint or entering an API key needs an operator passphrase; none is set yet.
-            Choosing a model above doesn&apos;t.
+            {modelGated
+              ? ' With sign-in open, choosing a model above needs it as well.'
+              : ' Choosing a model above doesn’t.'}
           </p>
           <label>
             <span>New operator passphrase</span>

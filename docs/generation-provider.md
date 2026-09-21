@@ -97,6 +97,47 @@ posture *is* a self-hosted endpoint on the local network — so the passphrase i
 what stands in for a URL allowlist. Credentials embedded in the endpoint URL,
 query strings, and non-HTTP schemes are refused.
 
+## Open sign-in
+
+The split above -- model choice for instructors, endpoint and key for the
+operator -- assumes an instructor is a known person, because sign-in was
+restricted to `NEXT_PUBLIC_ALLOWED_EMAILS`. With that allowlist **off**, anyone
+who signs up can make themselves an instructor in their account profile, and
+on a per-token key the model choice *is* the bill: the same OpenRouter
+catalogue runs from cents to $180 per million tokens.
+
+So when the allowlist is unset, **every write takes the operator passphrase,
+the model included**. The route decides this from `modelChoiceNeedsOperator()`
+(`lib/model-settings.js`), the same value is reported to the panel as
+`settings.modelChoiceNeedsOperator`, and the simple picker asks for the
+passphrase up front instead of failing the save. Restoring the allowlist hands
+the model choice back to instructors with no other change.
+
+Two consequences for an operator opening sign-in:
+
+- **Claim the passphrase first** (or pin `MODEL_SETTINGS_KEY`). A claim is
+  refused once one exists, which is what makes it hold; on an open deployment
+  an unclaimed passphrase is claimable by whoever signs up next.
+- The passphrase caps who can change the model, not what generation costs.
+  **Set a credit limit on the key itself** (OpenRouter: Settings → Keys); that
+  is the one control that holds no matter what the app does.
+
+## Cost on a metered key
+
+The picker shows the price per million tokens next to every model the
+catalogue prices (OpenRouter does; a self-hosted server reports none). A course
+generation is mostly *input* -- the approved sources -- so the input price
+leads, and the deployment default (`google/gemini-3.1-flash-lite`) was chosen
+on it.
+
+Reasoning models think before they answer and bill that thinking as output.
+The transport asks every reasoning family on OpenRouter for `effort: low` with
+the trace excluded (`openRouterReasoningModel()` in `lib/providers.js`): the
+structured prompts here need little of it, and an included trace would land in
+`message.content` and break the JSON parse. Models with no reasoning parameter
+are sent none, because the JSON path pins `provider.require_parameters` and an
+unsupported parameter could leave OpenRouter with no eligible provider.
+
 ## Handling of the API key
 
 - Sealed with AES-256-GCM before it reaches the database; the ciphertext,
@@ -118,7 +159,7 @@ query strings, and non-HTTP schemes are refused.
 |---|---|---|
 | `GET` | read the redacted configuration and what is active | no passphrase |
 | `POST` | `{ passphrase }` — claim the operator passphrase when none is set | n/a |
-| `PUT` | `{ baseUrl, modelId, apiKey?, expectedVersion? }` | passphrase |
+| `PUT` | `{ baseUrl, modelId, apiKey?, expectedVersion? }` | passphrase, except a model-only change on a deployment with an allowlist |
 | `DELETE` | stop using stored settings | passphrase |
 
 `/api/learning/model-settings/models`, instructor role and passphrase on both:

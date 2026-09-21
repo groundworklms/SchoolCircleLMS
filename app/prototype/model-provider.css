@@ -124,6 +124,14 @@
   line-height: 1.35;
 }
 
+/* Price per million tokens, when the endpoint's catalogue states one. */
+.model-provider-choice-price {
+  color: var(--p-text, #1d1d1f);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.35;
+}
+
 /* Advanced is a quiet link, not a button competing with "Use this model". */
 .model-provider-disclose {
   margin-top: 0.7rem;

@@ -14,6 +14,13 @@
  * POST otherwise -- so enabling the panel needs no secret and no rollout, which
  * is the whole point of configuring the provider at runtime.
  *
+ * Choosing a MODEL on the endpoint already in force is ordinarily an instructor
+ * action, not an operator one -- unless sign-in is open. With no allowlist
+ * (NEXT_PUBLIC_ALLOWED_EMAILS unset) anyone who signs up can make themselves an
+ * instructor in their account profile, and on a per-token key the model choice
+ * is the whole bill: the catalogue runs from cents to $180 per million tokens.
+ * So an open deployment holds every write behind the passphrase.
+ *
  * The response never contains the API key -- only whether one is set and a
  * masked hint of its last four characters.
  */
@@ -23,6 +30,7 @@ import {
   changeNeedsOperator,
   claimOperatorPassphrase,
   disableModelSettings,
+  modelChoiceNeedsOperator,
   operatorPassphraseConfigured,
   operatorPassphraseReason,
   primeModelSettings,
@@ -101,9 +109,10 @@ export const PUT = learningRoute(
   async ({ identity, body, request }) => {
     const settings = await primeModelSettings();
     // Choosing a model on the endpoint already in force is an ordinary
-    // instructor action. Changing the endpoint, or supplying a credential, is
-    // what the operator passphrase guards.
-    if (changeNeedsOperator(body, settings, process.env.MODEL_BASE_URL)) {
+    // instructor action -- when instructors are known accounts. Changing the
+    // endpoint, or supplying a credential, is what the operator passphrase
+    // guards; on an open deployment, so is the model (see above).
+    if (modelChoiceNeedsOperator() || changeNeedsOperator(body, settings, process.env.MODEL_BASE_URL)) {
       requireOperator(request);
     }
     await saveModelSettings({

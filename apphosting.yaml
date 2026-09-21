@@ -78,15 +78,23 @@ env:
       - BUILD
       - RUNTIME
 
-  # --- Tester allowlist. Only these emails may sign in / create an account;
-  # anyone else is refused at login and any just-created account is deleted.
-  # Comma-separated, case-insensitive. Baked into the client at BUILD time, so
-  # editing this list needs a new rollout. Unset = allowlist off (open).
-  - variable: NEXT_PUBLIC_ALLOWED_EMAILS
-    value: twhite0911@gmail.com,canyonmcdonald@gmail.com,emor.639@gmail.com,jmathdog@gmail.com
-    availability:
-      - BUILD
-      - RUNTIME
+  # --- Sign-in allowlist: OFF. Anyone with a Firebase account may sign in and
+  # create an account. (During the event this pinned sign-in to the team; the
+  # list is kept below in case it needs to come back.)
+  #
+  # Opening sign-in has a consequence for the generation provider: with the
+  # allowlist off, "instructor" is a self-declared role, so choosing the
+  # generation MODEL requires the operator passphrase, not just the role
+  # (app/api/learning/model-settings/route.js). Otherwise anyone who signed up
+  # could point generation at a $180/M-token model on the key below.
+  #
+  # To restrict sign-in again: comma-separated, case-insensitive emails. Baked
+  # into the client at BUILD time, so editing the list needs a new rollout.
+  # - variable: NEXT_PUBLIC_ALLOWED_EMAILS
+  #   value: twhite0911@gmail.com,canyonmcdonald@gmail.com,emor.639@gmail.com,jmathdog@gmail.com
+  #   availability:
+  #     - BUILD
+  #     - RUNTIME
 
   # --- In-app "Report an issue" widget -> files GitHub issues directly via
   # /api/feedback. Secrets live in Cloud Secret Manager; the App Hosting compute
@@ -106,32 +114,51 @@ env:
     availability:
       - RUNTIME
 
-  # --- Generation provider.
-  # The API key stays in Secret Manager; the MODEL is chosen at runtime in
-  # Settings -> Generation model and stored in the database, so switching models
-  # needs no rollout (docs/generation-provider.md).
+  # --- Generation provider: OpenRouter, on a personal key (post-event).
+  # The event's OPENAI_API_KEY was revoked when the event ended. Generation now
+  # runs through OpenRouter on a personally funded key, so the model default
+  # below is chosen for cost. The MODEL can still be changed at runtime in
+  # Settings -> Generation model (docs/generation-provider.md); the endpoint and
+  # key cannot be changed from the UI without the operator passphrase.
   #
-  # MODEL_API_KEY is the variable the transport reads. It is fed here by the
-  # existing OPENAI_API_KEY secret rather than a second copy of the same
-  # credential -- `secret:` names the Secret Manager entry, `variable:` names the
-  # environment variable it lands in.
-  - variable: MODEL_API_KEY
-    secret: OPENAI_API_KEY
+  # OPENROUTER_API_KEY is the only credential the transport accepts for this
+  # endpoint (lib/providers.js): a generic MODEL_API_KEY never follows an
+  # OpenRouter selection and an OpenRouter key never follows any other endpoint.
+  #   gcloud secrets create OPENROUTER_API_KEY --data-file=-
+  #   (then grant the App Hosting compute service account Secret Accessor on it)
+  #
+  # COST BACKSTOP: set a credit limit on the key itself at
+  # https://openrouter.ai/settings/keys. That is the one control that holds no
+  # matter what this app does; everything in-app is about spending less, not
+  # about capping spend.
+  - variable: OPENROUTER_API_KEY
+    secret: OPENROUTER_API_KEY
     availability:
       - RUNTIME
 
-  # The default endpoint. An operator can point Settings at a different one
-  # (including a self-hosted model on the local network) without touching this.
   - variable: MODEL_BASE_URL
-    value: https://api.openai.com/v1
+    value: https://openrouter.ai/api/v1
     availability:
       - RUNTIME
 
-  # MODEL_ID is deliberately NOT set: leaving it unset means generation reports
-  # an explicit 503 until an operator picks a model in Settings, which is honest,
-  # rather than this file guessing a slug that may not exist on the account.
-  # The panel's "List available models" button reads the real catalogue using the
-  # key above.
+  # The deployment default: Gemini 3.1 Flash Lite is about 8x cheaper than the
+  # Gemini 3.1 Pro the OpenRouter overlay originally named ($0.25 / $1.50 vs
+  # $2 / $12 per 1M tokens in / out, per the OpenRouter catalogue on
+  # 2026-09-21), supports strict structured output, and the transport already
+  # asks the Gemini family for low, excluded reasoning so the thinking budget
+  # does not bill as output. Prices are shown in the Settings picker for
+  # anything else; the operator passphrase is required to switch.
+  - variable: MODEL_ID
+    value: google/gemini-3.1-flash-lite
+    availability:
+      - RUNTIME
+
+  # NOTE: a model selection stored in Settings -> Generation model WINS over the
+  # two values above. After this rollout, open that panel and either "Stop using
+  # these settings" or re-save with the OpenRouter endpoint: a stored row still
+  # pointing at api.openai.com reports "needs an API key" (503) rather than
+  # silently using the OpenRouter key against OpenAI, so generation stays down
+  # until that is done.
 
   # Optional. SETTINGS_ENCRYPTION_KEY is only needed to TYPE an API key into
   # Settings; with the key supplied above it is unnecessary. MODEL_SETTINGS_KEY

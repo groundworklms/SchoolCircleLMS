@@ -120,6 +120,7 @@ const ENV_KEYS = [
   'MODEL_API_KEY',
   'OPENAI_API_KEY',
   'OPENROUTER_API_KEY',
+  'NEXT_PUBLIC_ALLOWED_EMAILS',
 ];
 let savedEnv = {};
 
@@ -655,6 +656,8 @@ test('choosing a model on the endpoint in force is not a privileged change', asy
 
 test('an instructor picks a model with no passphrase, but cannot redirect the endpoint', async () => {
   delete process.env.MODEL_SETTINGS_KEY;
+  // Instructors are known people: sign-in is restricted to a list.
+  process.env.NEXT_PUBLIC_ALLOWED_EMAILS = 'one@example.test, two@example.test';
   process.env.MODEL_BASE_URL = 'https://api.openai.com/v1';
   process.env.MODEL_ID = 'deployment-default';
   process.env.OPENAI_API_KEY = 'sk-deployment-key-8888';
@@ -687,6 +690,50 @@ test('an instructor picks a model with no passphrase, but cannot redirect the en
     'https://api.openai.com/v1',
     'the refused redirect changed nothing',
   );
+});
+
+test('with sign-in open, even the model choice takes the operator passphrase', async () => {
+  // No allowlist: anyone who signs up can call themselves an instructor, and
+  // the model decides what every generation costs on the deployment's key.
+  delete process.env.NEXT_PUBLIC_ALLOWED_EMAILS;
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  process.env.MODEL_ID = 'google/gemini-3.1-flash-lite';
+  process.env.OPENROUTER_API_KEY = 'sk-or-deployment-key-8888';
+  invalidateModelSettings();
+  const context = { params: Promise.resolve({}) };
+
+  // The panel is told up front, so it asks for the passphrase instead of
+  // failing the save.
+  let response = await routeModule.GET(request('GET'), context);
+  let body = await response.json();
+  assert.equal(body.settings.modelChoiceNeedsOperator, true);
+
+  // Model only, endpoint inherited, no passphrase: refused, nothing written.
+  response = await routeModule.PUT(
+    request('PUT', { body: { modelId: 'openai/gpt-5.4-pro' } }),
+    context,
+  );
+  assert.equal(response.status, 403);
+  assert.equal((await response.json()).code, 'BAD_OPERATOR_KEY');
+  assert.equal(rows.size, 0, 'a refused model choice touches nothing');
+  await primeModelSettings();
+  assert.equal(providers.textProvider().model, 'google/gemini-3.1-flash-lite');
+
+  // With the passphrase it is an ordinary save.
+  response = await routeModule.PUT(
+    request('PUT', { body: { modelId: 'openai/gpt-5-mini' }, key: OPERATOR }),
+    context,
+  );
+  body = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(body));
+  assert.equal(body.settings.modelId, 'openai/gpt-5-mini');
+  assert.equal(body.settings.baseUrl, 'https://openrouter.ai/api/v1', 'endpoint was inherited');
+  assert.equal(body.settings.active.credential, 'environment', 'uses the deployment key');
+
+  // Restricting sign-in again hands the model choice back to instructors.
+  process.env.NEXT_PUBLIC_ALLOWED_EMAILS = 'one@example.test';
+  response = await routeModule.GET(request('GET'), context);
+  assert.equal((await response.json()).settings.modelChoiceNeedsOperator, false);
 });
 
 test('a settings-chosen model uses the deployment key without one being typed', async () => {
