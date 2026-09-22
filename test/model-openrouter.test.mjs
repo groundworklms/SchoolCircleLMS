@@ -5,7 +5,7 @@ import { ask as sourcererAsk } from 'sourcerer';
 import { buildAar } from '../lib/arsenal-evidence.js';
 import { learningModelStatus, tutorAnswer } from '../lib/arsenal-core.js';
 import { configuredEvidenceModel } from '../lib/learning/evidence.js';
-import { askJSON, askText } from '../lib/model.js';
+import { askJSON, askText, generateJSON, generateText } from '../lib/model.js';
 import {
   OPENROUTER_BASE_URL,
   OPENROUTER_MODEL_ID,
@@ -617,6 +617,180 @@ test('a non-reasoning model on OpenRouter is sent no reasoning parameter', async
     assert.equal(result.data, 'plain prose');
     assert.equal(request.body.model, 'openai/gpt-4.1-mini');
     assert.equal('reasoning' in request.body, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+/* ------------------------- reasoning effort by task ------------------------ */
+
+const OPENROUTER_ENV = {
+  MODEL_BASE_URL: OPENROUTER_BASE_URL,
+  MODEL_ID: OPENROUTER_MODEL_ID,
+  MODEL_API_KEY: undefined,
+  OPENROUTER_API_KEY: 'synthetic-openrouter-key',
+};
+
+/** Capture the request body one call produces, with a canned successful reply. */
+async function bodyOf(call, { content = '{"answer":"synthetic"}', finishReason = 'stop' } = {}) {
+  let captured;
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, options) => {
+    captured = JSON.parse(options.body);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        model: OPENROUTER_MODEL_ID,
+        choices: [{ finish_reason: finishReason, message: { content } }],
+        usage: { prompt_tokens: 1, completion_tokens: 1 },
+      }),
+    };
+  };
+  try {
+    await withEnvironment(OPENROUTER_ENV, call);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+  return captured;
+}
+
+const ANSWER_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['answer'],
+  properties: { answer: { type: 'string' } },
+};
+
+test('authoring thinks harder than the helper calls that run far more often', async () => {
+  // Course material an instructor reviews and a student is taught from.
+  const authoring = await bodyOf(() => generateJSON({
+    system: 'Write a lesson.', prompt: 'From the passage.', schema: ANSWER_SCHEMA, maxTokens: 64,
+  }));
+  assert.deepEqual(authoring.reasoning, { effort: 'medium', exclude: true });
+
+  const authoringProse = await bodyOf(
+    () => generateText({ system: 'Write a lesson.', prompt: 'From the passage.', maxTokens: 64 }),
+    { content: 'prose' },
+  );
+  assert.deepEqual(authoringProse.reasoning, { effort: 'medium', exclude: true });
+
+  // Checking, scoring and one grounded tutor turn: bounded work, run per
+  // learner turn rather than per course, and no better for deliberation.
+  const helper = await bodyOf(() => askJSON({
+    system: 'Score this claim.', prompt: 'Against the passage.', schema: ANSWER_SCHEMA, maxTokens: 64,
+  }));
+  assert.deepEqual(helper.reasoning, { effort: 'low', exclude: true });
+
+  const helperProse = await bodyOf(
+    () => askText({ system: 'Summarise.', prompt: 'The attempt.', maxTokens: 64 }),
+    { content: 'prose' },
+  );
+  assert.deepEqual(helperProse.reasoning, { effort: 'low', exclude: true });
+});
+
+test('a call can ask for more thinking than its seam gives by default', async () => {
+  // What the plan outline and the lesson page do in lib/arsenal-core.js.
+  const raised = await bodyOf(() => generateJSON({
+    system: 'Outline the course.', prompt: 'From the catalogue.', schema: ANSWER_SCHEMA,
+    maxTokens: 64, effort: 'high',
+  }));
+  assert.deepEqual(raised.reasoning, { effort: 'high', exclude: true });
+
+  // And opt out entirely, without the parameter being sent at all.
+  const none = await bodyOf(() => generateJSON({
+    system: 'Label this.', prompt: 'One word.', schema: ANSWER_SCHEMA, maxTokens: 64, effort: 'none',
+  }));
+  assert.equal('reasoning' in none, false);
+});
+
+test('the trace is always excluded, whatever the effort, so it cannot break the JSON parse', async () => {
+  for (const effort of ['low', 'medium', 'high']) {
+    const body = await bodyOf(() => generateJSON({
+      system: 'Write.', prompt: 'Something.', schema: ANSWER_SCHEMA, maxTokens: 64, effort,
+    }));
+    assert.equal(body.reasoning.exclude, true, effort);
+  }
+});
+
+test('hitting the token ceiling is named as truncation, not as invalid JSON', async () => {
+  // Reasoning is drawn from the same budget as the answer, so raising effort
+  // can truncate a call that used to fit. "Unexpected end of JSON input" sends
+  // the reader after the wrong problem.
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      model: OPENROUTER_MODEL_ID,
+      choices: [{ finish_reason: 'length', message: { content: '{"answer":"half' } }],
+      usage: {
+        prompt_tokens: 10,
+        completion_tokens: 64,
+        completion_tokens_details: { reasoning_tokens: 60 },
+      },
+    }),
+  });
+  try {
+    await assert.rejects(
+      withEnvironment(OPENROUTER_ENV, () => generateJSON({
+        system: 'Write.', prompt: 'Something.', schema: ANSWER_SCHEMA, maxTokens: 64,
+      })),
+      (error) => {
+        assert.equal(error.code, 'MODEL_TRUNCATED');
+        assert.match(error.message, /cut off at the 64-token limit/);
+        assert.match(error.message, /60 of it on reasoning/);
+        return true;
+      },
+    );
+
+    // Empty prose for the same reason reports the cause rather than a bare
+    // "empty prose": the model spent the whole budget thinking and said
+    // nothing. (Partial prose is still returned -- the test below.)
+    globalThis.fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        model: OPENROUTER_MODEL_ID,
+        choices: [{ finish_reason: 'length', message: { content: '' } }],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 64,
+          completion_tokens_details: { reasoning_tokens: 64 },
+        },
+      }),
+    });
+    await assert.rejects(
+      withEnvironment(OPENROUTER_ENV, () => generateText({
+        system: 'Write.', prompt: 'Something.', maxTokens: 64,
+      })),
+      (error) => {
+        assert.equal(error.code, 'MODEL_TRUNCATED');
+        assert.match(error.message, /64 of it on reasoning/);
+        return true;
+      },
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('truncated but usable prose is still returned', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      model: OPENROUTER_MODEL_ID,
+      choices: [{ finish_reason: 'length', message: { content: 'a partial answer' } }],
+      usage: { prompt_tokens: 1, completion_tokens: 64 },
+    }),
+  });
+  try {
+    const result = await withEnvironment(OPENROUTER_ENV, () => generateText({
+      system: 'Write.', prompt: 'Something.', maxTokens: 64,
+    }));
+    assert.equal(result.data, 'a partial answer');
   } finally {
     globalThis.fetch = originalFetch;
   }

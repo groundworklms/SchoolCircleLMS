@@ -130,13 +130,37 @@ generation is mostly *input* -- the approved sources -- so the input price
 leads, and the deployment default (`google/gemini-3.1-flash-lite`) was chosen
 on it.
 
-Reasoning models think before they answer and bill that thinking as output.
-The transport asks every reasoning family on OpenRouter for `effort: low` with
-the trace excluded (`openRouterReasoningModel()` in `lib/providers.js`): the
-structured prompts here need little of it, and an included trace would land in
-`message.content` and break the JSON parse. Models with no reasoning parameter
-are sent none, because the JSON path pins `provider.require_parameters` and an
-unsupported parameter could leave OpenRouter with no eligible provider.
+Reasoning models think before they answer, bill that thinking as output, and
+draw it from the same budget as the visible answer. So effort is set by what
+the call is *for*, not once for the whole product:
+
+| Seam | Effort | What runs there |
+|---|---|---|
+| `generateJSON` / `generateText` | `medium` | Course authoring — the material an instructor reviews and a student is taught from |
+| `askJSON` / `askText` | `low` | Checking, scoring, one grounded tutor turn |
+| explicit `effort` | caller's | The plan outline and the lesson page ask for `high` |
+
+The split follows cost as much as quality. Authoring is a bounded number of
+calls per course and a few thousand reasoning tokens on a $1.50/M model is a
+fraction of a cent, so thinking is worth paying for. The helper calls run per
+learner turn and per verification — that is where per-token spend actually
+accumulates, and none of them get better for extra deliberation.
+
+Two invariants, whatever the effort:
+
+- **The trace is always excluded.** An included one lands in `message.content`
+  and breaks the JSON parse.
+- **Models with no reasoning parameter are sent none.** The JSON path pins
+  `provider.require_parameters`, so an unsupported parameter could leave
+  OpenRouter with no eligible provider at all.
+  `openRouterReasoningModel()` in `lib/providers.js` decides which is which.
+
+Because reasoning comes out of the token ceiling, raising `effort` on a call
+without raising its `maxTokens` can truncate a request that used to fit. That
+now fails as `MODEL_TRUNCATED`, naming the limit and how much of it went on
+reasoning, rather than surfacing as "invalid JSON" and sending the reader after
+the wrong problem. Partial *prose* is still returned; only JSON (which cannot
+be half-parsed) and an empty answer are errors.
 
 ## Handling of the API key
 
