@@ -132,19 +132,48 @@ on it.
 
 Reasoning models think before they answer, bill that thinking as output, and
 draw it from the same budget as the visible answer. So effort is set by what
-the call is *for*, not once for the whole product:
+the call is *for*, across three tiers (`lib/reasoning-effort.js`):
 
-| Seam | Effort | What runs there |
-|---|---|---|
-| `generateJSON` / `generateText` | `medium` | Course authoring — the material an instructor reviews and a student is taught from |
-| `askJSON` / `askText` | `low` | Checking, scoring, one grounded tutor turn |
-| explicit `effort` | caller's | The plan outline and the lesson page ask for `high` |
+| Tier | What runs there |
+|---|---|
+| `premium` | The whole-course plan outline and the lesson page — the pages a student actually reads |
+| `authoring` | The rest of generation: objectives, the source survey, section drafting |
+| `helper` | Classifying, checking, scoring a claim, one grounded tutor turn |
+
+**Settings → Generation model** offers one control over all three, because the
+tiers only make sense in order — a profile that thought harder about routine
+checks than about the pages a student reads would be a dial pointing the wrong
+way. A test enforces `helper ≤ authoring ≤ premium` for every profile.
+
+| Profile | helper | authoring | premium |
+|---|---|---|---|
+| Economy | low | low | low |
+| **Balanced** (default) | low | medium | high |
+| Thorough | medium | high | high |
 
 The split follows cost as much as quality. Authoring is a bounded number of
 calls per course and a few thousand reasoning tokens on a $1.50/M model is a
 fraction of a cent, so thinking is worth paying for. The helper calls run per
 learner turn and per verification — that is where per-token spend actually
-accumulates, and none of them get better for extra deliberation.
+accumulates, and none of them get better for extra deliberation. That is why
+only Thorough raises the helper tier, and why it is the profile that costs
+most on a busy deployment rather than a busy *author*.
+
+`low` is the floor rather than "off", deliberately. Several families — the
+Gemini 3 line among them — reason unconditionally, so off is not available
+everywhere; and *omitting* the parameter does not mean "no thinking", it means
+the provider's own default, which is often more than low. A dial whose
+cheapest setting could silently cost more than the one above it would be worse
+than no dial.
+
+Precedence matches the provider's: a profile stored in Settings wins over
+`MODEL_EFFORT_PROFILE`, which wins over the Balanced default, and
+`effortProfileSource` on the operator view names which one won. Unlike the
+endpoint, the stored profile applies **even while the provider still comes from
+the environment** — how hard to think is orthogonal to which endpoint answers,
+so an operator who picks Thorough before choosing a model gets Thorough. An
+unknown stored value reads as the default rather than failing the call; an
+unknown value *submitted* is a `400`.
 
 Two invariants, whatever the effort:
 
@@ -183,7 +212,7 @@ be half-parsed) and an empty answer are errors.
 |---|---|---|
 | `GET` | read the redacted configuration and what is active | no passphrase |
 | `POST` | `{ passphrase }` — claim the operator passphrase when none is set | n/a |
-| `PUT` | `{ baseUrl, modelId, apiKey?, expectedVersion? }` | passphrase, except a model-only change on a deployment with an allowlist |
+| `PUT` | `{ baseUrl, modelId, apiKey?, effortProfile?, expectedVersion? }` | passphrase, except a model- or effort-only change on a deployment with an allowlist |
 | `DELETE` | stop using stored settings | passphrase |
 
 `/api/learning/model-settings/models`, instructor role and passphrase on both:
@@ -199,7 +228,9 @@ credential. Ungated, any instructor could point them at a host they control and
 read the `Authorization` header off their own endpoint.
 
 `apiKey` semantics on `PUT`: a non-empty string sets a new key, `null` clears
-it, and **omitting the field keeps the existing one**. `expectedVersion` is the
+it, and **omitting the field keeps the existing one**. `effortProfile` follows
+the same keep-on-omit rule, so choosing a model does not reset how hard it
+thinks. `expectedVersion` is the
 version the caller last read; a mismatch is `409 CONFLICT`, so two operators
 editing at once cannot silently overwrite each other. Omitting it is
 last-write-wins, which is right for a first save or a script.

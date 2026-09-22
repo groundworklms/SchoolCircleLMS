@@ -144,14 +144,23 @@ env:
   # The deployment default: Gemini 3.1 Flash Lite is about 8x cheaper than the
   # Gemini 3.1 Pro the OpenRouter overlay originally named ($0.25 / $1.50 vs
   # $2 / $12 per 1M tokens in / out, per the OpenRouter catalogue on
-  # 2026-09-21), supports strict structured output, and the transport already
-  # asks the Gemini family for low, excluded reasoning so the thinking budget
-  # does not bill as output. Prices are shown in the Settings picker for
-  # anything else; the operator passphrase is required to switch.
+  # 2026-09-21) and supports strict structured output. Prices are shown in the
+  # Settings picker for anything else; the operator passphrase is required to
+  # switch. How hard it thinks is a separate choice -- see MODEL_EFFORT_PROFILE
+  # below.
   - variable: MODEL_ID
     value: google/gemini-3.1-flash-lite
     availability:
       - RUNTIME
+
+  # How hard the model thinks: economy | balanced | thorough. Left unset here on
+  # purpose -- balanced is the default, and an operator changes it in Settings ->
+  # Generation model without a rollout. Set it only to pin a deployment that
+  # should not be changed from the UI.
+  # - variable: MODEL_EFFORT_PROFILE
+  #   value: balanced
+  #   availability:
+  #     - RUNTIME
 
   # NOTE: a model selection stored in Settings -> Generation model WINS over the
   # two values above. After this rollout, open that panel and either "Stop using

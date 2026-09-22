@@ -80,6 +80,8 @@ export function ModelProviderSettings() {
   const [modelsError, setModelsError] = useState(null);
   const [chosen, setChosen] = useState('');
 
+  const [effort, setEffort] = useState('');
+
   const [advanced, setAdvanced] = useState(false);
   const [baseUrl, setBaseUrl] = useState('');
   const [apiKey, setApiKey] = useState('');
@@ -96,6 +98,7 @@ export function ModelProviderSettings() {
     setSettings(next);
     setBaseUrl(next.baseUrl || next.active?.baseUrl || '');
     setChosen(next.modelId || next.active?.model || '');
+    setEffort(next.effortProfile || '');
     setApiKey('');
     setClaim('');
     setClaimConfirm('');
@@ -168,11 +171,16 @@ export function ModelProviderSettings() {
     try {
       const json = await request('PUT', {
         modelId: chosen,
+        ...(effort ? { effortProfile: effort } : {}),
         ...(Number.isInteger(settings?.version) ? { expectedVersion: settings.version } : {}),
       }, { withPassphrase: Boolean(settings?.modelChoiceNeedsOperator) });
       adopt(json.settings);
       if (settings?.modelChoiceNeedsOperator) setPassphrase('');
-      setSaved('Saved. New course generation uses this model.');
+      setSaved(
+        chosen && chosen !== settings?.active?.model
+          ? 'Saved. New course generation uses this model.'
+          : 'Saved. New course generation uses this effort level.',
+      );
     } catch (error) {
       setErr(errText(error, 'That model could not be selected.'));
     } finally {
@@ -191,6 +199,7 @@ export function ModelProviderSettings() {
       const json = await request('PUT', {
         baseUrl: baseUrl.trim(),
         modelId: chosen,
+        ...(effort ? { effortProfile: effort } : {}),
         ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         ...(Number.isInteger(settings?.version) ? { expectedVersion: settings.version } : {}),
       }, { withPassphrase: true });
@@ -267,8 +276,11 @@ export function ModelProviderSettings() {
 
   const active = settings?.active;
   const activeModel = active?.ready ? active.model : null;
-  const changed = Boolean(chosen) && chosen !== activeModel;
+  const modelChanged = Boolean(chosen) && chosen !== activeModel;
+  const effortChanged = Boolean(effort) && effort !== settings?.effortProfile;
+  const changed = modelChanged || effortChanged;
   const modelGated = Boolean(settings?.modelChoiceNeedsOperator);
+  const effortOptions = settings?.effortProfiles || [];
 
   return (
     <div className="model-provider">
@@ -363,6 +375,47 @@ export function ModelProviderSettings() {
         )}
         {!models && !modelsError && <p className="model-provider-note">Loading available models…</p>}
 
+        {/*
+          How hard the model thinks. One control rather than three, because the
+          tiers have to keep their order to make sense -- see
+          lib/reasoning-effort.js. Only shown when the server offers the
+          choice, so a deployment on a provider that has no reasoning parameter
+          is not given a dial that does nothing.
+        */}
+        {effortOptions.length > 0 && (
+          <fieldset className="model-provider-effort">
+            <legend>How hard should it think?</legend>
+            <p className="model-provider-note">
+              Thinking time is billed like any other output. This spends more of it on the
+              pages a student reads than on routine checks.
+            </p>
+            <div role="radiogroup" aria-label="Reasoning effort">
+              {effortOptions.map((option) => (
+                <label key={option.id} className="model-provider-choice">
+                  <input
+                    type="radio"
+                    name="effort-choice"
+                    value={option.id}
+                    checked={effort === option.id}
+                    onChange={() => { setEffort(option.id); setProbe(null); }}
+                    disabled={busy}
+                  />
+                  <span className="model-provider-choice-body">
+                    <span className="model-provider-choice-name">{option.label}</span>
+                    <span className="model-provider-choice-hint">{option.summary}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {settings?.effortProfileSource === 'env' && effort === settings?.effortProfile && (
+              <p className="model-provider-note">
+                Currently set by this deployment&apos;s MODEL_EFFORT_PROFILE. Choosing here
+                overrides it.
+              </p>
+            )}
+          </fieldset>
+        )}
+
         {/* Open sign-in: the model is the bill, so choosing one is an operator action. */}
         {modelGated && (settings?.needsPassphraseClaim ? (
           <p className="model-provider-note">
@@ -397,7 +450,7 @@ export function ModelProviderSettings() {
             className="p-btn"
             disabled={busy || !chosen || !changed || (modelGated && (!passphrase || settings?.needsPassphraseClaim))}
           >
-            {busy ? 'Saving…' : 'Use this model'}
+            {busy ? 'Saving…' : (modelChanged ? 'Use this model' : 'Save')}
           </button>
           <button type="button" className="p-btn ghost" onClick={test} disabled={busy || !chosen}>
             Test it

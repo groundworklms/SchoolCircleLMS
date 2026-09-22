@@ -2843,3 +2843,95 @@ test('discarding is two deliberate clicks, not a blocking dialog', () => {
   assert.match(markup, /Discard — confirm/);
   assert.doesNotMatch(markup, /window\.confirm/);
 });
+
+/*
+ * Settings -> Generation model: the reasoning-effort control.
+ *
+ * The panel's state is injected in declaration order (see loadComponent), so
+ * this renders the real component rather than asserting about its source.
+ */
+function renderModelProvider({ settings, models = [], chosen = '', effort = '' }) {
+  const { ModelProviderSettings } = loadComponent('app/prototype/ModelProviderSettings.js', {
+    stateValues: [
+      [settings, () => {}],   // settings
+      [false, () => {}],      // loading
+      [null, () => {}],       // loadError
+      [models, () => {}],     // models
+      [null, () => {}],       // recommended
+      [false, () => {}],      // showAll
+      [null, () => {}],       // modelsError
+      [chosen, () => {}],     // chosen
+      [effort, () => {}],     // effort
+    ],
+  });
+  return renderToStaticMarkup(React.createElement(ModelProviderSettings));
+}
+
+const EFFORT_PROFILES = [
+  { id: 'economy', label: 'Economy', summary: 'Least thinking everywhere.' },
+  { id: 'balanced', label: 'Balanced', summary: 'Thinks hard where a student will read the result.' },
+  { id: 'thorough', label: 'Thorough', summary: 'More thinking on every call.' },
+];
+
+test('the generation panel offers the effort choice, with each option explained', () => {
+  const markup = renderModelProvider({
+    settings: {
+      configured: true,
+      modelId: 'google/gemini-3.1-flash-lite',
+      effortProfile: 'balanced',
+      effortProfileSource: 'settings',
+      effortProfiles: EFFORT_PROFILES,
+      active: { ready: true, model: 'google/gemini-3.1-flash-lite' },
+    },
+    models: [
+      { id: 'google/gemini-3.1-flash-lite', label: 'Gemini 3.1 flash-lite', pricing: { input: 0.25, output: 1.5 } },
+    ],
+    chosen: 'google/gemini-3.1-flash-lite',
+    effort: 'balanced',
+  });
+
+  assert.match(markup, /How hard should it think\?/);
+  for (const { label, summary } of EFFORT_PROFILES) {
+    assert.ok(markup.includes(label), `offers ${label}`);
+    assert.ok(markup.includes(summary), `explains ${label}`);
+  }
+  // The one already in force is the one selected.
+  assert.match(markup, /name="effort-choice" checked="" value="balanced"/);
+  // Cost is stated in the same breath as the choice, since that is the whole
+  // reason the control exists.
+  assert.match(markup, /billed like any other output/i);
+  assert.match(markup, /\$0\.25 in \/ \$1\.50 out per 1M tokens/);
+});
+
+test('a deployment whose provider has no effort choice is not shown a dial that does nothing', () => {
+  const markup = renderModelProvider({
+    settings: {
+      configured: true,
+      modelId: 'local-model',
+      effortProfiles: [],
+      active: { ready: true, model: 'local-model' },
+    },
+    models: [{ id: 'local-model', label: 'local-model' }],
+    chosen: 'local-model',
+  });
+  assert.doesNotMatch(markup, /How hard should it think\?/);
+  assert.doesNotMatch(markup, /effort-choice/);
+});
+
+test('an effort set by deployment configuration says so, rather than looking like a choice already made', () => {
+  const markup = renderModelProvider({
+    settings: {
+      configured: true,
+      modelId: 'google/gemini-3.1-flash-lite',
+      effortProfile: 'thorough',
+      effortProfileSource: 'env',
+      effortProfiles: EFFORT_PROFILES,
+      active: { ready: true, model: 'google/gemini-3.1-flash-lite' },
+    },
+    models: [{ id: 'google/gemini-3.1-flash-lite', label: 'Gemini 3.1 flash-lite' }],
+    chosen: 'google/gemini-3.1-flash-lite',
+    effort: 'thorough',
+  });
+  assert.match(markup, /MODEL_EFFORT_PROFILE/);
+  assert.match(markup, /Choosing here\s+overrides it/);
+});

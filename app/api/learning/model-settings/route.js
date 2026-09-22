@@ -121,6 +121,10 @@ export const PUT = learningRoute(
       // Absent key = keep whatever is stored; explicit null or '' = clear it.
       // The UI never receives the key, so it cannot send one back unchanged.
       apiKey: Object.prototype.hasOwnProperty.call(body, 'apiKey') ? body.apiKey : undefined,
+      // Absent = keep the stored profile, so picking a model does not reset it.
+      effortProfile: Object.prototype.hasOwnProperty.call(body, 'effortProfile')
+        ? body.effortProfile
+        : undefined,
       // The version the panel last read, so two operators editing at once get
       // a 409 instead of one silently overwriting the other.
       expectedVersion: Object.prototype.hasOwnProperty.call(body, 'expectedVersion')

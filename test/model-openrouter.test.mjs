@@ -697,11 +697,13 @@ test('a call can ask for more thinking than its seam gives by default', async ()
   }));
   assert.deepEqual(raised.reasoning, { effort: 'high', exclude: true });
 
-  // And opt out entirely, without the parameter being sent at all.
-  const none = await bodyOf(() => generateJSON({
-    system: 'Label this.', prompt: 'One word.', schema: ANSWER_SCHEMA, maxTokens: 64, effort: 'none',
+  // A falsy effort omits the parameter, which hands the decision to the
+  // provider. That is NOT "no thinking" -- several families default to more
+  // than low -- which is why no effort profile can produce it.
+  const omitted = await bodyOf(() => generateJSON({
+    system: 'Label this.', prompt: 'One word.', schema: ANSWER_SCHEMA, maxTokens: 64, effort: null,
   }));
-  assert.equal('reasoning' in none, false);
+  assert.equal('reasoning' in omitted, false);
 });
 
 test('the trace is always excluded, whatever the effort, so it cannot break the JSON parse', async () => {
