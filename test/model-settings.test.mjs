@@ -121,6 +121,7 @@ const ENV_KEYS = [
   'OPENAI_API_KEY',
   'OPENROUTER_API_KEY',
   'NEXT_PUBLIC_ALLOWED_EMAILS',
+  'MODEL_EFFORT_PROFILE',
 ];
 let savedEnv = {};
 
@@ -753,4 +754,166 @@ test('a settings-chosen model uses the deployment key without one being typed', 
   assert.equal(status.credential, 'environment');
   assert.equal(providers.textProviderCredential(), 'sk-from-secret-manager-1234');
   assert.ok(!JSON.stringify(status).includes('sk-from-secret-manager-1234'));
+});
+
+/* ------------------------------ reasoning effort ----------------------------- */
+
+const model = await import('../lib/model.js');
+const effortModule = await import('../lib/reasoning-effort.js');
+
+test('the effort profiles keep their ordering, so the dial always means something', () => {
+  // A profile that thought harder on routine checks than on the pages a
+  // student reads would be a dial pointing the wrong way. The rank is what
+  // makes "one control, three tiers" safe to expose.
+  const rank = { low: 1, medium: 2, high: 3 };
+  for (const { id, tiers } of effortModule.effortProfileOptions()) {
+    assert.ok(rank[tiers.helper], `${id} helper is a known level`);
+    assert.ok(rank[tiers.helper] <= rank[tiers.authoring], `${id}: helper <= authoring`);
+    assert.ok(rank[tiers.authoring] <= rank[tiers.premium], `${id}: authoring <= premium`);
+  }
+
+  // `low` is the floor everywhere. Omitting the parameter would mean the
+  // provider's default, which for several families is MORE than low, so a
+  // cheaper-looking profile could silently cost more than the one above it.
+  for (const { id, tiers } of effortModule.effortProfileOptions()) {
+    for (const [tier, level] of Object.entries(tiers)) {
+      assert.ok(level, `${id}.${tier} names a level rather than omitting one`);
+    }
+  }
+});
+
+test('a stored profile drives every tier, and survives a model change', async () => {
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  process.env.OPENROUTER_API_KEY = 'sk-or-effort-test';
+  await saveModelSettings({
+    baseUrl: 'https://openrouter.ai/api/v1',
+    modelId: 'google/gemini-3.1-flash-lite',
+    effortProfile: 'thorough',
+    updatedBy: INSTRUCTOR.id,
+  });
+  await primeModelSettings();
+
+  assert.equal(providers.activeEffortProfile(), 'thorough');
+  assert.equal(model.reasoningEffort('helper'), 'medium');
+  assert.equal(model.reasoningEffort('authoring'), 'high');
+  assert.equal(model.reasoningEffort('premium'), 'high');
+
+  // Picking a different model must not quietly reset how hard it thinks.
+  await saveModelSettings({
+    baseUrl: 'https://openrouter.ai/api/v1',
+    modelId: 'openai/gpt-5-mini',
+    updatedBy: INSTRUCTOR.id,
+  });
+  await primeModelSettings();
+  assert.equal(providers.activeEffortProfile(), 'thorough');
+  assert.equal(model.reasoningEffort('authoring'), 'high');
+});
+
+test('the profile applies even while the provider still comes from the environment', async () => {
+  // How hard to think is orthogonal to which endpoint answers. An operator who
+  // picks Economy before choosing a model should get Economy, not the default.
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  process.env.MODEL_ID = 'google/gemini-3.1-flash-lite';
+  process.env.OPENROUTER_API_KEY = 'sk-or-effort-test';
+  await saveModelSettings({
+    baseUrl: 'https://openrouter.ai/api/v1',
+    modelId: 'google/gemini-3.1-flash-lite',
+    effortProfile: 'economy',
+    updatedBy: INSTRUCTOR.id,
+  });
+  await disableModelSettings({ updatedBy: INSTRUCTOR.id });
+  await primeModelSettings();
+
+  assert.equal(settings.cachedModelSettings().enabled, false, 'provider fell back to the env');
+  assert.equal(providers.textProvider().source, 'env');
+  assert.equal(providers.activeEffortProfile(), 'economy', 'the effort choice survives');
+  assert.equal(model.reasoningEffort('premium'), 'low');
+});
+
+test('MODEL_EFFORT_PROFILE is the bootstrap, and a stored choice wins over it', async () => {
+  process.env.MODEL_EFFORT_PROFILE = 'economy';
+  invalidateModelSettings();
+  await primeModelSettings();
+  assert.equal(providers.activeEffortProfile(), 'economy');
+  assert.equal(model.reasoningEffort('authoring'), 'low');
+
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  process.env.OPENROUTER_API_KEY = 'sk-or-effort-test';
+  await saveModelSettings({
+    baseUrl: 'https://openrouter.ai/api/v1',
+    modelId: 'google/gemini-3.1-flash-lite',
+    effortProfile: 'thorough',
+    updatedBy: INSTRUCTOR.id,
+  });
+  await primeModelSettings();
+  assert.equal(providers.activeEffortProfile(), 'thorough');
+});
+
+test('an unknown profile is refused on the way in, and tolerated on the way out', async () => {
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  await assert.rejects(
+    saveModelSettings({
+      baseUrl: 'https://openrouter.ai/api/v1',
+      modelId: 'google/gemini-3.1-flash-lite',
+      effortProfile: 'maximum-overdrive',
+      updatedBy: INSTRUCTOR.id,
+    }),
+    (error) => {
+      assert.equal(error.code, 'BAD_REQUEST');
+      assert.match(error.message, /economy, balanced, thorough/);
+      return true;
+    },
+  );
+
+  // A value that somehow reached the row -- an older build, a hand-edit --
+  // must not take generation down on every call. It reads as the default.
+  assert.equal(effortModule.effortFor('maximum-overdrive', 'authoring'), 'medium');
+  assert.equal(effortModule.normaliseEffortProfile('maximum-overdrive'), null);
+});
+
+test('the operator view reports the profile, where it came from, and the choices', async () => {
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  invalidateModelSettings();
+  let view = publicModelSettings(await primeModelSettings(), providers.textProvider());
+  assert.equal(view.effortProfile, 'balanced', 'the default when nothing is set');
+  assert.equal(view.effortProfileSource, 'default');
+  assert.deepEqual(view.effortProfiles.map((o) => o.id), ['economy', 'balanced', 'thorough']);
+  assert.ok(view.effortProfiles.every((o) => o.label && o.summary), 'each choice is explained');
+
+  process.env.MODEL_EFFORT_PROFILE = 'thorough';
+  view = publicModelSettings(await primeModelSettings(), providers.textProvider());
+  assert.equal(view.effortProfile, 'thorough');
+  assert.equal(view.effortProfileSource, 'env');
+
+  process.env.OPENROUTER_API_KEY = 'sk-or-effort-test';
+  await saveModelSettings({
+    baseUrl: 'https://openrouter.ai/api/v1',
+    modelId: 'google/gemini-3.1-flash-lite',
+    effortProfile: 'economy',
+    updatedBy: INSTRUCTOR.id,
+  });
+  view = publicModelSettings(await primeModelSettings(), providers.textProvider());
+  assert.equal(view.effortProfile, 'economy');
+  assert.equal(view.effortProfileSource, 'settings');
+});
+
+test('the route saves a profile under the same gate as the model choice', async () => {
+  delete process.env.MODEL_SETTINGS_KEY;
+  process.env.NEXT_PUBLIC_ALLOWED_EMAILS = 'one@example.test';
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  process.env.MODEL_ID = 'google/gemini-3.1-flash-lite';
+  process.env.OPENROUTER_API_KEY = 'sk-or-effort-test';
+  invalidateModelSettings();
+  const context = { params: Promise.resolve({}) };
+
+  // Instructors are known accounts: changing how hard it thinks is theirs,
+  // the same as choosing a model. It sends course text nowhere new.
+  const response = await routeModule.PUT(
+    request('PUT', { body: { modelId: 'google/gemini-3.1-flash-lite', effortProfile: 'thorough' } }),
+    context,
+  );
+  const body = await response.json();
+  assert.equal(response.status, 200, JSON.stringify(body));
+  assert.equal(body.settings.effortProfile, 'thorough');
+  assert.equal(body.settings.effortProfileSource, 'settings');
 });
