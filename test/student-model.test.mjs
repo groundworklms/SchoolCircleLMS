@@ -112,7 +112,28 @@ test('missing student configuration is unready and never calls OpenAI', async ()
   assert.equal(calls.length, 0);
 });
 
-test('the student adapter refuses a shared non-OpenAI provider without a fallback', async () => {
+test('the student adapter refuses a shared provider that is neither OpenAI nor OpenRouter', async () => {
+  // Student turns carry learner text, so only the two known vendors may be
+  // borrowed from the shared setting -- not whatever Settings points at.
+  await setSharedConfiguration({ baseUrl: 'https://unrelated-provider.example/v1' });
+  process.env.MODEL_API_KEY = 'sk-unrelated-provider-secret';
+  invalidateModelSettings();
+  await primeModelSettings();
+  stubFetch(() => { throw new Error('must not fetch'); });
+  assert.equal((await studentModelStatus()).code, 'STUDENT_MODEL_UNCONFIGURED');
+  assert.equal(calls.length, 0);
+
+  // A lookalike of the OpenRouter URL is not OpenRouter.
+  await setSharedConfiguration({ baseUrl: 'https://openrouter.ai.evil.example/api/v1' });
+  process.env.OPENROUTER_API_KEY = 'sk-or-must-not-leak';
+  invalidateModelSettings();
+  await primeModelSettings();
+  assert.equal((await studentModelStatus()).code, 'STUDENT_MODEL_UNCONFIGURED');
+  assert.equal(calls.length, 0);
+});
+
+test('shared OpenRouter without its own key is refused -- an OpenAI key never follows it', async () => {
+  // setSharedConfiguration supplies OPENAI_API_KEY only.
   await setSharedConfiguration({ baseUrl: 'https://openrouter.ai/api/v1' });
   stubFetch(() => { throw new Error('must not fetch'); });
   assert.equal((await studentModelStatus()).code, 'STUDENT_MODEL_UNCONFIGURED');
@@ -126,6 +147,58 @@ test('the student adapter refuses a shared non-OpenAI provider without a fallbac
   assert.equal(status.ready, true);
   assert.equal(status.active.source, 'student-env');
   assert.equal(calls[0].url, `${STUDENT_OPENAI_BASE_URL}/models`);
+});
+
+test('shared OpenRouter with its key serves student chat, with bounded reasoning', async () => {
+  // The post-event deployment: generation on OpenRouter, no OpenAI key at all.
+  const OR_KEY = 'sk-or-student-test-7777';
+  const OR_MODEL = 'google/gemini-3.1-flash-lite';
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  process.env.MODEL_ID = OR_MODEL;
+  process.env.OPENROUTER_API_KEY = OR_KEY;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.STUDENT_MODEL_ID;
+  invalidateModelSettings();
+  await primeModelSettings();
+
+  stubFetch((url) => {
+    if (url.endsWith('/models')) return response({ data: [{ id: OR_MODEL }] });
+    return response({
+      choices: [{ message: { content: '{"refused":false,"answer":"Grounded [1]","used":[1]}' } }],
+    });
+  });
+
+  const status = await studentModelStatus();
+  assert.equal(status.ready, true, JSON.stringify(status));
+  assert.equal(status.provider, 'openrouter');
+  assert.equal(status.endpoint, 'https://openrouter.ai/api/v1');
+  assert.ok(!JSON.stringify(status).includes(OR_KEY), 'status never carries the key');
+
+  calls = [];
+  const chat = await createStudentChat();
+  const result = await chat('You are a source-grounded tutor.', 'What does passage one say?');
+  assert.deepEqual(result, { refused: false, answer: 'Grounded [1]', used: [1] });
+
+  const [catalogue, completion] = calls;
+  assert.equal(catalogue.url, 'https://openrouter.ai/api/v1/models');
+  assert.equal(catalogue.init.headers.authorization, `Bearer ${OR_KEY}`);
+  assert.equal(completion.url, 'https://openrouter.ai/api/v1/chat/completions');
+  assert.equal(completion.init.headers.authorization, `Bearer ${OR_KEY}`);
+  const body = JSON.parse(completion.init.body);
+  assert.deepEqual(body, {
+    model: OR_MODEL,
+    // OpenRouter's documented spelling.
+    max_tokens: 3000,
+    messages: [
+      { role: 'system', content: 'You are a source-grounded tutor.' },
+      { role: 'user', content: 'What does passage one say?' },
+    ],
+    response_format: { type: 'json_object' },
+    provider: { require_parameters: true },
+    // Three stages share an 18s-per-call budget; provider-default thinking
+    // could spend it all. Helper tier, trace excluded from the JSON content.
+    reasoning: { effort: 'low', exclude: true },
+  });
 });
 
 test('catalogue unavailability is sanitized and blocks chat creation', async () => {
