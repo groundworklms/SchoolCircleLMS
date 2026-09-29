@@ -797,3 +797,60 @@ test('truncated but usable prose is still returned', async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+/* ------------------- JSON-mode wrapping (fences, preambles) ------------------ */
+
+async function jsonFrom(content) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      model: OPENROUTER_MODEL_ID,
+      choices: [{ finish_reason: 'stop', message: { content } }],
+      usage: { prompt_tokens: 1, completion_tokens: 1 },
+    }),
+  });
+  try {
+    return await withEnvironment(OPENROUTER_ENV, () => generateJSON({
+      system: 'Outline the course.',
+      prompt: 'From the catalogue.',
+      // The schema-less seam the plan outline uses: JSON mode, not strict schema.
+      schema: { type: 'object', additionalProperties: true },
+      maxTokens: 64,
+    }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+test('JSON wrapped in a markdown fence is unwrapped rather than failing the plan', async () => {
+  // What Gemini on OpenRouter returns for response_format json_object.
+  const result = await jsonFrom('```json\n{"title":"Land Navigation","modules":[]}\n```');
+  assert.deepEqual(result.data, { title: 'Land Navigation', modules: [] });
+
+  const bare = await jsonFrom('```\n{"title":"Unlabelled fence"}\n```');
+  assert.deepEqual(bare.data, { title: 'Unlabelled fence' });
+});
+
+test('a sentence before or after the object is tolerated', async () => {
+  const result = await jsonFrom('Here is the course outline:\n{"title":"Patrolling"}\nLet me know if you need changes.');
+  assert.deepEqual(result.data, { title: 'Patrolling' });
+});
+
+test('clean JSON is untouched, and output with no object in it is still refused', async () => {
+  const clean = await jsonFrom('{"title":"As sent","nested":{"a":[1,2]}}');
+  assert.deepEqual(clean.data, { title: 'As sent', nested: { a: [1, 2] } });
+
+  await assert.rejects(jsonFrom('I could not produce an outline for these documents.'), (error) => {
+    assert.equal(error.code, 'MODEL_BAD_RESPONSE');
+    return true;
+  });
+  // Unwrapping never rescues a broken object -- it only removes wrapping.
+  await assert.rejects(jsonFrom('```json\n{"title": "cut off", \n```'), (error) => {
+    assert.equal(error.code, 'MODEL_BAD_RESPONSE');
+    return true;
+  });
+  // An array is still not the object the seam promises.
+  await assert.rejects(jsonFrom('```json\n[1,2,3]\n```'), (error) => error.code === 'MODEL_BAD_RESPONSE');
+});
