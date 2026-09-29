@@ -468,3 +468,24 @@ test('an unreachable configured local server fails explicitly', async () => {
     (error) => error.code === 'STUDENT_LOCAL_MODEL_UNAVAILABLE',
   );
 });
+test('a fenced JSON reply from the student model is unwrapped, not treated as an outage', async () => {
+  const OR_MODEL = 'google/gemini-3.1-flash-lite';
+  process.env.MODEL_BASE_URL = 'https://openrouter.ai/api/v1';
+  process.env.MODEL_ID = OR_MODEL;
+  process.env.OPENROUTER_API_KEY = 'sk-or-student-test-7777';
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.STUDENT_MODEL_ID;
+  invalidateModelSettings();
+  await primeModelSettings();
+  stubFetch((url) => {
+    if (url.endsWith('/models')) return response({ data: [{ id: OR_MODEL }] });
+    return response({
+      choices: [{ message: { content: '```json\n{"refused":false,"answer":"Grounded [1]","used":[1]}\n```' } }],
+    });
+  });
+  const chat = await createStudentChat();
+  assert.deepEqual(
+    await chat('You are a source-grounded tutor.', 'What does passage one say?'),
+    { refused: false, answer: 'Grounded [1]', used: [1] },
+  );
+});
