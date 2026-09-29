@@ -32,14 +32,14 @@ runConfig:
   # long comment in app/api/learning/courses/draft/stream/route.js for what that
   # does and does not cost, and for the one (untested) operator lever.
 env:
-  # --- Grounding: point the cloud app's server-side /api/doctrine at the Orin's
-  # Anchor engine, exposed over a tunnel.
-  # NOTE: this is a TEMPORARY Cloudflare quick-tunnel URL — it changes whenever the
-  # tunnel restarts. For a stable setup use a named Cloudflare tunnel. Update if restarted.
-  - variable: DOCTRINE_BASE_URL
-    value: https://maryland-naples-repeat-campbell.trycloudflare.com
-    availability:
-      - RUNTIME
+  # --- Grounding (Anchor). The engine's address is deliberately NOT set here.
+  # Set it at runtime in Settings -> Doctrine engine, which stores it in the
+  # database and needs no rollout. Never commit a tunnel or other temporary or
+  # public address for Anchor to this file: the service must only be reachable
+  # from the app server, and a committed tunnel URL publishes a way in
+  # (USMCU security finding, Sep 2026; tests/deploy-config-hygiene.test.mjs).
+  # With no address configured, the tutor grounds on each course's own approved
+  # passages; doctrine-library search and claim verification are unavailable.
   - variable: DOCTRINE_TIMEOUT_MS
     value: "30000"
     availability:
@@ -47,6 +47,18 @@ env:
 
   # --- Firebase Authentication (login). PUBLIC client config, inlined into the
   # browser bundle at build time -> must be available at BUILD (and RUNTIME).
+  #
+  # The API key below is public by design: every visitor's browser receives it,
+  # and it identifies the project rather than authorizing anything. It is
+  # controlled by restrictions on the key itself in Google Cloud (APIs &
+  # Services -> Credentials -> "Browser key (auto created by Firebase)"):
+  #   APIs:     Identity Toolkit and Token Service only (sign-in; nothing else)
+  #   Websites: schoolcircle.tannerwhite.net, dev--schoolcircle-ae29a.us-east4.hosted.app,
+  #             schoolcircle-ae29a.firebaseapp.com, schoolcircle-ae29a.web.app,
+  #             localhost:3000
+  # Applied and verified 29 Sep 2026 (USMCU security finding). A new domain that
+  # serves the app must be added BOTH there and to Firebase Auth's authorized
+  # domains, or sign-in fails on it with a 403.
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyDNULW649liOlpJEuIfKc5fGrsAjmrOF1g
     availability:
@@ -79,8 +91,7 @@ env:
       - RUNTIME
 
   # --- Sign-in allowlist: OFF. Anyone with a Firebase account may sign in and
-  # create an account. (During the event this pinned sign-in to the team; the
-  # list is kept below in case it needs to come back.)
+  # create an account.
   #
   # Opening sign-in has a consequence for the generation provider: with the
   # allowlist off, "instructor" is a self-declared role, so choosing the
@@ -88,13 +99,11 @@ env:
   # (app/api/learning/model-settings/route.js). Otherwise anyone who signed up
   # could point generation at a $180/M-token model on the key below.
   #
-  # To restrict sign-in again: comma-separated, case-insensitive emails. Baked
-  # into the client at BUILD time, so editing the list needs a new rollout.
-  # - variable: NEXT_PUBLIC_ALLOWED_EMAILS
-  #   value: 189409964+tewhite4@users.noreply.github.com,121060100+canester67@users.noreply.github.com,328472012+N0t-A-User@users.noreply.github.com,195714926+jeranaias@users.noreply.github.com
-  #   availability:
-  #     - BUILD
-  #     - RUNTIME
+  # To restrict sign-in again, set NEXT_PUBLIC_ALLOWED_EMAILS (comma-separated,
+  # case-insensitive; BUILD and RUNTIME) in the App Hosting console or from a
+  # Secret Manager secret -- NOT as a value in this file. It is read at build
+  # time, so changing it needs a new rollout. Personal addresses in a committed
+  # config were part of the USMCU security finding (Sep 2026).
 
   # --- In-app "Report an issue" widget -> files GitHub issues directly via
   # /api/feedback. Secrets live in Cloud Secret Manager; the App Hosting compute
