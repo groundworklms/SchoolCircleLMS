@@ -29,7 +29,7 @@ product.
 
 | Path | What it is |
 |---|---|
-| `web/` | The static showcase (landing + interactive demo) — deployed to GitHub Pages. |
+| `web/` | An illustrative static prototype (landing + interactive demo) — a design reference, not the product. |
 | `docs/` | The full build & design spec stack (start at [`docs/README.md`](docs/README.md)). |
 | `docs/gameday/` | The operator kit — Range Card, Cold Bore plan, team plan, boot prompts. |
 | `app/`, `lib/`, `prisma/` | The Next.js 15 application (the real product). |
@@ -40,8 +40,9 @@ product.
 `main`. Grounded generation, human approval, cited delivery: what it shows, it can back.
 
 `web/` holds an illustrative static prototype of screens that do not exist yet. It is a design
-reference, not a deliverable, and it is no longer published anywhere — a showcase that promises
-surfaces the product cannot deliver is worse than no showcase. Demo the live app.
+reference, not a deliverable. A separate static showcase is published at
+[jeranaias.github.io/grounded-training-demo](https://jeranaias.github.io/grounded-training-demo);
+it is an illustrative demo, separate from the live app. Demo the live app.
 
 ## Run the app locally
 
